@@ -92,10 +92,11 @@ class Bottleneck(nn.Module):
 
 class SResNet(nn.Module):
 
-    def __init__(self, block, layers, num_classes=1000, zero_init_residual=False, num_channels=3):
+    def __init__(self, block, layers, num_classes=1000, zero_init_residual=False, num_channels=3,
+                 kernel_size=7):
         super(SResNet, self).__init__()
         self.inplanes = 64
-        self.conv1 = nn.Conv2d(num_channels, 64, kernel_size=7, stride=2, padding=3,
+        self.conv1 = nn.Conv2d(num_channels, 64, kernel_size=kernel_size, stride=2, padding=3,
                                bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
@@ -166,10 +167,11 @@ def sresnet8(pretrained=False, **kwargs):
 
 class SSResNet(nn.Module):
 
-    def __init__(self, block, layers, num_classes=1000, zero_init_residual=False, num_channels=3):
+    def __init__(self, block, layers, num_classes=1000, zero_init_residual=False, num_channels=3,
+                 kernel_size=7):
         super(SSResNet, self).__init__()
         self.inplanes = 64
-        self.conv1 = nn.Conv2d(num_channels, 64, kernel_size=7, stride=2, padding=3,
+        self.conv1 = nn.Conv2d(num_channels, 64, kernel_size=kernel_size, stride=2, padding=3,
                                bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
@@ -238,10 +240,11 @@ def sresnet6(pretrained=False, **kwargs):
 
 class SSSResNet(nn.Module):
 
-    def __init__(self, block, layers, num_classes=1000, zero_init_residual=False, num_channels=3):
+    def __init__(self, block, layers, num_classes=1000, zero_init_residual=False, num_channels=3,
+                 kernel_size=7):
         super(SSSResNet, self).__init__()
         self.inplanes = 64
-        self.conv1 = nn.Conv2d(num_channels, 64, kernel_size=7, stride=2, padding=3,
+        self.conv1 = nn.Conv2d(num_channels, 64, kernel_size=kernel_size, stride=2, padding=3,
                                bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
@@ -305,6 +308,13 @@ def sresnet4(pretrained=False, **kwargs):
     assert not pretrained
     return SSSResNet(BasicBlock, [1], **kwargs)
 
+
+def rsresnet4(pretrained=False, **kwargs):
+    """Constructs a ResNet-4 model.
+
+    """
+    assert not pretrained
+    return SSSResNet(BasicBlock, [1], kernel_size=3, **kwargs)
 
 class LResNet(nn.Module):
 
