@@ -504,21 +504,6 @@ def main():
 
     # model.apply(init_weights)
 
-    if args.trace:
-        model.eval()
-        dummy_input = torch.autograd.Variable(torch.randn((1, ) + dimensions))
-
-        print(distiller.model_summary(model, 'model'))
-
-        print(distiller.model_performance_tbl_summary(model, dummy_input, batch_size=1))
-        print(distiller.weights_sparsity_tbl_summary(model, param_dims=[1, 2, 4]))
-
-        # print("\nNetwork input and output sizes")
-        # print('-' * term_width)
-        # trace_model(dummy_input, model)
-        # print('')
-        return
-
     if args.tb_log:
         dummy_input = torch.autograd.Variable(torch.randn((1, ) + dimensions))
         writer = SummaryWriter(comment='')
@@ -632,6 +617,21 @@ def main():
         optimizer_args['lr'] = args.lr if args.lr is not None else DEFAULT_LR
         if args.epochs == 0:
             raise NotImplementedError("--epochs 0 requires --resume")
+
+    if args.trace:
+        model.eval()
+        dummy_input = torch.autograd.Variable(torch.randn((1, ) + dimensions)).to(device)
+
+        print(distiller.model_summary(model, 'model'))
+
+        print(distiller.model_performance_tbl_summary(model, dummy_input, batch_size=1))
+        print(distiller.weights_sparsity_tbl_summary(model, param_dims=[1, 2, 4]))
+
+        # print("\nNetwork input and output sizes")
+        # print('-' * term_width)
+        # trace_model(dummy_input, model)
+        # print('')
+        return
 
     # Override weight decay from command line
     if args.weight_decay is not None:
