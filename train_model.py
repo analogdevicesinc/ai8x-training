@@ -185,6 +185,8 @@ def main():
     #                          "(default: 1)")
     parser.add_argument('--eval-batch-size', type=int, default=64, metavar='N',
                         help="input batch size for evaluation (default: 64)")
+    parser.add_argument('--compress', metavar='S',
+                        help="compress/prune the model as specified in configuration file")
     parser.add_argument('--cnn', '--model', metavar='S', default='resnet18',
                         choices=cnn_models,
                         help="CNN model (" + ', '.join(cnn_models) +
@@ -532,6 +534,7 @@ def main():
         checkpoint_file += '-' + args.checkpoint
     checkpoint_file += '_' + args.cnn + '.pt'
 
+    compression_scheduler = None
     optimizer_args = {}
     selected_optimizer = next(item for item in supported_optimizers
                               if item['name'] == args.optimizer)
@@ -569,6 +572,31 @@ def main():
         else:
             optimizer_args['lr'] = args.lr
         start_epoch = checkpoint['epoch'] + 1
+
+        if 'compression_sched' in checkpoint:
+            compression_scheduler = distiller.CompressionScheduler(model, device=device)
+            compression_scheduler.load_state_dict(checkpoint['compression_sched'])
+            print(f"Loaded compression schedule from checkpoint "
+                  f"(epoch {checkpoint['epoch']})")
+        else:
+            print("Warning: compression schedule data does not exist in checkpoint")
+
+        if 'thinning_recipes' in checkpoint:
+            if 'compression_sched' not in checkpoint:
+                raise KeyError("Found thinning_recipes key, but missing mandatory key "
+                               "'compression_sched'")
+            # Cache the recipes in case we need them later
+            model.thinning_recipes = checkpoint['thinning_recipes']
+            distiller.execute_thinning_recipes_list(model,
+                                                    compression_scheduler.zeros_mask_dict,
+                                                    model.thinning_recipes)
+            print("Loaded a thinning recipe from checkpoint")
+
+        if 'quantizer_metadata' in checkpoint:
+            qmd = checkpoint['quantizer_metadata']
+            quantizer = qmd['type'](model, **qmd['params'])
+            quantizer.prepare_model()
+            print("Loaded quantizer metadata from checkpoint")
 
         if isinstance(model, nn.DataParallel):
             model.module.load_state_dict(checkpoint['net'])
@@ -679,6 +707,17 @@ def main():
         class_headers.append(labels[i])
     class_index = class_headers.copy()
 
+    if args.compress and not compression_scheduler:
+        # if args.resume:
+        #     # Reset best-of state
+        #     best_acc = 0.0
+        #     best_top1 = None
+
+        # Compression requires a compression schedule configuration file in YAML.
+        compression_scheduler = distiller.config.file_config(model, optimizer, args.compress,
+                                                             device)
+        print('')
+
     Loss = locate('torch.nn.' + args.loss_function + 'Loss')
     if not Loss:
         raise RuntimeError("Loss function " + args.loss_function + " not found\n")
@@ -718,7 +757,8 @@ def main():
         log_processed = 0
 
         total_samples = len(train_loader.dataset)
-        # steps_per_epoch = (total_samples + (batch_size - 1)) // batch_size
+        steps_per_epoch = (total_samples + (train_loader.batch_size - 1)) \
+            // train_loader.batch_size
 
         print('\nTraining:', flush=True)
         if not use_stdout:
@@ -750,6 +790,9 @@ def main():
             data, target = data.to(device), target.to(device)
 
             # Forward pass
+            if compression_scheduler:
+                compression_scheduler.on_minibatch_begin(epoch, batch_idx, steps_per_epoch,
+                                                         optimizer)
             output = model(data)
             del data
             loss = criterion(output, target)
@@ -766,6 +809,13 @@ def main():
             total_loss += float(loss.item()) * data_len
             running_loss += float(loss.item()) * data_len
 
+            if compression_scheduler:
+                # Before the backward phase, add any regularization loss computed by the scheduler
+                regularizer_loss = compression_scheduler.before_backward_pass(epoch, batch_idx,
+                                                                              steps_per_epoch,
+                                                                              loss, optimizer)
+                running_loss += float(regularizer_loss.item())
+
             # Backward and optimize
             optimizer.zero_grad()
             if not use_amp:
@@ -774,6 +824,9 @@ def main():
                 with apex.amp.scale_loss(loss, optimizer) as scaled_loss:
                     scaled_loss.backward()
             optimizer.step()
+            if compression_scheduler:
+                compression_scheduler.on_minibatch_end(epoch, batch_idx, steps_per_epoch,
+                                                       optimizer)
 
             now = time.time()
             if now - log_time > args.log_interval and batch_idx < len(train_loader) - 1:
@@ -995,6 +1048,12 @@ def main():
 
         if optimizer is not None:
             state['optimizer'] = optimizer.state_dict()
+        if compression_scheduler is not None:
+            state['compression_sched'] = compression_scheduler.state_dict()
+        if hasattr(model, 'thinning_recipes'):
+            state['thinning_recipes'] = model.thinning_recipes
+        if hasattr(model, 'quantizer_metadata'):
+            state['quantizer_metadata'] = model.quantizer_metadata
 
         torch.save(state, os.path.join(args.checkpoint_directory, fn))
         return epoch
@@ -1010,6 +1069,9 @@ def main():
         if args.tb_log:
             # Plot learning rate (same for all layers, so use index 0)
             writer.add_scalar('train/lr', optimizer.param_groups[0]['lr'], step)
+
+        if compression_scheduler:
+            compression_scheduler.on_epoch_begin(epoch)
 
         # Train
         step, train_loss = train(epoch, args.tb_log, step)
@@ -1062,6 +1124,9 @@ def main():
         if args.checkpoint_save_frequency is not None and \
            epoch % args.checkpoint_save_frequency == 0:
             last_saved_epoch = save_state(epoch)
+
+        if compression_scheduler:
+            compression_scheduler.on_epoch_end(epoch, optimizer)
 
         print('')
         if not args.lr_min or optimizer.param_groups[0]['lr'] > args.lr_min:
