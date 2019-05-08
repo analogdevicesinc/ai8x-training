@@ -1,0 +1,12 @@
+quantizers:
+  post_train_quantizer:
+    class: PostTrainLinearQuantizer
+    bits_activations: 8
+    bits_parameters: 8
+    bits_accum: 32
+    # SYMMETRIC, ASYMMETRIC_UNSIGNED, ASYMMETRIC_SIGNED
+    mode: SYMMETRIC
+    # model_activation_stats: quant_stats.yaml
+    per_channel_wts: True
+    clip_acts: AVG
+    no_clip_layers: fc
