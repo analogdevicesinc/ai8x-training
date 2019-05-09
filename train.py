@@ -101,19 +101,19 @@ def main():
 
     supported_models = [
         {'name': 'sresnet4',
-         'module': 'sresnet',
+         'module': 'ai84net',
          'min_input': 1,
          'dim': 2},
         {'name': 'rsresnet4',
-         'module': 'sresnet',
+         'module': 'ai84net',
          'min_input': 1,
          'dim': 2},
         {'name': 'sresnet6',
-         'module': 'sresnet',
+         'module': 'ai84net',
          'min_input': 1,
          'dim': 2},
         {'name': 'sresnet8',
-         'module': 'sresnet',
+         'module': 'ai84net',
          'min_input': 1,
          'dim': 2}
     ]
@@ -210,9 +210,10 @@ def main():
         raise RuntimeError("Model " + args.cnn + " not found\n")
     if module['dim'] > 1 and module['min_input'] > dimensions[2]:
         model = Model(pretrained=False, num_classes=args.num_classes, num_channels=dimensions[0],
-                      padding=(module['min_input'] - dimensions[2] + 1) // 2)
+                      padding=(module['min_input'] - dimensions[2] + 1) // 2).to(args.device)
     else:
-        model = Model(pretrained=False, num_classes=args.num_classes, num_channels=dimensions[0])
+        model = Model(pretrained=False, num_classes=args.num_classes,
+                      num_channels=dimensions[0]).to(args.device)
     # if args.add_logsoftmax:
     #     model = nn.Sequential(model, nn.LogSoftmax(dim=1))
     # if args.add_softmax:
@@ -487,7 +488,7 @@ def train(train_loader, model, criterion, optimizer, epoch,
         batch_time.add(time.time() - end)
         steps_completed = (train_step+1)
 
-        if steps_completed % args.print_freq == 0:
+        if steps_completed % args.print_freq == 0 or steps_completed == steps_per_epoch:
             # Log some statistics
             errs = OrderedDict()
             if not args.earlyexit_lossweights:
@@ -586,7 +587,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
             end = time.time()
 
             steps_completed = (validation_step+1)
-            if steps_completed % args.print_freq == 0:
+            if steps_completed % args.print_freq == 0 or steps_completed == total_steps:
                 if not args.earlyexit_thresholds:
                     stats = ('',
                              OrderedDict([('Loss', losses['objective_loss'].mean),
