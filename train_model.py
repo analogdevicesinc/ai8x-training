@@ -112,7 +112,10 @@ def main():
         {'name': 'CIFAR10',
          'input': (3, 32, 32),
          'output': ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse',
-                    'ship', 'truck')}
+                    'ship', 'truck')},
+        {'name': 'ImageNet',
+         'input': (3, 224, 224),
+         'output': list(map(str, range(1000)))}
     ]
 
     supported_image_types = [
@@ -371,7 +374,7 @@ def main():
         torch.backends.cudnn.enabled = False
     device = torch.device(dev)
 
-    if args.dataset == 'CIFAR10':
+    if args.dataset in ['CIFAR10', 'ImageNet']:
         augment = [transforms.RandomCrop(32, padding=4),
                    transforms.RandomHorizontalFlip()]
     else:
