@@ -260,13 +260,6 @@ def sresnet4(pretrained=False, **kwargs):
     return SSSResNet(BasicBlock, [1], **kwargs)
 
 
-def rsresnet4(pretrained=False, **kwargs):
-    """Constructs a ResNet-4 model.
-
-    """
-    assert not pretrained
-    return SSSResNet(BasicBlock, [1], **kwargs)
-
 class LResNet(nn.Module):
 
     def __init__(self, block, layers, num_classes=1000, zero_init_residual=False, num_channels=3):

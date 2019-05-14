@@ -22,3 +22,4 @@ __pycache__
 /logs
 /latest_log_dir
 /latest_log_file
+/vision

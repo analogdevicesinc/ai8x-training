@@ -104,10 +104,6 @@ def main():
          'module': 'ai84net',
          'min_input': 1,
          'dim': 2},
-        {'name': 'rsresnet4',
-         'module': 'ai84net',
-         'min_input': 1,
-         'dim': 2},
         {'name': 'sresnet6',
          'module': 'ai84net',
          'min_input': 1,
@@ -734,7 +730,7 @@ def evaluate_model(model, criterion, test_loader, loggers, activations_collector
 
     if args.quantize_eval:
         model.cpu()
-        quantizer = quantization.PostTrainLinearQuantizer.from_args(model, args)
+        quantizer = quantization.PostTrainLinearQuantizerAI84.from_args(model, args)
         quantizer.prepare_model()
         model.to(args.device)
 
