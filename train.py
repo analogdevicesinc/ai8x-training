@@ -531,6 +531,29 @@ def test(test_loader, model, criterion, loggers, activations_collectors, args):
     with collectors_context(activations_collectors["test"]) as collectors:
         top1, top5, lossses = _validate(test_loader, model, criterion, loggers, args)
         distiller.log_activation_statsitics(-1, "test", loggers, collector=collectors['sparsity'])
+
+        if args.kernel_stats:
+            print("Kernel Stats")
+            with torch.no_grad():
+                weights = []
+                biases = []
+    
+                def traverse(m):
+                    """
+                    Traverse model to build list of weights
+                    """
+                    if isinstance(m, nn.Conv2d):
+                        w = m.weight.cpu().detach().numpy().reshape(-1, 3, 3)
+                        weights.append(w)
+                        if hasattr(m, 'bias') and m.bias is not None:
+                            biases.append(m.bias.cpu().detach().numpy())
+    
+                model.apply(traverse)
+                weights = np.concatenate(weights)
+                unique = np.unique(weights, axis=0)
+                print(f"Total weights: {len(weights)} --> Unique: {len(unique)}")
+                print(unique)
+
         save_collectors_data(collectors, msglogger.logdir)
     return top1, top5, lossses
 

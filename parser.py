@@ -53,6 +53,8 @@ def get_parser(model_names, dataset_names):
                         help='number of total epochs to run (default: 90)')
     parser.add_argument('-b', '--batch-size', default=256, type=int,
                         metavar='N', help='mini-batch size (default: 256)')
+    parser.add_argument('--kernel-stats', action='store_true',
+                        help='compute kernel statistics')
 
     optimizer_args = parser.add_argument_group('Optimizer arguments')
     optimizer_args.add_argument('--lr', '--learning-rate', default=0.1,
