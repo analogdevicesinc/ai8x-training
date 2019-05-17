@@ -726,26 +726,26 @@ class RangeLinearQuantAI84EltwiseMultWrapper(RangeLinearQuantAI84Wrapper):
         return output_scale / self.accum_scale, output_zero_point
 
 
-class FP16Wrapper(nn.Module):
+class Int8Wrapper(nn.Module):
     """
     A wrapper that replaces a module with a half precision version.
 
     Args:
         module (nn.Module): The module to be replaced.
         convert_input (:obj:`bool`, optional): Specifies whether an input conversion
-            to fp16 is required for forward. Default: True.
+            to int8 is required for forward. Default: True.
         return_fp32 (:obj:`bool`, optional): Specifies whether the output needs
             to be converted back to fp32. Default: True.
     """
     def __init__(self, module: nn.Module, convert_input=True, return_fp32=True):
-        super(FP16Wrapper, self).__init__()
+        super(Int8Wrapper, self).__init__()
         self.wrapped_module = module.half()
         self.return_fp32 = return_fp32
-        self.convert_input_fp16 = convert_input
+        self.convert_input_int8 = convert_input
 
     def forward(self, *input):
-        if self.convert_input_fp16:
-            input = distiller.convert_tensors_recursively_to(input, dtype=torch.float16)
+        if self.convert_input_int8:
+            input = distiller.convert_tensors_recursively_to(input, dtype=torch.int8)
 
         result = self.wrapped_module(*input)
         if self.return_fp32:
@@ -801,14 +801,14 @@ class PostTrainLinearQuantizerAI84(Quantizer):
         per_channel_wts (bool): Set to True to enable per-channel quantization of weights (per output channel)
         model_activation_stats (str / dict / OrderedDict): Either a path to activation stats YAML file, or a dictionary
             containing the stats. If None then stats will be calculated dynamically.
-        fp16 (bool): Set to True to convert modules to half precision.
+        int8 (bool): Set to True to convert modules to half precision.
     Note:
-        If fp16 is set to True, all the layers (except those overriden in `overrides`) will be converted
+        If int8 is set to True, all the layers (except those overriden in `overrides`) will be converted
         to half precision, regardless of bits_activations/parameters/accum.
     """
     def __init__(self, model, bits_activations=8, bits_parameters=8, bits_accum=32,
                  overrides=None, mode=LinearQuantAI84Mode.SYMMETRIC, clip_acts=ClipModeAI84.NONE, no_clip_layers=None,
-                 per_channel_wts=False, model_activation_stats=None, fp16=False, clip_n_stds=None):
+                 per_channel_wts=False, model_activation_stats=None, int8=False, clip_n_stds=None):
         super(PostTrainLinearQuantizerAI84, self).__init__(model, bits_activations=bits_activations,
                                                        bits_weights=bits_parameters, bits_bias=bits_accum,
                                                        overrides=overrides, train_with_fp_copy=False)
@@ -841,9 +841,9 @@ class PostTrainLinearQuantizerAI84(Quantizer):
         def replace_param_layer(module, name, qbits_map,
                                 per_channel_wts=per_channel_wts,
                                 mode=mode,
-                                fp16=fp16):
-            if fp16:
-                return FP16Wrapper(module)
+                                int8=int8):
+            if int8:
+                return Int8Wrapper(module)
             norm_name = distiller.utils.normalize_module_name(name)
             clip = self.clip_acts if norm_name not in self.no_clip_layers else ClipModeAI84.NONE
             return RangeLinearQuantAI84ParamLayerWrapper(module, qbits_map[name].acts, qbits_map[name].wts,
@@ -852,9 +852,9 @@ class PostTrainLinearQuantizerAI84(Quantizer):
                                                      activation_stats=self.model_activation_stats.get(norm_name, None),
                                                      clip_n_stds=clip_n_stds)
 
-        def replace_non_param_layer(wrapper_type, module, name, qbits_map, fp16=fp16):
-            if fp16:
-                return FP16Wrapper(module)
+        def replace_non_param_layer(wrapper_type, module, name, qbits_map, int8=int8):
+            if int8:
+                return Int8Wrapper(module)
             norm_name = distiller.utils.normalize_module_name(name)
             clip = self.clip_acts if norm_name not in self.no_clip_layers else ClipModeAI84.NONE
             try:
@@ -866,9 +866,9 @@ class PostTrainLinearQuantizerAI84(Quantizer):
                                   'Keeping the original FP32 module'.format(name, module.__class__.__name__))
                 return module
 
-        def replace_embedding(module, name, qbits_map, fp16=fp16):
-            if fp16:
-                return FP16Wrapper(module, convert_input=False)
+        def replace_embedding(module, name, qbits_map, int8=int8):
+            if int8:
+                return Int8Wrapper(module, convert_input=False)
             norm_name = distiller.utils.normalize_module_name(name)
             return RangeLinearAI84EmbeddingWrapper(module, qbits_map[name].wts, mode=mode,
                                                stats=self.model_activation_stats.get(norm_name, None))
