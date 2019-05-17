@@ -84,10 +84,10 @@ from distiller.data_loggers.collector import SummaryActivationStatsCollector, \
     RecordsActivationStatsCollector, QuantCalibrationStatsCollector, \
     collectors_context
 from distiller.data_loggers.logger import TensorBoardLogger, PythonLogger
-import distiller.quantization as quantization
 import examples.automated_deep_compression as adc
 import operator
 import parser
+from range_linear_ai84 import PostTrainLinearQuantizerAI84
 
 
 # Logger handle
@@ -533,11 +533,11 @@ def test(test_loader, model, criterion, loggers, activations_collectors, args):
         distiller.log_activation_statsitics(-1, "test", loggers, collector=collectors['sparsity'])
 
         if args.kernel_stats:
-            print("Kernel Stats")
+            print("==> Kernel Stats")
             with torch.no_grad():
                 weights = []
                 biases = []
-    
+
                 def traverse(m):
                     """
                     Traverse model to build list of weights
@@ -547,12 +547,12 @@ def test(test_loader, model, criterion, loggers, activations_collectors, args):
                         weights.append(w)
                         if hasattr(m, 'bias') and m.bias is not None:
                             biases.append(m.bias.cpu().detach().numpy())
-    
+
                 model.apply(traverse)
                 weights = np.concatenate(weights)
                 unique = np.unique(weights, axis=0)
                 print(f"Total weights: {len(weights)} --> Unique: {len(unique)}")
-                print(unique)
+                # print(unique)
 
         save_collectors_data(collectors, msglogger.logdir)
     return top1, top5, lossses
@@ -753,7 +753,7 @@ def evaluate_model(model, criterion, test_loader, loggers, activations_collector
 
     if args.quantize_eval:
         model.cpu()
-        quantizer = quantization.PostTrainLinearQuantizerAI84.from_args(model, args)
+        quantizer = PostTrainLinearQuantizerAI84.from_args(model, args)
         quantizer.prepare_model()
         model.to(args.device)
 
