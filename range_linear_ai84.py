@@ -728,7 +728,7 @@ class RangeLinearQuantAI84EltwiseMultWrapper(RangeLinearQuantAI84Wrapper):
 
 class Int8Wrapper(nn.Module):
     """
-    A wrapper that replaces a module with a half precision version.
+    A wrapper that replaces a module with a int8 precision version.
 
     Args:
         module (nn.Module): The module to be replaced.
@@ -739,7 +739,7 @@ class Int8Wrapper(nn.Module):
     """
     def __init__(self, module: nn.Module, convert_input=True, return_fp32=True):
         super(Int8Wrapper, self).__init__()
-        self.wrapped_module = module.half()
+        self.wrapped_module = module.type(torch.int8)
         self.return_fp32 = return_fp32
         self.convert_input_int8 = convert_input
 
@@ -801,10 +801,10 @@ class PostTrainLinearQuantizerAI84(Quantizer):
         per_channel_wts (bool): Set to True to enable per-channel quantization of weights (per output channel)
         model_activation_stats (str / dict / OrderedDict): Either a path to activation stats YAML file, or a dictionary
             containing the stats. If None then stats will be calculated dynamically.
-        int8 (bool): Set to True to convert modules to half precision.
+        int8 (bool): Set to True to convert modules to int8 precision.
     Note:
         If int8 is set to True, all the layers (except those overriden in `overrides`) will be converted
-        to half precision, regardless of bits_activations/parameters/accum.
+        to int8 precision, regardless of bits_activations/parameters/accum.
     """
     def __init__(self, model, bits_activations=8, bits_parameters=8, bits_accum=32,
                  overrides=None, mode=LinearQuantAI84Mode.SYMMETRIC, clip_acts=ClipModeAI84.NONE, no_clip_layers=None,

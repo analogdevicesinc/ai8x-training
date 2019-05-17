@@ -9,6 +9,7 @@ quantizers:
     # SYMMETRIC, ASYMMETRIC_UNSIGNED, ASYMMETRIC_SIGNED
     mode: SYMMETRIC
     per_channel_wts: False
+    # int8: true
     # NONE, AVG, N_STD
     # clip_acts: AVG
     # no_clip_layers: fc

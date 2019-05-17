@@ -4,6 +4,7 @@ quantizers:
     bits_activations: 8
     bits_parameters: 8
     bits_accum: 32
+    # int8: true
     # SYMMETRIC, ASYMMETRIC_UNSIGNED, ASYMMETRIC_SIGNED
     mode: SYMMETRIC
     per_channel_wts: False
