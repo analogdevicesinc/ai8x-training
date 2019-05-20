@@ -5,11 +5,15 @@ quantizers:
     bits_parameters: 8
     bits_accum: 32
     # int8: true
-    scale_approx_mult_bits: 2
+    scale_approx_mult_bits: 8
     # SYMMETRIC, ASYMMETRIC_UNSIGNED, ASYMMETRIC_SIGNED
     mode: SYMMETRIC
     per_channel_wts: False
     # NONE, AVG, N_STD
+    # clip_acts: N_STD
+    # clip_n_stds: 3
     clip_acts: AVG
     no_clip_layers: fc
+    global_scale: True
+    global_sat_scale: 25.0
 

@@ -21,7 +21,6 @@ from collections import OrderedDict
 from functools import reduce, partial
 import logging
 import os
-
 import distiller
 import distiller.utils
 from distiller.quantization.quantizer import Quantizer
@@ -38,6 +37,19 @@ import yaml
 msglogger = logging.getLogger()
 
 
+def linear_quantize_ai84(input, scale, zero_point, inplace=False):
+    if inplace:
+        input.mul_(scale).sub_(zero_point).round_()
+        return input
+    return torch.round(scale * input - zero_point)
+
+
+def linear_quantize_clamp_ai84(input, scale, zero_point, clamp_min, clamp_max, inplace=False):
+    print(f'linear_quantize_clamp_ai84 scale={scale}, zp={zero_point}, min={clamp_min}, max={clamp_max}')
+    output = linear_quantize_ai84(input, scale, zero_point, inplace)
+    return clamp(output, clamp_min, clamp_max, inplace)
+
+
 def symmetric_linear_quantization_params(num_bits, saturation_val):
     is_scalar, sat_val = _prep_saturation_val_tensor(saturation_val)
 
@@ -50,8 +62,8 @@ def symmetric_linear_quantization_params(num_bits, saturation_val):
     # If float values are all 0, we just want the quantized values to be 0 as well. So overriding the saturation
     # value to 'n', so the scale becomes 1
     sat_val[sat_val == 0] = n
-    # scale = n / sat_val
-    scale = torch.round(n / sat_val)
+    scale = n / sat_val
+    # scale = torch.round(n / sat_val)
     # scale = 2 ** (torch.log2(sat_val).trunc().clamp(min=-1) + 1)
     # scale = torch.ones_like(sat_val)
     zero_point = torch.zeros_like(scale)
@@ -121,13 +133,6 @@ def quantize_clamp(input, clamp_min, clamp_max, inplace=False):
     return torch.round(input).clamp(clamp_min, clamp_max)
 
 
-def linear_quantize_ai84(input, inplace=False):
-    if inplace:
-        input.round_()
-        return input
-    return torch.round(input)
-
-
 def _verify_enum_value(val, enum_cls):
     cls_name = enum_cls.__name__
     if isinstance(val, str):
@@ -190,7 +195,30 @@ def _get_quant_params_from_tensor(tensor, num_bits, mode, clip=ClipModeAI84.NONE
         zp = zp.view(dims)
 
     if scale_approx_mult_bits is not None:
-        scale = approx_scale_as_mult_and_shift(scale, scale_approx_mult_bits)
+        # scale = approx_scale_as_mult_and_shift(scale, scale_approx_mult_bits)
+        # print(scale, ' ', end='')
+        scale = 2 ** torch.log2(scale.clamp(min=1)).round().clamp(max=scale_approx_mult_bits)
+        # print(scale)
+
+    return scale, zp
+
+
+def _get_quant_params_from_model(sat_val, num_bits, mode, clip=ClipModeAI84.NONE, num_stds=None,
+                                 scale_approx_mult_bits=None):
+    if clip == ClipModeAI84.N_STD:
+        if num_stds is None:
+            raise ValueError('Clip mode set top N_STD but \'num_stds\' parameter not provided')
+
+    if mode == LinearQuantAI84Mode.SYMMETRIC:
+        scale, zp = symmetric_linear_quantization_params(num_bits, sat_val)
+    else:
+        raise NotImplementedError('Only SYMMETRIC quantization mode is implemented')
+
+    if scale_approx_mult_bits is not None:
+        # scale = approx_scale_as_mult_and_shift(scale, scale_approx_mult_bits)
+        # print(scale, ' ', end='')
+        scale = 2 ** torch.log2(scale.clamp(min=1)).round().clamp(max=scale_approx_mult_bits)
+        # print(scale)
 
     return scale, zp
 
@@ -494,12 +522,13 @@ class RangeLinearQuantAI84ParamLayerWrapper(RangeLinearQuantAI84Wrapper):
     """
     def __init__(self, wrapped_module, num_bits_acts, num_bits_params, num_bits_accum=32,
                  mode=LinearQuantAI84Mode.SYMMETRIC, clip_acts=ClipModeAI84.NONE, per_channel_wts=False, activation_stats=None,
-                 clip_n_stds=None, scale_approx_mult_bits=None):
+                 clip_n_stds=None, scale_approx_mult_bits=None,
+                 global_scale=False, global_sat_scale=1.0, weight_stddev=None):
         super(RangeLinearQuantAI84ParamLayerWrapper, self).__init__(wrapped_module, num_bits_acts, num_bits_accum, mode,
                                                                 clip_acts, activation_stats, clip_n_stds,
                                                                 scale_approx_mult_bits)
 
-        if not isinstance(wrapped_module, (nn.Conv2d, nn.Linear)):
+        if not isinstance(wrapped_module, (nn.Conv2d)):  # , nn.Linear)):
             raise ValueError(self.__class__.__name__ + ' can wrap only Conv2D and Linear modules')
 
         self.num_bits_params = num_bits_params
@@ -509,15 +538,22 @@ class RangeLinearQuantAI84ParamLayerWrapper(RangeLinearQuantAI84Wrapper):
             num_bits_params, signed=mode != LinearQuantAI84Mode.ASYMMETRIC_UNSIGNED)
 
         # Quantize weights - overwrite FP32 weights
-        w_scale, w_zero_point = _get_quant_params_from_tensor(wrapped_module.weight, num_bits_params, self.mode,
-                                                              per_channel=per_channel_wts)
+        if not global_scale:
+            w_scale, w_zero_point = _get_quant_params_from_tensor(wrapped_module.weight, num_bits_params, self.mode,
+                                                                  per_channel=per_channel_wts)
+            scale = w_scale
+        else:
+            w_scale, w_zero_point = _get_quant_params_from_model(weight_stddev * global_sat_scale,
+                                                                 num_bits_params, self.mode)
+            # print('w_scale:', w_scale)
+            scale = w_scale
+            w_scale = torch.tensor(float(1.0))
 
         self.register_buffer('w_scale', w_scale)
         self.register_buffer('w_zero_point', w_zero_point)
-        linear_quantize_clamp(wrapped_module.weight.data, self.w_scale, self.w_zero_point, self.params_min_q_val,
-                              self.params_max_q_val, inplace=True)
+        linear_quantize_clamp_ai84(wrapped_module.weight.data, scale, self.w_zero_point, self.params_min_q_val,
+                                   self.params_max_q_val, inplace=True)
 
-        self.has_bias = hasattr(wrapped_module, 'bias') and wrapped_module.bias is not None
         device = self.w_scale.device
 
         if self.preset_act_stats:
@@ -535,11 +571,20 @@ class RangeLinearQuantAI84ParamLayerWrapper(RangeLinearQuantAI84Wrapper):
                 linear_quantize_clamp(wrapped_module.bias.data, self.accum_scale.squeeze(), 0,
                                       self.accum_min_q_val, self.accum_max_q_val, inplace=True)
             else:
-                b_scale, b_zero_point = _get_quant_params_from_tensor(wrapped_module.bias, num_bits_params, self.mode)
+                if not global_scale:
+                    b_scale, b_zero_point = _get_quant_params_from_tensor(wrapped_module.bias, num_bits_params, self.mode)
+                    scale = b_scale
+                else:
+                    b_scale, b_zero_point = _get_quant_params_from_model(weight_stddev * global_sat_scale,
+                                                                         num_bits_params, self.mode)
+                    # print('b_scale:', b_scale)
+                    scale = b_scale
+                    b_scale = torch.tensor(float(1.0))
+
                 self.register_buffer('b_scale', b_scale)
                 self.register_buffer('b_zero_point', b_zero_point)
-                base_b_q = linear_quantize_clamp(wrapped_module.bias.data, self.b_scale, self.b_zero_point,
-                                                 self.params_min_q_val, self.params_max_q_val)
+                base_b_q = linear_quantize_clamp_ai84(wrapped_module.bias.data, scale, self.b_zero_point,
+                                                      self.params_min_q_val, self.params_max_q_val)
                 # Dynamic ranges - save in auxiliary buffer, requantize each time based on dynamic input scale factor
                 self.register_buffer('base_b_q', base_b_q)
 
@@ -868,7 +913,7 @@ class PostTrainLinearQuantizerAI84(Quantizer):
     def __init__(self, model, bits_activations=8, bits_parameters=8, bits_accum=32,
                  overrides=None, mode=LinearQuantAI84Mode.SYMMETRIC, clip_acts=ClipModeAI84.NONE, no_clip_layers=None,
                  per_channel_wts=False, model_activation_stats=None, int8=False, clip_n_stds=None,
-                 scale_approx_mult_bits=None):
+                 scale_approx_mult_bits=None, global_scale=False, global_sat_scale=1.0):
         super(PostTrainLinearQuantizerAI84, self).__init__(model, bits_activations=bits_activations,
                                                        bits_weights=bits_parameters, bits_bias=bits_accum,
                                                        overrides=overrides, train_with_fp_copy=False)
@@ -888,6 +933,49 @@ class PostTrainLinearQuantizerAI84(Quantizer):
             elif not isinstance(model_activation_stats, (dict, OrderedDict)):
                 raise TypeError('model_activation_stats must either be a string, a dict / OrderedDict or None')
 
+        # Get min/max weight/bias from model
+        with torch.no_grad():
+            self.weight_min = torch.tensor(float('inf'))
+            self.weight_max = torch.tensor(float('-inf'))
+            self.weight_count = torch.tensor(0, dtype=torch.int)
+            self.weight_sum = torch.tensor(0.0)
+            self.weight_stddev = torch.tensor(0.0)
+
+            def traverse_pass1(m):
+                """
+                Traverse model to build weight stats
+                """
+                if isinstance(m, nn.Conv2d):
+                    self.weight_min = torch.min(torch.min(m.weight), self.weight_min)
+                    self.weight_max = torch.max(torch.max(m.weight), self.weight_max)
+                    self.weight_count += len(m.weight.flatten())
+                    self.weight_sum += m.weight.flatten().sum()
+                    if hasattr(m, 'bias') and m.bias is not None:
+                        self.weight_min = torch.min(torch.min(m.bias), self.weight_min)
+                        self.weight_max = torch.max(torch.max(m.bias), self.weight_max)
+                        self.weight_count += len(m.bias.flatten())
+                        self.weight_sum += m.bias.flatten().sum()
+
+            def traverse_pass2(m):
+                """
+                Traverse model to build weight stats
+                """
+                if isinstance(m, nn.Conv2d):
+                    self.weight_stddev += ((m.weight.flatten() - self.weight_mean) ** 2).sum()
+                    if hasattr(m, 'bias') and m.bias is not None:
+                        self.weight_stddev += ((m.bias.flatten() - self.weight_mean) ** 2).sum()
+
+            model.apply(traverse_pass1)
+
+            self.weight_mean = self.weight_sum / self.weight_count
+
+            model.apply(traverse_pass2)
+
+            self.weight_stddev = torch.sqrt(self.weight_stddev / self.weight_count)
+
+        print(f"Total weights: {self.weight_count} --> min: {self.weight_min}, max: {self.weight_max}, "
+              f"stddev: {self.weight_stddev}")
+
         self.model.quantizer_metadata = {'type': type(self),
                                          'params': {'bits_activations': bits_activations,
                                                     'bits_parameters': bits_parameters,
@@ -898,10 +986,15 @@ class PostTrainLinearQuantizerAI84(Quantizer):
                                                     'no_clip_layers': no_clip_layers,
                                                     'per_channel_wts': per_channel_wts,
                                                     'int8': int8,
-                                                    'scale_approx_mult_bits': scale_approx_mult_bits}}
+                                                    'scale_approx_mult_bits': scale_approx_mult_bits,
+                                                    'global_scale': global_scale,
+                                                    'sat_val_scale': global_sat_scale}}
 
         def replace_param_layer(module, name, qbits_map, per_channel_wts=per_channel_wts,
-                                mode=mode, int8=int8, scale_approx_mult_bits=scale_approx_mult_bits):
+                                mode=mode, int8=int8, scale_approx_mult_bits=scale_approx_mult_bits,
+                                global_scale=global_scale,
+                                weight_min=self.weight_min, weight_max=self.weight_max,
+                                weight_stddev=self.weight_stddev):
             if int8:
                 return Int8Wrapper(module)
             norm_name = distiller.utils.normalize_module_name(name)
@@ -911,7 +1004,10 @@ class PostTrainLinearQuantizerAI84(Quantizer):
                                                      per_channel_wts=per_channel_wts,
                                                      activation_stats=self.model_activation_stats.get(norm_name, None),
                                                      clip_n_stds=clip_n_stds,
-                                                     scale_approx_mult_bits=scale_approx_mult_bits)
+                                                     scale_approx_mult_bits=scale_approx_mult_bits,
+                                                     global_scale=global_scale,
+                                                     global_sat_scale=global_sat_scale,
+                                                     weight_stddev=weight_stddev)
 
         def replace_non_param_layer(wrapper_type, module, name, qbits_map, int8=int8,
                                     scale_approx_mult_bits=scale_approx_mult_bits):
@@ -941,9 +1037,10 @@ class PostTrainLinearQuantizerAI84(Quantizer):
         self.model_activation_stats = model_activation_stats or {}
         self.bits_accum = bits_accum
         self.mode = mode
+        # self.model = model
 
         self.replacement_factory[nn.Conv2d] = replace_param_layer
-        self.replacement_factory[nn.Linear] = replace_param_layer
+        # self.replacement_factory[nn.Linear] = replace_param_layer
 
         self.replacement_factory[distiller.modules.Concat] = partial(
             replace_non_param_layer, RangeLinearQuantAI84ConcatWrapper)
