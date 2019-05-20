@@ -10,6 +10,7 @@ quantizers:
     mode: SYMMETRIC
     per_channel_wts: False
     # int8: true
+    scale_approx_mult_bits: 2
     # NONE, AVG, N_STD
     # clip_acts: AVG
     # no_clip_layers: fc
