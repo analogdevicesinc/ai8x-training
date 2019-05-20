@@ -87,6 +87,7 @@ from distiller.data_loggers.logger import TensorBoardLogger, PythonLogger
 import examples.automated_deep_compression as adc
 import operator
 import parser
+# import range_linear_ai84
 from range_linear_ai84 import PostTrainLinearQuantizerAI84
 
 
@@ -1021,6 +1022,15 @@ def fashionmnist_get_datasets(data_dir):
 if __name__ == '__main__':
     try:
         check_pytorch_version()
+        # import builtins, sys
+        # print(distiller.config.__name__)
+        # print(distiller.config.__builtins__)
+        # # print(distiller.config.__import__)
+        # builtins.QuantAwareTrainRangeLinearQuantizerAI84 = \
+        #   range_linear_ai84.QuantAwareTrainRangeLinearQuantizerAI84
+        # globals()['range_linear_ai84'] = __import__('range_linear_ai84')
+        # sys.path.append('/home/robertmuchsel/Documents/Source/ai84')
+        # site.addsitedir("/home/robertmuchsel/Documents/Source/ai84")
         main()
     except KeyboardInterrupt:
         print("\n-- KeyboardInterrupt --")
