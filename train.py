@@ -544,15 +544,19 @@ def test(test_loader, model, criterion, loggers, activations_collectors, args):
                     Traverse model to build list of weights
                     """
                     if isinstance(m, nn.Conv2d):
-                        w = m.weight.cpu().detach().numpy().reshape(-1, 3, 3)
+                        # w = m.weight.cpu().detach().numpy().reshape(-1, 3, 3)
+                        w = m.weight.cpu().detach().numpy().flatten()
                         weights.append(w)
                         if hasattr(m, 'bias') and m.bias is not None:
-                            biases.append(m.bias.cpu().detach().numpy())
+                            # biases.append(m.bias.cpu().detach().numpy())
+                            weights.append(m.bias.cpu().detach().numpy().flatten())
 
                 model.apply(traverse)
                 weights = np.concatenate(weights)
-                unique = np.unique(weights, axis=0)
-                print(f"Total weights: {len(weights)} --> Unique: {len(unique)}")
+                # unique = np.unique(weights, axis=0)
+                # print(f"Total weights: {len(weights)} --> Unique: {len(unique)}")
+                print(f"Total weights: {len(weights)} --> min: {np.min(weights)}, "
+                      f"max: {np.max(weights)}, stddev: {np.std(weights)}")
                 # print(unique)
 
         save_collectors_data(collectors, msglogger.logdir)
