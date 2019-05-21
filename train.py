@@ -536,28 +536,49 @@ def test(test_loader, model, criterion, loggers, activations_collectors, args):
         if args.kernel_stats:
             print("==> Kernel Stats")
             with torch.no_grad():
-                weights = []
-                biases = []
+                global weight_min, weight_max, weight_count, weight_sum, weight_stddev, weight_mean
+                weight_min = torch.tensor(float('inf'))
+                weight_max = torch.tensor(float('-inf'))
+                weight_count = torch.tensor(0, dtype=torch.int)
+                weight_sum = torch.tensor(0.0)
+                weight_stddev = torch.tensor(0.0)
 
-                def traverse(m):
+                def traverse_pass1(m):
                     """
-                    Traverse model to build list of weights
+                    Traverse model to build weight stats
                     """
+                    global weight_min, weight_max, weight_count, weight_sum
                     if isinstance(m, nn.Conv2d):
-                        # w = m.weight.cpu().detach().numpy().reshape(-1, 3, 3)
-                        w = m.weight.cpu().detach().numpy().flatten()
-                        weights.append(w)
+                        weight_min = torch.min(torch.min(m.weight), weight_min)
+                        weight_max = torch.max(torch.max(m.weight), weight_max)
+                        weight_count += len(m.weight.flatten())
+                        weight_sum += m.weight.flatten().sum()
                         if hasattr(m, 'bias') and m.bias is not None:
-                            # biases.append(m.bias.cpu().detach().numpy())
-                            weights.append(m.bias.cpu().detach().numpy().flatten())
+                            weight_min = torch.min(torch.min(m.bias), weight_min)
+                            weight_max = torch.max(torch.max(m.bias), weight_max)
+                            weight_count += len(m.bias.flatten())
+                            weight_sum += m.bias.flatten().sum()
 
-                model.apply(traverse)
-                weights = np.concatenate(weights)
-                # unique = np.unique(weights, axis=0)
-                # print(f"Total weights: {len(weights)} --> Unique: {len(unique)}")
-                print(f"Total weights: {len(weights)} --> min: {np.min(weights)}, "
-                      f"max: {np.max(weights)}, stddev: {np.std(weights)}")
-                # print(unique)
+                def traverse_pass2(m):
+                    """
+                    Traverse model to build weight stats
+                    """
+                    global weight_stddev, weight_mean
+                    if isinstance(m, nn.Conv2d):
+                        weight_stddev += ((m.weight.flatten() - weight_mean) ** 2).sum()
+                        if hasattr(m, 'bias') and m.bias is not None:
+                            weight_stddev += ((m.bias.flatten() - weight_mean) ** 2).sum()
+
+                model.apply(traverse_pass1)
+
+                weight_mean = weight_sum / weight_count
+
+                model.apply(traverse_pass2)
+
+                weight_stddev = torch.sqrt(weight_stddev / weight_count)
+
+                print(f"Total 2D kernel weights: {weight_count} --> min: {weight_min}, "
+                      f"max: {weight_max}, stddev: {weight_stddev}")
 
         save_collectors_data(collectors, msglogger.logdir)
     return top1, top5, lossses
