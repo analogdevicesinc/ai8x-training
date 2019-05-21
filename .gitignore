@@ -23,3 +23,5 @@ __pycache__
 /latest_log_dir
 /latest_log_file
 /vision
+/sensitivity.csv
+/sensitivity.png
