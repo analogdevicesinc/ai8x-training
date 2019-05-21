@@ -196,9 +196,7 @@ def _get_quant_params_from_tensor(tensor, num_bits, mode, clip=ClipModeAI84.NONE
 
     if scale_approx_mult_bits is not None:
         # scale = approx_scale_as_mult_and_shift(scale, scale_approx_mult_bits)
-        # print(scale, ' ', end='')
         scale = 2 ** torch.log2(scale.clamp(min=1)).round().clamp(max=scale_approx_mult_bits)
-        # print(scale)
 
     return scale, zp
 
@@ -216,9 +214,7 @@ def _get_quant_params_from_model(sat_val, num_bits, mode, clip=ClipModeAI84.NONE
 
     if scale_approx_mult_bits is not None:
         # scale = approx_scale_as_mult_and_shift(scale, scale_approx_mult_bits)
-        # print(scale, ' ', end='')
         scale = 2 ** torch.log2(scale.clamp(min=1)).round().clamp(max=scale_approx_mult_bits)
-        # print(scale)
 
     return scale, zp
 
@@ -528,7 +524,7 @@ class RangeLinearQuantAI84ParamLayerWrapper(RangeLinearQuantAI84Wrapper):
                                                                 clip_acts, activation_stats, clip_n_stds,
                                                                 scale_approx_mult_bits)
 
-        if not isinstance(wrapped_module, (nn.Conv2d)):  # , nn.Linear)):
+        if not isinstance(wrapped_module, (nn.Conv2d, nn.Linear)):
             raise ValueError(self.__class__.__name__ + ' can wrap only Conv2D and Linear modules')
 
         self.num_bits_params = num_bits_params
@@ -1040,7 +1036,7 @@ class PostTrainLinearQuantizerAI84(Quantizer):
         # self.model = model
 
         self.replacement_factory[nn.Conv2d] = replace_param_layer
-        # self.replacement_factory[nn.Linear] = replace_param_layer
+        self.replacement_factory[nn.Linear] = replace_param_layer
 
         self.replacement_factory[distiller.modules.Concat] = partial(
             replace_non_param_layer, RangeLinearQuantAI84ConcatWrapper)

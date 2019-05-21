@@ -39,6 +39,8 @@ SUMMARY_CHOICES = ['sparsity', 'compute', 'model', 'modules', 'png', 'png_w_para
 
 def get_parser(model_names, dataset_names):
     parser = argparse.ArgumentParser(description='Image classification model')
+    parser.add_argument('--ai84', action='store_true', default=False,
+                        help='AI84 mode')
     parser.add_argument('--arch', '-a', '--model', metavar='ARCH', required=True,
                         type=lambda s: s.lower(), dest='cnn',
                         choices=model_names,
