@@ -37,7 +37,7 @@ from distiller.apputils.checkpoint import get_contents_table
 
 def inspect_checkpoint(chkpt_file, args):
     print("Inspecting checkpoint file: ", chkpt_file)
-    checkpoint = torch.load(chkpt_file)
+    checkpoint = torch.load(chkpt_file, map_location='cpu')
 
     print(get_contents_table(checkpoint))
 
