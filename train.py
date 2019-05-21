@@ -101,15 +101,7 @@ def main():
     global msglogger
 
     supported_models = [
-        {'name': 'sresnet4',
-         'module': 'ai84net',
-         'min_input': 1,
-         'dim': 2},
-        {'name': 'sresnet6',
-         'module': 'ai84net',
-         'min_input': 1,
-         'dim': 2},
-        {'name': 'sresnet8',
+        {'name': 'ai84net5',
          'module': 'ai84net',
          'min_input': 1,
          'dim': 2}
@@ -206,11 +198,14 @@ def main():
     if not Model:
         raise RuntimeError("Model " + args.cnn + " not found\n")
     if module['dim'] > 1 and module['min_input'] > dimensions[2]:
-        model = Model(pretrained=False, num_classes=args.num_classes, num_channels=dimensions[0],
+        model = Model(pretrained=False, num_classes=args.num_classes,
+                      num_channels=dimensions[0],
+                      dimensions=(dimensions[1], dimensions[2]),
                       padding=(module['min_input'] - dimensions[2] + 1) // 2).to(args.device)
     else:
         model = Model(pretrained=False, num_classes=args.num_classes,
-                      num_channels=dimensions[0]).to(args.device)
+                      num_channels=dimensions[0],
+                      dimensions=(dimensions[1], dimensions[2])).to(args.device)
     # if args.add_logsoftmax:
     #     model = nn.Sequential(model, nn.LogSoftmax(dim=1))
     # if args.add_softmax:
