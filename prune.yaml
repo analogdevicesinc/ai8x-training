@@ -12,7 +12,7 @@ extensions:
   net_thinner:
       class: 'FilterRemover'
       thinning_func_str: remove_channels
-      arch: 'sresnet4'
+      arch: 'ai84net5'
       dataset: 'FashionMNIST'
 
 lr_schedulers:
