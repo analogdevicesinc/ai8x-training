@@ -37,6 +37,10 @@ import yaml
 msglogger = logging.getLogger()
 
 
+def pow2_round(val, nbits):
+    return 2 ** torch.log2(val.clamp(min=1)).round().clamp(max=nbits)
+
+
 def linear_quantize_ai84(input, scale, zero_point, inplace=False):
     if inplace:
         input.mul_(scale).sub_(zero_point).round_()
@@ -196,7 +200,7 @@ def _get_quant_params_from_tensor(tensor, num_bits, mode, clip=ClipModeAI84.NONE
 
     if scale_approx_mult_bits is not None:
         # scale = approx_scale_as_mult_and_shift(scale, scale_approx_mult_bits)
-        scale = 2 ** torch.log2(scale.clamp(min=1)).round().clamp(max=scale_approx_mult_bits)
+        scale = pow2_round(scale, scale_approx_mult_bits)
 
     return scale, zp
 
@@ -214,7 +218,7 @@ def _get_quant_params_from_model(sat_val, num_bits, mode, clip=ClipModeAI84.NONE
 
     if scale_approx_mult_bits is not None:
         # scale = approx_scale_as_mult_and_shift(scale, scale_approx_mult_bits)
-        scale = 2 ** torch.log2(scale.clamp(min=1)).round().clamp(max=scale_approx_mult_bits)
+        scale = pow2_round(scale, scale_approx_mult_bits)
 
     return scale, zp
 
