@@ -519,7 +519,7 @@ class RangeLinearQuantAI84ParamLayerWrapper(RangeLinearQuantAI84Wrapper):
     def __init__(self, wrapped_module, num_bits_acts, num_bits_params, num_bits_accum=32,
                  mode=LinearQuantAI84Mode.SYMMETRIC, clip_acts=ClipModeAI84.NONE, per_channel_wts=False, activation_stats=None,
                  clip_n_stds=None, scale_approx_mult_bits=None,
-                 global_scale=False, global_sat_scale=1.0, weight_stddev=None):
+                 global_scale=False, sat_val_scale=1.0, weight_stddev=None):
         super(RangeLinearQuantAI84ParamLayerWrapper, self).__init__(wrapped_module, num_bits_acts, num_bits_accum, mode,
                                                                 clip_acts, activation_stats, clip_n_stds,
                                                                 scale_approx_mult_bits)
@@ -539,7 +539,7 @@ class RangeLinearQuantAI84ParamLayerWrapper(RangeLinearQuantAI84Wrapper):
                                                                   per_channel=per_channel_wts)
             scale = w_scale
         else:
-            w_scale, w_zero_point = _get_quant_params_from_model(weight_stddev * global_sat_scale,
+            w_scale, w_zero_point = _get_quant_params_from_model(weight_stddev * sat_val_scale,
                                                                  num_bits_params, self.mode)
             # print('w_scale:', w_scale)
             scale = w_scale
@@ -571,7 +571,7 @@ class RangeLinearQuantAI84ParamLayerWrapper(RangeLinearQuantAI84Wrapper):
                     b_scale, b_zero_point = _get_quant_params_from_tensor(wrapped_module.bias, num_bits_params, self.mode)
                     scale = b_scale
                 else:
-                    b_scale, b_zero_point = _get_quant_params_from_model(weight_stddev * global_sat_scale,
+                    b_scale, b_zero_point = _get_quant_params_from_model(weight_stddev * sat_val_scale,
                                                                          num_bits_params, self.mode)
                     # print('b_scale:', b_scale)
                     scale = b_scale
@@ -909,7 +909,7 @@ class PostTrainLinearQuantizerAI84(Quantizer):
     def __init__(self, model, bits_activations=8, bits_parameters=8, bits_accum=32,
                  overrides=None, mode=LinearQuantAI84Mode.SYMMETRIC, clip_acts=ClipModeAI84.NONE, no_clip_layers=None,
                  per_channel_wts=False, model_activation_stats=None, int8=False, clip_n_stds=None,
-                 scale_approx_mult_bits=None, global_scale=False, global_sat_scale=1.0):
+                 scale_approx_mult_bits=None, global_scale=False, sat_val_scale=1.0):
         super(PostTrainLinearQuantizerAI84, self).__init__(model, bits_activations=bits_activations,
                                                        bits_weights=bits_parameters, bits_bias=bits_accum,
                                                        overrides=overrides, train_with_fp_copy=False)
@@ -984,7 +984,7 @@ class PostTrainLinearQuantizerAI84(Quantizer):
                                                     'int8': int8,
                                                     'scale_approx_mult_bits': scale_approx_mult_bits,
                                                     'global_scale': global_scale,
-                                                    'sat_val_scale': global_sat_scale}}
+                                                    'sat_val_scale': sat_val_scale}}
 
         def replace_param_layer(module, name, qbits_map, per_channel_wts=per_channel_wts,
                                 mode=mode, int8=int8, scale_approx_mult_bits=scale_approx_mult_bits,
@@ -1002,7 +1002,7 @@ class PostTrainLinearQuantizerAI84(Quantizer):
                                                      clip_n_stds=clip_n_stds,
                                                      scale_approx_mult_bits=scale_approx_mult_bits,
                                                      global_scale=global_scale,
-                                                     global_sat_scale=global_sat_scale,
+                                                     sat_val_scale=sat_val_scale,
                                                      weight_stddev=weight_stddev)
 
         def replace_non_param_layer(wrapper_type, module, name, qbits_map, int8=int8,
