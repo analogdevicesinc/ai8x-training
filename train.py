@@ -201,11 +201,13 @@ def main():
         model = Model(pretrained=False, num_classes=args.num_classes,
                       num_channels=dimensions[0],
                       dimensions=(dimensions[1], dimensions[2]),
-                      padding=(module['min_input'] - dimensions[2] + 1) // 2).to(args.device)
+                      padding=(module['min_input'] - dimensions[2] + 1) // 2,
+                      clamp_activation_8bit=args.act_mode_8bit).to(args.device)
     else:
         model = Model(pretrained=False, num_classes=args.num_classes,
                       num_channels=dimensions[0],
-                      dimensions=(dimensions[1], dimensions[2])).to(args.device)
+                      dimensions=(dimensions[1], dimensions[2]),
+                      clamp_activation_8bit=args.act_mode_8bit).to(args.device)
     # if args.add_logsoftmax:
     #     model = nn.Sequential(model, nn.LogSoftmax(dim=1))
     # if args.add_softmax:
