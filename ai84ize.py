@@ -6,24 +6,8 @@
 # Maxim Confidential
 #
 ###################################################################################################
-#
-# Portions Copyright (c) 2018 Intel Corporation
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-
 """
-Load contents of quantized checkpoint files and save them in a format usable for AI84
+Load contents of a checkpoint files and save them in a format usable for AI84
 """
 import torch
 import argparse
@@ -68,12 +52,29 @@ def convert_checkpoint(chkpt_file, output_file, args):
             del new_checkpoint_state[k]
         elif parameter in ['weight', 'bias']:
             if not args.quantized:
-                weights = checkpoint_state[k] * 128.
                 module, _ = k.split(sep='.', maxsplit=1)
                 clamp_bits = CONV_CLAMP_BITS if module != 'fc' else FC_CLAMP_BITS
+
+                # Quantize ourselves  FIXME -- simplest, dumbest method -- just multiply
+                def avg_max(t):
+                    avg_min, avg_max = t.min().mean(), t.max().mean()
+                    return torch.max(avg_min.abs_(), avg_max.abs_())
+
+                def max_max(t):
+                    return torch.max(t.min().abs_(), t.max().abs_())
+                # print(k, avg_max(checkpoint_state[k]), max_max(checkpoint_state[k]),
+                #       checkpoint_state[k].mean())
+
+                weights = checkpoint_state[k]   # / max_max(checkpoint_state[k])
+                weights = weights * 2**(clamp_bits-1.65)  # Scale to our fixed point representation
+
+                # Ensure it fits and is an integer
                 weights = weights.clamp(min=-(2**(clamp_bits-1)), max=2**(clamp_bits-1)-1).round()
+
+                # Store modified weight/bias back into model
                 new_checkpoint_state[k] = weights
             else:
+                # Work on a pre-quantized network
                 module, st = operation.rsplit('.', maxsplit=1)
                 if st in ['wrapped_module']:
                     scale = module + '.' + parameter[0] + '_scale'
@@ -108,7 +109,7 @@ def convert_checkpoint(chkpt_file, output_file, args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Quantized checkpoint to AI84 conversion')
+    parser = argparse.ArgumentParser(description='Checkpoint to AI84 conversion')
     parser.add_argument('chkpt_file', help='path to the checkpoint file')
     parser.add_argument('output_file', help='path to the output file')
     parser.add_argument('-e', '--embedded', action='store_true', default=False,
