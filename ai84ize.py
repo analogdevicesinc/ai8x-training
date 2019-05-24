@@ -32,8 +32,10 @@ from range_linear_ai84 import pow2_round
 
 CONV_SCALE_BITS = 3
 CONV_WEIGHT_BITS = 5
+CONV_CLAMP_BITS = 8
 FC_SCALE_BITS = 8
 FC_WEIGHT_BITS = 8
+FC_CLAMP_BITS = 16
 
 
 def convert_checkpoint(chkpt_file, output_file, args):
@@ -70,11 +72,13 @@ def convert_checkpoint(chkpt_file, output_file, args):
                 weights = checkpoint_state[k]
                 scale = module + '.' + parameter[0] + '_scale'
                 fp_scale = checkpoint_state[scale]
-                scale_bits = CONV_SCALE_BITS if module != 'fc' else FC_SCALE_BITS
+                (scale_bits, clamp_bits) = (CONV_SCALE_BITS, CONV_CLAMP_BITS) \
+                    if module != 'fc' else (FC_SCALE_BITS, FC_CLAMP_BITS)
                 if module not in ['fc']:
                     weights *= pow2_round(fp_scale, scale_bits)
                 else:
                     weights = torch.round(weights * fp_scale)
+                weights.round().clamp(min=-(2**(clamp_bits-1)), max=2**(clamp_bits-1)-1)
 
                 new_checkpoint_state[module + '.' + parameter] = weights
                 del new_checkpoint_state[k]
