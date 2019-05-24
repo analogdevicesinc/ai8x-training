@@ -55,30 +55,29 @@ class AI84Net5(nn.Module):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
 
     def clamp_activation(self, x):
+        if not self.clamp_activation_8bit:
+            return x
         return x.clamp(min=-128, max=127).round()
 
     def forward(self, x):
-        # x *= 128.
-        # x = x.round()
+        # Input: Integers
+        # if self.clamp_activation_8bit:
+        #   x = x.mul(128.).round()
+
         x = self.conv1(x)
         x = self.relu(x)
-        # print(x)
-        if self.clamp_activation_8bit:
-            x = self.clamp_activation(x)
+        x = self.clamp_activation(x)
         x = self.maxpool(x)
         x = self.conv2(x)
         x = self.relu(x)
-        if self.clamp_activation_8bit:
-            x = self.clamp_activation(x)
+        x = self.clamp_activation(x)
         x = self.conv3(x)
         x = self.relu(x)
-        if self.clamp_activation_8bit:
-            x = self.clamp_activation(x)
+        x = self.clamp_activation(x)
         x = self.avgpool(x)
         x = self.conv4(x)
         x = self.relu(x)
-        if self.clamp_activation_8bit:
-            x = self.clamp_activation(x)
+        x = self.clamp_activation(x)
         x = x.view(x.size(0), -1)
         x = self.fc(x)
 
