@@ -62,7 +62,7 @@ def convert_checkpoint(chkpt_file, output_file, args):
     for i, k in enumerate(checkpoint_state.keys()):
         operation, parameter = k.rsplit(sep='.', maxsplit=1)
         if parameter in ['w_zero_point', 'b_zero_point']:
-            if checkpoint_state[k] != torch.tensor(0.):
+            if checkpoint_state[k].nonzero().numel() != 0:
                 raise RuntimeError(f"\nParameter {k} is not zero.")
             del new_checkpoint_state[k]
         elif parameter in ['weight', 'bias']:
