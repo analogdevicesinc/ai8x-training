@@ -41,6 +41,8 @@ def get_parser(model_names, dataset_names):
     parser = argparse.ArgumentParser(description='Image classification model')
     parser.add_argument('--ai84', action='store_true', default=False,
                         help='AI84 mode')
+    parser.add_argument('--clamp-1', '-1', action='store_true',
+                        default=False, help='clamp activation results to [-1...+1]')
     parser.add_argument('--8-bit-mode', '-8', dest='act_mode_8bit', action='store_true',
                         default=False, help='clamp activation result to 8 bits')
     parser.add_argument('--integer-activation', '-i', action='store_true',

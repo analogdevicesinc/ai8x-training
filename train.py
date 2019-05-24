@@ -203,13 +203,15 @@ def main():
                       dimensions=(dimensions[1], dimensions[2]),
                       padding=(module['min_input'] - dimensions[2] + 1) // 2,
                       clamp_activation_8bit=args.act_mode_8bit,
-                      integer_activation=args.integer_activation).to(args.device)
+                      integer_activation=args.integer_activation,
+                      clamp_activation_1=args.clamp_1).to(args.device)
     else:
         model = Model(pretrained=False, num_classes=args.num_classes,
                       num_channels=dimensions[0],
                       dimensions=(dimensions[1], dimensions[2]),
                       clamp_activation_8bit=args.act_mode_8bit,
-                      integer_activation=args.integer_activation).to(args.device)
+                      integer_activation=args.integer_activation,
+                      clamp_activation_1=args.clamp_1).to(args.device)
     # if args.add_logsoftmax:
     #     model = nn.Sequential(model, nn.LogSoftmax(dim=1))
     # if args.add_softmax:
@@ -932,8 +934,9 @@ class normalize(object):
         self.args = args
 
     def __call__(self, img):
+        img -= 0.5
         if self.args.act_mode_8bit:
-            img = img.mul(256.0) - 128.0
+            img = img.mul(128.)
         if self.args.integer_activation:
             img = img.round()
         return img
