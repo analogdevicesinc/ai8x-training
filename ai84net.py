@@ -59,7 +59,7 @@ class AI84Net5(nn.Module):
 
     def clamp_activation(self, x):
         if self.clamp_activation_8bit:
-            x = x.clamp(min=-128., max=127.)
+            x = x.add(.5).div(128.).floor().clamp(min=-128., max=127.)
         if self.clamp_activation_1:
             x = x.clamp(min=-1., max=+1.)
         if self.integer_activation:
