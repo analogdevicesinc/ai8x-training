@@ -30,7 +30,7 @@ import argparse
 from distiller.apputils.checkpoint import get_contents_table
 from range_linear_ai84 import pow2_round
 
-CONV_SCALE_BITS = 3
+CONV_SCALE_BITS = 8
 CONV_WEIGHT_BITS = 5
 CONV_CLAMP_BITS = 8
 FC_SCALE_BITS = 8
@@ -45,9 +45,10 @@ def convert_checkpoint(chkpt_file, output_file, args):
     if args.verbose:
         print(get_contents_table(checkpoint))
 
-    if 'quantizer_metadata' not in checkpoint:
-        raise RuntimeError("\nNo quantizer_metadata in checkpoint file.")
-    del checkpoint['quantizer_metadata']
+    if args.quantized:
+        if 'quantizer_metadata' not in checkpoint:
+            raise RuntimeError("\nNo quantizer_metadata in checkpoint file.")
+        del checkpoint['quantizer_metadata']
 
     if 'state_dict' not in checkpoint:
         raise RuntimeError("\nNo state_dict in checkpoint file.")
@@ -66,23 +67,33 @@ def convert_checkpoint(chkpt_file, output_file, args):
                 raise RuntimeError(f"\nParameter {k} is not zero.")
             del new_checkpoint_state[k]
         elif parameter in ['weight', 'bias']:
-            module, st = operation.rsplit('.', maxsplit=1)
-            if st in ['wrapped_module']:
-                scale = module + '.' + parameter[0] + '_scale'
-                weights = checkpoint_state[k]
-                scale = module + '.' + parameter[0] + '_scale'
-                fp_scale = checkpoint_state[scale]
-                (scale_bits, clamp_bits) = (CONV_SCALE_BITS, CONV_CLAMP_BITS) \
-                    if module != 'fc' else (FC_SCALE_BITS, FC_CLAMP_BITS)
-                if module not in ['fc']:
-                    weights *= pow2_round(fp_scale, scale_bits)
-                else:
-                    weights = torch.round(weights * fp_scale)
-                weights.round().clamp(min=-(2**(clamp_bits-1)), max=2**(clamp_bits-1)-1)
+            if not args.quantized:
+                weights = checkpoint_state[k] * 128.
+                module, _ = k.split(sep='.', maxsplit=1)
+                clamp_bits = CONV_CLAMP_BITS if module != 'fc' else FC_CLAMP_BITS
+                weights = weights.clamp(min=-(2**(clamp_bits-1)), max=2**(clamp_bits-1)-1).round()
+                new_checkpoint_state[k] = weights
+            else:
+                module, st = operation.rsplit('.', maxsplit=1)
+                if st in ['wrapped_module']:
+                    scale = module + '.' + parameter[0] + '_scale'
+                    weights = checkpoint_state[k]
+                    scale = module + '.' + parameter[0] + '_scale'
+                    (scale_bits, clamp_bits) = (CONV_SCALE_BITS, CONV_CLAMP_BITS) \
+                        if module != 'fc' else (FC_SCALE_BITS, FC_CLAMP_BITS)
+                    fp_scale = checkpoint_state[scale]
+                    if module not in ['fc']:
+                        # print("Factor in:", fp_scale, "bits", scale_bits, "out:",
+                        #       pow2_round(fp_scale, scale_bits))
+                        weights *= pow2_round(fp_scale, scale_bits)
+                    else:
+                        weights = torch.round(weights * fp_scale)
+                    weights = weights.clamp(min=-(2**(clamp_bits-1)),
+                                            max=2**(clamp_bits-1)-1).round()
 
-                new_checkpoint_state[module + '.' + parameter] = weights
-                del new_checkpoint_state[k]
-                del new_checkpoint_state[scale]
+                    new_checkpoint_state[module + '.' + parameter] = weights
+                    del new_checkpoint_state[k]
+                    del new_checkpoint_state[scale]
         elif parameter in ['base_b_q']:
             del new_checkpoint_state[k]
 
@@ -102,6 +113,8 @@ if __name__ == '__main__':
     parser.add_argument('output_file', help='path to the output file')
     parser.add_argument('-e', '--embedded', action='store_true', default=False,
                         help='save parameters for embedded (default: rewrite checkpoint)')
+    parser.add_argument('-q', '--quantized', action='store_true', default=False,
+                        help='work on quantized checkpoint')
     parser.add_argument('-v', '--verbose', action='store_true', default=False,
                         help='verbose mode')
     args = parser.parse_args()
