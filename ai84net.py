@@ -13,8 +13,8 @@ AI84_WEIGHT_DEPTH = 128
 class AI84Net5(nn.Module):
 
     def __init__(self, num_classes=10, num_channels=3, dimensions=(28, 28),
-                 clamp_activation_8bit=False, planes=60, pool=4,
-                 fc_inputs=12, bias=False):
+                 clamp_activation_8bit=False, integer_activation=False,
+                 planes=60, pool=4, fc_inputs=12, bias=False):
         super(AI84Net5, self).__init__()
 
         # AI84 Limits
@@ -24,6 +24,7 @@ class AI84Net5(nn.Module):
         assert dimensions[0] == dimensions[1]
 
         self.clamp_activation_8bit = clamp_activation_8bit
+        self.integer_activation = integer_activation
 
         # Keep track of image dimensions so one constructor works for all image sizes
         dim = dimensions[0]
@@ -55,15 +56,13 @@ class AI84Net5(nn.Module):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
 
     def clamp_activation(self, x):
-        if not self.clamp_activation_8bit:
-            return x
-        return x.clamp(min=-128, max=127).round()
+        if self.clamp_activation_8bit:
+            x = x.clamp(min=-128, max=127)
+        if self.integer_activation:
+            x = x.round()
+        return x
 
     def forward(self, x):
-        # Input: Integers
-        # if self.clamp_activation_8bit:
-        #   x = x.mul(128.).round()
-
         x = self.conv1(x)
         x = self.relu(x)
         x = self.clamp_activation(x)
