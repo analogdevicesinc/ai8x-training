@@ -202,12 +202,14 @@ def main():
                       num_channels=dimensions[0],
                       dimensions=(dimensions[1], dimensions[2]),
                       padding=(module['min_input'] - dimensions[2] + 1) // 2,
-                      clamp_activation_8bit=args.act_mode_8bit).to(args.device)
+                      clamp_activation_8bit=args.act_mode_8bit,
+                      integer_activation=args.integer_activation).to(args.device)
     else:
         model = Model(pretrained=False, num_classes=args.num_classes,
                       num_channels=dimensions[0],
                       dimensions=(dimensions[1], dimensions[2]),
-                      clamp_activation_8bit=args.act_mode_8bit).to(args.device)
+                      clamp_activation_8bit=args.act_mode_8bit,
+                      integer_activation=args.integer_activation).to(args.device)
     # if args.add_logsoftmax:
     #     model = nn.Sequential(model, nn.LogSoftmax(dim=1))
     # if args.add_softmax:
@@ -281,7 +283,7 @@ def main():
 
     # Load the datasets
     train_loader, val_loader, test_loader, _ = apputils.get_data_loaders(
-        args.datasets_fn, os.path.expanduser(args.data), args.batch_size,
+        args.datasets_fn, (os.path.expanduser(args.data), args), args.batch_size,
         args.workers, args.validation_split, args.deterministic,
         args.effective_train_size, args.effective_valid_size, args.effective_test_size)
     msglogger.info('Dataset sizes:\n\ttraining=%d\n\tvalidation=%d\n\ttest=%d',
@@ -824,7 +826,7 @@ def sensitivity_analysis(model, criterion, data_loader, loggers, args, sparsitie
 
 def automated_deep_compression(model, criterion, optimizer, loggers, args):
     train_loader, val_loader, test_loader, _ = apputils.get_data_loaders(
-        args.datasets_fn, os.path.expanduser(args.data), args.batch_size,
+        args.datasets_fn, (os.path.expanduser(args.data), args), args.batch_size,
         args.workers, args.validation_split, args.deterministic,
         args.effective_train_size, args.effective_valid_size, args.effective_test_size)
 
@@ -841,7 +843,7 @@ def automated_deep_compression(model, criterion, optimizer, loggers, args):
 
 def greedy(model, criterion, optimizer, loggers, args):
     train_loader, val_loader, test_loader, _ = apputils.get_data_loaders(
-        args.datasets_fn, os.path.expanduser(args.data), args.batch_size,
+        args.datasets_fn, (os.path.expanduser(args.data), args), args.batch_size,
         args.workers, args.validation_split, args.deterministic,
         args.effective_train_size, args.effective_valid_size, args.effective_test_size)
 
@@ -925,7 +927,19 @@ def check_pytorch_version():
         exit(1)
 
 
-def cifar10_get_datasets(data_dir):
+class normalize(object):
+    def __init__(self, args):
+        self.args = args
+
+    def __call__(self, img):
+        if self.args.act_mode_8bit:
+            img = img.mul(256.0) - 128.0
+        if self.args.integer_activation:
+            img = img.round()
+        return img
+
+
+def cifar10_get_datasets(data):
     """Load the CIFAR10 dataset.
 
     The original training dataset is split into training and validation sets (code is
@@ -943,10 +957,13 @@ def cifar10_get_datasets(data_dir):
     [1] C.-Y. Lee, S. Xie, P. Gallagher, Z. Zhang, and Z. Tu. Deeply Supervised Nets.
     arXiv:1409.5185, 2014
     """
+    (data_dir, args) = data
+
     train_transform = transforms.Compose([
         transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(),
-        transforms.ToTensor()
+        transforms.ToTensor(),
+        normalize(args=args)
     ])
 
     train_dataset = torchvision.datasets.CIFAR10(root=os.path.join(data_dir, 'CIFAR10'),
@@ -954,7 +971,8 @@ def cifar10_get_datasets(data_dir):
                                                  transform=train_transform)
 
     test_transform = transforms.Compose([
-        transforms.ToTensor()
+        transforms.ToTensor(),
+        normalize(args=args)
     ])
 
     test_dataset = torchvision.datasets.CIFAR10(root=os.path.join(data_dir, 'CIFAR10'),
@@ -964,7 +982,7 @@ def cifar10_get_datasets(data_dir):
     return train_dataset, test_dataset
 
 
-def mnist_get_datasets(data_dir):
+def mnist_get_datasets(data):
     """Load the MNIST dataset.
 
     The original training dataset is split into training and validation sets (code is
@@ -982,19 +1000,21 @@ def mnist_get_datasets(data_dir):
     [1] C.-Y. Lee, S. Xie, P. Gallagher, Z. Zhang, and Z. Tu. Deeply Supervised Nets.
     arXiv:1409.5185, 2014
     """
+    (data_dir, args) = data
+
     train_transform = transforms.Compose([
         transforms.RandomCrop(28, padding=4),
         transforms.RandomAffine(degrees=20, translate=(0.1, 0.1), shear=5),
-        transforms.ToTensor()
-        # No normalization as the test transform can't do it
+        transforms.ToTensor(),
+        normalize(args=args)
     ])
 
     train_dataset = torchvision.datasets.MNIST(root=data_dir, train=True, download=True,
                                                transform=train_transform)
 
     test_transform = transforms.Compose([
-        transforms.ToTensor()
-        # No normalization as the test transform can't do it
+        transforms.ToTensor(),
+        normalize(args=args)
     ])
 
     test_dataset = torchvision.datasets.MNIST(root=data_dir, train=False, download=True,
@@ -1003,7 +1023,7 @@ def mnist_get_datasets(data_dir):
     return train_dataset, test_dataset
 
 
-def fashionmnist_get_datasets(data_dir):
+def fashionmnist_get_datasets(data):
     """Load the FashionMNIST dataset.
 
     The original training dataset is split into training and validation sets (code is
@@ -1021,11 +1041,13 @@ def fashionmnist_get_datasets(data_dir):
     [1] C.-Y. Lee, S. Xie, P. Gallagher, Z. Zhang, and Z. Tu. Deeply Supervised Nets.
     arXiv:1409.5185, 2014
     """
+    (data_dir, args) = data
+
     train_transform = transforms.Compose([
         transforms.RandomCrop(28, padding=4),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
-        transforms.Normalize((0.5,), (0.5,))
+        normalize(args=args)
     ])
 
     train_dataset = torchvision.datasets.FashionMNIST(root=data_dir, train=True, download=True,
@@ -1033,7 +1055,7 @@ def fashionmnist_get_datasets(data_dir):
 
     test_transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.5,), (0.5,))
+        normalize(args=args)
     ])
 
     test_dataset = torchvision.datasets.FashionMNIST(root=data_dir, train=False, download=True,

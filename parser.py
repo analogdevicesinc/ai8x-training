@@ -43,6 +43,8 @@ def get_parser(model_names, dataset_names):
                         help='AI84 mode')
     parser.add_argument('--8-bit-mode', '-8', dest='act_mode_8bit', action='store_true',
                         default=False, help='clamp activation result to 8 bits')
+    parser.add_argument('--integer-activation', '-i', action='store_true',
+                        default=False, help='round all actication outputs')
     parser.add_argument('--arch', '-a', '--model', metavar='ARCH', required=True,
                         type=lambda s: s.lower(), dest='cnn',
                         choices=model_names,

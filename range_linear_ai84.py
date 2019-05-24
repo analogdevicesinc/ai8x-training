@@ -38,7 +38,8 @@ msglogger = logging.getLogger()
 
 
 def pow2_round(val, nbits):
-    return 2 ** torch.log2(val.clamp(min=1)).round().clamp(max=nbits)
+    # return 2 ** torch.log2(val.clamp(min=1)).round().clamp(max=nbits)
+    return val.clamp(min=1, max=2**nbits-1).round()
 
 
 def linear_quantize_ai84(input, scale, zero_point, inplace=False):
@@ -946,8 +947,11 @@ class PostTrainLinearQuantizerAI84(Quantizer):
                 Traverse model to build weight stats
                 """
                 if isinstance(m, nn.Conv2d):
-                    self.weight_min = torch.min(torch.min(m.weight), self.weight_min)
-                    self.weight_max = torch.max(torch.max(m.weight), self.weight_max)
+                    device = m.weight.device
+                    self.weight_min = torch.min(torch.min(m.weight), self.weight_min.to(device))
+                    self.weight_max = torch.max(torch.max(m.weight), self.weight_max.to(device))
+                    self.weight_count = self.weight_count.to(device)
+                    self.weight_sum = self.weight_sum.to(device)
                     self.weight_count += len(m.weight.flatten())
                     self.weight_sum += m.weight.flatten().sum()
                     if hasattr(m, 'bias') and m.bias is not None:
