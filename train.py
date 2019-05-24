@@ -946,8 +946,7 @@ def cifar10_get_datasets(data_dir):
     train_transform = transforms.Compose([
         transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        transforms.ToTensor()
     ])
 
     train_dataset = torchvision.datasets.CIFAR10(root=os.path.join(data_dir, 'CIFAR10'),
@@ -955,8 +954,7 @@ def cifar10_get_datasets(data_dir):
                                                  transform=train_transform)
 
     test_transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        transforms.ToTensor()
     ])
 
     test_dataset = torchvision.datasets.CIFAR10(root=os.path.join(data_dir, 'CIFAR10'),
@@ -987,16 +985,16 @@ def mnist_get_datasets(data_dir):
     train_transform = transforms.Compose([
         transforms.RandomCrop(28, padding=4),
         transforms.RandomAffine(degrees=20, translate=(0.1, 0.1), shear=5),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5,), (0.5,))
+        transforms.ToTensor()
+        # No normalization as the test transform can't do it
     ])
 
     train_dataset = torchvision.datasets.MNIST(root=data_dir, train=True, download=True,
                                                transform=train_transform)
 
     test_transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.5,), (0.5,))
+        transforms.ToTensor()
+        # No normalization as the test transform can't do it
     ])
 
     test_dataset = torchvision.datasets.MNIST(root=data_dir, train=False, download=True,
