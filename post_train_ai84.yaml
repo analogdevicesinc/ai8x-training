@@ -5,10 +5,10 @@ quantizers:
     bits_parameters: 5
     bits_accum: 32
     # int8: true
-    scale_approx_mult_bits: 3
+    scale_approx_mult_bits: 8
     # SYMMETRIC, ASYMMETRIC_UNSIGNED, ASYMMETRIC_SIGNED
     mode: SYMMETRIC
-    per_channel_wts: true
+    per_channel_wts: false
     # NONE, AVG, N_STD
     # clip_acts: N_STD
     # clip_n_stds: 3
