@@ -1,5 +1,14 @@
+###################################################################################################
+#
+# Copyright (C) 2019 Maxim Integrated Products, Inc. All Rights Reserved.
+#
+# Maxim Confidential
+#
+###################################################################################################
 """
 Network(s) that fit into AI84
+
+Optionally quantize/clamp activations
 """
 import torch.nn as nn
 import ai84
@@ -23,19 +32,20 @@ class Quantization(nn.Module):
     def forward(self, x):  # pylint: disable=arguments-differ
         if self.clamp_range1:
             # Create discrete steps
-            x = x.mul(2**(self.num_bits-1)).add(0.5).floor().div(2**(self.num_bits-1)).\
-                clamp(min=-1., max=+1.)
+            # x = x.mul(2**self.num_bits).add(0.5).floor().div(2**self.num_bits).\
+            #    clamp(min=-1., max=1.)
+            pass
         else:
             if self.quantize:
                 x = x.add(.5).div(2**(self.num_bits-1)).floor().clamp(min=-(2**(self.num_bits-1)),
                                                                       max=2**(self.num_bits-1)-1)
         return x
 
-    def backward(self, x):
-        """
-        Straight through
-        """
-        return x
+#    def backward(self, x):
+#        """
+#        Straight through
+#        """
+#        return x
 
 
 class AI84Net5(nn.Module):
@@ -63,7 +73,10 @@ class AI84Net5(nn.Module):
         self.conv1 = nn.Conv2d(num_channels, planes, kernel_size=3,
                                stride=1, padding=2, bias=bias)
         dim += 2  # padding -> 30x30
-        self.relu = nn.ReLU(inplace=True)
+        if clamp_activation_1:
+            self.relu = nn.Hardtanh(min_val=0., max_val=1., inplace=True)
+        else:
+            self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1 if pool == 3 else 0)
         if pool != 3:
             dim -= 2  # stride of 2 -> 14x14, else 15x15
