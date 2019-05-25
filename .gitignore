@@ -26,3 +26,5 @@ __pycache__
 /sensitivity.csv
 /sensitivity.png
 /weights_sparsity.csv
+/tensorflow
+/ai84.pth.tar

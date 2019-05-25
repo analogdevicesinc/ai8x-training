@@ -12,4 +12,4 @@ min-public-methods=1
 max-branches=30
 max-module-lines=2000
 [MASTER]
-init-hook='sys.path.append("distiller")'
+# init-hook='sys.path.append("distiller")'
