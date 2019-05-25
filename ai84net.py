@@ -11,7 +11,9 @@ AI84_WEIGHT_DEPTH = 128
 
 
 class AI84Net5(nn.Module):
-
+    """
+    CNN that uses max parameters in AI84
+    """
     def __init__(self, num_classes=10, num_channels=3, dimensions=(28, 28),
                  clamp_activation_8bit=False, integer_activation=False,
                  clamp_activation_1=False,
@@ -58,6 +60,9 @@ class AI84Net5(nn.Module):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
 
     def clamp_activation(self, x):
+        """
+        Clamp ReLU to either [-1,+1] or [-127,+128]
+        """
         if self.clamp_activation_8bit:
             x = x.add(.5).div(128.).floor().clamp(min=-128., max=127.)
         if self.clamp_activation_1:
@@ -66,7 +71,7 @@ class AI84Net5(nn.Module):
             x = x.round()
         return x
 
-    def forward(self, x):
+    def forward(self, x):  # pylint: disable=arguments-differ
         x = self.conv1(x)
         x = self.relu(x)
         x = self.clamp_activation(x)
