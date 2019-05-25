@@ -59,6 +59,7 @@ On all systems:
 *NOTE*: The pre-built tensorflow wheels require AVX (`sysctl -n machdep.cpu.features` to find out). If the CPU does not support AVX,
 or to enable suport for AVX2, or CUDA, build tensorflow locally. This requires Java 8 and Bazel, and takes over two hours.
 Running unsupported a wheel that requires instructions results in `Illegal instruction: 4` on startup.
+Building Tensorflow requires Bazel 0.21.0 (newer versions do not work).
 
     (ai84) $ git clone https://github.com/tensorflow/tensorflow 
     (ai84) $ cd tensorflow
