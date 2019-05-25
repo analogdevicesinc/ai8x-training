@@ -13,11 +13,11 @@ import argparse
 from functools import partial
 import torch
 from distiller.apputils.checkpoint import get_contents_table  # pylint: disable=no-name-in-module
+import ai84
 from range_linear_ai84 import pow2_round
 
 CONV_SCALE_BITS = 8
 CONV_WEIGHT_BITS = 5
-CONV_CLAMP_BITS = 8
 FC_SCALE_BITS = 8
 FC_WEIGHT_BITS = 8
 FC_CLAMP_BITS = 16
@@ -90,7 +90,7 @@ def convert_checkpoint(input_file, output_file, arguments):
         elif parameter in ['weight', 'bias']:
             if not arguments.quantized:
                 module, _ = k.split(sep='.', maxsplit=1)
-                clamp_bits = CONV_CLAMP_BITS if module != 'fc' else FC_CLAMP_BITS
+                clamp_bits = ai84.WEIGHT_BITS if module != 'fc' else FC_CLAMP_BITS
 
                 if module != 'fc':
                     factor = 2**(clamp_bits-1) * sat_fn(checkpoint_state[k])
@@ -116,7 +116,7 @@ def convert_checkpoint(input_file, output_file, arguments):
                     scale = module + '.' + parameter[0] + '_scale'
                     weights = checkpoint_state[k]
                     scale = module + '.' + parameter[0] + '_scale'
-                    (scale_bits, clamp_bits) = (CONV_SCALE_BITS, CONV_CLAMP_BITS) \
+                    (scale_bits, clamp_bits) = (CONV_SCALE_BITS, ai84.WEIGHT_BITS) \
                         if module != 'fc' else (FC_SCALE_BITS, FC_CLAMP_BITS)
                     fp_scale = checkpoint_state[scale]
                     if module not in ['fc']:
