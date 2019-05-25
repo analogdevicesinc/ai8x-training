@@ -43,8 +43,7 @@ class AI84Net5(nn.Module):
     CNN that uses max parameters in AI84
     """
     def __init__(self, num_classes=10, num_channels=3, dimensions=(28, 28),
-                 clamp_activation_8bit=False, integer_activation=False,
-                 clamp_activation_1=False,
+                 clamp_activation_8bit=False, clamp_activation_1=False,
                  planes=60, pool=4, fc_inputs=12, bias=False):
         super(AI84Net5, self).__init__()
 
