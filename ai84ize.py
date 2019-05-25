@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 ###################################################################################################
 #
-# Copyright (C) 2018-2019 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2019 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Confidential
 #
@@ -81,6 +81,7 @@ def convert_checkpoint(input_file, output_file, arguments):
         sat_fn = get_const
     fc_sat_fn = get_const
 
+    first = True
     for _, k in enumerate(checkpoint_state.keys()):
         operation, parameter = k.rsplit(sep='.', maxsplit=1)
         if parameter in ['w_zero_point', 'b_zero_point']:
@@ -94,8 +95,9 @@ def convert_checkpoint(input_file, output_file, arguments):
 
                 if module != 'fc':
                     factor = 2**(clamp_bits-1) * sat_fn(checkpoint_state[k])
-                    if module == 'conv1':  # FIXME until the network is retrained
-                        factor /= 2.
+                    if first and parameter == 'weight':
+                        factor /= 2.  # The input layer is [-0.5, +0.5] -- compensate
+                        first = False
                 else:
                     factor = 2**(clamp_bits-1) * fc_sat_fn(checkpoint_state[k])
 
