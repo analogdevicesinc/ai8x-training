@@ -67,6 +67,8 @@ import logging
 from collections import OrderedDict
 from functools import partial
 from pydoc import locate
+import operator
+import parser
 import numpy as np
 import torch
 import torch.nn as nn
@@ -74,9 +76,9 @@ import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
+import torchnet.meter as tnt
 import torchvision
 from torchvision import transforms
-import torchnet.meter as tnt
 import distiller
 import distiller.apputils as apputils
 import distiller.model_summaries as model_summaries
@@ -86,8 +88,6 @@ from distiller.data_loggers.collector import SummaryActivationStatsCollector, \
 from distiller.quantization.range_linear import PostTrainLinearQuantizer
 from distiller.data_loggers.logger import TensorBoardLogger, PythonLogger
 import examples.automated_deep_compression as adc
-import operator
-import parser
 from range_linear_ai84 import PostTrainLinearQuantizerAI84
 
 
@@ -98,7 +98,7 @@ msglogger = None
 def main():
     script_dir = os.path.dirname(__file__)
     module_path = os.path.abspath(os.path.join(script_dir, '..', '..'))
-    global msglogger
+    global msglogger  # pylint: disable=global-statement
 
     supported_models = [
         {'name': 'ai84net5',
@@ -203,14 +203,12 @@ def main():
                       dimensions=(dimensions[1], dimensions[2]),
                       padding=(module['min_input'] - dimensions[2] + 1) // 2,
                       clamp_activation_8bit=args.act_mode_8bit,
-                      integer_activation=args.integer_activation,
                       clamp_activation_1=args.clamp_1).to(args.device)
     else:
         model = Model(pretrained=False, num_classes=args.num_classes,
                       num_channels=dimensions[0],
                       dimensions=(dimensions[1], dimensions[2]),
                       clamp_activation_8bit=args.act_mode_8bit,
-                      integer_activation=args.integer_activation,
                       clamp_activation_1=args.clamp_1).to(args.device)
     # if args.add_logsoftmax:
     #     model = nn.Sequential(model, nn.LogSoftmax(dim=1))
@@ -226,16 +224,6 @@ def main():
     # capture thresholds for early-exit training
     if args.earlyexit_thresholds:
         msglogger.info('=> using early-exit threshold values of %s', args.earlyexit_thresholds)
-
-    # TODO(barrh): args.deprecated_resume is deprecated since v0.3.1
-    if args.deprecated_resume:
-        msglogger.warning('The "--resume" flag is deprecated. Please use '
-                          '"--resume-from=YOUR_PATH" instead.')
-        if not args.reset_optimizer:
-            msglogger.warning('If you wish to also reset the optimizer, '
-                              'call with: --reset-optimizer')
-            args.reset_optimizer = True
-        args.resumed_checkpoint_path = args.deprecated_resume
 
     # We can optionally resume from a checkpoint
     optimizer = None
@@ -701,7 +689,7 @@ def earlyexit_loss(output, target, criterion, args):
     return loss
 
 
-def earlyexit_validate_loss(output, target, criterion, args):
+def earlyexit_validate_loss(output, target, _criterion, args):
     # We need to go through each sample in the batch itself - in other words, we are
     # not doing batch processing for exit criteria - we do this as though it were batchsize of 1
     # but with a grouping of samples equal to the batch size.
@@ -826,8 +814,8 @@ def sensitivity_analysis(model, criterion, data_loader, loggers, args, sparsitie
     distiller.sensitivities_to_csv(sensitivity, 'sensitivity.csv')
 
 
-def automated_deep_compression(model, criterion, optimizer, loggers, args):
-    train_loader, val_loader, test_loader, _ = apputils.get_data_loaders(
+def automated_deep_compression(model, criterion, _optimizer, loggers, args):
+    train_loader, _val_loader, test_loader, _ = apputils.get_data_loaders(
         args.datasets_fn, (os.path.expanduser(args.data), args), args.batch_size,
         args.workers, args.validation_split, args.deterministic,
         args.effective_train_size, args.effective_valid_size, args.effective_test_size)
@@ -843,8 +831,8 @@ def automated_deep_compression(model, criterion, optimizer, loggers, args):
     adc.do_adc(model, args, optimizer_data, validate_fn, save_checkpoint_fn, train_fn)
 
 
-def greedy(model, criterion, optimizer, loggers, args):
-    train_loader, val_loader, test_loader, _ = apputils.get_data_loaders(
+def greedy(model, criterion, _optimizer, loggers, args):
+    train_loader, _val_loader, test_loader, _ = apputils.get_data_loaders(
         args.datasets_fn, (os.path.expanduser(args.data), args), args.batch_size,
         args.workers, args.validation_split, args.deterministic,
         args.effective_train_size, args.effective_valid_size, args.effective_test_size)
@@ -930,15 +918,17 @@ def check_pytorch_version():
 
 
 class normalize(object):
+    """
+    Normalize input to either [-1, +1] or [-128, +127]
+    """
     def __init__(self, args):
         self.args = args
 
     def __call__(self, img):
-        img -= 0.5
         if self.args.act_mode_8bit:
-            img = img.mul(128.)
-        if self.args.integer_activation:
-            img = img.round()
+            img = img.sub(0.5).mul(256.).round().clamp(min=-128, max=127)
+        else:
+            img = img.sub(0.5).mul(2.)
         return img
 
 

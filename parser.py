@@ -30,8 +30,8 @@ import argparse
 
 import distiller
 import distiller.quantization
-import examples.automated_deep_compression as adc
 from distiller.utils import float_range_argparse_checker as float_range
+import examples.automated_deep_compression as adc
 
 
 SUMMARY_CHOICES = ['sparsity', 'compute', 'model', 'modules', 'png', 'png_w_params', 'onnx']
@@ -45,8 +45,6 @@ def get_parser(model_names, dataset_names):
                         default=False, help='clamp activation results to [-1...+1]')
     parser.add_argument('--8-bit-mode', '-8', dest='act_mode_8bit', action='store_true',
                         default=False, help='clamp activation result to 8 bits')
-    parser.add_argument('--integer-activation', '-i', action='store_true',
-                        default=False, help='round all actication outputs')
     parser.add_argument('--arch', '-a', '--model', metavar='ARCH', required=True,
                         type=lambda s: s.lower(), dest='cnn',
                         choices=model_names,
@@ -77,9 +75,6 @@ def get_parser(model_names, dataset_names):
 
     load_checkpoint_group = parser.add_argument_group('Resuming arguments')
     load_checkpoint_group_exc = load_checkpoint_group.add_mutually_exclusive_group()
-    # TODO(barrh): args.deprecated_resume is deprecated since v0.3.1
-    load_checkpoint_group_exc.add_argument('--resume', dest='deprecated_resume', default='',
-                                           type=str, metavar='PATH', help=argparse.SUPPRESS)
     load_checkpoint_group_exc.add_argument('--resume-from', dest='resumed_checkpoint_path',
                                            default='', type=str, metavar='PATH',
                                            help='path to latest checkpoint. Use to resume paused '

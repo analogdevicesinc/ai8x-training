@@ -67,12 +67,12 @@ def convert_checkpoint(input_file, output_file, arguments):
         return torch.max(min_val.abs_(), max_val.abs_())
 
     def get_const(_):
-        return 0.6372803137  # Magic value - corresponds to 0.65 bits
+        return arguments.scale
 
     # Scale to our fixed point representation using any of four methods
     # The 'magic constant' seems to work best!?? FIXME
     if arguments.clip_mode == 'STD':
-        sat_fn = partial(mean_n_stds_max_abs, n_stds=2)
+        sat_fn = partial(mean_n_stds_max_abs, n_stds=arguments.stddev)
     elif arguments.clip_mode == 'MAX':
         sat_fn = max_max
     elif arguments.clip_mode == 'AVGMAX':
@@ -94,6 +94,8 @@ def convert_checkpoint(input_file, output_file, arguments):
 
                 if module != 'fc':
                     factor = 2**(clamp_bits-1) * sat_fn(checkpoint_state[k])
+                    if module == 'conv1':  # FIXME until the network is retrained
+                        factor /= 2.
                 else:
                     factor = 2**(clamp_bits-1) * fc_sat_fn(checkpoint_state[k])
 
@@ -157,5 +159,9 @@ if __name__ == '__main__':
     parser.add_argument('--clip-mode', default='SCALE',
                         choices=['AVGMAX', 'MAX', 'STD', 'SCALE'],
                         help='saturation clipping for conv2d (default: magic scale)')
+    parser.add_argument('--scale', type=float, default=0.85,
+                        help='set the scale value for the SCALE mode (default: magic 0.85)')
+    parser.add_argument('--stddev', type=float, default=2.0,
+                        help='set the number of standard deviations for the STD mode (default: 2)')
     args = parser.parse_args()
     convert_checkpoint(args.input, args.output, args)
