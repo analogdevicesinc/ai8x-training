@@ -847,8 +847,6 @@ def main():
                         help="run test file name (default: 'run_test.sv')")
     parser.add_argument('--log-filename', default='log.txt', metavar='FN',
                         help="log file name (default: 'log.txt')")
-    parser.add_argument('-n', '--output-channels', type=int, action='append', metavar='N',
-                        help="output channels for each layer (all default to 4)")
     parser.add_argument('--no-error-stop', action='store_true',
                         help="do not stop on errors (default: stop)")
     parser.add_argument('--input-offset', type=lambda x: int(x, 0), default=0,
@@ -861,9 +859,6 @@ def main():
                         help="allow output to overwrite input (default: warn/stop)")
     parser.add_argument('--queue-name', default='medium', metavar='S',
                         help="queue name (default: 'medium')")
-    parser.add_argument('-l', '--layers', type=int, default=2, metavar='N',
-                        choices=range(1, C_MAX_LAYERS+1),
-                        help="number of layers (default: 2)")
     parser.add_argument('-L', '--log', action='store_true',
                         help="redirect stdout to log file (default: false)")
     parser.add_argument('-p', '--pad', type=int, action='append', metavar='N',
@@ -917,21 +912,58 @@ def main():
             val = [default] * layers
         return val
 
-    output_channels = check_arg(args.layers, args.output_channels, 4, 1, MAX_CHANNELS,
-                                '--output-channel')
-    padding = check_arg(args.layers, args.pad, 1, 0, 2, '--pad')
-    pool = check_arg(args.layers, args.pool, 2, 0, 4, '--pool')
+    # We don't support changing the following, but leave as parameters
+    dilation = [1, 1]
+    kernel_size = [3, 3]
+
+    weights = []
+    bias = []
+
+    # Load weights and biases. This also configures the network channels.
+    checkpoint_file = 'ai84.pth.tar'
+    checkpoint = torch.load(checkpoint_file, map_location='cpu')
+    print(f'Reading {checkpoint_file} to configure network weights...')
+
+    if 'state_dict' not in checkpoint:
+        raise RuntimeError("\nNo state_dict in checkpoint file.")
+
+    checkpoint_state = checkpoint['state_dict']
+    layers = 0
+    output_channels = []
+    for _, k in enumerate(checkpoint_state.keys()):
+        operation, parameter = k.rsplit(sep='.', maxsplit=1)
+        if parameter in ['weight']:
+            module, _ = k.split(sep='.', maxsplit=1)
+            if module != 'fc':
+                w = checkpoint_state[k].numpy().astype(np.int64)
+                if layers == 0:
+                    output_channels.append(w.shape[1])  # Input channels
+                output_channels.append(w.shape[0])
+                weights.append(w.reshape(-1, kernel_size[0], kernel_size[1]))
+                layers += 1
+                # Is there a bias for this layer?
+                bias_name = operation + '.bias'
+                if bias_name in checkpoint_state:
+                    bias.append(w.reshape(1))
+                else:
+                    bias.append(np.repeat(np.asarray(0, dtype=np.int64), output_channels[-1]))
+
+    # We don't support changing the following, but leave as parameters
+    stride = [1] * layers
+
+    padding = check_arg(layers, args.pad, 1, 0, 2, '--pad')
+    pool = check_arg(layers, args.pool, 2, 0, 4, '--pool')
     if any(p & 1 != 0 for p in pool):
         parser.error(f"unsupported value for --pool")
-    pool_stride = check_arg(args.layers, args.pool_stride, 2, 0, 4, '--pool-stride')
+    pool_stride = check_arg(layers, args.pool_stride, 2, 0, 4, '--pool-stride')
     if any(p == 3 for p in pool_stride):
         parser.error(f"unsupported value for --pool-stride")
-    output_offset = check_arg(args.layers, args.output_offset, 0, 0, 4*MEM_SIZE, '--output_offset')
-    relu = check_arg(args.layers, args.relu, 0, 0, 1, '--relu')
+    output_offset = check_arg(layers, args.output_offset, 0, 0, 4*MEM_SIZE, '--output_offset')
+    relu = check_arg(layers, args.relu, 0, 0, 1, '--relu')
     activate = [bool(x) for x in relu]
-    average = check_arg(args.layers, args.average_pooling, 0, 0, 1, '--average-pooling')
+    average = check_arg(layers, args.average_pooling, 0, 0, 1, '--average-pooling')
     pool_average = [bool(x) for x in average]
-    big_data = [False] * args.layers
+    big_data = [False] * layers
     big_data[0] = not args.little_data
 
     data = np.array([[[-128, -128, -128, -128, -128, -128, -128, -128, -128, -128,
@@ -1021,44 +1053,6 @@ def main():
                     dtype=np.int64)
     input_size = list(data.shape)
 
-    # Complete list of channels
-    output_channels.insert(0, input_size[0])
-
-    # We don't support changing the following, but leave as parameters
-    stride = [1] * args.layers
-    kernel_size = [3, 3]
-    dilation = [1, 1]
-
-    # Create list of kernels - various options
-    weights = []
-    bias = []
-    for ll in range(args.layers):
-        # weights.append(np.random.randint(-128, high=127,
-        #                                  size=(output_channels[ll+1]*output_channels[ll],
-        #                                        kernel_size[0], kernel_size[1]),
-        #                                  dtype=np.int64))
-        bias.append(np.repeat(np.asarray(0, dtype=np.int64), output_channels[ll+1]))
-
-    # Load weights and biases
-    checkpoint = torch.load('ai84.pth.tar', map_location='cpu')
-
-    if 'state_dict' not in checkpoint:
-        raise RuntimeError("\nNo state_dict in checkpoint file.")
-
-    checkpoint_state = checkpoint['state_dict']
-    for _, k in enumerate(checkpoint_state.keys()):
-        operation, parameter = k.rsplit(sep='.', maxsplit=1)
-        if parameter in ['weight', 'bias']:
-            module, _ = k.split(sep='.', maxsplit=1)
-            if module != 'fc':
-                w = checkpoint_state[k].numpy().astype(np.int64)
-                if parameter == 'weight':
-                    w = w.reshape(-1, kernel_size[0], kernel_size[1])
-                    weights.append(w)
-                else:
-                    w = w.reshape(1)
-                    bias.append(w)
-
     timeout = args.timeout
     # Double timeout for top level
     if args.top_level:
@@ -1068,7 +1062,7 @@ def main():
             timeout = 3
 
     tn = create_sim(args.verbose, args.debug, args.no_error_stop, args.overwrite_ok,
-                    args.log, args.apb_base, args.layers,
+                    args.log, args.apb_base, layers,
                     input_size, kernel_size, output_channels, padding, dilation, stride,
                     pool, pool_stride, pool_average, activate,
                     data, weights, bias, big_data, args.input_split,
