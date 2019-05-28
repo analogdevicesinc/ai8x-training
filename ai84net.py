@@ -10,11 +10,64 @@ Network(s) that fit into AI84
 
 Optionally quantize/clamp activations
 """
+from torch.autograd import Function
 import torch.nn as nn
 import ai84
 
 
-__all__ = ['AI84Net5', 'ai84net5']
+class QuantizationFunction(Function):
+    """
+    Custom AI84 autograd function
+    The forward pass quantizes to [-(2**(num_bits-1)), 2**(num_bits-1)-1].
+    The backward pass is straight through.
+    """
+    @staticmethod
+    def forward(ctx, x, bits=None):  # pylint: disable=arguments-differ
+        return x.add(.5).div(2**(bits-1)).floor()
+
+    @staticmethod
+    def backward(ctx, x):  # pylint: disable=arguments-differ
+        # Straight through - return as many input gradients as there were arguments;
+        # gradients of non-Tensor arguments to forward must be None.
+        return x, None
+
+
+class Quantize(nn.Module):
+    """
+    Post-activation integer quantization module
+    Apply the custom autograd function
+    """
+    def __init__(self, num_bits=8):
+        super(Quantize, self).__init__()
+        self.num_bits = num_bits
+
+    def forward(self, x):  # pylint: disable=arguments-differ
+        return QuantizationFunction.apply(x, self.num_bits)
+
+
+class Clamp(nn.Module):
+    """
+    Post-Activation Clamping Module
+    Clamp the output to the given range
+    """
+    def __init__(self, min_val=None, max_val=None):
+        super(Clamp, self).__init__()
+        self.min_val = min_val
+        self.max_val = max_val
+
+    def forward(self, x):  # pylint: disable=arguments-differ
+        return x.clamp(min=self.min_val, max=self.max_val)
+
+
+class Empty(nn.Module):
+    """
+    Do nothing
+    """
+    def __init__(self):
+        super(Empty, self).__init__()
+
+    def forward(self, x):  # pylint: disable=arguments-differ
+        return x
 
 
 class AI84Net5(nn.Module):
@@ -23,7 +76,7 @@ class AI84Net5(nn.Module):
     """
     def __init__(self, num_classes=10, num_channels=3, dimensions=(28, 28),
                  quantize=False, clamp_range1=False,
-                 planes=10, pool=4, fc_inputs=12, bias=False):
+                 planes=60, pool=4, fc_inputs=12, bias=False):
         super(AI84Net5, self).__init__()
 
         # AI84 Limits
@@ -31,10 +84,20 @@ class AI84Net5(nn.Module):
         assert planes + fc_inputs <= ai84.WEIGHT_DEPTH-1
         assert pool <= ai84.MAX_AVG_POOL
         assert dimensions[0] == dimensions[1]  # Only square supported
+        bits = ai84.ACTIVATION_BITS
 
-        self.clamp_range1 = clamp_range1
-        self.quantize = quantize
-        self.num_bits = 8
+        if quantize:
+            self.quantize8 = Quantize(num_bits=bits)
+        else:
+            self.quantize8 = Empty()
+
+        if clamp_range1:
+            self.clamp = Clamp(min_val=-1., max_val=1.)  # Do not combine with ReLU
+        elif quantize:
+            self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
+        else:
+            self.clamp = Empty()
+        self.relu = nn.ReLU(inplace=True)
 
         # Keep track of image dimensions so one constructor works for all image sizes
         dim = dimensions[0]
@@ -42,8 +105,9 @@ class AI84Net5(nn.Module):
         self.conv1 = nn.Conv2d(num_channels, planes, kernel_size=3,
                                stride=1, padding=2, bias=bias)
         dim += 2  # padding -> 30x30
-        self.relu = nn.ReLU(inplace=True)
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1 if pool == 3 else 0)
+
+        # Note: performance is better with a 3x3 maxpool (stride 2), but AI84 doesn't support that
+        self.maxpool = nn.MaxPool2d(kernel_size=4, stride=2, padding=1 if pool == 3 else 0)
         if pool != 3:
             dim -= 2  # stride of 2 -> 14x14, else 15x15
         dim //= 2
@@ -67,35 +131,15 @@ class AI84Net5(nn.Module):
 
     def forward(self, x):  # pylint: disable=arguments-differ
         x = self.conv1(x)
-        x = self.relu(x)
-        if self.clamp_range1:
-            x = x.clamp(min=-1., max=1.)
-        elif self.quantize:
-            x = x.add(.5).div(2**(self.num_bits-1)).floor().clamp(min=-(2**(self.num_bits-1)),
-                                                                  max=2**(self.num_bits-1)-1)
+        x = self.clamp(self.quantize8(self.relu(x)))
         x = self.maxpool(x)
         x = self.conv2(x)
-        x = self.relu(x)
-        if self.clamp_range1:
-            x = x.clamp(min=-1., max=1.)
-        elif self.quantize:
-            x = x.add(.5).div(2**(self.num_bits-1)).floor().clamp(min=-(2**(self.num_bits-1)),
-                                                                  max=2**(self.num_bits-1)-1)
+        x = self.clamp(self.quantize8(self.relu(x)))
         x = self.conv3(x)
-        x = self.relu(x)
-        if self.clamp_range1:
-            x = x.clamp(min=-1., max=1.)
-        elif self.quantize:
-            x = x.add(.5).div(2**(self.num_bits-1)).floor().clamp(min=-(2**(self.num_bits-1)),
-                                                                  max=2**(self.num_bits-1)-1)
+        x = self.clamp(self.quantize8(self.relu(x)))
         x = self.avgpool(x)
         x = self.conv4(x)
-        x = self.relu(x)
-        if self.clamp_range1:
-            x = x.clamp(min=-1., max=1.)
-        elif self.quantize:
-            x = x.add(.5).div(2**(self.num_bits-1)).floor().clamp(min=-(2**(self.num_bits-1)),
-                                                                  max=2**(self.num_bits-1)-1)
+        x = self.clamp(self.quantize8(self.relu(x)))
         x = x.view(x.size(0), -1)
         x = self.fc(x)
 
