@@ -1058,6 +1058,9 @@ def fashionmnist_get_datasets(data):
 if __name__ == '__main__':
     try:
         check_pytorch_version()
+        np.set_printoptions(threshold=np.inf, linewidth=190)
+        torch.set_printoptions(threshold=np.inf, linewidth=190)
+
         # import builtins, sys
         # print(distiller.config.__name__)
         # print(distiller.config.__builtins__)

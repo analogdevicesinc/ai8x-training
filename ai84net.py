@@ -23,7 +23,7 @@ class QuantizationFunction(Function):
     """
     @staticmethod
     def forward(ctx, x, bits=None):  # pylint: disable=arguments-differ
-        return x.add(.5).div(2**(bits-1)).floor()
+        return x.add(.5).div(2**(bits-1)).add(.5).floor()
 
     @staticmethod
     def backward(ctx, x):  # pylint: disable=arguments-differ
@@ -43,6 +43,35 @@ class Quantize(nn.Module):
 
     def forward(self, x):  # pylint: disable=arguments-differ
         return QuantizationFunction.apply(x, self.num_bits)
+
+
+class FloorFunction(Function):
+    """
+    Custom AI84 autograd function
+    The forward pass returns the integer floor.
+    The backward pass is straight through.
+    """
+    @staticmethod
+    def forward(ctx, x):  # pylint: disable=arguments-differ
+        return x.floor()
+
+    @staticmethod
+    def backward(ctx, x):  # pylint: disable=arguments-differ
+        # Straight through - return as many input gradients as there were arguments;
+        # gradients of non-Tensor arguments to forward must be None.
+        return x
+
+
+class Floor(nn.Module):
+    """
+    Post-pooling integer quantization module
+    Apply the custom autograd function
+    """
+    def __init__(self):
+        super(Floor, self).__init__()
+
+    def forward(self, x):  # pylint: disable=arguments-differ
+        return FloorFunction.apply(x)
 
 
 class Clamp(nn.Module):
@@ -83,13 +112,16 @@ class AI84Net5(nn.Module):
         assert planes + num_channels <= ai84.WEIGHT_INPUTS
         assert planes + fc_inputs <= ai84.WEIGHT_DEPTH-1
         assert pool <= ai84.MAX_AVG_POOL
+        assert pool & 1 == 0  # Only 0x0, 2x2 and 4x4 supported
         assert dimensions[0] == dimensions[1]  # Only square supported
         bits = ai84.ACTIVATION_BITS
 
         if quantize:
             self.quantize8 = Quantize(num_bits=bits)
+            self.quantize_pool = Floor()
         else:
             self.quantize8 = Empty()
+            self.quantize_pool = Empty()
 
         if clamp_range1:
             self.clamp = Clamp(min_val=-1., max_val=1.)  # Do not combine with ReLU
@@ -106,7 +138,6 @@ class AI84Net5(nn.Module):
                                stride=1, padding=2, bias=bias)
         dim += 2  # padding -> 30x30
 
-        # Note: performance is better with a 3x3 maxpool (stride 2), but AI84 doesn't support that
         self.maxpool = nn.MaxPool2d(kernel_size=4, stride=2, padding=1 if pool == 3 else 0)
         if pool != 3:
             dim -= 2  # stride of 2 -> 14x14, else 15x15
@@ -138,6 +169,7 @@ class AI84Net5(nn.Module):
         x = self.conv3(x)
         x = self.clamp(self.quantize8(self.relu(x)))
         x = self.avgpool(x)
+        x = self.clamp(self.quantize_pool(x))
         x = self.conv4(x)
         x = self.clamp(self.quantize8(self.relu(x)))
         x = x.view(x.size(0), -1)
