@@ -881,6 +881,8 @@ def main():
                         help="split input into N portions (default: don't split)")
     parser.add_argument('--seed', type=int, metavar='N',
                         help="set fixed random seed")
+    parser.add_argument('--stop-after', type=int, metavar='N',
+                        help="stop after layer")
     parser.add_argument('-t', '--test-dir', metavar='DIR',
                         help="set base directory name for auto-filing .mem files")
     parser.add_argument('--top-level', default=None, metavar='S',
@@ -1071,6 +1073,9 @@ def main():
             timeout *= 3
         else:
             timeout = 3
+
+    if args.stop_after is not None:
+        layers = args.stop_after + 1
 
     tn = create_sim(args.verbose, args.debug, args.debug_computation, args.no_error_stop,
                     args.overwrite_ok, args.log, args.apb_base, layers, first_channel,
