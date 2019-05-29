@@ -711,8 +711,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         if not block_mode:
             memfile.write('  return 1;\n}\n\nint main(void)\n{\n  icache_enable();\n')
             memfile.write('  MXC_GCR->perckcn1 &= ~0x20; // Enable AI clock\n')
-            memfile.write('  if (!cnn_load()) fail();\n  cnn_wait();\n')
-            memfile.write('  if (!cnn_check()) fail();\n')
+            memfile.write('  if (!cnn_load()) { fail(); return 0; }\n  cnn_wait();\n')
+            memfile.write('  if (!cnn_check()) { fail(); return 0; }\n')
             memfile.write('  pass();\n  return 0;\n}\n\n')
 
         # End of input
