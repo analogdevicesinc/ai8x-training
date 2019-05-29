@@ -197,7 +197,7 @@ def cnn_layer(layer, verbose,
     return out_buf, out_size
 
 
-def create_sim(verbose, debug, debug_computation, no_error_stop, overwrite_ok, log,
+def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwrite_ok, log,
                apb_base, layers, first_channel,
                input_size, kernel_size, chan, padding, dilation, stride,
                pool, pool_stride, pool_average, activate,
@@ -229,7 +229,7 @@ def create_sim(verbose, debug, debug_computation, no_error_stop, overwrite_ok, l
     # Write memfile for input
 
     # Create comment of the form "k1_b0-1x32x32b_2x2s2p14-..."
-    test_name = 'fashion'
+    test_name = prefix
     for ll in range(layers):
         test_name += f'-{chan[ll]}' \
                      f'x{dim[ll][0]}x{dim[ll][1]}' \
@@ -612,7 +612,7 @@ def create_sim(verbose, debug, debug_computation, no_error_stop, overwrite_ok, l
             data_offs = C_TILE_OFFS*tile + C_SRAM_BASE
             if big_data[0]:
                 if tile < chan[0]:
-                    memfile.write(f'// Big data input: {dim[0][0]}x{dim[0][1]}, '
+                    memfile.write(f'\n  // Big data input: {dim[0][0]}x{dim[0][1]}, '
                                   f'channel {tile+1} of {chan[0]}\n')
                     # "Big Data Mode" - Channels in sequence
                     chunk = input_size[1] // split
@@ -659,7 +659,7 @@ def create_sim(verbose, debug, debug_computation, no_error_stop, overwrite_ok, l
             else:
                 # "Little Data" - Four channels packed into a word
                 for c in range(tile*P_NUMPRO, min(chan[0], (tile+1)*P_NUMPRO), 4):
-                    memfile.write(f'// Little data input: {dim[0][0]}x{dim[0][1]}, channels '
+                    memfile.write(f'\n  // Little data input: {dim[0][0]}x{dim[0][1]}, channels '
                                   f'{c+1} to {c+4} ({chan[0]} inputs)\n')
                     # Round up to next instance
                     data_offs = ((data_offs + 0x10*mem_instance-1) // (0x10*mem_instance)) * \
@@ -880,27 +880,29 @@ def main():
     parser.add_argument('--pool-stride', type=int, action='append', metavar='N',
                         help="pooling stride for each layer (all default to 2)")
     parser.add_argument('--little-data', action='store_true',
-                        help="little data mode (default: big data)")
+                        help="little data input (default: big data = channels in sequence)")
     parser.add_argument('-r', '--relu', type=int, action='append', metavar='N',
                         help="activate layer using ReLU (all default to 0=no activation)")
-    parser.add_argument('-s', '--input-split', type=int, default=1, metavar='N',
+    parser.add_argument('--input-split', type=int, default=1, metavar='N',
                         choices=range(1, MAX_CHANNELS+1),
                         help="split input into N portions (default: don't split)")
     parser.add_argument('--seed', type=int, metavar='N',
                         help="set fixed random seed")
     parser.add_argument('--stop-after', type=int, metavar='N',
                         help="stop after layer")
-    parser.add_argument('-t', '--test-dir', metavar='DIR',
+    parser.add_argument('--prefix', metavar='DIR', required=True,
+                        help="set test name prefix")
+    parser.add_argument('--test-dir', metavar='DIR',
                         help="set base directory name for auto-filing .mem files")
     parser.add_argument('--top-level', default=None, metavar='S',
                         help="top level name instead of block mode (default: None)")
-    parser.add_argument('-T', '--timeout', type=int, metavar='N',
+    parser.add_argument('--timeout', type=int, metavar='N',
                         help="set timeout (units of 10ms, default 10ms)")
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="verbose output (default: false)")
     parser.add_argument('--verify-writes', action='store_true',
                         help="verify write operations (toplevel only, default: false)")
-    parser.add_argument('-z', '--zero-unused', action='store_true',
+    parser.add_argument('--zero-unused', action='store_true',
                         help="zero unused registers (default: do not touch)")
     args = parser.parse_args()
     if args.seed:
@@ -1084,7 +1086,8 @@ def main():
     if args.stop_after is not None:
         layers = args.stop_after + 1
 
-    tn = create_sim(args.verbose, args.debug, args.debug_computation, args.no_error_stop,
+    tn = create_sim(args.prefix, args.verbose,
+                    args.debug, args.debug_computation, args.no_error_stop,
                     args.overwrite_ok, args.log, args.apb_base, layers, first_channel,
                     input_size, kernel_size, output_channels, padding, dilation, stride,
                     pool, pool_stride, pool_average, activate,
