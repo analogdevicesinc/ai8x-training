@@ -67,9 +67,6 @@ class Floor(nn.Module):
     Post-pooling integer quantization module
     Apply the custom autograd function
     """
-    def __init__(self):
-        super(Floor, self).__init__()
-
     def forward(self, x):  # pylint: disable=arguments-differ
         return FloorFunction.apply(x)
 
@@ -92,9 +89,6 @@ class Empty(nn.Module):
     """
     Do nothing
     """
-    def __init__(self):
-        super(Empty, self).__init__()
-
     def forward(self, x):  # pylint: disable=arguments-differ
         return x
 
