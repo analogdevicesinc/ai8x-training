@@ -132,7 +132,8 @@ class AI84Net5(nn.Module):
                                stride=1, padding=2, bias=bias)
         dim += 2  # padding -> 30x30
 
-        self.maxpool = nn.MaxPool2d(kernel_size=4, stride=2, padding=1 if pool == 3 else 0)
+        # MaxPool2d: stride and kernel_size must be the same
+        self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2, padding=1 if pool == 3 else 0)
         if pool != 3:
             dim -= 2  # stride of 2 -> 14x14, else 15x15
         dim //= 2
