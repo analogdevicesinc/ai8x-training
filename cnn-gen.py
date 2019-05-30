@@ -91,7 +91,8 @@ def conv2d(data, weight, bias, input_size, out_channels, kernel_size, stride, pa
                                 val += weight[k][c][wt_offs] * data[c][src_offs]
                                 if debug:
                                     print(f'k={k}, c={c}, x={x}, y={y}, src_offs={src_offs}, '
-                                          f'wt_offs={wt_offs}: new val = {val}')
+                                          f'wt_offs={wt_offs}: weight*data={weight[k][c][wt_offs]}'
+                                          f'*{data[c][src_offs]} -> accumulator = {val}')
 
                 val += bias[k]
                 output[k][out_offs] = val
@@ -257,7 +258,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         else:
             if rv:
                 memfile.write(f'  if (*((volatile uint32_t *) 0x{addr:08x}) != 0x{val:08x}) '
-                              f'rv = 0;{comment}\n')
+                              f'return 0;{comment}\n')
             elif check:
                 memfile.write(f'  if (*((volatile uint32_t *) 0x{addr:08x}) != 0x{val:08x}) '
                               f'return 0;{comment}\n')
@@ -327,12 +328,15 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             if debug:
                 print(f'T{tile} L{layer} R{reg:02} ({addr:08x}): {val:08x}')
 
-        def apb_write_kern(tile, proc, idx, k):
+        def apb_write_kern(ch, idx, k):
             """
             Write kernel to .mem file
             """
-            addr = C_TILE_OFFS*tile + C_MRAM_BASE + proc * 2**P_MASKABITS * 16 + idx * 16
-            apb_write(addr, k[0] & 0xff, no_verify=True)
+            assert ch < MAX_CHANNELS
+            assert idx < 2**P_MASKABITS
+            addr = C_TILE_OFFS*(ch // P_NUMPRO) + C_MRAM_BASE + (ch % P_NUMPRO) * \
+                2**P_MASKABITS * 16 + idx * 16
+            apb_write(addr, k[0] & 0xff, no_verify=True, comment=f' // kernel CH {ch} #{idx}')
             apb_write(addr+4, (k[1] & 0xff) << 24 | (k[2] & 0xff) << 16 |
                       (k[3] & 0xff) << 8 | k[4] & 0xff, no_verify=True)
             apb_write(addr+8, (k[5] & 0xff) << 24 | (k[6] & 0xff) << 16 |
@@ -364,32 +368,19 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
         # Initialize CNN registers
 
-        # Calculate the number of tiles needed for each layer
+        # Calculate the number of tiles needed for each layer FIXME: Add channel_start to this
         tiles = [min(P_NUMTILES,
                      max(chan[ll] if big_data[ll] else (chan[ll]+P_NUMPRO-1) // P_NUMPRO,
                          (chan[ll+1]+P_NUMPRO-1) // P_NUMPRO))
                  for ll in range(layers)]
         needed_tiles = max(tiles)  # Maximum tiles needed across whole network
 
-        # Distribute input channels across tiles for each layer
-        tiled_chan = [0] * layers
-        for ll in range(layers):
-            tiled_chan[ll] = [0] * needed_tiles
-            if big_data[ll]:
-                # Distribute 1 each into each tile until no more
-                for tile in range(tiles[ll]):
-                    tiled_chan[ll][tile] = (chan[ll] + P_NUMTILES - 1 - tile) // P_NUMTILES
-            else:
-                # 16 into each tile, remainder in last needed tile, then zeros
-                for tile in range((chan[ll] - 1) // P_NUMPRO):
-                    tiled_chan[ll][tile] = P_NUMPRO
-                tiled_chan[ll][(chan[ll] - 1) // P_NUMPRO] = (chan[ll] - 1) % P_NUMPRO + 1
-
         if debug:
-            print(f'channels   = {chan}')
-            print(f'tiles      = {tiles}')
-            print(f'max tiles  = {needed_tiles}')
-            print(f'tiled_chan = {tiled_chan}')
+            print(f'channels           = {chan}')
+            print(f'first channel      = {first_channel}')
+            print(f'tiles              = {tiles}')
+            print(f'max tiles          = {needed_tiles}')
+            print(f'layer has bias     = {layer_has_bias}')
 
         # Disable completely unused tiles
         for tile in range(needed_tiles, P_NUMTILES):
@@ -409,46 +400,46 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             # Number of layers
             apb_write_ctl(tile, 2, layers-1, comment=' // layer count')  # layer max count reg
 
-        for tile in range(needed_tiles):
-            # Kernels ('load_mask')
-            # Write only the kernels needed
-            max_ptr = 0
-            for ll in range(layers):
-                for p in range(tiled_chan[ll][tile]):
-                    # Stack kernels
-                    for i in range(chan[ll+1]):
-                        if big_data[ll]:
-                            if tile < chan[ll]:  # Transpose kernels into tiles
-                                k = kernel[ll][i*chan[ll] + tile].flatten()
-                            else:  # Extra tile for output, use zero kernel
-                                k = np.zeros(kernel_size[0] * kernel_size[1], dtype=np.int64)
-                        else:
-                            if tile < tiles[ll]:  # Transpose kernels
-                                prev = sum(tiled_chan[ll][n] for n in range(tile))
-                                k = kernel[ll][i*chan[ll] + prev + p].flatten()
-                            else:
-                                k = np.zeros(kernel_size[0] * kernel_size[1], dtype=np.int64)
+        # Kernels ('load_mask')
+        # Write only the kernels needed
+        max_ptr = [0] * MAX_CHANNELS
+        chan_kern_offs = [0] * layers
+        for ll in range(layers):
+            # Stack kernels
+            chan_kern_offs[ll] = max_ptr[first_channel[ll]]
+            for c in range(chan[ll]):
+                ch = first_channel[ll] + c
+                # print(f'c {c}, Kernel dimensions layer {ll}: {kernel[ll].shape}')
+                # print(f'should be {chan[ll]*chan[ll+1]}')
+                for i in range(chan[ll+1]):
+                    # print(f'i {i} L {ll} C {c}: Channel index {i + c*chan[ll+1]} -> ', end='')
+                    if big_data[ll]:
+                        k = kernel[ll][i + c*chan[ll+1]].flatten()
+                    else:
+                        k = kernel[ll][c + i*chan[ll]].flatten()  # Transpose for little data
+                    # print(f'{k}')
 
-                        if debug:
-                            print(f'T{tile} L{ll} p{p+1}/{tiled_chan[ll][tile]} '
-                                  f'm{i+1}/{chan[ll+1]}: {k}')
-                        apb_write_kern(tile, p, max_ptr + i, k)
-                max_ptr += chan[ll+1]
+                    if debug:
+                        print(f'Channel {ch} Layer {ll} m{i}/{chan[ll+1]-1}: {k}')
+                    apb_write_kern(ch, max_ptr[ch] + i, k)
+                max_ptr[ch] += chan[ll+1]
 
-            # Bias ('zero_bias_ram')
-            offs = 0
-            i = 0
-            ll = 0
-            for _ in range(2**P_BRAMABITS):
-                if ll < layers:
-                    apb_write_bias(tile, offs, bias[ll][i])
-                    i += 1
-                    if i >= chan[ll+1]:
-                        ll += 1
-                        i = 0
-                else:
-                    apb_write_bias(tile, offs, 0)
-                offs += 1
+        # Bias ('zero_bias_ram')  # FIXME: remove 'tiles'
+        # offs = 0
+        # i = 0
+        # ll = 0
+        # for _ in range(2**P_BRAMABITS):
+        #     if ll < layers:
+        #         for tile in range(needed_tiles):
+        #             apb_write_bias(tile, offs, bias[ll][i])
+        #         i += 1
+        #         if i >= chan[ll+1]:
+        #             ll += 1
+        #             i = 0
+        #     else:
+        #         for tile in range(needed_tiles):
+        #             apb_write_bias(tile, offs, 0)
+        #     offs += 1
 
         def apb_write_byte_flush(offs, comment=''):
             if apb_write_byte.num > 0:
@@ -487,7 +478,6 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         # Configure per-layer control registers
         for tile in range(needed_tiles):
             bias_ptr = 0
-            mask_ptr = 0
 
             for ll in range(layers):
                 # Configure row count ('config_cnn_rcnt')
@@ -511,8 +501,10 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 # Configure pooling stride count ('config_cnn_stride')
                 apb_write_reg(tile, ll, 5, pool_stride[ll]-1, comment=' // pooling stride')
 
-                # Configure SRAM write pointer ('config_cnn_wptr')
-                apb_write_reg(tile, ll, 6, out_offset[ll+1] // 4, debug,
+                # Configure SRAM write pointer ('config_cnn_wptr') -- write ptr is global
+                # print(f'LL {ll} first_channel[ll+1] {first_channel[ll+1]} layers {layers}')
+                offs = first_channel[ll+1] * INSTANCE_SIZE * 4 if ll+1 < layers else 0
+                apb_write_reg(tile, ll, 6, (out_offset[ll+1] + offs) // 4, debug,
                               comment=' // SRAM write ptr')
 
                 # Configure write pointer mask offset count ('config_cnn_woff')
@@ -528,7 +520,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 apb_write_reg(tile, ll, 7, val, debug, comment=' // mask offset count')
 
                 # Configure sram read ptr count ('config_cnn_rptr')
-                # Source address must match write pointer of previous layer
+                # Source address must match write pointer of previous layer (minus global offset)
                 apb_write_reg(tile, ll, 8, out_offset[ll] // 4, comment=' // SRAM read ptr')
 
                 # Configure per-layer control
@@ -551,7 +543,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 if tile == 0:
                     # Set external source for other active processing tiles
                     # (will be zero if only this tile is processing, never set bit 12)
-                    val |= (2**min(P_NUMTILES-1, chan[ll]-1, tiles[ll]-1) - 1) << 13
+                    val |= (2**min(P_NUMTILES-1, chan[ll]-1, tiles[ll]-1) - 1) << 13  # FIXME
                 apb_write_reg(tile, ll, 9, val, debug, comment=' // layer control')
 
                 # Configure mask count ('config_cnn_mask')
@@ -563,12 +555,11 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 # [23:16] Bias pointer starting address
                 # [24]    Bias enable
                 # [31:25] RFU
-                val = bias_ptr << 16 | mask_ptr << 8 | chan[ll+1]-1
-                if tile == 0:
-                    val |= 0x1000000  # Enable bias only for one tile
-                apb_write_reg(tile, ll, 10, val, debug)
-                bias_ptr += chan[ll+1]  # Each layer has output_channel number of bias values
-                mask_ptr += chan[ll+1]
+                val = bias_ptr << 16 | chan_kern_offs[ll] << 8 | chan[ll+1]-1
+                # if tile == 0:
+                #     val |= 0x1000000  # Enable bias only for one tile FIXME: enable bias
+                apb_write_reg(tile, ll, 10, val, debug, comment=' // mask count')
+                # bias_ptr += chan[ll+1]  # Each layer has output_channel number of bias values
 
                 # Configure tram pointer max ('config_cnn_tptr')
                 if pool[ll] > 0:
@@ -578,20 +569,18 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     val = max(0, dim[ll][1] + 2*padding[ll] - 3)
                 apb_write_reg(tile, ll, 11, val, comment=' // TRAM ptr max')
 
-                # Configure mask count and offset registers ('config_cnn_mena')
+                # Configure mask and processor enables ('config_cnn_mena')
                 # [15:0]  mask enable
                 # [31:16] processor enable (or the reverse?)
-                # When the input data is sources from 16 independent byte streams, all 16
+                # When the input data is sourced from 16 independent byte streams, all 16
                 # processors and compute elements need to be enabled.  If there were only 4 input
                 # channels, 0x000f000f would be correct.
                 #
                 # Enable at most 16 processors and masks
-                if big_data[ll]:
-                    bits = 2**((min(P_NUMPRO, chan[ll]) + tiles[ll]-1) // tiles[ll]) - 1
-                else:
-                    # Set only if needed for input channels, otherwise clear
-                    bits = 2**min(P_NUMPRO, max(0, chan[ll] - tile*P_NUMPRO)) - 1
-                apb_write_reg(tile, ll, 12, bits << 16 | bits, debug)
+                bits = ((((2**chan[ll])-1) << first_channel[ll]) >> tile*P_NUMPRO) & \
+                    (2**P_NUMPRO - 1)
+                apb_write_reg(tile, ll, 12, bits << 16 | bits, debug,
+                              comment=' // mask and processor enables')
 
             if zero_unused:
                 for ll in range(layers, C_MAX_LAYERS):
@@ -711,8 +700,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         if not block_mode:
             memfile.write('  return 1;\n}\n\nint main(void)\n{\n  icache_enable();\n')
             memfile.write('  MXC_GCR->perckcn1 &= ~0x20; // Enable AI clock\n')
-            memfile.write('  if (!cnn_load()) { fail(); return 0; }\n  cnn_wait();\n')
-            memfile.write('  if (!cnn_check()) { fail(); return 0; }\n')
+            memfile.write('  if (!cnn_load()) { fail(); pass(); return 0; }\n  cnn_wait();\n')
+            memfile.write('  if (!cnn_check()) fail();\n')
             memfile.write('  pass();\n  return 0;\n}\n\n')
 
         # End of input
@@ -849,6 +838,9 @@ def main():
                         help="debug mode (default: false)")
     parser.add_argument('--debug-computation', action='store_true',
                         help="debug computation (default: false)")
+    parser.add_argument('--checkpoint-file', default='ai84.pth.tar', metavar='FN',
+                        help="checkpoint file name containing quantized weights "
+                             "(default: ai84.pth.tar)")
     parser.add_argument('--input-filename', default='input', metavar='FN',
                         help="input .mem file name base (default: 'input' -> 'input.mem')")
     parser.add_argument('--output-filename', default='output', metavar='FN',
@@ -937,9 +929,8 @@ def main():
     layer_has_bias = []
 
     # Load weights and biases. This also configures the network channels.
-    checkpoint_file = 'ai84.pth.tar'
-    checkpoint = torch.load(checkpoint_file, map_location='cpu')
-    print(f'Reading {checkpoint_file} to configure network weights...')
+    checkpoint = torch.load(args.checkpoint_file, map_location='cpu')
+    print(f'Reading {args.checkpoint_file} to configure network weights...')
 
     if 'state_dict' not in checkpoint:
         raise RuntimeError("\nNo state_dict in checkpoint file.")

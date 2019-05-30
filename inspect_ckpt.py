@@ -67,6 +67,8 @@ def inspect_checkpoint(chkpt_file, args):
 
 
 if __name__ == '__main__':
+    torch.set_printoptions(threshold=10000000, linewidth=190)
+
     parser = argparse.ArgumentParser(description='Distiller checkpoint inspection')
     parser.add_argument('chkpt_file', help='path to the checkpoint file')
     parser.add_argument('-m', '--model', action='store_true', help='print the model keys')
