@@ -31,15 +31,16 @@ class AI84Net5(nn.Module):
         # Keep track of image dimensions so one constructor works for all image sizes
         dim = dimensions[0]
 
-        pad = 2 if dim == 28 else 1
         self.conv1 = ai84.FusedConv2dReLU(num_channels, planes, 3,
-                                          padding=pad, bias=bias, simulate=simulate)
-        dim += 2  # MNIST: padding 2 -> 30x30 | CIFAR: 32x32
+                                          padding=1, bias=bias, simulate=simulate)
+        # padding 1 -> no change in dimensions -> MNIST: 28x28 | CIFAR: 32x32
 
+        pad = 2 if dim == 28 else 1
         self.conv2 = ai84.FusedMaxPoolConv2dReLU(planes, planes, 3, pool_size=2, pool_stride=2,
                                                  padding=pad, bias=bias, simulate=simulate)
-        dim //= 2  # pooling, padding 0 -> MNIST: 15x15 | CIFAR: 16x16
-        dim += 2  # MNIST: padding 2 -> 17x17 | CIFAR: padding 1 -> 16x16
+        dim //= 2  # pooling, padding 0 -> MNIST: 14x14 | CIFAR: 16x16
+        if pad == 2:
+            dim += 2  # MNIST: padding 2 -> 16x16 | CIFAR: padding 1 -> 16x16
 
         self.conv3 = ai84.FusedMaxPoolConv2dReLU(planes, ai84.WEIGHT_DEPTH-planes-fc_inputs, 3,
                                                  pool_size=2, pool_stride=2, padding=1,
