@@ -202,14 +202,12 @@ def main():
                       num_channels=dimensions[0],
                       dimensions=(dimensions[1], dimensions[2]),
                       padding=(module['min_input'] - dimensions[2] + 1) // 2,
-                      quantize=args.act_mode_8bit,
-                      clamp_range1=args.clamp_1).to(args.device)
+                      simulate=args.act_mode_8bit).to(args.device)
     else:
         model = Model(pretrained=False, num_classes=args.num_classes,
                       num_channels=dimensions[0],
                       dimensions=(dimensions[1], dimensions[2]),
-                      quantize=args.act_mode_8bit,
-                      clamp_range1=args.clamp_1).to(args.device)
+                      simulate=args.act_mode_8bit).to(args.device)
     # if args.add_logsoftmax:
     #     model = nn.Sequential(model, nn.LogSoftmax(dim=1))
     # if args.add_softmax:
