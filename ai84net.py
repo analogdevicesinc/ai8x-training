@@ -95,18 +95,17 @@ class Empty(nn.Module):
 
 class AI84Net5(nn.Module):
     """
-    CNN that uses max parameters in AI84
+    5-Layer CNN that uses max parameters in AI84
     """
     def __init__(self, num_classes=10, num_channels=3, dimensions=(28, 28),
                  quantize=False, clamp_range1=False,
-                 planes=60, pool=4, fc_inputs=12, bias=False):
+                 planes=60, pool=2, fc_inputs=12, bias=False):
         super(AI84Net5, self).__init__()
 
         # AI84 Limits
         assert planes + num_channels <= ai84.WEIGHT_INPUTS
         assert planes + fc_inputs <= ai84.WEIGHT_DEPTH-1
-        assert pool <= ai84.MAX_AVG_POOL
-        assert pool & 1 == 0  # Only 0x0, 2x2 and 4x4 supported
+        assert pool == 2
         assert dimensions[0] == dimensions[1]  # Only square supported
         bits = ai84.ACTIVATION_BITS
 
@@ -130,25 +129,24 @@ class AI84Net5(nn.Module):
 
         self.conv1 = nn.Conv2d(num_channels, planes, kernel_size=3,
                                stride=1, padding=2, bias=bias)
-        dim += 2  # padding -> 30x30
+        dim += 2  # padding 2 -> 30x30
 
         # MaxPool2d: stride and kernel_size must be the same
-        self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2, padding=1 if pool == 3 else 0)
-        if pool != 3:
-            dim -= 2  # stride of 2 -> 14x14, else 15x15
-        dim //= 2
+        self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
+        dim //= 2  # padding 0 -> 15x15
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3,
-                               stride=1, padding=1 if pool == 3 else 2, bias=bias)
-        if pool != 3:
-            dim += 2  # padding 2 -> 16x16, else 15x15
+                               stride=1, padding=2, bias=bias)
+        dim += 2  # padding 2 -> 17x17
+        self.maxpool2 = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
+        dim //= 2  # padding 0 -> 8x8
         self.conv3 = nn.Conv2d(planes, ai84.WEIGHT_DEPTH-planes-fc_inputs, kernel_size=3,
                                stride=1, padding=1, bias=bias)
-        # no change in dimensions
-        self.avgpool = nn.AvgPool2d(pool)
-        dim //= pool  # pooling -> 4x4, else 3x3 or 5x5
+        # padding 1 -> no change in dimensions
+        self.avgpool = nn.AvgPool2d(kernel_size=pool, padding=0)
+        dim //= pool  # padding 0 -> 4x4
         self.conv4 = nn.Conv2d(ai84.WEIGHT_DEPTH-planes-fc_inputs, fc_inputs, kernel_size=3,
                                stride=1, padding=1, bias=bias)
-        # no change in dimensions
+        # padding 1 -> no change in dimensions
         self.fc = nn.Linear(fc_inputs*dim*dim, num_classes)
 
         for m in self.modules():
@@ -161,6 +159,7 @@ class AI84Net5(nn.Module):
         x = self.maxpool(x)
         x = self.conv2(x)
         x = self.clamp(self.quantize8(self.relu(x)))
+        x = self.maxpool2(x)
         x = self.conv3(x)
         x = self.clamp(self.quantize8(self.relu(x)))
         x = self.avgpool(x)
