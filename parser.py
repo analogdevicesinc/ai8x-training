@@ -50,6 +50,8 @@ def get_parser(model_names, dataset_names):
     parser.add_argument('--dataset', metavar='S', required=True,
                         choices=dataset_names,
                         help="dataset(s) (" + ', '.join(dataset_names) + ")")
+    parser.add_argument('--truncate-testset', action='store_true', default=False,
+                        help='get only the first image from the test set')
     parser.add_argument('--data', metavar='DIR', default='data', help='path to dataset')
     parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                         help='number of data loading workers (default: 4)')

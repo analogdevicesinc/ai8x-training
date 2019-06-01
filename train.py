@@ -968,6 +968,9 @@ def cifar10_get_datasets(data):
                                                 train=False, download=True,
                                                 transform=test_transform)
 
+    if args.truncate_testset:
+        test_dataset.data = test_dataset.data[:1]
+
     return train_dataset, test_dataset
 
 
@@ -1009,6 +1012,9 @@ def mnist_get_datasets(data):
     test_dataset = torchvision.datasets.MNIST(root=data_dir, train=False, download=True,
                                               transform=test_transform)
 
+    if args.truncate_testset:
+        test_dataset.data = test_dataset.data[:1]
+
     return train_dataset, test_dataset
 
 
@@ -1049,6 +1055,9 @@ def fashionmnist_get_datasets(data):
 
     test_dataset = torchvision.datasets.FashionMNIST(root=data_dir, train=False, download=True,
                                                      transform=test_transform)
+
+    if args.truncate_testset:
+        test_dataset.data = test_dataset.data[:1]
 
     return train_dataset, test_dataset
 
