@@ -91,14 +91,17 @@ def convert_checkpoint(input_file, output_file, arguments):
         elif parameter in ['weight', 'bias']:
             if not arguments.quantized:
                 module, _ = k.split(sep='.', maxsplit=1)
-                clamp_bits = ai84.WEIGHT_BITS if module != 'fc' else FC_CLAMP_BITS
 
                 if module != 'fc':
+                    clamp_bits = ai84.WEIGHT_BITS
                     factor = 2**(clamp_bits-1) * sat_fn(checkpoint_state[k])
+                    lower_bound = 0
                     if first and parameter == 'weight':
                         factor /= 2.  # The input layer is [-0.5, +0.5] -- compensate
                         first = False
                 else:
+                    clamp_bits = FC_CLAMP_BITS
+                    lower_bound = 1  # Accomodate ARM q15_t data type when clamping
                     factor = 2**(clamp_bits-1) * fc_sat_fn(checkpoint_state[k])
 
                 if args.verbose:
@@ -109,7 +112,8 @@ def convert_checkpoint(input_file, output_file, arguments):
                 weights = factor * checkpoint_state[k]
 
                 # Ensure it fits and is an integer
-                weights = weights.clamp(min=-(2**(clamp_bits-1)), max=2**(clamp_bits-1)-1).round()
+                weights = weights.clamp(min=-(2**(clamp_bits-1)-lower_bound),
+                                        max=2**(clamp_bits-1)-1).round()
 
                 # Store modified weight/bias back into model
                 new_checkpoint_state[k] = weights
