@@ -148,10 +148,9 @@ def main():
     if args.evaluate:
         args.deterministic = True
     if args.deterministic:
-        # Experiment reproducibility is sometimes important.  Pete Warden expounded about this
-        # in his blog:
-        # https://petewarden.com/2018/03/19/the-machine-learning-reproducibility-crisis/
-        distiller.set_deterministic()  # Use a well-known seed, for repeatability of experiments
+        distiller.set_deterministic(args.seed)  # For experiment reproducability
+        if args.seed is not None:
+            distiller.set_seed(args.seed)
     else:
         # Turn on CUDNN benchmark mode for best performance. This is usually "safe" for image
         # classification models, as the input sizes don't change during the run
