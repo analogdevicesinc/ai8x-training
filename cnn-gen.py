@@ -285,11 +285,11 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         memfile.write(f'// Created using {" ".join(str(x) for x in sys.argv)}\n')
 
         # Human readable description of test
-        memfile.write(f'// Configuring input for {layers} layer(s), random seed={seed}')
+        memfile.write(f'// Configuring input for {layers} layer(s), random seed={seed}\n')
 
         for ll in range(layers):
             memfile.write(f'// Layer {ll+1}: {chan[ll]}x{dim[ll][0]}x{dim[ll][1]} '
-                          f'{"(big data)" if big_data[ll] else "(little data)"}, ')
+                          f'{"(CHW/big data)" if big_data[ll] else "(HWC/little data)"}, ')
             if pool[ll] > 0:
                 memfile.write(f'{pool[ll]}x{pool[ll]} {"avg" if pool_average[ll] else "max"} '
                               f'pool with stride {pool_stride[ll]}')
@@ -418,7 +418,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     if big_data[ll]:
                         k = kernel[ll][i + c*chan[ll+1]].flatten()
                     else:
-                        k = kernel[ll][c + i*chan[ll]].flatten()  # Transpose for little data
+                        k = kernel[ll][c + i*chan[ll]].flatten()  # Transpose for HWC/little data
                     # print(f'{k}')
 
                     if debug:
@@ -530,7 +530,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 #                to first input volume; also enable timeslot
                 # [4]   m_slave: slaves to 16x masters
                 # [5]   master: sums all 16 processor outputs (vs 4 sums)
-                # [6]   parallel: equals big data (per layer control)
+                # [6]   parallel: equals CHW/big data (per layer control)
                 # [7]   pool_enable
                 # [8]   maxpool_enable
                 # [9]   activation_enable
@@ -603,9 +603,9 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             data_offs = C_TILE_OFFS*tile + C_SRAM_BASE
             if big_data[0]:
                 if tile < chan[0]:
-                    memfile.write(f'\n  // Big data input: {dim[0][0]}x{dim[0][1]}, '
+                    memfile.write(f'\n  // CHW (big data) input: {dim[0][0]}x{dim[0][1]}, '
                                   f'channel {tile+1} of {chan[0]}\n')
-                    # "Big Data Mode" - Channels in sequence
+                    # CHW ("Big Data") Mode - Channels in sequence
                     chunk = input_size[1] // split
                     for c in range(tile, tile+(input_size[0] + tiles[0]-1) // tiles[0]):
                         # New channel - round up to next instance
@@ -648,10 +648,10 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                                     data_offs += 1
                         apb_write_byte_flush(0)
             else:
-                # "Little Data" - Four channels packed into a word
+                # HWC ("Little Data") - Four channels packed into a word
                 for c in range(tile*P_NUMPRO, min(chan[0], (tile+1)*P_NUMPRO), 4):
-                    memfile.write(f'\n  // Little data input: {dim[0][0]}x{dim[0][1]}, channels '
-                                  f'{c+1} to {c+4} ({chan[0]} inputs)\n')
+                    memfile.write(f'\n  // HWC (little data) input: {dim[0][0]}x{dim[0][1]}, '
+                                  f'channels {c+1} to {c+4} ({chan[0]} inputs)\n')
                     # Round up to next instance
                     data_offs = ((data_offs + 0x10*mem_instance-1) // (0x10*mem_instance)) * \
                         0x10*mem_instance
@@ -875,8 +875,9 @@ def main():
                         help="pooling for each layer (all default to 2)")
     parser.add_argument('--pool-stride', type=int, action='append', metavar='N',
                         help="pooling stride for each layer (all default to 2)")
-    parser.add_argument('--little-data', action='store_true',
-                        help="little data input (default: big data = channels in sequence)")
+    parser.add_argument('--hwc', '--little-data', action='store_true', dest='little_data',
+                        help="HWC (little data) input "
+                             "(default: CHW/big data = channels in sequence)")
     parser.add_argument('-r', '--relu', type=int, action='append', metavar='N',
                         help="activate layer using ReLU (all default to 0=no activation)")
     parser.add_argument('--input-split', type=int, default=1, metavar='N',
@@ -905,7 +906,7 @@ def main():
         np.random.seed(args.seed)
 
     if args.input_split != 1 and args.little_data:
-        parser.error(f"--input-split is not supported for --little-data input")
+        parser.error(f"--input-split is not supported for HWC (--hwc/--little-data) input")
 
     if not args.test_dir:
         parser.error(f"Please specify output directory using --test-dir")
