@@ -369,7 +369,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
         # Initialize CNN registers
 
-        # Calculate the number of tiles needed for each layer FIXME: Add channel_start to this
+        # Calculate the number of tiles needed for each layer
+        # FIXME: Add channel_start to this
         tiles = [min(P_NUMTILES,
                      max(chan[ll] if big_data[ll] else (chan[ll]+P_NUMPRO-1) // P_NUMPRO,
                          (chan[ll+1]+P_NUMPRO-1) // P_NUMPRO))
