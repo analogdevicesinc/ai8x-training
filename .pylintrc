@@ -1,7 +1,7 @@
 [MESSAGES CONTROL]
 disable=invalid-name
 [TYPECHECK]
-ignored-modules = numpy, matplotlib.cm, torch
+ignored-modules = numpy, matplotlib.cm, torch, distiller
 ignored-classes = ModelProto
 [FORMAT]
 max-line-length = 99
@@ -10,6 +10,4 @@ max-locals=100
 max-statements=100
 min-public-methods=1
 max-branches=30
-max-module-lines=2000
-[MASTER]
-# init-hook='sys.path.append("distiller")'
+max-module-lines=5000
