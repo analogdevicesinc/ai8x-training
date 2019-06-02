@@ -4,6 +4,7 @@
 /.mypy_cache
 /.vscode
 /ai84-cifar10.pth.tar
+/ai84-cifar10-bias.pth.tar
 /ai84-mnist.pth.tar
 /ai84.pth.tar
 /apex
