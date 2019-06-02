@@ -428,9 +428,14 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     this_map.append(tile)
             tile_map.append(this_map)
 
+        # Output channels. Always in little data format.
+        # FIXME: Verify this. Shift by 4 * the instance number of the output offset of the last
+        # layer, out_offset[layers]
+        output_map = (2**chan[layers]-1) << ffs(processor_map[layers-1])
+
         tiles_used = []
         for tile in range(P_NUMTILES):
-            if (processors_used >> tile*P_NUMPRO) & (2**P_NUMPRO-1) != 0:
+            if ((processors_used | output_map) >> tile*P_NUMPRO) & (2**P_NUMPRO-1) != 0:
                 tiles_used.append(tile)
 
         # Initialize CNN registers
@@ -506,7 +511,6 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 ch += 1
 
         # Bias ('zero_bias_ram')
-        # FIXME: Check that this works.
         # Each tile has one bias memory (size 2**P_BRAMABITS bytes). Use only the bias memory in
         # one selected tile for the layer, and only if the layer uses a bias. Keep track of the
         # offsets so they can be programmed into the mask count register later.
@@ -545,9 +549,9 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             print(f'Used bias memory   = {tile_bias_max}')
             print('\nPer-layer configuration:')
             print('------------------------')
-            print(f'Number of channels = {chan[:-1]} -> {chan[-1]} outputs')
+            print(f'Number of channels = {chan[:layers]} -> {chan[layers]} outputs')
             print('Processor map      = [',
-                  ', '.join('{:016x}'.format(k) for k in processor_map), ']', sep='')
+                  ', '.join('{:016x}'.format(k) for k in processor_map[:layers]), ']', sep='')
             print(f'Tile map           = {tile_map}')
             print(f'Kernel offsets     = {kern_offs}')
             print(f'Tile with bias     = {bias_tile}')
@@ -661,8 +665,6 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     # Set external source for other active processing tiles (can be zero if no
                     # other tiles are processing). Do not set the bit corresponding to this tile
                     # (e.g., if tile == 0, do not set bit 12)
-                    # FIXME: Check whether the new code works, particularly for channel 0
-                    # old: val |= (2**min(P_NUMTILES-1, chan[ll]-1, tiles[ll]-1) - 1) << 13
                     sources = 0
                     for t in range(tile_map[ll][0]+1, P_NUMTILES):
                         # See if any processors other than this one are operating
@@ -683,8 +685,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 # [31:25] RFU
                 val = kern_offs[ll] << 8 | chan[ll+1]-1
                 if tile == bias_tile[ll]:
-                    # Enable bias only for one tile (the first one used)
-                    # FIXME: Check that bias works
+                    # Enable bias only for one tile
                     val |= 0x1000000 | bias_offs[ll] << 16
                 apb_write_reg(tile, ll, 10, val, debug, comment=' // mask count')
 
