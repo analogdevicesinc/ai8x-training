@@ -1,0 +1,44 @@
+AI85 Discussion List
+
+Top Goal: Increase capacity
+Since we’re weight constrained, this primarily means optimizing weights in any way possible
+ 
+1. Increase # weights
+   * increase pure capacity
+   * also, allow 4-bit weights (plus 1, 2 if feasible)
+ 
+2. Per-layer scale factor
+   * also, this can be used to support Batch Norm (scale factor, shift + addition)
+ 
+3. Increase avg pooling accumulator
+   * currently, 2048 is the maximum (11 bits, supports roughly 3x3 or 4x4 after activation).
+     I’d like to allow 32x32 (= 18 bits) if possible
+ 
+4. Empty filter removal (per-filter)?
+   This could save some space but would require a bit in EACH prior or next filter indicating that a filter should be skipped. Probably too much trouble.
+ 
+5. Fully connected layer (in digital)
+   A fairly low priority in my opinion, but many networks use it as the classification layer. If we do it, it doesn’t have to be very big (the number of weights just blows up)
+ 
+6. Since the output of the ReLU is always positive, can we add a two configuration bits to each layer as follows:
+   First bit - tells the ReLU to output 8-bit unsigned (implied 9th bit as zero)
+   Second bit - tells the processor that there is an extra implied 9th bit in the input which is zero (this could tie in with the per-layer scale factor/shift)
+ 
+7. New operators
+   * Add “Skip” (add of previous data, see ResNet or Tiny SSD or Fire)
+   * Add 1x1 Convolution (for Fire, as used in many new nets such as Tiny SSD)
+   * Allow pooling without convolution (important for last layer)
+   * Add 1D Convolution (for sensor data)?
+
+8. Various
+   * Modify average pooling to round instead of truncate
+   * Improve average pooling to use higher internal resolution (this doesn’t sound feasible)?
+   * Check stride != 1 (this probably works)
+   * Allow weight read back for channel >= 4
+   * Check 4x4 pooling with stride of 2, 2x2 stride 1 (these probably work for even inputs), also 3x3 stride 2 (unknown)
+   * Check pooling that’s not a clean divider of the input dimensions (e.g., 17x17, pool_size=2, pool_stride=2)
+   * Add dilation support (2 — would allow the 3x3 kernel to span a 5x5 field)?
+   * Add optional padding to pooling?
+   * Is there a way to wake the Cortex-M when the CNN has finished?
+
+
