@@ -387,39 +387,13 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         for ll in range(layers):
             processor_map.append((((2**chan[ll])-1) << first_channel[ll]) & (2**MAX_CHANNELS - 1))
 
-        first_tile = []
-        used_processors = 0
+        # Calculate the tiles needed, and tiles and processors used overall
+        processors_used = 0
+        tile_map = []
         for ll in range(layers):
             bits = processor_map[ll]
-            used_processors |= bits
+            processors_used |= bits
 
-            # First active processor determines the first active tile
-            first_tile.append(ffs(bits) // P_NUMPRO)
-
-        # Calculate the tiles needed overall and for the first layer (needed for data loading)
-        tiles_used = []
-        first_layer_tiles = []
-        for tile in range(P_NUMTILES):
-            if (used_processors >> tile*P_NUMPRO) & (2**P_NUMPRO-1) != 0:
-                tiles_used.append(tile)
-            if (processor_map[0] >> tile*P_NUMPRO) & (2**P_NUMPRO-1) != 0:
-                first_layer_tiles.append(tile)
-
-        if debug:
-            print('per-layer configuration:')
-            print('------------------------')
-            print(f'number of channels = {chan}')
-            print('processor map      = [',
-                  ', '.join('{:016x}'.format(k) for k in processor_map), ']', sep='')
-            print(f'first active tile  = {first_tile}')
-            print(f'layer has bias     = {layer_has_bias}')
-            print('global configuration:')
-            print('---------------------')
-            print(f'used processors    = {used_processors:016x}')
-            print(f'used tiles         = {tiles_used}')
-            print(f'first layer tiles  = {first_layer_tiles}')
-
-        for ll in range(layers):
             if popcount(processor_map[ll]) != chan[ll]:
                 print(f'Layer {ll} has {chan[ll]} inputs, but enabled '
                       f'processors {processor_map[ll]:016x} does not match.')
@@ -428,6 +402,16 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 print(f'Layer {ll} is configured for {chan[ll]} inputs, which exceeds '
                       f'the system maximum of {MAX_CHANNELS}.')
                 sys.exit(1)
+            this_map = []
+            for tile in range(P_NUMTILES):
+                if (processor_map[ll] >> tile*P_NUMPRO) & (2**P_NUMPRO-1) != 0:
+                    this_map.append(tile)
+            tile_map.append(this_map)
+
+        tiles_used = []
+        for tile in range(P_NUMTILES):
+            if (processors_used >> tile*P_NUMPRO) & (2**P_NUMPRO-1) != 0:
+                tiles_used.append(tile)
 
         # Initialize CNN registers
 
@@ -487,7 +471,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         # first enabled tile for the layer, and only if the layer uses a bias. Keep track of the
         # offset so it can be programmed into the mask count register later.
         tile_bias_max = [0] * P_NUMTILES
-        bias_offs = [0] * layers
+        bias_offs = [None] * layers
+        bias_tile = [None] * layers
         for ll in range(layers):
             if not layer_has_bias[ll]:
                 continue
@@ -496,12 +481,32 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                       f'of bias values {len(bias[ll])}')
                 sys.exit(1)
 
-            tile = first_tile[ll]
+            tile = tile_map[ll][0]  # Pick the first tile. Could be smarter about this.
+            bias_tile[ll] = tile
             bias_offs[ll] = tile_bias_max[tile]
             # Each layer has output_channel number of bias values
             for i in range(chan[ll+1]):
                 apb_write_bias(tile, bias_offs[ll] + i, bias[ll][i])
             tile_bias_max[tile] += chan[ll+1]
+
+        if verbose:
+            print('\nGlobal configuration:')
+            print('---------------------')
+            print(f'Used processors    = {processors_used:016x}')
+            print(f'Used tiles         = {tiles_used}')
+            print('\nPer-tile configuration:')
+            print('-----------------------')
+            print(f'Used bias memory   = {tile_bias_max}')
+            print('\nPer-layer configuration:')
+            print('------------------------')
+            print(f'Number of channels = {chan}')
+            print('Processor map      = [',
+                  ', '.join('{:016x}'.format(k) for k in processor_map), ']', sep='')
+            print(f'Tile map           = {tile_map}')
+            print(f'Layer has bias     = {layer_has_bias}')
+            print(f'Tile with bias     = {bias_tile}')
+            print(f'Bias offsets       = {bias_offs}')
+            print('')
 
         def apb_write_byte_flush(offs, comment=''):
             if apb_write_byte.num > 0:
@@ -604,14 +609,14 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                       (0x80 if pool[ll] > 1 else 0) | \
                       (0x40 if big_data[ll] else 0) | \
                       (0x820)
-                if tile == first_tile[ll]:
+                if tile == tile_map[ll][0]:
                     # Set external source for other active processing tiles (can be zero if no
                     # other tiles are processing). Do not set the bit corresponding to this tile
                     # (e.g., if tile == 0, do not set bit 12)
                     # FIXME: Check whether the new code works, particularly for channel 0
                     # old: val |= (2**min(P_NUMTILES-1, chan[ll]-1, tiles[ll]-1) - 1) << 13
                     sources = 0
-                    for t in range(first_tile[ll]+1, P_NUMTILES):
+                    for t in range(tile_map[ll][0]+1, P_NUMTILES):
                         # See if any processors other than this one are operating
                         # and set the cnnsiena bit if true
                         if processor_map[ll] >> (t * P_NUMPRO) & (2**P_NUMPRO-1) != 0:
@@ -629,7 +634,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 # [24]    Bias enable
                 # [31:25] RFU
                 val = kern_offs[ll] << 8 | chan[ll+1]-1
-                if layer_has_bias[ll] and tile == first_tile[ll]:
+                if tile == bias_tile[ll]:
                     # Enable bias only for one tile (the first one used)
                     # FIXME: Check that bias works
                     val |= 0x1000000 | bias_offs[ll] << 16
