@@ -98,10 +98,11 @@ def conv2d(data, weight, bias, input_size, out_channels, kernel_size, stride, pa
                                           f'wt_offs={wt_offs}: weight*data={weight[k][c][wt_offs]}'
                                           f'*{data[c][src_offs]} -> accumulator = {val}')
 
-                val += bias[k]
+                if bias is not None:
+                    val += bias[k]
+                    if debug:
+                        print(f'+bias {bias[k]} --> output[{k}][{out_offs}] = {val}')
                 output[k][out_offs] = val
-                if debug:
-                    print(f'+bias {bias[k]} --> output[{k}][{out_offs}] = {val}')
                 out_offs += 1
 
 
@@ -206,7 +207,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                apb_base, layers, first_channel,
                input_size, kernel_size, chan, padding, dilation, stride,
                pool, pool_stride, pool_average, activate,
-               data, kernel, bias, layer_has_bias, big_data, split,
+               data, kernel, bias, big_data, split,
                in_offset, out_offset,
                input_filename, output_filename, c_filename,
                base_directory, runtest_filename, log_filename,
@@ -474,7 +475,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         bias_offs = [None] * layers
         bias_tile = [None] * layers
         for ll in range(layers):
-            if not layer_has_bias[ll]:
+            if bias[ll] is None:
                 continue
             if len(bias[ll]) != chan[ll+1]:
                 print(f'Layer {ll}: output channel count {chan[ll+1]} does not match the number '
@@ -503,7 +504,6 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             print('Processor map      = [',
                   ', '.join('{:016x}'.format(k) for k in processor_map), ']', sep='')
             print(f'Tile map           = {tile_map}')
-            print(f'Layer has bias     = {layer_has_bias}')
             print(f'Tile with bias     = {bias_tile}')
             print(f'Bias offsets       = {bias_offs}')
             print('')
@@ -1023,7 +1023,6 @@ def main():
 
     weights = []
     bias = []
-    layer_has_bias = []
 
     # Load weights and biases. This also configures the network channels.
     checkpoint = torch.load(args.checkpoint_file, map_location='cpu')
@@ -1050,12 +1049,8 @@ def main():
                 bias_name = operation + '.bias'
                 if bias_name in checkpoint_state:
                     bias.append(w.reshape(1))
-                    layer_has_bias.append(True)
                 else:
-                    # Append empty bias but don't program it into device
-                    # This simplifies simulation of the operation
-                    bias.append(np.repeat(np.asarray(0, dtype=np.int64), output_channels[-1]))
-                    layer_has_bias.append(False)
+                    bias.append(None)
 
     # We don't support changing the following, but leave as parameters
     stride = [1] * layers
@@ -1097,7 +1092,7 @@ def main():
                     args.overwrite_ok, args.log, args.apb_base, layers, first_channel,
                     input_size, kernel_size, output_channels, padding, dilation, stride,
                     pool, pool_stride, pool_average, activate,
-                    data, weights, bias, layer_has_bias, big_data,
+                    data, weights, bias, big_data,
                     args.input_split,
                     args.input_offset, output_offset,
                     args.input_filename, args.output_filename, args.c_filename,
