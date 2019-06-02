@@ -33,11 +33,12 @@ C_BRAM_BASE = C_CNN_BASE + 0xC800
 C_SRAM_BASE = C_CNN_BASE + 0x10000
 C_TILE_OFFS = 0x100000
 P_NUMTILES = 4
-P_NUMPRO = 16
+P_NUMPRO = 16  # Processors per tile
+P_SHARED = 4  # Processors sharing a data memory
 
 INSTANCE_SIZE = 1024  # x32
 TILE_SIZE = 0x40000
-MEM_SIZE = INSTANCE_SIZE*16  # x32
+MEM_SIZE = INSTANCE_SIZE*P_NUMPRO*P_NUMTILES//P_SHARED  # x32
 MAX_DATA_DIM = 512  # Max theoretical size of single channel, used for command line validation only
 MAX_CHANNELS = P_NUMPRO*P_NUMTILES
 
@@ -206,7 +207,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                input_size, kernel_size, chan, padding, dilation, stride,
                pool, pool_stride, pool_average, activate,
                data, kernel, bias, layer_has_bias, big_data, split,
-               in_offset, out_offset, mem_instance, mem_tile,
+               in_offset, out_offset,
                input_filename, output_filename, c_filename,
                base_directory, runtest_filename, log_filename,
                seed, zero_unused, timeout, block_mode, verify_writes):
@@ -556,8 +557,12 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
                 # Configure SRAM write pointer ('config_cnn_wptr') -- write ptr is global
                 # print(f'LL {ll} first_channel[ll+1] {first_channel[ll+1]} layers {layers}')
-                offs = first_channel[ll+1] * INSTANCE_SIZE * 4 if ll+1 < layers else 0
-                apb_write_reg(tile, ll, 6, (out_offset[ll+1] + offs) // 4, debug,
+                # FIXME: Check this works, especially if the first used processor is not
+                # a multiple of 4
+                # OLD: offs = first_channel[ll+1] * INSTANCE_SIZE if ll+1 < layers else 0
+                offs = (ffs(processor_map[ll+1]) & ~(P_SHARED-1)) * INSTANCE_SIZE \
+                    if ll+1 < layers else 0
+                apb_write_reg(tile, ll, 6, out_offset[ll+1] // 4 + offs, debug,
                               comment=' // SRAM write ptr')
 
                 # Configure write pointer mask offset count ('config_cnn_woff')
@@ -572,7 +577,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     val = 0
                 apb_write_reg(tile, ll, 7, val, debug, comment=' // mask offset count')
 
-                # Configure sram read ptr count ('config_cnn_rptr')
+                # Configure sram read ptr count ('config_cnn_rptr') -- read ptr is local
                 # Source address must match write pointer of previous layer (minus global offset)
                 apb_write_reg(tile, ll, 8, out_offset[ll] // 4, comment=' // SRAM read ptr')
 
@@ -672,7 +677,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 tiles0 = len(first_layer_tiles)  # FIXME
                 for c in range(tile, tile+(input_size[0] + tiles0-1) // tiles0):
                     # New channel - round up to next instance
-                    data_offs = ((data_offs + mem_instance - 1) // mem_instance) * mem_instance
+                    data_offs = ((data_offs + INSTANCE_SIZE - 1) // INSTANCE_SIZE) * INSTANCE_SIZE
                     # (Note: We do not need to flush here, since that is done at the
                     # end of each channel's output below)
                     if debug:
@@ -698,8 +703,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                         row -= 2*overlap  # Rewind
                         # Switch to next memory instance
                         if split > 1 and s + 1 < split:
-                            new_data_offs = ((data_offs + mem_instance - 1) //
-                                             mem_instance) * mem_instance
+                            new_data_offs = ((data_offs + INSTANCE_SIZE - 1) //
+                                             INSTANCE_SIZE) * INSTANCE_SIZE
                             if new_data_offs != data_offs:
                                 apb_write_byte_flush(0)
                             data_offs = new_data_offs
@@ -716,8 +721,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 memfile.write(f'\n  // HWC (little data) input: {dim[0][0]}x{dim[0][1]}, '
                               f'channels {c+1} to {c+4} ({chan[0]} inputs)\n')
                 # Round up to next instance
-                data_offs = ((data_offs + 0x10*mem_instance-1) // (0x10*mem_instance)) * \
-                    0x10*mem_instance
+                data_offs = ((data_offs + 0x10*INSTANCE_SIZE-1) // (0x10*INSTANCE_SIZE)) * \
+                    0x10*INSTANCE_SIZE
                 if debug:
                     print(f'T{tile} L0 data_offs:      {data_offs:08x}')
                 for row in range(input_size[1]):
@@ -820,7 +825,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                         if c+3 < chan[ll+1]:
                             val |= (out_buf[c+3][row][col] & 0xff) << 24
 
-                        offs = out_offset[ll+1] + ((c % 16)*mem_instance + (c // 16)*mem_tile +
+                        offs = out_offset[ll+1] + ((c % 16)*INSTANCE_SIZE + (c // 16)*TILE_SIZE +
                                                    row*out_size[2] + col)*4 + C_SRAM_BASE
 
                         # If using single layer, make sure we're not overwriting the input
@@ -1073,7 +1078,6 @@ def main():
                     data, weights, bias, layer_has_bias, big_data,
                     args.input_split,
                     args.input_offset, output_offset,
-                    INSTANCE_SIZE, TILE_SIZE,
                     args.input_filename, args.output_filename, args.c_filename,
                     args.test_dir, args.runtest_filename, args.log_filename,
                     args.seed,
