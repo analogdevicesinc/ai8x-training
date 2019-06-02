@@ -498,12 +498,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 # print(f'should be {chan[ll]*chan[ll+1]}')
                 for i in range(chan[ll+1]):
                     # print(f'i {i} L {ll} C {c}: Channel index {i + ch*chan[ll+1]} -> ', end='')
-                    if big_data[ll]:
-                        k = kernel[ll][i + ch*chan[ll+1]].flatten()  # CHW
-                    else:
-                        k = kernel[ll][ch + i*chan[ll]].flatten()  # Transpose for HWC/little data
-                    # print(f'{k}')
-
+                    k = kernel[ll][ch + i*chan[ll]].flatten()
                     if debug:
                         print(f'Channel {c} Layer {ll} m{i}/{chan[ll+1]-1}: {k}')
                     apb_write_kern(ll, c, chan_kern_max[c] + i, k)
@@ -730,14 +725,15 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         memfile.write(f'\n\n  // {chan[0]}-channel data input\n')
         c = 0
         data_offs = 0
-        for ch in range(0, MAX_CHANNELS, 1 if big_data[0] else 4):
-            if (processor_map[0] >> ch) & 0x0f == 0:
-                # Block of four not used for input
+        step = 1 if big_data[0] else 4
+        for ch in range(0, MAX_CHANNELS, step):
+            if (processor_map[0] >> ch) & (2**step-1) == 0:
+                # Channel or block of four channels not used for input
                 continue
 
             # Load channel into shared memory
             tile = ch // P_NUMPRO
-            group = ch // P_SHARED
+            group = (ch % P_NUMPRO) // P_SHARED
             new_data_offs = C_TILE_OFFS*tile + C_SRAM_BASE + INSTANCE_SIZE*4*group
             if new_data_offs == data_offs:
                 print('Layer 0 processor map is misconfigured for data input. '
@@ -841,7 +837,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             apb_write_ctl(tile, 0, 0x807, comment=f' // enable tile {tile}')
 
         # Master control - go
-        apb_write_ctl(tiles_used[0], 0, 0x07, comment=f' //  master enable tile {tiles_used[0]}')
+        apb_write_ctl(tiles_used[0], 0, 0x07, comment=f' // master enable tile {tiles_used[0]}')
 
         if not block_mode:
             memfile.write('  return 1;\n}\n\nint main(void)\n{\n  icache_enable();\n')
@@ -853,6 +849,9 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         # End of input
 
     in_map = apb_write_byte_flush.mem
+
+    if verbose:
+        print('')
 
     # Compute layer-by-layer output and chain results into input
     for ll in range(layers):
