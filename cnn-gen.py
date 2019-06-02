@@ -381,28 +381,28 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             """
             return bin(x).count('1')
 
+        # FIXME: Make this a command line argument and delete first_channel
         processor_map = []
+        for ll in range(layers):
+            processor_map.append((((2**chan[ll])-1) << first_channel[ll]) & (2**MAX_CHANNELS - 1))
+
         first_tile = []
         used_processors = 0
         for ll in range(layers):
-            bits = (((2**chan[ll])-1) << first_channel[ll]) & (2**MAX_CHANNELS - 1)
-            processor_map.append(bits)
+            bits = processor_map[ll]
             used_processors |= bits
 
             # First active processor determines the first active tile
             first_tile.append(ffs(bits) // P_NUMPRO)
 
-        # Calculate the tiles needed overall
+        # Calculate the tiles needed overall and for the first layer (needed for data loading)
         tiles_used = []
+        first_layer_tiles = []
         for tile in range(P_NUMTILES):
             if (used_processors >> tile*P_NUMPRO) & (2**P_NUMPRO-1) != 0:
                 tiles_used.append(tile)
-
-        # FIXME: Add channel_start to this
-        tiles = [min(P_NUMTILES,
-                     max(chan[ll] if big_data[ll] else (chan[ll]+P_NUMPRO-1) // P_NUMPRO,
-                         (chan[ll+1]+P_NUMPRO-1) // P_NUMPRO))
-                 for ll in range(layers)]
+            if (processor_map[0] >> tile*P_NUMPRO) & (2**P_NUMPRO-1) != 0:
+                first_layer_tiles.append(tile)
 
         if debug:
             print('per-layer configuration:')
@@ -416,6 +416,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             print('---------------------')
             print(f'used processors    = {used_processors:016x}')
             print(f'used tiles         = {tiles_used}')
+            print(f'first layer tiles  = {first_layer_tiles}')
 
         for ll in range(layers):
             if popcount(processor_map[ll]) != chan[ll]:
@@ -658,88 +659,92 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     apb_write_reg(tile, ll, 11, 0, comment=' // zero unused layer registers')
                     apb_write_reg(tile, ll, 12, 0, comment=' // zero unused layer registers')
 
-            # Load data memory ('admod_sram'/'lildat_sram')
-            data_offs = C_TILE_OFFS*tile + C_SRAM_BASE
-            if big_data[0]:
-                if tile < chan[0]:
-                    memfile.write(f'\n  // CHW (big data) input: {dim[0][0]}x{dim[0][1]}, '
-                                  f'channel {tile+1} of {chan[0]}\n')
-                    # CHW ("Big Data") Mode - Channels in sequence
-                    chunk = input_size[1] // split
-                    for c in range(tile, tile+(input_size[0] + tiles[0]-1) // tiles[0]):
-                        # New channel - round up to next instance
-                        data_offs = ((data_offs + mem_instance - 1) // mem_instance) * mem_instance
-                        # (Note: We do not need to flush here, since that is done at the
-                        # end of each channel's output below)
-                        if debug:
-                            print(f'T{tile} L0 data_offs:      {data_offs:08x}')
-                        if split > 1:
-                            # Add top pad
-                            for _ in range(padding[0]):
-                                for _ in range(input_size[2]):
-                                    apb_write_byte(data_offs, 0)
-                                    data_offs += 1
-
-                        row = 0
-                        for s in range(split):
-                            if split > 1 and s + 1 < split:
-                                overlap = padding[0]
-                            else:
-                                overlap = 0
-                            while row < (s + 1) * chunk + overlap:
-                                for col in range(input_size[2]):
-                                    apb_write_byte(data_offs, s2u(data[c][row][col]))
-                                    data_offs += 1
-                                row += 1
-                            row -= 2*overlap  # Rewind
-                            # Switch to next memory instance
-                            if split > 1 and s + 1 < split:
-                                new_data_offs = ((data_offs + mem_instance - 1) //
-                                                 mem_instance) * mem_instance
-                                if new_data_offs != data_offs:
-                                    apb_write_byte_flush(0)
-                                data_offs = new_data_offs
-                        if split > 1:
-                            # Add bottom pad
-                            for _ in range(padding[0]):
-                                for _ in range(input_size[2]):
-                                    apb_write_byte(data_offs, 0)
-                                    data_offs += 1
-                        apb_write_byte_flush(0)
-            else:
-                # HWC ("Little Data") - Four channels packed into a word
-                for c in range(tile*P_NUMPRO, min(chan[0], (tile+1)*P_NUMPRO), 4):
-                    memfile.write(f'\n  // HWC (little data) input: {dim[0][0]}x{dim[0][1]}, '
-                                  f'channels {c+1} to {c+4} ({chan[0]} inputs)\n')
-                    # Round up to next instance
-                    data_offs = ((data_offs + 0x10*mem_instance-1) // (0x10*mem_instance)) * \
-                        0x10*mem_instance
+        # Load data memory ('admod_sram'/'lildat_sram')
+        # Start loading at the first used tile
+        tile = first_tile[0]
+        data_offs = C_TILE_OFFS*tile + C_SRAM_BASE
+        if big_data[0]:
+            if tile < chan[0]:
+                memfile.write(f'\n  // CHW (big data) input: {dim[0][0]}x{dim[0][1]}, '
+                              f'channel {tile+1} of {chan[0]}\n')
+                # CHW ("Big Data") Mode - Channels in sequence
+                chunk = input_size[1] // split
+                tiles0 = len(first_layer_tiles)  # FIXME
+                for c in range(tile, tile+(input_size[0] + tiles0-1) // tiles0):
+                    # New channel - round up to next instance
+                    data_offs = ((data_offs + mem_instance - 1) // mem_instance) * mem_instance
+                    # (Note: We do not need to flush here, since that is done at the
+                    # end of each channel's output below)
                     if debug:
                         print(f'T{tile} L0 data_offs:      {data_offs:08x}')
-                    for row in range(input_size[1]):
-                        for col in range(input_size[2]):
-                            if c < chan[0]:
+                    if split > 1:
+                        # Add top pad
+                        for _ in range(padding[0]):
+                            for _ in range(input_size[2]):
+                                apb_write_byte(data_offs, 0)
+                                data_offs += 1
+
+                    row = 0
+                    for s in range(split):
+                        if split > 1 and s + 1 < split:
+                            overlap = padding[0]
+                        else:
+                            overlap = 0
+                        while row < (s + 1) * chunk + overlap:
+                            for col in range(input_size[2]):
                                 apb_write_byte(data_offs, s2u(data[c][row][col]))
-                            else:
+                                data_offs += 1
+                            row += 1
+                        row -= 2*overlap  # Rewind
+                        # Switch to next memory instance
+                        if split > 1 and s + 1 < split:
+                            new_data_offs = ((data_offs + mem_instance - 1) //
+                                             mem_instance) * mem_instance
+                            if new_data_offs != data_offs:
+                                apb_write_byte_flush(0)
+                            data_offs = new_data_offs
+                    if split > 1:
+                        # Add bottom pad
+                        for _ in range(padding[0]):
+                            for _ in range(input_size[2]):
                                 apb_write_byte(data_offs, 0)
-                            data_offs += 1
-                            # Always write multiple of four bytes even for last input
-                            if c+1 < chan[0]:
-                                apb_write_byte(data_offs, s2u(data[c+1][row][col]))
-                            else:
-                                apb_write_byte(data_offs, 0)
-                            data_offs += 1
-                            if c+2 < chan[0]:
-                                apb_write_byte(data_offs, s2u(data[c+2][row][col]))
-                            else:
-                                apb_write_byte(data_offs, 0)
-                            data_offs += 1
-                            if c+3 < chan[0]:
-                                apb_write_byte(data_offs, s2u(data[c+3][row][col]))
-                            else:
-                                apb_write_byte(data_offs, 0)
-                            data_offs += 1
+                                data_offs += 1
                     apb_write_byte_flush(0)
+        else:
+            # HWC ("Little Data") - Four channels packed into a word
+            for c in range(tile*P_NUMPRO, min(chan[0], (tile+1)*P_NUMPRO), 4):
+                memfile.write(f'\n  // HWC (little data) input: {dim[0][0]}x{dim[0][1]}, '
+                              f'channels {c+1} to {c+4} ({chan[0]} inputs)\n')
+                # Round up to next instance
+                data_offs = ((data_offs + 0x10*mem_instance-1) // (0x10*mem_instance)) * \
+                    0x10*mem_instance
+                if debug:
+                    print(f'T{tile} L0 data_offs:      {data_offs:08x}')
+                for row in range(input_size[1]):
+                    for col in range(input_size[2]):
+                        if c < chan[0]:
+                            apb_write_byte(data_offs, s2u(data[c][row][col]))
+                        else:
+                            apb_write_byte(data_offs, 0)
+                        data_offs += 1
+                        # Always write multiple of four bytes even for last input
+                        if c+1 < chan[0]:
+                            apb_write_byte(data_offs, s2u(data[c+1][row][col]))
+                        else:
+                            apb_write_byte(data_offs, 0)
+                        data_offs += 1
+                        if c+2 < chan[0]:
+                            apb_write_byte(data_offs, s2u(data[c+2][row][col]))
+                        else:
+                            apb_write_byte(data_offs, 0)
+                        data_offs += 1
+                        if c+3 < chan[0]:
+                            apb_write_byte(data_offs, s2u(data[c+3][row][col]))
+                        else:
+                            apb_write_byte(data_offs, 0)
+                        data_offs += 1
+                apb_write_byte_flush(0)
+        memfile.write(f'  // End of input\n\n')
 
         # Enable all needed tiles except the first one
         for _, tile in enumerate(tiles_used[1:]):
