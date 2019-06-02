@@ -309,8 +309,10 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         if not block_mode:
             memfile.write('#include "global_functions.h"\n')
             memfile.write('#include <stdlib.h>\n')
-            memfile.write('#include <stdint.h>\n\n')
-            memfile.write('int cnn_check(void);\n\n')
+            memfile.write('#include <stdint.h>\n')
+            if c_library:
+                memfile.write('#include <string.h>\n')
+            memfile.write('\nint cnn_check(void);\n\n')
             memfile.write('void cnn_wait(void)\n{\n')
             memfile.write(f'  while ((*((volatile uint32_t *) 0x{apb_base + C_CNN_BASE:08x}) '
                           '& (1<<12)) != 1<<12) ;\n}\n\n')
@@ -445,7 +447,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             # Zero out Tornado RAM ('zero_tram')
             if c_library:
                 addr = apb_base + C_TILE_OFFS*tile + C_TRAM_BASE
-                memfile.write(f'  memset(*((volatile uint32_t *) 0x{addr:08x}), 0, '
+                memfile.write(f'  memset((uint32_t *) 0x{addr:08x}, 0, '
                               f'{2**P_TRAMABITS * P_NUMPRO * 4}); // zero TRAM tile {tile}\n')
             else:
                 for p in range(P_NUMPRO):
