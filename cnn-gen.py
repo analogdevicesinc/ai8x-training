@@ -1066,7 +1066,8 @@ def main():
                 # Is there a bias for this layer?
                 bias_name = operation + '.bias'
                 if bias_name in checkpoint_state:
-                    bias.append(w.reshape(1))
+                    w = checkpoint_state[bias_name].numpy().astype(np.int64)
+                    bias.append(w)
                 else:
                     bias.append(None)
 
