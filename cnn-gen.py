@@ -671,66 +671,75 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     apb_write_reg(tile, ll, 12, 0, comment=' // zero unused layer registers')
 
         # Load data memory ('admod_sram'/'lildat_sram')
+        # FIXME: Check that this works for unusual processor maps and for big data input.
         # Start loading at the first used tile
-        tile = first_tile[0]
-        data_offs = C_TILE_OFFS*tile + C_SRAM_BASE
-        if big_data[0]:
-            if tile < chan[0]:
-                memfile.write(f'\n  // CHW (big data) input: {dim[0][0]}x{dim[0][1]}, '
-                              f'channel {tile+1} of {chan[0]}\n')
-                # CHW ("Big Data") Mode - Channels in sequence
-                chunk = input_size[1] // split
-                tiles0 = len(first_layer_tiles)  # FIXME
-                for c in range(tile, tile+(input_size[0] + tiles0-1) // tiles0):
-                    # New channel - round up to next instance
-                    data_offs = ((data_offs + INSTANCE_SIZE - 1) // INSTANCE_SIZE) * INSTANCE_SIZE
-                    # (Note: We do not need to flush here, since that is done at the
-                    # end of each channel's output below)
-                    if debug:
-                        print(f'T{tile} L0 data_offs:      {data_offs:08x}')
-                    if split > 1:
-                        # Add top pad
-                        for _ in range(padding[0]):
-                            for _ in range(input_size[2]):
-                                apb_write_byte(data_offs, 0)
-                                data_offs += 1
+        memfile.write(f'\n\n  // Data input\n')
+        c = 0
+        data_offs = 0
+        for ch in range(0, MAX_CHANNELS, 1 if big_data[0] else 4):
+            if (processor_map[0] >> ch) & 0x0f == 0:
+                # Block of four not used for input
+                continue
 
-                    row = 0
-                    for s in range(split):
-                        if split > 1 and s + 1 < split:
-                            overlap = padding[0]
-                        else:
-                            overlap = 0
-                        while row < (s + 1) * chunk + overlap:
-                            for col in range(input_size[2]):
-                                apb_write_byte(data_offs, s2u(data[c][row][col]))
-                                data_offs += 1
-                            row += 1
-                        row -= 2*overlap  # Rewind
-                        # Switch to next memory instance
-                        if split > 1 and s + 1 < split:
-                            new_data_offs = ((data_offs + INSTANCE_SIZE - 1) //
-                                             INSTANCE_SIZE) * INSTANCE_SIZE
-                            if new_data_offs != data_offs:
-                                apb_write_byte_flush(0)
-                            data_offs = new_data_offs
-                    if split > 1:
-                        # Add bottom pad
-                        for _ in range(padding[0]):
-                            for _ in range(input_size[2]):
-                                apb_write_byte(data_offs, 0)
-                                data_offs += 1
-                    apb_write_byte_flush(0)
-        else:
-            # HWC ("Little Data") - Four channels packed into a word
-            for c in range(tile*P_NUMPRO, min(chan[0], (tile+1)*P_NUMPRO), 4):
-                memfile.write(f'\n  // HWC (little data) input: {dim[0][0]}x{dim[0][1]}, '
-                              f'channels {c+1} to {c+4} ({chan[0]} inputs)\n')
-                # Round up to next instance
-                data_offs = ((data_offs + 0x10*INSTANCE_SIZE-1) // (0x10*INSTANCE_SIZE)) * \
-                    0x10*INSTANCE_SIZE
-                if debug:
-                    print(f'T{tile} L0 data_offs:      {data_offs:08x}')
+            # Load channel into shared memory
+            tile = ch // P_NUMPRO
+            group = ch // P_SHARED
+            new_data_offs = C_TILE_OFFS*tile + C_SRAM_BASE + INSTANCE_SIZE*4*group
+            if new_data_offs == data_offs:
+                print('Layer 0 processor map is misconfigured for data input. '
+                      f'There is data overlap between processors {ch-1} and {ch}')
+                sys.exit(1)
+            data_offs = new_data_offs
+
+            if debug:
+                print(f'T{tile} L0 data_offs:      {data_offs:08x}')
+
+            if big_data[0]:
+                # CHW ("Big Data") - Separate channel sequences (BBBBB....GGGGG....RRRRR....)
+                memfile.write(f'  // CHW (big data): {dim[0][0]}x{dim[0][1]}, '
+                              f'channel {c} (of {chan[0]} inputs)\n')
+
+                chunk = input_size[1] // split
+
+                # (Note: We do not need to flush here, since that is done at the
+                # end of each channel's output below)
+                if split > 1:
+                    # Add top pad
+                    for _ in range(padding[0]):
+                        for _ in range(input_size[2]):
+                            apb_write_byte(data_offs, 0)
+                            data_offs += 1
+                row = 0
+                for s in range(split):
+                    if split > 1 and s + 1 < split:
+                        overlap = padding[0]
+                    else:
+                        overlap = 0
+                    while row < (s + 1) * chunk + overlap:
+                        for col in range(input_size[2]):
+                            apb_write_byte(data_offs, s2u(data[c][row][col]))
+                            data_offs += 1
+                        row += 1
+                    row -= 2*overlap  # Rewind
+                    # Switch to next memory instance
+                    if split > 1 and s + 1 < split:
+                        new_data_offs = ((data_offs + INSTANCE_SIZE - 1) //
+                                         INSTANCE_SIZE) * INSTANCE_SIZE
+                        if new_data_offs != data_offs:
+                            apb_write_byte_flush(0)
+                        data_offs = new_data_offs
+                if split > 1:
+                    # Add bottom pad
+                    for _ in range(padding[0]):
+                        for _ in range(input_size[2]):
+                            apb_write_byte(data_offs, 0)
+                            data_offs += 1
+                c += 1
+            else:
+                # HWC ("Little Data") - Four channels packed into a word (0BGR0BGR0BGR0BGR0BGR....)
+                memfile.write(f'  // HWC (little data): {dim[0][0]}x{dim[0][1]}, '
+                              f'channels {c} to {min(c+3, chan[0]-1)} (of {chan[0]} inputs)\n')
+
                 for row in range(input_size[1]):
                     for col in range(input_size[2]):
                         if c < chan[0]:
@@ -754,8 +763,14 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                         else:
                             apb_write_byte(data_offs, 0)
                         data_offs += 1
-                apb_write_byte_flush(0)
-        memfile.write(f'  // End of input\n\n')
+                c += 4
+
+            apb_write_byte_flush(0)
+            if c >= chan[0]:
+                # Consumed all available channels
+                break
+
+        memfile.write(f'  // End of data input\n\n')
 
         # Enable all needed tiles except the first one
         for _, tile in enumerate(tiles_used[1:]):
