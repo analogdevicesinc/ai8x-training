@@ -13,8 +13,10 @@ import argparse
 import os
 import signal
 import sys
+
 import numpy as np
 import torch
+
 import sampledata
 
 # CNN hardware parameters
@@ -367,29 +369,69 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
         apb_write.foffs = 0
 
-        # Initialize CNN registers
+        def ffs(x):
+            """
+            Returns the index, counting from 0, of the least significant set bit in `x`.
+            """
+            return (x & -x).bit_length() - 1
 
-        # Calculate the number of tiles needed for each layer
+        def popcount(x):
+            """
+            Return the number of '1' bits in `x`.
+            """
+            return bin(x).count('1')
+
+        processor_map = []
+        first_tile = []
+        used_processors = 0
+        for ll in range(layers):
+            bits = (((2**chan[ll])-1) << first_channel[ll]) & (2**MAX_CHANNELS - 1)
+            processor_map.append(bits)
+            used_processors |= bits
+
+            # First active processor determines the first active tile
+            first_tile.append(ffs(bits) // P_NUMPRO)
+
+        # Calculate the tiles needed overall
+        tiles_used = []
+        for tile in range(P_NUMTILES):
+            if (used_processors >> tile*P_NUMPRO) & (2**P_NUMPRO-1) != 0:
+                tiles_used.append(tile)
+
         # FIXME: Add channel_start to this
         tiles = [min(P_NUMTILES,
                      max(chan[ll] if big_data[ll] else (chan[ll]+P_NUMPRO-1) // P_NUMPRO,
                          (chan[ll+1]+P_NUMPRO-1) // P_NUMPRO))
                  for ll in range(layers)]
-        needed_tiles = max(tiles)  # Maximum tiles needed across whole network
 
         if debug:
-            print(f'channels           = {chan}')
-            print(f'first channel      = {first_channel}')
-            print(f'tiles              = {tiles}')
-            print(f'max tiles          = {needed_tiles}')
+            print('per-layer configuration:')
+            print('------------------------')
+            print(f'number of channels = {chan}')
+            print('processor map      = [',
+                  ', '.join('{:016x}'.format(k) for k in processor_map), ']', sep='')
+            print(f'first active tile  = {first_tile}')
             print(f'layer has bias     = {layer_has_bias}')
+            print('global configuration:')
+            print('---------------------')
+            print(f'used processors    = {used_processors:016x}')
+            print(f'used tiles         = {tiles_used}')
+
+        for ll in range(layers):
+            if popcount(processor_map[ll]) != chan[ll]:
+                print(f'Layer {ll} has {chan[ll]} inputs, but enabled '
+                      f'processors {processor_map[ll]:016x} does not match.')
+                sys.exit(1)
+
+        # Initialize CNN registers
 
         # Disable completely unused tiles
-        for tile in range(needed_tiles, P_NUMTILES):
-            apb_write_ctl(tile, 0, 0, comment=f' // disable tile {tile}')
+        for tile in range(P_NUMTILES):
+            if tile not in tiles_used:
+                apb_write_ctl(tile, 0, 0, comment=f' // disable tile {tile}')
 
         # Configure global control registers for used tiles
-        for tile in range(needed_tiles):
+        for _, tile in enumerate(tiles_used):
             # Zero out Tornado RAM ('zero_tram')
             for p in range(P_NUMPRO):
                 for offs in range(2**P_TRAMABITS):
@@ -404,42 +446,50 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
         # Kernels ('load_mask')
         # Write only the kernels needed
-        max_ptr = [0] * MAX_CHANNELS
-        chan_kern_offs = [0] * layers
+        chan_kern_max = [0] * MAX_CHANNELS
+        kern_offs = [0] * layers
         for ll in range(layers):
             # Stack kernels
-            chan_kern_offs[ll] = max_ptr[first_channel[ll]]
-            for c in range(chan[ll]):
-                ch = first_channel[ll] + c
+            # Get highest offset for all used channels
+            ch = 0
+            for c in range(MAX_CHANNELS):
+                if (processor_map[ll] >> c) & 1 == 0:
+                    # Unused processor
+                    continue
+
+                kern_offs[ll] = max(chan_kern_max[c], kern_offs[ll])
+
                 # print(f'c {c}, Kernel dimensions layer {ll}: {kernel[ll].shape}')
                 # print(f'should be {chan[ll]*chan[ll+1]}')
                 for i in range(chan[ll+1]):
-                    # print(f'i {i} L {ll} C {c}: Channel index {i + c*chan[ll+1]} -> ', end='')
+                    # print(f'i {i} L {ll} C {c}: Channel index {i + ch*chan[ll+1]} -> ', end='')
                     if big_data[ll]:
-                        k = kernel[ll][i + c*chan[ll+1]].flatten()
+                        k = kernel[ll][i + ch*chan[ll+1]].flatten()
                     else:
-                        k = kernel[ll][c + i*chan[ll]].flatten()  # Transpose for HWC/little data
+                        k = kernel[ll][ch + i*chan[ll]].flatten()  # Transpose for HWC/little data
                     # print(f'{k}')
 
                     if debug:
-                        print(f'Channel {ch} Layer {ll} m{i}/{chan[ll+1]-1}: {k}')
-                    apb_write_kern(ch, max_ptr[ch] + i, k)
-                max_ptr[ch] += chan[ll+1]
+                        print(f'Channel {c} Layer {ll} m{i}/{chan[ll+1]-1}: {k}')
+                    apb_write_kern(c, chan_kern_max[c] + i, k)
+                chan_kern_max[c] += chan[ll+1]
+                ch += 1
 
-        # Bias ('zero_bias_ram')  # FIXME: remove 'tiles'
+        # Bias ('zero_bias_ram')
+        # FIXME: remove 'tiles'
         # offs = 0
         # i = 0
         # ll = 0
         # for _ in range(2**P_BRAMABITS):
         #     if ll < layers:
-        #         for tile in range(needed_tiles):
+        #         for _, tile in enumerate(tiles_used):
         #             apb_write_bias(tile, offs, bias[ll][i])
         #         i += 1
         #         if i >= chan[ll+1]:
         #             ll += 1
         #             i = 0
         #     else:
-        #         for tile in range(needed_tiles):
+        #         for _, tile in enumerate(tiles_used):
         #             apb_write_bias(tile, offs, 0)
         #     offs += 1
 
@@ -478,7 +528,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         apb_write_byte.data_offs = 0
 
         # Configure per-layer control registers
-        for tile in range(needed_tiles):
+        for _, tile in enumerate(tiles_used):
             bias_ptr = 0
 
             for ll in range(layers):
@@ -542,10 +592,19 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                       (0x80 if pool[ll] > 1 else 0) | \
                       (0x40 if big_data[ll] else 0) | \
                       (0x820)
-                if tile == 0:
-                    # Set external source for other active processing tiles
-                    # (will be zero if only this tile is processing, never set bit 12)
-                    val |= (2**min(P_NUMTILES-1, chan[ll]-1, tiles[ll]-1) - 1) << 13  # FIXME
+                if tile == first_tile[ll]:
+                    # Set external source for other active processing tiles (can be zero if no
+                    # other tiles are processing). Do not set the bit corresponding to this tile
+                    # (e.g., if tile == 0, do not set bit 12)
+                    # FIXME: Check whether the new code works, particularly for channel 0
+                    # old: val |= (2**min(P_NUMTILES-1, chan[ll]-1, tiles[ll]-1) - 1) << 13
+                    sources = 0
+                    for t in range(first_tile[ll]+1, P_NUMTILES):
+                        # See if any processors other than this one are operating
+                        # and set the cnnsiena bit if true
+                        if processor_map[ll] >> (t * P_NUMPRO) & (2**P_NUMPRO-1) != 0:
+                            sources |= 1 << t
+                    val |= sources << 12
                 apb_write_reg(tile, ll, 9, val, debug, comment=' // layer control')
 
                 # Configure mask count ('config_cnn_mask')
@@ -557,10 +616,11 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 # [23:16] Bias pointer starting address
                 # [24]    Bias enable
                 # [31:25] RFU
-                val = bias_ptr << 16 | chan_kern_offs[ll] << 8 | chan[ll+1]-1
-                # if tile == 0:
-                #     val |= 0x1000000  # Enable bias only for one tile FIXME: enable bias
+                val = bias_ptr << 16 | kern_offs[ll] << 8 | chan[ll+1]-1
+                if layer_has_bias[ll] and tile == first_tile[ll]:
+                    val |= 0x1000000  # Enable bias only for one tile (the first one used)
                 apb_write_reg(tile, ll, 10, val, debug, comment=' // mask count')
+                # FIXME: Fix bias
                 # bias_ptr += chan[ll+1]  # Each layer has output_channel number of bias values
 
                 # Configure tram pointer max ('config_cnn_tptr')
@@ -579,25 +639,24 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 # channels, 0x000f000f would be correct.
                 #
                 # Enable at most 16 processors and masks
-                bits = ((((2**chan[ll])-1) << first_channel[ll]) >> tile*P_NUMPRO) & \
-                    (2**P_NUMPRO - 1)
+                bits = (processor_map[ll] >> tile*P_NUMPRO) & (2**P_NUMPRO - 1)
                 apb_write_reg(tile, ll, 12, bits << 16 | bits, debug,
                               comment=' // mask and processor enables')
 
             if zero_unused:
                 for ll in range(layers, C_MAX_LAYERS):
-                    apb_write_reg(tile, ll, 0, 0, comment=' // zero unused')
-                    apb_write_reg(tile, ll, 1, 0, comment=' // zero unused')
-                    apb_write_reg(tile, ll, 3, 0, comment=' // zero unused')
-                    apb_write_reg(tile, ll, 4, 0, comment=' // zero unused')
-                    apb_write_reg(tile, ll, 5, 0, comment=' // zero unused')
-                    apb_write_reg(tile, ll, 6, 0, comment=' // zero unused')
-                    apb_write_reg(tile, ll, 7, 0, comment=' // zero unused')
-                    apb_write_reg(tile, ll, 8, 0, comment=' // zero unused')
-                    apb_write_reg(tile, ll, 9, 0, comment=' // zero unused')
-                    apb_write_reg(tile, ll, 10, 0, comment=' // zero unused')
-                    apb_write_reg(tile, ll, 11, 0, comment=' // zero unused')
-                    apb_write_reg(tile, ll, 12, 0, comment=' // zero unused')
+                    apb_write_reg(tile, ll, 0, 0, comment=' // zero unused layer registers')
+                    apb_write_reg(tile, ll, 1, 0, comment=' // zero unused layer registers')
+                    apb_write_reg(tile, ll, 3, 0, comment=' // zero unused layer registers')
+                    apb_write_reg(tile, ll, 4, 0, comment=' // zero unused layer registers')
+                    apb_write_reg(tile, ll, 5, 0, comment=' // zero unused layer registers')
+                    apb_write_reg(tile, ll, 6, 0, comment=' // zero unused layer registers')
+                    apb_write_reg(tile, ll, 7, 0, comment=' // zero unused layer registers')
+                    apb_write_reg(tile, ll, 8, 0, comment=' // zero unused layer registers')
+                    apb_write_reg(tile, ll, 9, 0, comment=' // zero unused layer registers')
+                    apb_write_reg(tile, ll, 10, 0, comment=' // zero unused layer registers')
+                    apb_write_reg(tile, ll, 11, 0, comment=' // zero unused layer registers')
+                    apb_write_reg(tile, ll, 12, 0, comment=' // zero unused layer registers')
 
             # Load data memory ('admod_sram'/'lildat_sram')
             data_offs = C_TILE_OFFS*tile + C_SRAM_BASE
@@ -682,7 +741,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                             data_offs += 1
                     apb_write_byte_flush(0)
 
-        for tile in range(1, needed_tiles):
+        # Enable all needed tiles except the first one
+        for _, tile in enumerate(tiles_used[1:]):
             # [0] enable
             # [8] one-shot (stop after single layer)
             # cnn_ena_i <= #C_TPD pwdata[0];    # Enable
@@ -697,7 +757,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             apb_write_ctl(tile, 0, 0x807, comment=' // enable')  # ctl reg
 
         # Master control - go
-        apb_write_ctl(0, 0, 0x07, comment=' // master enable')  # ctl reg
+        apb_write_ctl(tiles_used[0], 0, 0x07, comment=' // master enable')  # ctl reg
 
         if not block_mode:
             memfile.write('  return 1;\n}\n\nint main(void)\n{\n  icache_enable();\n')
@@ -960,6 +1020,8 @@ def main():
                     bias.append(w.reshape(1))
                     layer_has_bias.append(True)
                 else:
+                    # Append empty bias but don't program it into device
+                    # This simplifies simulation of the operation
                     bias.append(np.repeat(np.asarray(0, dtype=np.int64), output_channels[-1]))
                     layer_has_bias.append(False)
 
