@@ -383,6 +383,18 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             """
             return bin(x).count('1')
 
+        def argmin(values):
+            """
+            Given an iterable of `values` return the index of the smallest value
+            """
+            def argmin_pairs(pairs):
+                """
+                Given an iterable of `pairs` return the key corresponding to the smallest value
+                """
+                return min(pairs, key=lambda x: x[1])[0]
+
+            return argmin_pairs(enumerate(values))
+
         # FIXME: Make this a command line argument and delete first_channel
         processor_map = []
         for ll in range(layers):
@@ -468,9 +480,9 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
         # Bias ('zero_bias_ram')
         # FIXME: Check that this works.
-        # Each tile has one bias memory (size 2**P_BRAMABITS). Use only the bias memory in the
-        # first enabled tile for the layer, and only if the layer uses a bias. Keep track of the
-        # offset so it can be programmed into the mask count register later.
+        # Each tile has one bias memory (size 2**P_BRAMABITS bytes). Use only the bias memory in
+        # one selected tile for the layer, and only if the layer uses a bias. Keep track of the
+        # offsets so they can be programmed into the mask count register later.
         tile_bias_max = [0] * P_NUMTILES
         bias_offs = [None] * layers
         bias_tile = [None] * layers
@@ -482,7 +494,13 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                       f'of bias values {len(bias[ll])}')
                 sys.exit(1)
 
-            tile = tile_map[ll][0]  # Pick the first tile. Could be smarter about this.
+            # Pick the tile with the least amount of data in it
+            tile = argmin(tile_bias_max[t] for t in tile_map[ll])
+            if tile_bias_max[tile] + chan[ll+1] > 2**P_BRAMABITS:
+                print(f'Layer {ll}: bias memory capacity exceeded - available tiles: '
+                      f'{tile_map[ll]}, used so far: {tile_bias_max}, needed: {chan[ll+1]}')
+                sys.exit(1)
+
             bias_tile[ll] = tile
             bias_offs[ll] = tile_bias_max[tile]
             # Each layer has output_channel number of bias values
