@@ -61,6 +61,8 @@ def get_parser(model_names, dataset_names):
                         metavar='N', help='mini-batch size (default: 256)')
     parser.add_argument('--kernel-stats', action='store_true', default=False,
                         help='compute kernel statistics')
+    parser.add_argument('--use-bias', action='store_true', default=False,
+                        help='use bias in convolution operations')
 
     optimizer_args = parser.add_argument_group('Optimizer arguments')
     optimizer_args.add_argument('--lr', '--learning-rate', default=0.1,
