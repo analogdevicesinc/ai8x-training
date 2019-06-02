@@ -210,7 +210,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                in_offset, out_offset,
                input_filename, output_filename, c_filename,
                base_directory, runtest_filename, log_filename,
-               seed, zero_unused, timeout, block_mode, verify_writes):
+               zero_unused, timeout, block_mode, verify_writes):
     """
     Chain multiple CNN layers, create and save input and output
     """
@@ -288,7 +288,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         memfile.write(f'// Created using {" ".join(str(x) for x in sys.argv)}\n')
 
         # Human readable description of test
-        memfile.write(f'// Configuring input for {layers} layer(s), random seed={seed}\n')
+        memfile.write(f'// Configuring input for {layers} layer{"s" if layers > 1 else ""}\n')
 
         for ll in range(layers):
             memfile.write(f'// Layer {ll+1}: {chan[ll]}x{dim[ll][0]}x{dim[ll][1]} '
@@ -423,6 +423,10 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             if popcount(processor_map[ll]) != chan[ll]:
                 print(f'Layer {ll} has {chan[ll]} inputs, but enabled '
                       f'processors {processor_map[ll]:016x} does not match.')
+                sys.exit(1)
+            if chan[ll] > MAX_CHANNELS:
+                print(f'Layer {ll} is configured for {chan[ll]} inputs, which exceeds '
+                      f'the system maximum of {MAX_CHANNELS}.')
                 sys.exit(1)
 
         # Initialize CNN registers
@@ -955,8 +959,6 @@ def main():
     parser.add_argument('--input-split', type=int, default=1, metavar='N',
                         choices=range(1, MAX_CHANNELS+1),
                         help="split input into N portions (default: don't split)")
-    parser.add_argument('--seed', type=int, metavar='N',
-                        help="set fixed random seed")
     parser.add_argument('--stop-after', type=int, metavar='N',
                         help="stop after layer")
     parser.add_argument('--prefix', metavar='DIR', required=True,
@@ -974,8 +976,6 @@ def main():
     parser.add_argument('--zero-unused', action='store_true',
                         help="zero unused registers (default: do not touch)")
     args = parser.parse_args()
-    if args.seed:
-        np.random.seed(args.seed)
 
     if args.input_split != 1 and args.little_data:
         parser.error(f"--input-split is not supported for HWC (--hwc/--little-data) input")
@@ -1082,7 +1082,6 @@ def main():
                     args.input_offset, output_offset,
                     args.input_filename, args.output_filename, args.c_filename,
                     args.test_dir, args.runtest_filename, args.log_filename,
-                    args.seed,
                     args.zero_unused, timeout, not args.top_level, args.verify_writes)
 
     # Append to regression list?
