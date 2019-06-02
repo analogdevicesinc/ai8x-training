@@ -211,7 +211,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                in_offset, out_offset,
                input_filename, output_filename, c_filename,
                base_directory, runtest_filename, log_filename,
-               zero_unused, timeout, block_mode, verify_writes):
+               zero_unused, timeout, block_mode, verify_writes,
+               c_library=False):
     """
     Chain multiple CNN layers, create and save input and output
     """
@@ -442,9 +443,14 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         # Configure global control registers for used tiles
         for _, tile in enumerate(tiles_used):
             # Zero out Tornado RAM ('zero_tram')
-            for p in range(P_NUMPRO):
-                for offs in range(2**P_TRAMABITS):
-                    apb_write_tram(tile, p, offs, 0, comment='zero ')
+            if c_library:
+                addr = apb_base + C_TILE_OFFS*tile + C_TRAM_BASE
+                memfile.write(f'  memset(*((volatile uint32_t *) 0x{addr:08x}), 0, '
+                              f'{2**P_TRAMABITS * P_NUMPRO * 4}); // zero TRAM tile {tile}\n')
+            else:
+                for p in range(P_NUMPRO):
+                    for offs in range(2**P_TRAMABITS):
+                        apb_write_tram(tile, p, offs, 0, comment='zero ')
 
             memfile.write('\n')
 
@@ -971,6 +977,8 @@ def main():
                         help="directory location for autogen_list (default: 'tests')")
     parser.add_argument('--c-filename', default='test', metavar='S',
                         help="C file name base (default: 'test' -> 'input.c')")
+    parser.add_argument('--c-library', action='store_true',
+                        help="use C library functions such as memset()")
     parser.add_argument('--cifar', action='store_true',
                         help="CIFAR10 testset (default: false)")
     parser.add_argument('-D', '--debug', action='store_true',
@@ -1143,7 +1151,8 @@ def main():
                     args.input_offset, output_offset,
                     args.input_filename, args.output_filename, args.c_filename,
                     args.test_dir, args.runtest_filename, args.log_filename,
-                    args.zero_unused, timeout, not args.top_level, args.verify_writes)
+                    args.zero_unused, timeout, not args.top_level, args.verify_writes,
+                    args.c_library)
 
     # Append to regression list?
     if not args.top_level:
