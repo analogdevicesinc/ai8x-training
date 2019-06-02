@@ -204,7 +204,7 @@ def cnn_layer(layer, verbose,
 
 
 def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwrite_ok, log,
-               apb_base, layers, first_channel,
+               apb_base, layers, processor_map,
                input_size, kernel_size, chan, padding, dilation, stride,
                pool, pool_stride, pool_average, activate,
                data, kernel, bias, big_data, split,
@@ -395,11 +395,6 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
             return argmin_pairs(enumerate(values))
 
-        # FIXME: Make this a command line argument and delete first_channel
-        processor_map = []
-        for ll in range(layers):
-            processor_map.append((((2**chan[ll])-1) << first_channel[ll]) & (2**MAX_CHANNELS - 1))
-
         # Calculate the tiles needed, and tiles and processors used overall
         processors_used = 0
         tile_map = []
@@ -518,7 +513,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             print(f'Used bias memory   = {tile_bias_max}')
             print('\nPer-layer configuration:')
             print('------------------------')
-            print(f'Number of channels = {chan}')
+            print(f'Number of channels = {chan[:-1]} -> {chan[-1]} outputs')
             print('Processor map      = [',
                   ', '.join('{:016x}'.format(k) for k in processor_map), ']', sep='')
             print(f'Tile map           = {tile_map}')
@@ -1106,9 +1101,15 @@ def main():
     if args.stop_after is not None:
         layers = args.stop_after + 1
 
+    # FIXME: Make this a command line argument and delete first_channel
+    processor_map = []
+    for ll in range(layers):
+        processor_map.append((((2**output_channels[ll])-1) << first_channel[ll])
+                             & (2**MAX_CHANNELS - 1))
+
     tn = create_sim(args.prefix, args.verbose,
                     args.debug, args.debug_computation, args.no_error_stop,
-                    args.overwrite_ok, args.log, args.apb_base, layers, first_channel,
+                    args.overwrite_ok, args.log, args.apb_base, layers, processor_map,
                     input_size, kernel_size, output_channels, padding, dilation, stride,
                     pool, pool_stride, pool_average, activate,
                     data, weights, bias, big_data,
