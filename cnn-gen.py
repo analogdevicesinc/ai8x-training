@@ -466,7 +466,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 for i in range(chan[ll+1]):
                     # print(f'i {i} L {ll} C {c}: Channel index {i + ch*chan[ll+1]} -> ', end='')
                     if big_data[ll]:
-                        k = kernel[ll][i + ch*chan[ll+1]].flatten()
+                        k = kernel[ll][i + ch*chan[ll+1]].flatten()  # CHW
                     else:
                         k = kernel[ll][ch + i*chan[ll]].flatten()  # Transpose for HWC/little data
                     # print(f'{k}')
@@ -478,22 +478,26 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 ch += 1
 
         # Bias ('zero_bias_ram')
-        # FIXME: remove 'tiles'
-        # offs = 0
-        # i = 0
-        # ll = 0
-        # for _ in range(2**P_BRAMABITS):
-        #     if ll < layers:
-        #         for _, tile in enumerate(tiles_used):
-        #             apb_write_bias(tile, offs, bias[ll][i])
-        #         i += 1
-        #         if i >= chan[ll+1]:
-        #             ll += 1
-        #             i = 0
-        #     else:
-        #         for _, tile in enumerate(tiles_used):
-        #             apb_write_bias(tile, offs, 0)
-        #     offs += 1
+        # FIXME: Check that this works.
+        # Each tile has one bias memory (size 2**P_BRAMABITS). Use only the bias memory in the
+        # first enabled tile for the layer, and only if the layer uses a bias. Keep track of the
+        # offset so it can be programmed into the mask count register later.
+        tile_bias_max = [0] * P_NUMTILES
+        bias_offs = [0] * layers
+        for ll in range(layers):
+            if not layer_has_bias[ll]:
+                continue
+            if len(bias[ll]) != chan[ll+1]:
+                print(f'Layer {ll}: output channel count {chan[ll+1]} does not match the number '
+                      f'of bias values {len(bias[ll])}')
+                sys.exit(1)
+
+            tile = first_tile[ll]
+            bias_offs[ll] = tile_bias_max[tile]
+            # Each layer has output_channel number of bias values
+            for i in range(chan[ll+1]):
+                apb_write_bias(tile, bias_offs[ll] + i, bias[ll][i])
+            tile_bias_max[tile] += chan[ll+1]
 
         def apb_write_byte_flush(offs, comment=''):
             if apb_write_byte.num > 0:
@@ -531,8 +535,6 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
         # Configure per-layer control registers
         for _, tile in enumerate(tiles_used):
-            bias_ptr = 0
-
             for ll in range(layers):
                 # Configure row count ('config_cnn_rcnt')
                 # [7:0] maxcount: lower 8 bits = total of width + pad - 1
@@ -622,12 +624,12 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 # [23:16] Bias pointer starting address
                 # [24]    Bias enable
                 # [31:25] RFU
-                val = bias_ptr << 16 | kern_offs[ll] << 8 | chan[ll+1]-1
+                val = kern_offs[ll] << 8 | chan[ll+1]-1
                 if layer_has_bias[ll] and tile == first_tile[ll]:
-                    val |= 0x1000000  # Enable bias only for one tile (the first one used)
+                    # Enable bias only for one tile (the first one used)
+                    # FIXME: Check that bias works
+                    val |= 0x1000000 | bias_offs[ll] << 16
                 apb_write_reg(tile, ll, 10, val, debug, comment=' // mask count')
-                # FIXME: Fix bias
-                # bias_ptr += chan[ll+1]  # Each layer has output_channel number of bias values
 
                 # Configure tram pointer max ('config_cnn_tptr')
                 if pool[ll] > 0:
