@@ -16,8 +16,12 @@ import sys
 
 import numpy as np
 import torch
+import yaml
 
 import sampledata
+
+# AI84
+APB_BASE = 0x50100000
 
 # CNN hardware parameters
 C_MAX_LAYERS = 16
@@ -428,7 +432,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     this_map.append(tile)
             tile_map.append(this_map)
 
-        # Output channels. Always in little data format.
+        # Output channels, always in little data format. Need to turn on tiles that contain
+        # memories we write to.
         # FIXME: Verify this. Shift by 4 * the instance number of the output offset of the last
         # layer, out_offset[layers]
         output_map = (2**chan[layers]-1) << ffs(processor_map[layers-1])
@@ -971,60 +976,41 @@ def main():
 
     parser = argparse.ArgumentParser(
         description="Tornado Memory Pooling and Convolution Simulation Test Data Generator")
-    parser.add_argument('-a', '--average-pooling', type=int, action='append', metavar='N',
-                        help="average pooling (all default to 0=max pooling)")
-    parser.add_argument('--apb-base', type=lambda x: int(x, 0), default=0, metavar='N',
-                        help="APB base address (default: 0)")
+    parser.add_argument('--apb-base', type=lambda x: int(x, 0), default=APB_BASE, metavar='N',
+                        help=f"APB base address (default: {APB_BASE:08x})")
     parser.add_argument('--autogen', default='tests', metavar='S',
                         help="directory location for autogen_list (default: 'tests')")
     parser.add_argument('--c-filename', default='test', metavar='S',
                         help="C file name base (default: 'test' -> 'input.c')")
     parser.add_argument('--c-library', action='store_true',
                         help="use C library functions such as memset()")
-    parser.add_argument('--cifar', action='store_true',
-                        help="CIFAR10 testset (default: false)")
     parser.add_argument('-D', '--debug', action='store_true',
                         help="debug mode (default: false)")
     parser.add_argument('--debug-computation', action='store_true',
                         help="debug computation (default: false)")
-    parser.add_argument('--checkpoint-file', default='ai84.pth.tar', metavar='FN',
-                        help="checkpoint file name containing quantized weights "
-                             "(default: ai84.pth.tar)")
-    parser.add_argument('--input-filename', default='input', metavar='FN',
+    parser.add_argument('--config-file', required=True, metavar='S',
+                        help="YAML configuration file containing layer configuration")
+    parser.add_argument('--checkpoint-file', required=True, metavar='S',
+                        help="checkpoint file containing quantized weights")
+    parser.add_argument('--input-filename', default='input', metavar='S',
                         help="input .mem file name base (default: 'input' -> 'input.mem')")
-    parser.add_argument('--output-filename', default='output', metavar='FN',
+    parser.add_argument('--output-filename', default='output', metavar='S',
                         help="output .mem file name base (default: 'output' -> 'output-X.mem')")
-    parser.add_argument('--runtest-filename', default='run_test.sv', metavar='FN',
+    parser.add_argument('--runtest-filename', default='run_test.sv', metavar='S',
                         help="run test file name (default: 'run_test.sv')")
-    parser.add_argument('--log-filename', default='log.txt', metavar='FN',
+    parser.add_argument('--log-filename', default='log.txt', metavar='S',
                         help="log file name (default: 'log.txt')")
     parser.add_argument('--no-error-stop', action='store_true',
                         help="do not stop on errors (default: stop)")
     parser.add_argument('--input-offset', type=lambda x: int(x, 0), default=0,
                         metavar='N', choices=range(4*MEM_SIZE),
                         help="input offset (x8 hex, defaults to 0x0000)")
-    parser.add_argument('-o', '--output-offset', type=lambda x: int(x, 0), action='append',
-                        metavar='N',
-                        help="output offset for each layer (x8 hex, all default to 0x0000)")
     parser.add_argument('--overwrite-ok', action='store_true',
                         help="allow output to overwrite input (default: warn/stop)")
     parser.add_argument('--queue-name', default='medium', metavar='S',
                         help="queue name (default: 'medium')")
     parser.add_argument('-L', '--log', action='store_true',
                         help="redirect stdout to log file (default: false)")
-    parser.add_argument('-c', '--channel-start', type=int, action='append', metavar='N',
-                        help="per-layer first channel (all default to 0)")
-    parser.add_argument('-p', '--pad', type=int, action='append', metavar='N',
-                        help="padding for each layer (all default to 1)")
-    parser.add_argument('-x', '--pool', type=int, action='append', metavar='N',
-                        help="pooling for each layer (all default to 2)")
-    parser.add_argument('--pool-stride', type=int, action='append', metavar='N',
-                        help="pooling stride for each layer (all default to 2)")
-    parser.add_argument('--hwc', '--little-data', action='store_true', dest='little_data',
-                        help="HWC (little data) input "
-                             "(default: CHW/big data = channels in sequence)")
-    parser.add_argument('-r', '--relu', type=int, action='append', metavar='N',
-                        help="activate layer using ReLU (all default to 0=no activation)")
     parser.add_argument('--input-split', type=int, default=1, metavar='N',
                         choices=range(1, MAX_CHANNELS+1),
                         help="split input into N portions (default: don't split)")
@@ -1046,25 +1032,78 @@ def main():
                         help="zero unused registers (default: do not touch)")
     args = parser.parse_args()
 
-    if args.input_split != 1 and args.little_data:
-        parser.error(f"--input-split is not supported for HWC (--hwc/--little-data) input")
-
     if not args.test_dir:
         parser.error(f"Please specify output directory using --test-dir")
 
-    def check_arg(layers, arg, default, minimum, maximum, argstr):
-        """
-        Check a list of command line arguments
-        """
-        if arg:
-            if any(a > maximum for a in arg) or any(a < minimum for a in arg):
-                parser.error(f"all {argstr} values must be from {minimum} to {maximum}")
-            if len(arg) != layers:
-                parser.error(f"--layers is {layers}, must specify {layers} {argstr} values")
-            val = arg
+    # Load configuration file
+    # FIXME: Use marshmallow to validate
+    with open(args.config_file) as cfg_file:
+        print(f'Reading {args.config_file} to configure network...')
+        cfg = yaml.load(cfg_file, Loader=yaml.SafeLoader)
+
+    cifar = 'dataset' in cfg and cfg['dataset'].lower() == 'cifar-10'
+    if 'layers' not in cfg:
+        print(f'Configuration file {args.config_file} does not contain layer configuration')
+        sys.exit(1)
+
+    padding = []
+    pool = []
+    pool_stride = []
+    output_offset = []
+    processor_map = []
+    average = []
+    relu = []
+    big_data = []
+
+    for ll in cfg['layers']:
+        padding.append(ll['pad'] if 'pad' in ll else 1)
+        if 'max_pool' in ll:
+            pool.append(ll['max_pool'])
+            average.append(0)
+        elif 'avg_pool' in ll:
+            pool.append(ll['avg_pool'])
+            average.append(1)
         else:
-            val = [default] * layers
-        return val
+            pool.append(0)
+            average.append(0)
+        pool_stride.append(ll['pool_stride'] if 'pool_stride' in ll else 0)
+        output_offset.append(ll['out_offset'] if 'out_offset' in ll else 0)
+        if 'processors' not in ll:
+            print('`processors` key missing for layer in YAML configuration')
+            sys.exit(1)
+        processor_map.append(ll['processors'])
+        if 'activate' in ll:
+            if ll['activate'].lower() == 'relu':
+                relu.append(1)
+            else:
+                print('unknown value for `activate` in YAML configuration')
+                sys.exit(1)
+        else:
+            relu.append(0)
+        if 'data_format' in ll:
+            df = ll['data_format'].lower()
+            if df in ['hwc', 'little']:
+                big_data.append(False)
+            elif df in ['chw', 'big']:
+                big_data.append(True)
+            else:
+                print('unknown value for `data_format` in YAML configuration')
+                sys.exit(1)
+        else:
+            big_data.append(False)
+
+    if any(p < 0 or p > 2 for p in padding):
+        print('Unsupported value for `pad` in YAML configuration')
+        sys.exit(1)
+    if any(p & 1 != 0 or p < 0 or p > 4 for p in pool):
+        print('Unsupported value for `max_pool`/`avg_pool` in YAML configuration')
+        sys.exit(1)
+    if any(p == 3 or p < 0 or p > 4 for p in pool_stride):
+        print('Unsupported value for `pool_stride` in YAML configuration')
+        sys.exit(1)
+    if any(p < 0 or p > 4*MEM_SIZE for p in output_offset):
+        print('Unsupported value for `out_offset` in YAML configuration')
+        sys.exit(1)
 
     # We don't support changing the following, but leave as parameters
     dilation = [1, 1]
@@ -1102,28 +1141,17 @@ def main():
                 else:
                     bias.append(None)
 
+    if layers != len(cfg['layers']):
+        print('Number of layers in the YAML configuration file does not match the checkpoint file')
+        sys.exit(1)
+
     # We don't support changing the following, but leave as parameters
     stride = [1] * layers
 
-    padding = check_arg(layers, args.pad, 1, 0, 2, '--pad')
-    pool = check_arg(layers, args.pool, 2, 0, 4, '--pool')
-    if any(p & 1 != 0 for p in pool):
-        parser.error(f"unsupported value for --pool")
-    pool_stride = check_arg(layers, args.pool_stride, 2, 0, 4, '--pool-stride')
-    if any(p == 3 for p in pool_stride):
-        parser.error(f"unsupported value for --pool-stride")
-    output_offset = check_arg(layers, args.output_offset, 0, 0, 4*MEM_SIZE, '--output-offset')
-    relu = check_arg(layers, args.relu, 0, 0, 1, '--relu')
     activate = [bool(x) for x in relu]
-    average = check_arg(layers, args.average_pooling, 0, 0, 1, '--average-pooling')
     pool_average = [bool(x) for x in average]
-    big_data = [False] * layers
-    big_data[0] = not args.little_data
-    # Distribute input channels across tiles for each layer
-    first_channel = check_arg(layers, args.channel_start, 0, 0, MAX_CHANNELS-1,
-                              '--channel-start')
 
-    data = sampledata.get(args.cifar)
+    data = sampledata.get(cifar)
     input_size = list(data.shape)
 
     timeout = args.timeout
@@ -1136,12 +1164,6 @@ def main():
 
     if args.stop_after is not None:
         layers = args.stop_after + 1
-
-    # FIXME: Make this a command line argument and delete first_channel
-    processor_map = []
-    for ll in range(layers):
-        processor_map.append((((2**output_channels[ll])-1) << first_channel[ll])
-                             & (2**MAX_CHANNELS - 1))
 
     tn = create_sim(args.prefix, args.verbose,
                     args.debug, args.debug_computation, args.no_error_stop,
