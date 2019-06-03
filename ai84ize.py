@@ -95,7 +95,7 @@ def convert_checkpoint(input_file, output_file, arguments):
                     clamp_bits = ai84.WEIGHT_BITS
                     factor = 2**(clamp_bits-1) * sat_fn(checkpoint_state[k])
                     lower_bound = 0
-                    if first and parameter == 'weight':
+                    if first:
                         factor /= 2.  # The input layer is [-0.5, +0.5] -- compensate
                         first = False
                 else:
@@ -113,6 +113,11 @@ def convert_checkpoint(input_file, output_file, arguments):
                 # Ensure it fits and is an integer
                 weights = weights.clamp(min=-(2**(clamp_bits-1)-lower_bound),
                                         max=2**(clamp_bits-1)-1).round()
+
+                # Save conv biases so PyTorch can still use them to run a model. This needs to be
+                # reversed before loading the weights into the AI84.
+                if module != 'fc' and parameter == 'bias':
+                    weights *= 2**(clamp_bits-1)
 
                 # Store modified weight/bias back into model
                 new_checkpoint_state[k] = weights
