@@ -103,7 +103,7 @@ def conv2d(data, weight, bias, input_size, out_channels, kernel_size, stride, pa
                                           f'*{data[c][src_offs]} -> accumulator = {val}')
 
                 if bias is not None:
-                    val += bias[k]
+                    val += bias[k]  # FIXME: This should really be * 128 to make it useful!
                     if debug:
                         print(f'+bias {bias[k]} --> output[{k}][{out_offs}] = {val}')
                 output[k][out_offs] = val
@@ -1136,7 +1136,7 @@ def main():
                 # Is there a bias for this layer?
                 bias_name = operation + '.bias'
                 if bias_name in checkpoint_state:
-                    w = checkpoint_state[bias_name].numpy().astype(np.int64)
+                    w = checkpoint_state[bias_name].numpy().astype(np.int64) // 128
                     bias.append(w)
                 else:
                     bias.append(None)
