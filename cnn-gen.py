@@ -1007,8 +1007,8 @@ def main():
                         help="input offset (x8 hex, defaults to 0x0000)")
     parser.add_argument('--overwrite-ok', action='store_true',
                         help="allow output to overwrite input (default: warn/stop)")
-    parser.add_argument('--queue-name', default='medium', metavar='S',
-                        help="queue name (default: 'medium')")
+    parser.add_argument('--queue-name', default='lowp', metavar='S',
+                        help="queue name (default: 'lowp')")
     parser.add_argument('-L', '--log', action='store_true',
                         help="redirect stdout to log file (default: false)")
     parser.add_argument('--input-split', type=int, default=1, metavar='N',
@@ -1022,8 +1022,8 @@ def main():
                         help="set base directory name for auto-filing .mem files")
     parser.add_argument('--top-level', default=None, metavar='S',
                         help="top level name instead of block mode (default: None)")
-    parser.add_argument('--timeout', type=int, metavar='N',
-                        help="set timeout (units of 10ms, default 10ms)")
+    parser.add_argument('--timeout', type=int, metavar='N', default=10,
+                        help="set timeout (units of 10ms, default 100ms)")
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="verbose output (default: false)")
     parser.add_argument('--verify-writes', action='store_true',
@@ -1154,14 +1154,6 @@ def main():
     data = sampledata.get(cifar)
     input_size = list(data.shape)
 
-    timeout = args.timeout
-    # Double timeout for top level
-    if args.top_level:
-        if timeout:
-            timeout *= 3
-        else:
-            timeout = 3
-
     if args.stop_after is not None:
         layers = args.stop_after + 1
 
@@ -1175,7 +1167,7 @@ def main():
                     args.input_offset, output_offset,
                     args.input_filename, args.output_filename, args.c_filename,
                     args.test_dir, args.runtest_filename, args.log_filename,
-                    args.zero_unused, timeout, not args.top_level, args.verify_writes,
+                    args.zero_unused, args.timeout, not args.top_level, args.verify_writes,
                     args.c_library)
 
     # Append to regression list?
