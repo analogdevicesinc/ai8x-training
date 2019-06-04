@@ -18,7 +18,7 @@ from range_linear_ai84 import pow2_round
 
 CONV_SCALE_BITS = 8
 FC_SCALE_BITS = 8
-FC_CLAMP_BITS = 16
+FC_CLAMP_BITS = 8
 
 
 def convert_checkpoint(input_file, output_file, arguments):
@@ -98,7 +98,7 @@ def convert_checkpoint(input_file, output_file, arguments):
                         factor /= 2.  # The input layer is [-0.5, +0.5] -- compensate
                         first = False
                 else:
-                    clamp_bits = FC_CLAMP_BITS if not arguments.fc8 else 8
+                    clamp_bits = arguments.fc
                     lower_bound = 1  # Accomodate ARM q15_t data type when clamping
                     factor = 2**(clamp_bits-1) * fc_sat_fn(checkpoint_state[k])
 
@@ -168,8 +168,9 @@ if __name__ == '__main__':
     parser.add_argument('output', help='path to the output file')
     parser.add_argument('--ai85', action='store_true', default=False,
                         help='enable AI85 features')
-    parser.add_argument('-f', '--fc8', action='store_true', default=False,
-                        help=f'use 8-bit for fully connnected layers (default: {FC_CLAMP_BITS})')
+    parser.add_argument('-f', '--fc', type=int, default=FC_CLAMP_BITS, metavar='N',
+                        help=f'set number of bits for the fully connnected layers '
+                             f'(default: {FC_CLAMP_BITS})')
     parser.add_argument('-e', '--embedded', action='store_true', default=False,
                         help='save parameters for embedded (default: rewrite checkpoint)')
     parser.add_argument('-q', '--quantized', action='store_true', default=False,

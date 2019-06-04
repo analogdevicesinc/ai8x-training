@@ -337,7 +337,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 - (ffs(next_layer_map) & ~(P_SHARED-1))
 
             if kern_offs[ll] + kern_len[ll] > 2**P_MASKABITS:
-                print(f'Kernel memory exceeded at layer {ll}; offset: {kern_offs[ll]}, '
+                print(f'\nKernel memory exceeded at layer {ll}; offset: {kern_offs[ll]}, '
                       f'needed: {kern_len[ll]}')
                 print('\nKernel map so far:')
                 table = tabulate.tabulate(kernel_map, tablefmt='plain', missingval='X')
@@ -371,6 +371,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     apb_write_kern(ll, c, kern_offs[ll] + i + offs, k)
 
                     # Update kernel map
+                    assert kernel_map[c][kern_offs[ll] + i + offs] is None
                     kernel_map[c][kern_offs[ll] + i + offs] = ll
 
                 assert fls(next_layer_map) - (ffs(next_layer_map) & ~(P_SHARED-1)) \
