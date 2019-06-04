@@ -1171,6 +1171,7 @@ def main():
     checkpoint_state = checkpoint['state_dict']
     layers = 0
     output_channels = []
+    bias_div = 128 if args.ai85 else 1
     for _, k in enumerate(checkpoint_state.keys()):
         operation, parameter = k.rsplit(sep='.', maxsplit=1)
         if parameter in ['weight']:
@@ -1186,7 +1187,7 @@ def main():
                 # Is there a bias for this layer?
                 bias_name = operation + '.bias'
                 if bias_name in checkpoint_state:
-                    w = checkpoint_state[bias_name].numpy().astype(np.int64) // 128
+                    w = checkpoint_state[bias_name].numpy().astype(np.int64) // bias_div
                     assert w.min() >= -128 and w.max() <= 127
                     bias.append(w)
                 else:

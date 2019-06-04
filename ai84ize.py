@@ -109,9 +109,9 @@ def convert_checkpoint(input_file, output_file, arguments):
                           'factor', factor)
                 weights = factor * checkpoint_state[k]
 
-                # The scale is different for AI84.
+                # The scale is different for AI84, and this has to happen before clamping.
                 if not arguments.ai85 and module != 'fc' and parameter == 'bias':
-                    weights /= 2**(clamp_bits-1)
+                    weights *= 2**(clamp_bits-1)
 
                 # Ensure it fits and is an integer
                 weights = weights.clamp(min=-(2**(clamp_bits-1)-lower_bound),
@@ -119,9 +119,7 @@ def convert_checkpoint(input_file, output_file, arguments):
 
                 # Save conv biases so PyTorch can still use them to run a model. This needs to be
                 # reversed before loading the weights into the AI84/AI85.
-                if module != 'fc' and parameter == 'bias':
-                    if not arguments.ai85:
-                        weights *= 2**(clamp_bits-1)  # Do it twice on AI84
+                if arguments.ai85 and module != 'fc' and parameter == 'bias':
                     weights *= 2**(clamp_bits-1)
 
                 # Store modified weight/bias back into model
