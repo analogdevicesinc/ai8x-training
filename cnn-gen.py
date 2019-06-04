@@ -231,7 +231,9 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
     """
 
     # Remove extraneous input layer configurations (when --stop-after is used)
-    processor_map = processor_map[:layers]
+    if len(processor_map) > layers:
+        output_map = processor_map[layers]
+        processor_map = processor_map[:layers]
     chan = chan[:layers+1]
     out_offset = out_offset[:layers]
 
@@ -1116,10 +1118,10 @@ def main():
         else:
             relu.append(0)
         if 'data_format' in ll:
-            if len(big_data) > 0:
+            if big_data:  # Sequence not empty
                 print('`data_format` can only be configured for the first layer')
                 sys.exit(1)
-                
+
             df = ll['data_format'].lower()
             if df in ['hwc', 'little']:
                 big_data.append(False)
