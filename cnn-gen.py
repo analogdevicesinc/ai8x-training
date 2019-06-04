@@ -429,6 +429,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                   f' -> {processor_map[layers]:016x} output', sep='',)
             print(f'Tile map           = {tile_map}')
             print(f'Kernel offsets     = {kern_offs}')
+            print(f'Kernel lengths     = {kern_len}')
             print(f'Tile with bias     = {bias_tile}')
             print(f'Bias offsets       = {bias_offs}')
             print('')
@@ -1049,6 +1050,9 @@ def main():
         print('Number of layers in the YAML configuration file does not match the checkpoint file')
         sys.exit(1)
 
+    if args.stop_after is not None:
+        layers = args.stop_after + 1
+
     if 'output_map' in cfg:
         # Use optional configuration value
         output_map = cfg['output_map']
@@ -1058,7 +1062,7 @@ def main():
 
     if popcount(output_map) != output_channels[layers]:
         print(f'The output_map ({output_map:016x}) does not correspond to the number of output '
-              f'channels of the final layer ({output_channels[layers-1]}).')
+              f'channels of the final layer ({output_channels[layers]}).')
         sys.exit(1)
 
     # We don't support changing the following, but leave as parameters
@@ -1069,9 +1073,6 @@ def main():
 
     data = sampledata.get(cifar)
     input_size = list(data.shape)
-
-    if args.stop_after is not None:
-        layers = args.stop_after + 1
 
     tn = create_sim(args.prefix, args.verbose,
                     args.debug, args.debug_computation, args.no_error_stop,
