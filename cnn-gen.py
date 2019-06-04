@@ -20,6 +20,7 @@ import torch
 import yaml
 
 import sampledata
+from compute import conv2d
 from utils import argmin, ffs, fls, popcount
 
 
@@ -66,52 +67,6 @@ def u2s(i):
     if i > 127:
         i -= 256
     return i
-
-
-def conv2d(data, weight, bias, input_size, out_channels, kernel_size, stride, pad,
-           dilation, output, bias_mult=1, debug=False):
-    """
-    Compute a convolution, and then run same data through PyTorch
-
-    SIMPLIFIED TO REMOVE GROUPS
-
-    Note that all PyTorch numbers are ordered (C, H, W)
-    """
-    in_channels = input_size[0]
-
-    # Compute convolution
-    for k in range(out_channels):
-        out_offs = 0
-        for y in range(-pad[0],
-                       input_size[1] - dilation[0] * (kernel_size[0] - 1) + pad[0],
-                       stride[0]):
-            for x in range(-pad[1],
-                           input_size[2] - dilation[1] * (kernel_size[1] - 1) + pad[1],
-                           stride[1]):
-                val = np.int64(0)
-                for c in range(in_channels):
-                    for h in range(kernel_size[0]):
-                        for w in range(kernel_size[1]):
-                            if x + w * dilation[1] >= 0 and \
-                               x + w * dilation[1] < input_size[2] and \
-                               y + h * dilation[0] >= 0 and \
-                               y + h * dilation[0] < input_size[1]:
-                                src_offs = x + w * dilation[1] + \
-                                           (y + h * dilation[0]) * input_size[2]
-                                wt_offs = h * kernel_size[0] + w
-                                val += weight[k][c][wt_offs] * data[c][src_offs]
-                                if debug:
-                                    print(f'k={k}, c={c}, x={x}, y={y}, src_offs={src_offs}, '
-                                          f'wt_offs={wt_offs}: weight*data={weight[k][c][wt_offs]}'
-                                          f'*{data[c][src_offs]} -> accumulator = {val}')
-
-                if bias is not None:
-                    val += bias[k] * bias_mult
-                    if debug:
-                        print(f'+bias {bias[k]}*{bias_mult} --> '
-                              f'output[{k}][{out_offs}] = {val}')
-                output[k][out_offs] = val
-                out_offs += 1
 
 
 def cnn_layer(layer, verbose,
@@ -174,7 +129,7 @@ def cnn_layer(layer, verbose,
 
     conv2d(data=pooled,
            weight=kernel,
-           bias=bias,
+           bias=bias * 128 if ai85 else bias,
            input_size=pooled_size,
            out_channels=output_channels,
            kernel_size=kernel_size,
@@ -182,7 +137,6 @@ def cnn_layer(layer, verbose,
            pad=padding,
            dilation=dilation,
            output=out_buf,
-           bias_mult=128 if ai85 else 1,
            debug=debug)
 
     out_buf = out_buf.reshape((out_size))
