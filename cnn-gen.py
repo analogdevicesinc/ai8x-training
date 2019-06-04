@@ -15,6 +15,7 @@ import signal
 import sys
 
 import numpy as np
+import tabulate
 import torch
 import yaml
 
@@ -459,6 +460,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         chan_kern_max = [0] * MAX_CHANNELS
         kern_offs = [0] * layers
         kern_len = [0] * layers
+        kernel_map = [[None] * 2**P_MASKABITS for i in range(MAX_CHANNELS)]
         for ll in range(layers):
             first_channel = ffs(processor_map[ll])
             last_channel = fls(processor_map[ll])
@@ -481,7 +483,11 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             if kern_offs[ll] + kern_len[ll] > 2**P_MASKABITS:
                 print(f'Kernel memory exceeded at layer {ll}; offset: {kern_offs[ll]}, '
                       f'needed: {kern_len[ll]}')
-                sys.exit(1)
+                print('\nKernel map so far:')
+                table = tabulate.tabulate(kernel_map, tablefmt='plain', missingval='X')
+                print('-' * (2**P_MASKABITS * 2 - 1))
+                print(table.replace('  ', ' '))
+                print('-' * (2**P_MASKABITS * 2 - 1))
 
             for c in range(first_channel, last_channel+1):
                 if (processor_map[ll] >> c) & 1 == 0:
@@ -507,9 +513,19 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                         print(f'Channel {c} Layer {ll} m{i}/{chan[ll+1]-1}: {k}')
                     apb_write_kern(ll, c, chan_kern_max[c] + i + offs, k)
 
+                    # Update kernel map
+                    kernel_map[c][chan_kern_max[c] + i + offs] = ll
+
                 assert kern_len[ll] == offs + i + 1
                 chan_kern_max[c] = kern_offs[ll] + kern_len[ll]
                 ch += 1
+
+        if verbose:
+            print('\nKernel Map:')
+            table = tabulate.tabulate(kernel_map, tablefmt='plain', missingval='X')
+            print('-' * (2**P_MASKABITS * 2 - 1))
+            print(table.replace('  ', ' '))
+            print('-' * (2**P_MASKABITS * 2 - 1))
 
         # Bias ('zero_bias_ram')
         # Each tile has one bias memory (size 2**P_BRAMABITS bytes). Use only the bias memory in
