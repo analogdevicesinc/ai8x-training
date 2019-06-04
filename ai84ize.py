@@ -18,7 +18,6 @@ from range_linear_ai84 import pow2_round
 
 CONV_SCALE_BITS = 8
 FC_SCALE_BITS = 8
-FC_WEIGHT_BITS = 8
 FC_CLAMP_BITS = 16
 
 
@@ -99,7 +98,7 @@ def convert_checkpoint(input_file, output_file, arguments):
                         factor /= 2.  # The input layer is [-0.5, +0.5] -- compensate
                         first = False
                 else:
-                    clamp_bits = FC_CLAMP_BITS
+                    clamp_bits = FC_CLAMP_BITS if not arguments.fc8 else 8
                     lower_bound = 1  # Accomodate ARM q15_t data type when clamping
                     factor = 2**(clamp_bits-1) * fc_sat_fn(checkpoint_state[k])
 
@@ -135,13 +134,12 @@ def convert_checkpoint(input_file, output_file, arguments):
                         # print("Factor in:", fp_scale, "bits", scale_bits, "out:",
                         #       pow2_round(fp_scale, scale_bits))
                         weights *= pow2_round(fp_scale, scale_bits)
-                    else:
-                        weights = torch.round(weights * fp_scale)
-                    if arguments.arm_q:
-                        weights = weights.clamp(min=-(2**(clamp_bits-1)-1),
+                        # Accomodate Arm q15_t/q7_t datatypes
+                        weights = weights.clamp(min=-(2**(clamp_bits-1)),
                                                 max=2**(clamp_bits-1)-1).round()
                     else:
-                        weights = weights.clamp(min=-(2**(clamp_bits-1)),
+                        weights = torch.round(weights * fp_scale)
+                        weights = weights.clamp(min=-(2**(clamp_bits-1)-1),
                                                 max=2**(clamp_bits-1)-1).round()
 
                     new_checkpoint_state[module + '.' + parameter] = weights
@@ -164,8 +162,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Checkpoint to AI84 conversion')
     parser.add_argument('input', help='path to the checkpoint file')
     parser.add_argument('output', help='path to the output file')
-    parser.add_argument('-a', '--arm-q', action='store_true', default=False,
-                        help='use Arm q7_t / q15_t datatypes for fully connnected layers')
+    parser.add_argument('-f', '--fc8', action='store_true', default=False,
+                        help=f'use 8-bit for fully connnected layers (default: {FC_CLAMP_BITS})')
     parser.add_argument('-e', '--embedded', action='store_true', default=False,
                         help='save parameters for embedded (default: rewrite checkpoint)')
     parser.add_argument('-q', '--quantized', action='store_true', default=False,
