@@ -477,7 +477,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             # FIXME: Deal with gaps that are full instances (i.e., all bits off for an instance)
             next_layer_map = processor_map[ll+1]
             kern_len[ll] = ((fls(next_layer_map) + P_SHARED-1) & ~(P_SHARED-1)) \
-                - ((ffs(next_layer_map)) & ~(P_SHARED-1))
+                - (ffs(next_layer_map) & ~(P_SHARED-1))
 
             if kern_offs[ll] + kern_len[ll] > 2**P_MASKABITS:
                 print(f'Kernel memory exceeded at layer {ll}; offset: {kern_offs[ll]}, '
@@ -487,6 +487,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 print('-' * (2**P_MASKABITS * 2 - 1))
                 print(table.replace('  ', ' '))
                 print('-' * (2**P_MASKABITS * 2 - 1))
+                sys.exit(1)
 
             for c in range(first_channel, last_channel+1):
                 if (processor_map[ll] >> c) & 1 == 0:
@@ -510,12 +511,13 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     k = kernel[ll][ch + i*chan[ll]].flatten()
                     if debug:
                         print(f'Channel {c} Layer {ll} m{i}/{chan[ll+1]-1}: {k}')
-                    apb_write_kern(ll, c, chan_kern_max[c] + i + offs, k)
+                    apb_write_kern(ll, c, kern_offs[ll] + i + offs, k)
 
                     # Update kernel map
-                    kernel_map[c][chan_kern_max[c] + i + offs] = ll
+                    kernel_map[c][kern_offs[ll] + i + offs] = ll
 
-                assert kern_len[ll] == offs + i + 1
+                assert fls(next_layer_map) - (ffs(next_layer_map) & ~(P_SHARED-1)) \
+                    == offs + i
                 chan_kern_max[c] = kern_offs[ll] + kern_len[ll]
                 ch += 1
 
