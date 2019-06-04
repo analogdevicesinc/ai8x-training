@@ -1069,13 +1069,13 @@ def main():
         print(f'Reading {args.config_file} to configure network...')
         cfg = yaml.load(cfg_file, Loader=yaml.SafeLoader)
 
-    if bool(set(cfg) - set(['dataset', 'layers', 'output_map'])):
+    if bool(set(cfg) - set(['dataset', 'layers', 'output_map', 'arch'])):
         print(f'Configuration file {args.config_file} contains unknown key(s)')
         sys.exit(1)
 
     cifar = 'dataset' in cfg and cfg['dataset'].lower() == 'cifar-10'
-    if 'layers' not in cfg:
-        print(f'Configuration file {args.config_file} does not contain layer configuration')
+    if 'layers' not in cfg or 'arch' not in cfg:
+        print(f'Configuration file {args.config_file} does not contain `layers` or `arch`')
         sys.exit(1)
 
     padding = []
@@ -1157,8 +1157,13 @@ def main():
     checkpoint = torch.load(args.checkpoint_file, map_location='cpu')
     print(f'Reading {args.checkpoint_file} to configure network weights...')
 
-    if 'state_dict' not in checkpoint:
-        raise RuntimeError("\nNo state_dict in checkpoint file.")
+    if 'state_dict' not in checkpoint or 'arch' not in checkpoint:
+        raise RuntimeError("\nNo `state_dict` or `arch` in checkpoint file.")
+
+    if checkpoint['arch'].lower() != cfg['arch'].lower():
+        print(f"Network architecture of configuration file ({cfg['arch']}) does not match "
+              f"network architecture of checkpoint file ({checkpoint['arch']})")
+        sys.exit(1)
 
     checkpoint_state = checkpoint['state_dict']
     layers = 0

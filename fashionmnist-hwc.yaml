@@ -1,5 +1,6 @@
 # HWC (little data) configuration for FashionMNIST
 
+arch: ai84net5
 dataset: FashionMNIST
 
 # Define layer parameters in order of the layer sequence

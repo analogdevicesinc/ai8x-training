@@ -1,5 +1,6 @@
 # HWC (little data) configuration for CIFAR-10
 
+arch: ai84net5
 dataset: CIFAR-10
 
 # Define layer parameters in order of the layer sequence
