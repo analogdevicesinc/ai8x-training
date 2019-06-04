@@ -2,6 +2,7 @@
 # Note: This does not work past the third layer due to lack of weight memory
 # Used for testing the CHW input with gaps
 
+arch: ai84net5
 dataset: CIFAR-10
 
 # Define layer parameters in order of the layer sequence
