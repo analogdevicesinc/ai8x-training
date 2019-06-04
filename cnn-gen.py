@@ -49,8 +49,6 @@ MEM_SIZE = INSTANCE_SIZE*P_NUMPRO*P_NUMTILES//P_SHARED  # x32
 MAX_DATA_DIM = 512  # Max theoretical size of single channel, used for command line validation only
 MAX_CHANNELS = P_NUMPRO*P_NUMTILES
 
-AI85 = False
-
 
 def s2u(i):
     """
@@ -71,7 +69,7 @@ def u2s(i):
 
 
 def conv2d(data, weight, bias, input_size, out_channels, kernel_size, stride, pad,
-           dilation, output, debug=False):
+           dilation, output, bias_mult=1, debug=False):
     """
     Compute a convolution, and then run same data through PyTorch
 
@@ -108,12 +106,9 @@ def conv2d(data, weight, bias, input_size, out_channels, kernel_size, stride, pa
                                           f'*{data[c][src_offs]} -> accumulator = {val}')
 
                 if bias is not None:
-                    if AI85:
-                        val += bias[k] * 128
-                    else:
-                        val += bias[k]
+                    val += bias[k] * bias_mult
                     if debug:
-                        print(f'+bias {bias[k]}{"*128" if AI85 else ""} --> '
+                        print(f'+bias {bias[k]}*{bias_mult} --> '
                               f'output[{k}][{out_offs}] = {val}')
                 output[k][out_offs] = val
                 out_offs += 1
@@ -122,7 +117,7 @@ def conv2d(data, weight, bias, input_size, out_channels, kernel_size, stride, pa
 def cnn_layer(layer, verbose,
               input_size, kernel_size, output_channels, padding, dilation, stride,
               pool, pool_stride, pool_average, do_activation,
-              kernel, bias, data, debug=False):
+              kernel, bias, data, ai85=False, debug=False):
     """
     Perform pooling and convolution
     """
@@ -187,6 +182,7 @@ def cnn_layer(layer, verbose,
            pad=padding,
            dilation=dilation,
            output=out_buf,
+           bias_mult=128 if ai85 else 1,
            debug=debug)
 
     out_buf = out_buf.reshape((out_size))
@@ -225,7 +221,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                input_filename, output_filename, c_filename,
                base_directory, runtest_filename, log_filename,
                zero_unused, timeout, block_mode, verify_writes,
-               c_library=False):
+               c_library=False,
+               ai85=False):
     """
     Chain multiple CNN layers, create and save input and output
     """
@@ -887,7 +884,9 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                                       kernel[ll].reshape(chan[ll+1], input_size[0],
                                                          kernel_size[0], kernel_size[1]),
                                       bias[ll],
-                                      data, debug=debug_computation)
+                                      data,
+                                      ai85=ai85,
+                                      debug=debug_computation)
 
         # Write .mem file for output or create the C cnn_check() function to verify the output
         out_map = [False] * C_TILE_OFFS * P_NUMTILES
@@ -1005,6 +1004,8 @@ def main():
 
     parser = argparse.ArgumentParser(
         description="Tornado Memory Pooling and Convolution Simulation Test Data Generator")
+    parser.add_argument('--ai85', action='store_true',
+                        help="enable AI85 features")
     parser.add_argument('--apb-base', type=lambda x: int(x, 0), default=APB_BASE, metavar='N',
                         help=f"APB base address (default: {APB_BASE:08x})")
     parser.add_argument('--autogen', default='tests', metavar='S',
@@ -1174,6 +1175,7 @@ def main():
             module, _ = k.split(sep='.', maxsplit=1)
             if module != 'fc':
                 w = checkpoint_state[k].numpy().astype(np.int64)
+                assert w.min() >= -128 and w.max() <= 127
                 if layers == 0:
                     output_channels.append(w.shape[1])  # Input channels
                 output_channels.append(w.shape[0])
@@ -1183,6 +1185,7 @@ def main():
                 bias_name = operation + '.bias'
                 if bias_name in checkpoint_state:
                     w = checkpoint_state[bias_name].numpy().astype(np.int64) // 128
+                    assert w.min() >= -128 and w.max() <= 127
                     bias.append(w)
                 else:
                     bias.append(None)
@@ -1226,7 +1229,8 @@ def main():
                     args.input_filename, args.output_filename, args.c_filename,
                     args.test_dir, args.runtest_filename, args.log_filename,
                     args.zero_unused, args.timeout, not args.top_level, args.verify_writes,
-                    args.c_library)
+                    args.c_library,
+                    args.ai85)
 
     # Append to regression list?
     if not args.top_level:
