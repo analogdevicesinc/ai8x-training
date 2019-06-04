@@ -84,13 +84,6 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
     Chain multiple CNN layers, create and save input and output
     """
 
-    # Remove extraneous input layer configurations (when --stop-after is used)
-    if len(processor_map) > layers:
-        output_map = processor_map[layers]
-        processor_map = processor_map[:layers]
-    chan = chan[:layers+1]
-    out_offset = out_offset[:layers]
-
     # Trace output sizes of the network and fix up all pool_stride values
     dim = [[input_size[1], input_size[2]]]
     for ll in range(layers):
@@ -372,8 +365,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     assert kernel_map[c][kern_offs[ll] + i + offs] is None
                     kernel_map[c][kern_offs[ll] + i + offs] = ll
 
-                assert fls(next_layer_map) - (ffs(next_layer_map) & ~(P_SHARED-1)) \
-                    == offs + i
+                assert fls(next_layer_map) - (ffs(next_layer_map) & ~(P_SHARED-1)) == offs + i
                 chan_kern_max[c] = kern_offs[ll] + kern_len[ll]
                 ch += 1
 
@@ -418,6 +410,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             print('---------------------')
             print(f'Used processors    = {processors_used:016x}')
             print(f'Used tiles         = {tiles_used}')
+            print(f'Input offset       = {out_offset[0]}')
             print('\nPer-tile configuration:')
             print('-----------------------')
             print(f'Used bias memory   = {tile_bias_max}')
@@ -432,6 +425,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             print(f'Kernel lengths     = {kern_len}')
             print(f'Tile with bias     = {bias_tile}')
             print(f'Bias offsets       = {bias_offs}')
+            print(f'Output offsets     = {out_offset[1:]}')
             print('')
 
         def apb_write_byte_flush(offs, comment=''):
@@ -1057,13 +1051,21 @@ def main():
         # Use optional configuration value
         output_map = cfg['output_map']
     else:
-        # Default to packed, 0-aligned output map
-        output_map = 2**output_channels[layers]-1
+        if len(processor_map) > layers:
+            output_map = processor_map[layers]
+        else:
+            # Default to packed, 0-aligned output map
+            output_map = 2**output_channels[layers]-1
 
     if popcount(output_map) != output_channels[layers]:
         print(f'The output_map ({output_map:016x}) does not correspond to the number of output '
               f'channels of the final layer ({output_channels[layers]}).')
         sys.exit(1)
+
+    # Remove extraneous input layer configurations (when --stop-after is used)
+    processor_map = processor_map[:layers]
+    output_channels = output_channels[:layers+1]
+    output_offset = output_offset[:layers]
 
     # We don't support changing the following, but leave as parameters
     stride = [1] * layers
