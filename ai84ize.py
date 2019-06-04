@@ -120,6 +120,8 @@ def convert_checkpoint(input_file, output_file, arguments):
                 # Save conv biases so PyTorch can still use them to run a model. This needs to be
                 # reversed before loading the weights into the AI84/AI85.
                 if module != 'fc' and parameter == 'bias':
+                    if not arguments.ai85:
+                        weights *= 2**(clamp_bits-1)  # Do it twice on AI84
                     weights *= 2**(clamp_bits-1)
 
                 # Store modified weight/bias back into model
