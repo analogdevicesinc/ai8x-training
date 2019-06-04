@@ -46,6 +46,8 @@ MEM_SIZE = INSTANCE_SIZE*P_NUMPRO*P_NUMTILES//P_SHARED  # x32
 MAX_DATA_DIM = 512  # Max theoretical size of single channel, used for command line validation only
 MAX_CHANNELS = P_NUMPRO*P_NUMTILES
 
+AI85 = False
+
 
 def s2u(i):
     """
@@ -103,9 +105,13 @@ def conv2d(data, weight, bias, input_size, out_channels, kernel_size, stride, pa
                                           f'*{data[c][src_offs]} -> accumulator = {val}')
 
                 if bias is not None:
-                    val += bias[k]  # FIXME: This should really be * 128 to make it useful!
+                    if AI85:
+                        val += bias[k] * 128
+                    else:
+                        val += bias[k]
                     if debug:
-                        print(f'+bias {bias[k]} --> output[{k}][{out_offs}] = {val}')
+                        print(f'+bias {bias[k]}{"*128" if AI85 else ""} --> '
+                              f'output[{k}][{out_offs}] = {val}')
                 output[k][out_offs] = val
                 out_offs += 1
 
@@ -220,6 +226,12 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
     """
     Chain multiple CNN layers, create and save input and output
     """
+
+    # Remove extraneous input layer configurations (when --stop-after is used)
+    processor_map = processor_map[:layers]
+    chan = chan[:layers+1]
+    out_offset = out_offset[:layers]
+
     # Trace output sizes of the network and fix up all pool_stride values
     dim = [[input_size[1], input_size[2]]]
     for ll in range(layers):
@@ -236,6 +248,10 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
     # Complete list of offsets
     out_offset.insert(0, in_offset)  # All input locations
+
+    # Output channels, always in little data format. Need to turn on tiles that contain
+    # memories we write to. This defaults to aligning the output at the start of the memory.
+    processor_map.append(2**chan[layers]-1)
 
     # Write memfile for input
 
@@ -432,15 +448,9 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     this_map.append(tile)
             tile_map.append(this_map)
 
-        # Output channels, always in little data format. Need to turn on tiles that contain
-        # memories we write to.
-        # FIXME: Verify this. Shift by 4 * the instance number of the output offset of the last
-        # layer, out_offset[layers]
-        output_map = (2**chan[layers]-1) << ffs(processor_map[layers-1])
-
         tiles_used = []
         for tile in range(P_NUMTILES):
-            if ((processors_used | output_map) >> tile*P_NUMPRO) & (2**P_NUMPRO-1) != 0:
+            if ((processors_used | processor_map[layers]) >> tile*P_NUMPRO) & (2**P_NUMPRO-1) != 0:
                 tiles_used.append(tile)
 
         # Initialize CNN registers
@@ -478,6 +488,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         # Stack kernels; write only the kernels needed
         chan_kern_max = [0] * MAX_CHANNELS
         kern_offs = [0] * layers
+        kern_len = [0] * layers
         for ll in range(layers):
             first_channel = ffs(processor_map[ll])
             last_channel = fls(processor_map[ll])
@@ -489,9 +500,17 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 # Get highest offset for all used channels
                 kern_offs[ll] = max(chan_kern_max[c], kern_offs[ll])
 
-            if kern_offs[ll] + chan[ll+1] > 2**P_MASKABITS:
+            # Determine the number of kernels that need to be programmed. Since each instance
+            # spans 4 processors, kernels for all instances that have a single processor enabled
+            # need to be written, i.e. round down the first and round up the last
+            # FIXME: Deal with gaps that are full instances (i.e., all bits off for an instance)
+            next_layer_map = processor_map[ll+1]
+            kern_len[ll] = ((fls(next_layer_map) + P_SHARED-1) & ~(P_SHARED-1)) \
+                - ((ffs(next_layer_map)) & ~(P_SHARED-1))
+
+            if kern_offs[ll] + kern_len[ll] > 2**P_MASKABITS:
                 print(f'Kernel memory exceeded at layer {ll}; offset: {kern_offs[ll]}, '
-                      f'needed: {chan[ll+1]}')
+                      f'needed: {kern_len[ll]}')
                 sys.exit(1)
 
             for c in range(first_channel, last_channel+1):
@@ -501,13 +520,25 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
                 # print(f'c {c}, Kernel dimensions layer {ll}: {kernel[ll].shape}')
                 # print(f'should be {chan[ll]*chan[ll+1]}')
+                # Start at the first used instance
+                this_map = next_layer_map >> (ffs(next_layer_map) & ~(P_SHARED-1))
+                offs = 0
                 for i in range(chan[ll+1]):
+                    while this_map & 1 == 0:
+                        assert this_map != 0
+                        # FIXME: Deal with full-instance gaps, see above
+                        offs += 1
+                        this_map >>= 1
+                    this_map >>= 1
+
                     # print(f'i {i} L {ll} C {c}: Channel index {i + ch*chan[ll+1]} -> ', end='')
                     k = kernel[ll][ch + i*chan[ll]].flatten()
                     if debug:
                         print(f'Channel {c} Layer {ll} m{i}/{chan[ll+1]-1}: {k}')
-                    apb_write_kern(ll, c, chan_kern_max[c] + i, k)
-                chan_kern_max[c] = kern_offs[ll] + chan[ll+1]
+                    apb_write_kern(ll, c, chan_kern_max[c] + i + offs, k)
+
+                assert kern_len[ll] == offs + i + 1
+                chan_kern_max[c] = kern_offs[ll] + kern_len[ll]
                 ch += 1
 
         # Bias ('zero_bias_ram')
@@ -551,7 +582,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             print('------------------------')
             print(f'Number of channels = {chan[:layers]} -> {chan[layers]} outputs')
             print('Processor map      = [',
-                  ', '.join('{:016x}'.format(k) for k in processor_map[:layers]), ']', sep='')
+                  ', '.join('{:016x}'.format(k) for k in processor_map[:layers]), ']',
+                  f' -> {processor_map[layers]:016x} output', sep='',)
             print(f'Tile map           = {tile_map}')
             print(f'Kernel offsets     = {kern_offs}')
             print(f'Tile with bias     = {bias_tile}')
@@ -619,12 +651,9 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 apb_write_reg(tile, ll, 5, pool_stride[ll]-1, comment=' // pooling stride')
 
                 # Configure SRAM write pointer ('config_cnn_wptr') -- write ptr is global
-                # print(f'LL {ll} first_channel[ll+1] {first_channel[ll+1]} layers {layers}')
-                # FIXME: Check this works, especially if the first used processor is not
-                # a multiple of 4
-                # OLD: offs = first_channel[ll+1] * INSTANCE_SIZE if ll+1 < layers else 0
-                offs = (ffs(processor_map[ll+1]) & ~(P_SHARED-1)) * INSTANCE_SIZE \
-                    if ll+1 < layers else 0
+                # Get offset to first available instance of the first used processor of the next
+                # layer.
+                offs = (ffs(processor_map[ll+1]) & ~(P_SHARED-1)) * INSTANCE_SIZE
                 apb_write_reg(tile, ll, 6, out_offset[ll+1] // 4 + offs, debug,
                               comment=' // SRAM write ptr')
 
@@ -634,7 +663,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 #         [13:12] instance in group
                 #         [15:14] by-16 group
                 # [31:16] Mask offset (0x10000000, required when writing more than 4 masks)
-                if chan[ll] * chan[ll+1] > 4:
+                if chan[ll] * kern_len[ll] > 4:
                     val = 0x10000000
                 else:
                     val = 0
@@ -683,7 +712,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 # [23:16] Bias pointer starting address
                 # [24]    Bias enable
                 # [31:25] RFU
-                val = kern_offs[ll] << 8 | chan[ll+1]-1
+                val = kern_offs[ll] << 8 | kern_len[ll]-1
                 if tile == bias_tile[ll]:
                     # Enable bias only for one tile
                     val |= 0x1000000 | bias_offs[ll] << 16
@@ -725,7 +754,6 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     apb_write_reg(tile, ll, 12, 0, comment=f' // zero unused layer {ll} registers')
 
         # Load data memory ('admod_sram'/'lildat_sram')
-        # FIXME: Check that this works for unusual processor maps and for big data input.
         # Start loading at the first used tile
         memfile.write(f'\n\n  // {chan[0]}-channel data input\n')
         c = 0
