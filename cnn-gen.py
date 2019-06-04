@@ -331,7 +331,6 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             # Determine the number of kernels that need to be programmed. Since each instance
             # spans 4 processors, kernels for all instances that have a single processor enabled
             # need to be written, i.e. round down the first and round up the last
-            # FIXME: Deal with gaps that are full instances (i.e., all bits off for an instance)
             next_layer_map = processor_map[ll+1]
             kern_len[ll] = ((fls(next_layer_map) + P_SHARED-1) & ~(P_SHARED-1)) \
                 - (ffs(next_layer_map) & ~(P_SHARED-1))
@@ -359,7 +358,6 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 for i in range(chan[ll+1]):
                     while this_map & 1 == 0:
                         assert this_map != 0
-                        # FIXME: Deal with full-instance gaps, see above
                         offs += 1
                         this_map >>= 1
                     this_map >>= 1
@@ -777,7 +775,6 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     for c in range(0, chan[ll+1], 4):
                         while this_map & 1 == 0:
                             assert this_map != 0
-                            # FIXME: Deal with full-instance gaps, see above
                             noffs += 1
                             this_map >>= 1
                         this_map >>= 1
@@ -912,8 +909,8 @@ def main():
                         help="set base directory name for auto-filing .mem files")
     parser.add_argument('--top-level', default=None, metavar='S',
                         help="top level name instead of block mode (default: None)")
-    parser.add_argument('--timeout', type=int, metavar='N', default=10,
-                        help="set timeout (units of 10ms, default 100ms)")
+    parser.add_argument('--timeout', type=int, metavar='N', default=4,
+                        help="set timeout (units of 10ms, default 40ms)")
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="verbose output (default: false)")
     parser.add_argument('--verify-writes', action='store_true',
