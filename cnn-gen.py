@@ -1063,10 +1063,13 @@ def main():
         parser.error(f"Please specify output directory using --test-dir")
 
     # Load configuration file
-    # FIXME: Use marshmallow to validate
     with open(args.config_file) as cfg_file:
         print(f'Reading {args.config_file} to configure network...')
         cfg = yaml.load(cfg_file, Loader=yaml.SafeLoader)
+
+    if bool(set(cfg) - set(['dataset', 'layers', 'output_map'])):
+        print(f'Configuration file {args.config_file} contains unknown key(s)')
+        sys.exit(1)
 
     cifar = 'dataset' in cfg and cfg['dataset'].lower() == 'cifar-10'
     if 'layers' not in cfg:
@@ -1083,6 +1086,11 @@ def main():
     big_data = []
 
     for ll in cfg['layers']:
+        if bool(set(ll) - set(['max_pool', 'avg_pool', 'pool_stride', 'out_offset',
+                               'activate', 'data_format', 'processors', 'pad'])):
+            print(f'Configuration file {args.config_file} contains unknown key(s) for `layers`')
+            sys.exit(1)
+
         padding.append(ll['pad'] if 'pad' in ll else 1)
         if 'max_pool' in ll:
             pool.append(ll['max_pool'])
@@ -1108,6 +1116,10 @@ def main():
         else:
             relu.append(0)
         if 'data_format' in ll:
+            if len(big_data) > 0:
+                print('`data_format` can only be configured for the first layer')
+                sys.exit(1)
+                
             df = ll['data_format'].lower()
             if df in ['hwc', 'little']:
                 big_data.append(False)
