@@ -19,6 +19,8 @@ import torch
 import yaml
 
 import sampledata
+from utils import argmin, ffs, fls, popcount
+
 
 # AI84
 APB_BASE = 0x50100000
@@ -396,36 +398,6 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             apb_write(addr, d, f' // {comment}TRAM T {tile} P {proc} #{offs}')
 
         apb_write.foffs = 0
-
-        def ffs(x):
-            """
-            Returns the index, counting from 0, of the least significant set bit in `x`.
-            """
-            return (x & -x).bit_length() - 1
-
-        def fls(x):
-            """
-            Returns the index, counting from 0, of the most significant set bit in `x`.
-            """
-            return x.bit_length() - 1
-
-        def popcount(x):
-            """
-            Return the number of '1' bits in `x`.
-            """
-            return bin(x).count('1')
-
-        def argmin(values):
-            """
-            Given an iterable of `values` return the index of the smallest value
-            """
-            def argmin_pairs(pairs):
-                """
-                Given an iterable of `pairs` return the key corresponding to the smallest value
-                """
-                return min(pairs, key=lambda x: x[1])[0]
-
-            return argmin_pairs(enumerate(values))
 
         # Calculate the tiles needed, and tiles and processors used overall
         processors_used = 0
