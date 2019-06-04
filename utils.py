@@ -33,7 +33,7 @@ def popcount(x):
 
 def argmin(values):
     """
-    Given an iterable of `values` return the index of the smallest value
+    Given an iterable of `values` return the index of the smallest value.
     """
     def argmin_pairs(pairs):
         """

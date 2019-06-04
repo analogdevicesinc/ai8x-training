@@ -219,7 +219,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                apb_base, layers, processor_map,
                input_size, kernel_size, chan, padding, dilation, stride,
                pool, pool_stride, pool_average, activate,
-               data, kernel, bias, big_data, split,
+               data, kernel, bias, big_data, output_map, split,
                in_offset, out_offset,
                input_filename, output_filename, c_filename,
                base_directory, runtest_filename, log_filename,
@@ -250,10 +250,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
     # Complete list of offsets
     out_offset.insert(0, in_offset)  # All input locations
-
-    # Output channels, always in little data format. Need to turn on tiles that contain
-    # memories we write to. This defaults to aligning the output at the start of the memory.
-    processor_map.append(2**chan[layers]-1)
+    processor_map.append(output_map)  # Final map
 
     # Write memfile for input
 
@@ -275,7 +272,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
     def apb_write(addr, val, comment='', check=False, no_verify=False, rv=False):
         """
-        Write address and data to .mem file
+        Write address `addr` and data `val` to .mem or .c file.
+        If `rv` or `check`, then only verify.
         """
         assert val >= 0
         assert addr >= 0
@@ -873,7 +871,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                                       bias[ll],
                                       data, debug=debug_computation)
 
-        # Write memfile for output
+        # Write .mem file for output or create the C cnn_check() function to verify the output
         out_map = [False] * C_TILE_OFFS * P_NUMTILES
         apb_write.foffs = 0  # Position in output file
         if block_mode:
@@ -892,9 +890,21 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             memfile.write(f'// {test_name}\n// Expected output of layer {ll+1}\n')
             if not block_mode:
                 memfile.write('int cnn_check(void)\n{\n  int rv = 1;\n')
+
+            next_layer_map = processor_map[ll+1]
+
             for row in range(out_size[1]):
                 for col in range(out_size[2]):
+                    this_map = next_layer_map
+                    noffs = 0
                     for c in range(0, chan[ll+1], 4):
+                        while this_map & 1 == 0:
+                            assert this_map != 0
+                            # FIXME: Deal with full-instance gaps, see above
+                            noffs += 1
+                            this_map >>= 1
+                        this_map >>= 1
+
                         val = out_buf[c][row][col] & 0xff
                         if c+1 < chan[ll+1]:
                             val |= (out_buf[c+1][row][col] & 0xff) << 8
@@ -903,7 +913,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                         if c+3 < chan[ll+1]:
                             val |= (out_buf[c+3][row][col] & 0xff) << 24
 
-                        offs = out_offset[ll+1] + ((c % 16)*INSTANCE_SIZE + (c // 16)*TILE_SIZE +
+                        offs = out_offset[ll+1] + (((c + noffs) % P_NUMPRO)*INSTANCE_SIZE +
+                                                   ((c + noffs) // P_NUMPRO)*TILE_SIZE +
                                                    row*out_size[2] + col)*4 + C_SRAM_BASE
 
                         # If using single layer, make sure we're not overwriting the input
@@ -1145,6 +1156,18 @@ def main():
         print('Number of layers in the YAML configuration file does not match the checkpoint file')
         sys.exit(1)
 
+    if 'output_map' in cfg:
+        # Use optional configuration value
+        output_map = cfg['output_map']
+    else:
+        # Default to packed, 0-aligned output map
+        output_map = 2**output_channels[layers]-1
+
+    if popcount(output_map) != output_channels[layers]:
+        print(f'The output_map ({output_map:016x}) does not correspond to the number of output '
+              f'channels of the final layer ({output_channels[layers-1]}).')
+        sys.exit(1)
+
     # We don't support changing the following, but leave as parameters
     stride = [1] * layers
 
@@ -1162,7 +1185,7 @@ def main():
                     args.overwrite_ok, args.log, args.apb_base, layers, processor_map,
                     input_size, kernel_size, output_channels, padding, dilation, stride,
                     pool, pool_stride, pool_average, activate,
-                    data, weights, bias, big_data,
+                    data, weights, bias, big_data, output_map,
                     args.input_split,
                     args.input_offset, output_offset,
                     args.input_filename, args.output_filename, args.c_filename,
