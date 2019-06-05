@@ -197,7 +197,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             addr = C_TILE_OFFS*tile + C_CNN_BASE + reg*4
             apb_write(addr, val, comment)
 
-        def apb_write_reg(tile, layer, reg, val, debug=False, comment=None):
+        def apb_write_reg(tile, layer, reg, val, debug=False, comment=''):
             """
             Write register address and data to .mem file
             """
@@ -206,7 +206,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             addr = C_TILE_OFFS*tile + C_CNN_BASE + C_CNN*4 + reg*4 * 2**P_LYRBITS + layer*4
             apb_write(addr, val, comment)
             if debug:
-                print(f'T{tile} L{layer} R{reg:02} ({addr:08x}): {val:08x}')
+                print(f'T{tile} L{layer} R{reg:02} ({addr:08x}): {val:08x}{comment}')
 
         def apb_write_kern(ll, ch, idx, k):
             """
@@ -304,6 +304,16 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             apb_write_ctl(tile, 2, layers-1, comment=' // layer count')  # layer max count reg
             memfile.write('\n')
 
+        def print_kernel_map(kmap):
+            """
+            Print map of all used kernels
+            """
+            table = tabulate.tabulate(kmap, tablefmt='plain', missingval='X')
+            print('-' * (2**P_MASKABITS))
+            if layers < 10:
+                print(table.replace('  ', ''))
+            print('-' * (2**P_MASKABITS))
+
         # Kernels ('load_mask')
         # Stack kernels; write only the kernels needed
         chan_kern_max = [0] * MAX_CHANNELS
@@ -332,10 +342,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 print(f'\nKernel memory exceeded at layer {ll}; offset: {kern_offs[ll]}, '
                       f'needed: {kern_len[ll]}')
                 print('\nKernel map so far:')
-                table = tabulate.tabulate(kernel_map, tablefmt='plain', missingval='X')
-                print('-' * (2**P_MASKABITS * 2 - 1))
-                print(table.replace('  ', ' '))
-                print('-' * (2**P_MASKABITS * 2 - 1))
+                print_kernel_map(kernel_map)
                 sys.exit(1)
 
             for c in range(first_channel, last_channel+1):
@@ -370,11 +377,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 ch += 1
 
         if verbose:
-            print('\nKernel Map:')
-            table = tabulate.tabulate(kernel_map, tablefmt='plain', missingval='X')
-            print('-' * (2**P_MASKABITS * 2 - 1))
-            print(table.replace('  ', ' '))
-            print('-' * (2**P_MASKABITS * 2 - 1))
+            print('\nKernel map:')
+            print_kernel_map(kernel_map)
 
         # Bias ('zero_bias_ram')
         # Each tile has one bias memory (size 2**P_BRAMABITS bytes). Use only the bias memory in
@@ -462,6 +466,10 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         apb_write_byte.num = 0
         apb_write_byte.data_offs = 0
 
+        if verbose:
+            print('Register configuration:')
+            print('-----------------------')
+
         # Configure per-layer control registers
         for _, tile in enumerate(tiles_used):
             for ll in range(layers):
@@ -471,29 +479,32 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 # [7:0] maxcount: lower 8 bits = total of width + pad - 1
                 # [9:8] pad: 2 bits pad
                 apb_write_reg(tile, ll, 0, (padding[ll] << 8) | (dim[ll][0]-1 + 2*padding[ll]),
-                              comment=' // rows')
+                              verbose, comment=' // rows')
 
                 # Configure column count ('config_cnn_ccnt')
                 # [7:0] width including padding - 1
                 # [9:8] pad count (0 = no pad, 1 = half pad, 2 = full pad)
                 apb_write_reg(tile, ll, 1, padding[ll] << 8 | (dim[ll][1]-1 + 2 * padding[ll]),
-                              comment=' // columns')
+                              verbose, comment=' // columns')
 
                 # Configure pooling row count ('config_cnn_prcnt')
-                apb_write_reg(tile, ll, 3, max(1, pool[ll]-1), comment=' // pooling rows')
+                apb_write_reg(tile, ll, 3, max(1, pool[ll]-1),
+                              verbose, comment=' // pooling rows')
 
                 # Configure pooling column count ('config_cnn_pccnt')
-                apb_write_reg(tile, ll, 4, max(1, pool[ll]-1), comment=' // pooling columns')
+                apb_write_reg(tile, ll, 4, max(1, pool[ll]-1),
+                              verbose, comment=' // pooling columns')
 
                 # Configure pooling stride count ('config_cnn_stride')
-                apb_write_reg(tile, ll, 5, pool_stride[ll]-1, comment=' // pooling stride')
+                apb_write_reg(tile, ll, 5, pool_stride[ll]-1,
+                              verbose, comment=' // pooling stride')
 
                 # Configure SRAM write pointer ('config_cnn_wptr') -- write ptr is global
                 # Get offset to first available instance of the first used processor of the next
                 # layer.
                 offs = (ffs(processor_map[ll+1]) & ~(P_SHARED-1)) * INSTANCE_SIZE
-                apb_write_reg(tile, ll, 6, out_offset[ll+1] // 4 + offs, debug,
-                              comment=' // SRAM write ptr')
+                apb_write_reg(tile, ll, 6, out_offset[ll+1] // 4 + offs,
+                              verbose, comment=' // SRAM write ptr')
 
                 # Configure write pointer mask offset count ('config_cnn_woff')
                 # [15:0]  Timeslot offset
@@ -505,11 +516,13 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     val = 0x10000000
                 else:
                     val = 0
-                apb_write_reg(tile, ll, 7, val, debug, comment=' // mask offset count')
+                apb_write_reg(tile, ll, 7, val,
+                              verbose, comment=' // mask offset count')
 
                 # Configure sram read ptr count ('config_cnn_rptr') -- read ptr is local
                 # Source address must match write pointer of previous layer (minus global offset)
-                apb_write_reg(tile, ll, 8, out_offset[ll] // 4, comment=' // SRAM read ptr')
+                apb_write_reg(tile, ll, 8, out_offset[ll] // 4,
+                              verbose, comment=' // SRAM read ptr')
 
                 # Configure per-layer control
                 # [3:0] s_slave: enable the by-4 group within the by-16 mask RAM to slave
@@ -539,7 +552,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                         if processor_map[ll] >> (t * P_NUMPRO) & (2**P_NUMPRO-1) != 0:
                             sources |= 1 << t
                     val |= sources << 12
-                apb_write_reg(tile, ll, 9, val, debug, comment=' // layer control')
+                apb_write_reg(tile, ll, 9, val,
+                              verbose, comment=' // layer control')
 
                 # Configure mask count ('config_cnn_mask')
                 # Restriction: Every one of the mask memories will have to start from same offset
@@ -551,10 +565,14 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 # [24]    Bias enable
                 # [31:25] RFU
                 val = kern_offs[ll] << 8 | kern_len[ll]-1
+                # val = (kern_offs[ll] +
+                #        (ffs(processor_map[ll+1]) % P_SHARED) * 2**P_MASKABITS) << 8 \
+                #     | kern_len[ll]-1
                 if tile == bias_tile[ll]:
                     # Enable bias only for one tile
                     val |= 0x1000000 | bias_offs[ll] << 16
-                apb_write_reg(tile, ll, 10, val, debug, comment=' // mask count')
+                apb_write_reg(tile, ll, 10, val,
+                              verbose, comment=' // mask count')
 
                 # Configure tram pointer max ('config_cnn_tptr')
                 if pool[ll] > 0:
@@ -562,7 +580,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                               2*padding[ll] - 3)
                 else:
                     val = max(0, dim[ll][1] + 2*padding[ll] - 3)
-                apb_write_reg(tile, ll, 11, val, comment=' // TRAM ptr max')
+                apb_write_reg(tile, ll, 11, val,
+                              verbose, comment=' // TRAM ptr max')
 
                 # Configure mask and processor enables ('config_cnn_mena')
                 # [15:0]  mask enable
@@ -573,23 +592,35 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 #
                 # Enable at most 16 processors and masks
                 bits = (processor_map[ll] >> tile*P_NUMPRO) & (2**P_NUMPRO - 1)
-                apb_write_reg(tile, ll, 12, bits << 16 | bits, debug,
-                              comment=' // mask and processor enables')
+                apb_write_reg(tile, ll, 12, bits << 16 | bits,
+                              verbose, comment=' // mask and processor enables')
 
             if zero_unused:
                 for ll in range(layers, C_MAX_LAYERS):
-                    apb_write_reg(tile, ll, 0, 0, comment=f' // zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 1, 0, comment=f' // zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 3, 0, comment=f' // zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 4, 0, comment=f' // zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 5, 0, comment=f' // zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 6, 0, comment=f' // zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 7, 0, comment=f' // zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 8, 0, comment=f' // zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 9, 0, comment=f' // zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 10, 0, comment=f' // zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 11, 0, comment=f' // zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 12, 0, comment=f' // zero unused layer {ll} registers')
+                    apb_write_reg(tile, ll, 0, 0,
+                                  verbose, comment=f' // zero unused layer {ll} registers')
+                    apb_write_reg(tile, ll, 1, 0,
+                                  verbose, comment=f' // zero unused layer {ll} registers')
+                    apb_write_reg(tile, ll, 3, 0,
+                                  verbose, comment=f' // zero unused layer {ll} registers')
+                    apb_write_reg(tile, ll, 4, 0,
+                                  verbose, comment=f' // zero unused layer {ll} registers')
+                    apb_write_reg(tile, ll, 5, 0,
+                                  verbose, comment=f' // zero unused layer {ll} registers')
+                    apb_write_reg(tile, ll, 6, 0,
+                                  verbose, comment=f' // zero unused layer {ll} registers')
+                    apb_write_reg(tile, ll, 7, 0,
+                                  verbose, comment=f' // zero unused layer {ll} registers')
+                    apb_write_reg(tile, ll, 8, 0,
+                                  verbose, comment=f' // zero unused layer {ll} registers')
+                    apb_write_reg(tile, ll, 9, 0,
+                                  verbose, comment=f' // zero unused layer {ll} registers')
+                    apb_write_reg(tile, ll, 10, 0,
+                                  verbose, comment=f' // zero unused layer {ll} registers')
+                    apb_write_reg(tile, ll, 11, 0,
+                                  verbose, comment=f' // zero unused layer {ll} registers')
+                    apb_write_reg(tile, ll, 12, 0,
+                                  verbose, comment=f' // zero unused layer {ll} registers')
 
         # Load data memory ('admod_sram'/'lildat_sram')
         # Start loading at the first used tile
