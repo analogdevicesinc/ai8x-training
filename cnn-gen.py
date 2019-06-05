@@ -348,6 +348,9 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             next_layer_map = processor_map[ll+1]
             kern_len[ll] = 1 + fls(next_layer_map) - (ffs(next_layer_map) & ~(P_SHARED-1))
 
+            # We don't have to use dummy columns if there's space available on the left
+            kern_offs[ll] = max(0, kern_offs[ll] - (ffs(next_layer_map) % P_SHARED))
+
             if kern_offs[ll] + kern_len[ll] > 2**P_MASKABITS:
                 print(f'\nKernel memory exceeded at layer {ll}; offset: {kern_offs[ll]}, '
                       f'needed: {kern_len[ll]}')
@@ -512,8 +515,10 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 # Configure SRAM write pointer ('config_cnn_wptr') -- write ptr is global
                 # Get offset to first available instance of the first used processor of the next
                 # layer.
-                offs = (ffs(processor_map[ll+1]) & ~(P_SHARED-1)) * INSTANCE_SIZE
-                apb_write_reg(tile, ll, 6, out_offset[ll+1] // 4 + offs,
+                instance = ffs(processor_map[ll+1]) & ~(P_SHARED-1)
+                apb_write_reg(tile, ll, 6, out_offset[ll+1] // 4 +
+                              (instance % P_NUMPRO) * INSTANCE_SIZE +
+                              (instance // P_NUMPRO) * TILE_SIZE,
                               verbose, comment=' // SRAM write ptr')
 
                 # Configure write pointer mask offset count ('config_cnn_woff')
@@ -827,9 +832,10 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                             this_map >>= 1
 
                         # Physical offset into instance and tile
+                        proc = (coffs % MAX_CHANNELS) & ~(P_SHARED-1)
                         offs = C_SRAM_BASE + out_offset[ll+1] + \
-                            ((((coffs % MAX_CHANNELS) & ~(P_SHARED-1)) % P_NUMPRO)*INSTANCE_SIZE +
-                             (((coffs % MAX_CHANNELS) & ~(P_SHARED-1)) // P_NUMPRO)*TILE_SIZE +
+                            ((proc % P_NUMPRO) * INSTANCE_SIZE +
+                             (proc // P_NUMPRO) * TILE_SIZE +
                              row*out_size[2] + col) * 4
 
                         # print(f'val {val:08x} coffs {coffs} c {c} offs {offs:08x} '
