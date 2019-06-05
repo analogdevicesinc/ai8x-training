@@ -333,10 +333,10 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
             # Determine the number of kernels that need to be programmed. Since each instance
             # spans 4 processors, kernels for all instances that have a single processor enabled
-            # need to be written, i.e. round down the first and round up the last
+            # need to be written, i.e. round down the first. The last does not need to be rounded
+            # up because hardware takes care of it.
             next_layer_map = processor_map[ll+1]
-            kern_len[ll] = ((fls(next_layer_map) + P_SHARED-1) & ~(P_SHARED-1)) \
-                - (ffs(next_layer_map) & ~(P_SHARED-1))
+            kern_len[ll] = 1 + fls(next_layer_map) - (ffs(next_layer_map) & ~(P_SHARED-1))
 
             if kern_offs[ll] + kern_len[ll] > 2**P_MASKABITS:
                 print(f'\nKernel memory exceeded at layer {ll}; offset: {kern_offs[ll]}, '
