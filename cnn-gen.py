@@ -761,30 +761,34 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             if not block_mode:
                 memfile.write('int cnn_check(void)\n{\n  int rv = 1;\n')
 
-            next_layer_map = processor_map[ll+1]
+            # Start at the instance of the first active output processor/channel
+            next_layer_map = processor_map[ll+1] >> (ffs(processor_map[ll+1]) & ~(P_SHARED-1))
 
             for row in range(out_size[1]):
                 for col in range(out_size[2]):
                     this_map = next_layer_map
-                    noffs = 0
-                    for c in range(0, chan[ll+1], 4):
-                        while this_map & 1 == 0:
-                            assert this_map != 0
-                            noffs += 1
+                    coffs = 0
+                    c = 0
+                    while c < chan[ll+1]:
+                        # print(f'this_map: {this_map:016x} row {row} row_len {out_size[2]} '
+                        #       f'col {col}')
+                        # Get four bytes either from output or zeros and construct HWC word
+                        val = 0
+                        for _ in range(4):
+                            val >>= 8
+                            if this_map & 1:
+                                val |= out_buf[c][row][col] << 24
+                                c += 1
                             this_map >>= 1
-                        this_map >>= 1
 
-                        val = out_buf[c][row][col] & 0xff
-                        if c+1 < chan[ll+1]:
-                            val |= (out_buf[c+1][row][col] & 0xff) << 8
-                        if c+2 < chan[ll+1]:
-                            val |= (out_buf[c+2][row][col] & 0xff) << 16
-                        if c+3 < chan[ll+1]:
-                            val |= (out_buf[c+3][row][col] & 0xff) << 24
+                        # Physical offset into instance and tile
+                        offs = C_SRAM_BASE + out_offset[ll+1] + \
+                            (((coffs & ~(P_SHARED-1)) % P_NUMPRO)*INSTANCE_SIZE +
+                             ((coffs & ~(P_SHARED-1)) // P_NUMPRO)*TILE_SIZE +
+                             row*out_size[2] + col) * 4
 
-                        offs = out_offset[ll+1] + (((c + noffs) % P_NUMPRO)*INSTANCE_SIZE +
-                                                   ((c + noffs) // P_NUMPRO)*TILE_SIZE +
-                                                   row*out_size[2] + col)*4 + C_SRAM_BASE
+                        # print(f'val {val:08x} coffs {coffs} c {c} offs {offs:08x} '
+                        #       f'this_map: {this_map:016x}')
 
                         # If using single layer, make sure we're not overwriting the input
                         if (not overwrite_ok) and in_map[offs >> 2]:
@@ -799,6 +803,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                                 sys.exit(1)
                         out_map[offs >> 2] = True
                         apb_write(offs, val, rv=True)
+                        coffs += 4
+                        coffs %= MAX_CHANNELS
 
             if not block_mode:
                 memfile.write('  return rv;\n}\n')
