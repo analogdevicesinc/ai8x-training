@@ -793,12 +793,13 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 memfile.write('int cnn_check(void)\n{\n  int rv = 1;\n')
 
             # Start at the instance of the first active output processor/channel
-            next_layer_map = processor_map[ll+1] >> (ffs(processor_map[ll+1]) & ~(P_SHARED-1))
+            coffs_start = ffs(processor_map[ll+1]) & ~(P_SHARED-1)
+            next_layer_map = processor_map[ll+1] >> coffs_start
 
             for row in range(out_size[1]):
                 for col in range(out_size[2]):
                     this_map = next_layer_map
-                    coffs = 0
+                    coffs = coffs_start
                     c = 0
                     while c < chan[ll+1]:
                         # print(f'this_map: {this_map:016x} row {row} row_len {out_size[2]} '
@@ -814,8 +815,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
                         # Physical offset into instance and tile
                         offs = C_SRAM_BASE + out_offset[ll+1] + \
-                            (((coffs & ~(P_SHARED-1)) % P_NUMPRO)*INSTANCE_SIZE +
-                             ((coffs & ~(P_SHARED-1)) // P_NUMPRO)*TILE_SIZE +
+                            ((((coffs % MAX_CHANNELS) & ~(P_SHARED-1)) % P_NUMPRO)*INSTANCE_SIZE +
+                             (((coffs % MAX_CHANNELS) & ~(P_SHARED-1)) // P_NUMPRO)*TILE_SIZE +
                              row*out_size[2] + col) * 4
 
                         # print(f'val {val:08x} coffs {coffs} c {c} offs {offs:08x} '
@@ -835,7 +836,6 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                         out_map[offs >> 2] = True
                         apb_write(offs, val, rv=True)
                         coffs += 4
-                        coffs %= MAX_CHANNELS
 
             if not block_mode:
                 memfile.write('  return rv;\n}\n')
