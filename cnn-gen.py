@@ -481,8 +481,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 # layer.
                 instance = ffs(processor_map[ll+1]) & ~(P_SHARED-1)
                 apb_write_lreg(group, ll, LREG_WPTR_BASE, out_offset[ll] // 4 +
-                               ((instance % P_NUMPRO) * INSTANCE_SIZE |
-                                (instance // P_NUMPRO) * GROUP_SIZE),
+                               ((instance % P_SHARED) * INSTANCE_SIZE |
+                                ((instance // P_SHARED) << 12)),
                                verbose, comment=' // SRAM write ptr')
 
                 # Configure write pointer mask offset count
