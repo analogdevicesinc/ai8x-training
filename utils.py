@@ -42,3 +42,21 @@ def argmin(values):
         return min(pairs, key=lambda x: x[1])[0]
 
     return argmin_pairs(enumerate(values))
+
+
+def s2u(i):
+    """
+    Convert signed 8-bit integer `i` to unsigned.
+    """
+    if i < 0:
+        i += 256
+    return i
+
+
+def u2s(i):
+    """
+    Convert unsigned 8-bit integer `i` to signed.
+    """
+    if i > 127:
+        i -= 256
+    return i
