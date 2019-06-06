@@ -22,27 +22,13 @@ import yaml
 import sampledata
 from tornadocnn import APB_BASE, C_MAX_LAYERS, MAX_LAYERS, TRAM_SIZE, BIAS_SIZE, MASK_WIDTH, \
     C_CNN, C_CNN_BASE, C_TRAM_BASE, C_MRAM_BASE, C_BRAM_BASE, C_SRAM_BASE, C_TILE_OFFS, \
-    P_NUMTILES, P_NUMPRO, P_SHARED, INSTANCE_SIZE, TILE_SIZE, MEM_SIZE, MAX_CHANNELS
+    P_NUMTILES, P_NUMPRO, P_SHARED, INSTANCE_SIZE, TILE_SIZE, MEM_SIZE, MAX_CHANNELS, \
+    REG_CTL, REG_SRAM, REG_LCNT_MAX, \
+    LREG_RCNT, LREG_CCNT, LREG_RFU, LREG_PRCNT, LREG_PCCNT, LREG_STRIDE, LREG_WPTR_BASE, \
+    LREG_WPTR_OFFS, LREG_RPTR_BASE, LREG_LCTL, LREG_MCNT, LREG_TPTR, LREG_ENA, MAX_LREG
+
 from simulate import cnn_layer
-from utils import argmin, ffs, fls, popcount
-
-
-def s2u(i):
-    """
-    Convert signed 8-bit int to unsigned
-    """
-    if i < 0:
-        i += 256
-    return i
-
-
-def u2s(i):
-    """
-    Convert unsigned 8-bit int to signed
-    """
-    if i > 127:
-        i -= 256
-    return i
+from utils import argmin, ffs, fls, popcount, s2u
 
 
 def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwrite_ok, log,
@@ -165,7 +151,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
         def apb_write_ctl(tile, reg, val, debug=False, comment=''):
             """
-            Write global control address and data to .mem file
+            Set global control register `reg` in tile `tile` to value `val`.
             """
             if comment is None:
                 comment = f' // global ctl {reg}'
@@ -174,9 +160,9 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             if debug:
                 print(f'R{reg:02} ({addr:08x}): {val:08x}{comment}')
 
-        def apb_write_reg(tile, layer, reg, val, debug=False, comment=''):
+        def apb_write_lreg(tile, layer, reg, val, debug=False, comment=''):
             """
-            Write register address and data to .mem file
+            Set layer `layer` register `reg` in tile `tile` to value `val`.
             """
             if comment is None:
                 comment = f' // reg {reg}'
@@ -259,14 +245,14 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         # Disable completely unused tiles
         for tile in range(P_NUMTILES):
             if tile not in tiles_used:
-                apb_write_ctl(tile, 0, 0,
+                apb_write_ctl(tile, REG_CTL, 0,
                               verbose, comment=f' // Disable tile {tile}')
 
         memfile.write('\n')
 
         # Configure global control registers for used tiles
         for _, tile in enumerate(tiles_used):
-            # Zero out Tornado RAM ('zero_tram')
+            # Zero out Tornado RAM
             if c_library:
                 addr = apb_base + C_TILE_OFFS*tile + C_TRAM_BASE
                 memfile.write(f'  memset((uint32_t *) 0x{addr:08x}, 0, '
@@ -279,13 +265,13 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             memfile.write('\n')
 
             # Stop state machine - will be overwritten later
-            apb_write_ctl(tile, 0, 0x06,
+            apb_write_ctl(tile, REG_CTL, 0x06,
                           verbose, comment=' // Stop SM')  # ctl reg
             # SRAM Control - does not need to be changed
-            apb_write_ctl(tile, 1, 0x40e,
+            apb_write_ctl(tile, REG_SRAM, 0x40e,
                           verbose, comment=' // SRAM control')  # sram reg
             # Number of layers
-            apb_write_ctl(tile, 2, layers-1,
+            apb_write_ctl(tile, REG_LCNT_MAX, layers-1,
                           verbose, comment=' // Layer count')  # layer max count reg
             memfile.write('\n')
 
@@ -299,7 +285,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 print(table.replace('  ', ''))
             print('-' * MASK_WIDTH)
 
-        # Kernels ('load_mask')
+        # Kernels
         # Stack kernels; write only the kernels needed
         chan_kern_max = [0] * MAX_CHANNELS
         kern_offs = [0] * layers
@@ -369,7 +355,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             print('\nKernel map:')
             print_kernel_map(kernel_map)
 
-        # Bias ('zero_bias_ram')
+        # Bias
         # Each tile has one bias memory (size BIAS_SIZE bytes). Use only the bias memory in
         # one selected tile for the layer, and only if the layer uses a bias. Keep track of the
         # offsets so they can be programmed into the mask count register later.
@@ -464,40 +450,42 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             for ll in range(layers):
                 memfile.write(f'\n  // Tile {tile} layer {ll}\n')
 
-                # Configure row count ('config_cnn_rcnt')
+                # Configure row count
                 # [7:0] maxcount: lower 8 bits = total of width + pad - 1
                 # [9:8] pad: 2 bits pad
-                apb_write_reg(tile, ll, 0, (padding[ll] << 8) | (dim[ll][0]-1 + 2*padding[ll]),
-                              verbose, comment=' // Rows')
+                apb_write_lreg(tile, ll, LREG_RCNT,
+                               (padding[ll] << 8) | (dim[ll][0]-1 + 2*padding[ll]),
+                               verbose, comment=' // Rows')
 
-                # Configure column count ('config_cnn_ccnt')
+                # Configure column count
                 # [7:0] width including padding - 1
                 # [9:8] pad count (0 = no pad, 1 = half pad, 2 = full pad)
-                apb_write_reg(tile, ll, 1, padding[ll] << 8 | (dim[ll][1]-1 + 2 * padding[ll]),
-                              verbose, comment=' // Columns')
+                apb_write_lreg(tile, ll, LREG_CCNT,
+                               padding[ll] << 8 | (dim[ll][1]-1 + 2 * padding[ll]),
+                               verbose, comment=' // Columns')
 
-                # Configure pooling row count ('config_cnn_prcnt')
-                apb_write_reg(tile, ll, 3, max(1, pool[ll]-1),
-                              verbose, comment=' // Pooling rows')
+                # Configure pooling row count
+                apb_write_lreg(tile, ll, LREG_PRCNT, max(1, pool[ll]-1),
+                               verbose, comment=' // Pooling rows')
 
-                # Configure pooling column count ('config_cnn_pccnt')
-                apb_write_reg(tile, ll, 4, max(1, pool[ll]-1),
-                              verbose, comment=' // Pooling columns')
+                # Configure pooling column count
+                apb_write_lreg(tile, ll, LREG_PCCNT, max(1, pool[ll]-1),
+                               verbose, comment=' // Pooling columns')
 
-                # Configure pooling stride count ('config_cnn_stride')
-                apb_write_reg(tile, ll, 5, pool_stride[ll]-1,
-                              verbose, comment=' // Pooling stride')
+                # Configure pooling stride count
+                apb_write_lreg(tile, ll, LREG_STRIDE, pool_stride[ll]-1,
+                               verbose, comment=' // Pooling stride')
 
-                # Configure SRAM write pointer ('config_cnn_wptr') -- write ptr is global
+                # Configure SRAM write pointer -- write ptr is global
                 # Get offset to first available instance of the first used processor of the next
                 # layer.
                 instance = ffs(processor_map[ll+1]) & ~(P_SHARED-1)
-                apb_write_reg(tile, ll, 6, out_offset[ll] // 4 +
-                              (instance % P_NUMPRO) * INSTANCE_SIZE +
-                              (instance // P_NUMPRO) * TILE_SIZE,
-                              verbose, comment=' // SRAM write ptr')
+                apb_write_lreg(tile, ll, LREG_WPTR_BASE, out_offset[ll] // 4 +
+                               (instance % P_NUMPRO) * INSTANCE_SIZE +
+                               (instance // P_NUMPRO) * TILE_SIZE,
+                               verbose, comment=' // SRAM write ptr')
 
-                # Configure write pointer mask offset count ('config_cnn_woff')
+                # Configure write pointer mask offset count
                 # [15:0]  Timeslot offset
                 #         [11:0]  12 bits for memory - word address every time we reach mask limit
                 #         [13:12] instance in group
@@ -507,13 +495,14 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     val = 0x10000000
                 else:
                     val = 0
-                apb_write_reg(tile, ll, 7, val,
-                              verbose, comment=' // Mask offset count')
+                apb_write_lreg(tile, ll, LREG_WPTR_OFFS, val,
+                               verbose, comment=' // Mask offset count')
 
-                # Configure sram read ptr count ('config_cnn_rptr') -- read ptr is local
+                # Configure sram read ptr count -- read ptr is local
                 # Source address must match write pointer of previous layer (minus global offset)
-                apb_write_reg(tile, ll, 8, in_offset // 4 if ll == 0 else out_offset[ll-1] // 4,
-                              verbose, comment=' // SRAM read ptr')
+                apb_write_lreg(tile, ll, LREG_RPTR_BASE,
+                               in_offset // 4 if ll == 0 else out_offset[ll-1] // 4,
+                               verbose, comment=' // SRAM read ptr')
 
                 # Configure per-layer control
                 # [3:0] s_slave: enable the by-4 group within the by-16 mask RAM to slave
@@ -543,10 +532,10 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                         if (processor_map[ll] >> (t * P_NUMPRO)) % 2**P_NUMPRO:
                             sources |= 1 << t
                     val |= sources << 12
-                apb_write_reg(tile, ll, 9, val,
-                              verbose, comment=' // Layer control')
+                apb_write_lreg(tile, ll, LREG_LCTL, val,
+                               verbose, comment=' // Layer control')
 
-                # Configure mask count ('config_cnn_mask')
+                # Configure mask count
                 # Restriction: Every one of the mask memories will have to start from same offset
                 # [6:0]   Max count (output channels)
                 # [7]     RFU
@@ -559,19 +548,19 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 if tile == bias_tile[ll]:
                     # Enable bias only for one tile
                     val |= 0x1000000 | bias_offs[ll] << 16
-                apb_write_reg(tile, ll, 10, val,
-                              verbose, comment=' // Mask offset and count')
+                apb_write_lreg(tile, ll, LREG_MCNT, val,
+                               verbose, comment=' // Mask offset and count')
 
-                # Configure tram pointer max ('config_cnn_tptr')
+                # Configure tram pointer max
                 if pool[ll] > 0:
                     val = max(0, (dim[ll][1] + pool_stride[ll] - pool[ll]) // pool_stride[ll] +
                               2*padding[ll] - 3)
                 else:
                     val = max(0, dim[ll][1] + 2*padding[ll] - 3)
-                apb_write_reg(tile, ll, 11, val,
-                              verbose, comment=' // TRAM ptr max')
+                apb_write_lreg(tile, ll, LREG_TPTR, val,
+                               verbose, comment=' // TRAM ptr max')
 
-                # Configure mask and processor enables ('config_cnn_mena')
+                # Configure mask and processor enables
                 # [15:0]  processor enable
                 # [31:16] mask enable
                 # When the input data is sourced from 16 independent byte streams, all 16
@@ -580,18 +569,18 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 #
                 # Enable at most 16 processors and masks
                 bits = (processor_map[ll] >> tile*P_NUMPRO) % 2**P_NUMPRO
-                apb_write_reg(tile, ll, 12, bits << 16 | bits,
-                              verbose, comment=' // Mask and processor enables')
+                apb_write_lreg(tile, ll, LREG_ENA, bits << 16 | bits,
+                               verbose, comment=' // Mask and processor enables')
 
             if zero_unused:
                 for ll in range(layers, C_MAX_LAYERS):
-                    for reg in range(13):
-                        if reg == 2:  # Register 2 not implemented
+                    for reg in range(MAX_LREG+1):
+                        if reg == LREG_RFU:  # Register 2 not implemented
                             continue
-                        apb_write_reg(tile, ll, reg, 0,
-                                      verbose, comment=f' // Zero unused layer {ll} registers')
+                        apb_write_lreg(tile, ll, reg, 0,
+                                       verbose, comment=f' // Zero unused layer {ll} registers')
 
-        # Load data memory ('admod_sram'/'lildat_sram')
+        # Load data memory
         # Start loading at the first used tile
         memfile.write(f'\n\n  // {chan[0]}-channel data input\n')
         c = 0
@@ -604,8 +593,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
             # Load channel into shared memory
             tile = ch // P_NUMPRO
-            group = (ch % P_NUMPRO) // P_SHARED
-            new_data_offs = C_TILE_OFFS*tile + C_SRAM_BASE + INSTANCE_SIZE*4*group
+            instance = (ch % P_NUMPRO) // P_SHARED
+            new_data_offs = C_TILE_OFFS*tile + C_SRAM_BASE + INSTANCE_SIZE*4*instance
             if new_data_offs == data_offs:
                 print('Layer 0 processor map is misconfigured for data input. '
                       f'There is data overlap between processors {ch-1} and {ch}')
@@ -698,22 +687,21 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
         # Enable all needed tiles except the first one
         for _, tile in enumerate(tiles_used[1:]):
-            # [0] enable
-            # [8] one-shot (stop after single layer)
-            # cnn_ena_i <= #C_TPD pwdata[0];    # Enable
-            # rdy_sel   <= #C_TPD pwdata[2:1];  # Wait states - set to max
-            # ext_sync  <= #C_TPD pwdata[3];    # Slave to other group
-            # calcmax_i <= #C_TPD pwdata[4];    # RFU
-            # poolena_i <= #C_TPD pwdata[5];    # RFU
-            # bigdata_i <= #C_TPD pwdata[6];    # RFU
-            # actena_i  <= #C_TPD pwdata[7];    # RFU
-            # oneshot   <= #C_TPD pwdata[8];    # One-shot
-            # ext_sync  <= #C_TPD pwdata[11:9]; # See above
-            apb_write_ctl(tile, 0, 0x807,
+            # [0]    enable
+            # [2:1]  rdy_sel  (wait states - set to max)
+            # [3]    RFU
+            # [4]    calcmax
+            # [5]    poolena
+            # [6]    bigdata
+            # [7]    actena
+            # [8]    one-shot (stop after single layer)
+            # [11:9] ext_sync (slave to other group)
+            # [12]   irq
+            apb_write_ctl(tile, REG_CTL, 0x807,
                           verbose, comment=f' // Enable tile {tile}')
 
         # Master control - go
-        apb_write_ctl(tiles_used[0], 0, 0x07,
+        apb_write_ctl(tiles_used[0], REG_CTL, 0x07,
                       verbose, comment=f' // Master enable tile {tiles_used[0]}')
 
         if not block_mode:
