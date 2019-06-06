@@ -55,3 +55,30 @@ def create_runtest_sv(block_mode, base_directory, test_name, runtest_filename,
             runfile.write('`define ARM_PROG_SOURCE test.c\n')
             if timeout:
                 runfile.write(f'defparam REPEAT_TIMEOUT = {timeout};\n\n')
+
+
+def append_regression(top_level, test_name, queue_name, autogen_dir):
+    """
+    Append test `test_name` to the regression list in directory `autogen_dir` with
+    queue `queue_name`.
+    `top_level` indicates whether to insert another directory level into the output
+    path..
+    """
+
+    # Append to regression list?
+    if not top_level:
+        testname = f'tests/{test_name}/run_test:{queue_name}'
+    else:
+        testname = f'tests/{top_level}/{test_name}/run_test:{queue_name}'
+    found = False
+    try:
+        with open(os.path.join(autogen_dir, 'autogen_list'), mode='r') as listfile:
+            for line in listfile:
+                if testname in line:
+                    found = True
+                    break
+    except FileNotFoundError:
+        pass
+    if not found:
+        with open(os.path.join(autogen_dir, 'autogen_list'), mode='a') as listfile:
+            listfile.write(f'{testname}\n')
