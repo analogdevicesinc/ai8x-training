@@ -121,7 +121,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         memfile.write(f'// Created using {" ".join(str(x) for x in sys.argv)}\n')
 
         # Human readable description of test
-        memfile.write(f'// Configuring input for {layers} layer{"s" if layers > 1 else ""}\n')
+        memfile.write(f'\n// Configuring input for {layers} layer{"s" if layers > 1 else ""}\n')
 
         for ll in range(layers):
             memfile.write(f'// Layer {ll+1}: {chan[ll]}x{dim[ll][0]}x{dim[ll][1]} '
@@ -173,7 +173,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
         def apb_write_kern(ll, ch, idx, k):
             """
-            Write kernel to .mem file
+            Write single 3x3 kernel `k` for layer `ll`, channel `ch` to index `idx` in weight
+            memory.
             """
             assert ch < MAX_CHANNELS
             assert idx < MASK_WIDTH
@@ -196,14 +197,14 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
         def apb_write_bias(group, offs, bias):
             """
-            Write bias value to .mem file
+            Write bias value `bias` to offset `offs` in bias memory #`group`.
             """
             addr = C_GROUP_OFFS*group + C_BRAM_BASE + offs * 4
             apb_write(addr, bias & 0xff, f' // Bias')
 
         def apb_write_tram(group, proc, offs, d, comment=''):
             """
-            Write TRAM value to .mem file
+            Write value `d` to TRAM in group `group` and processor `proc` to offset `offs`.
             """
             addr = C_GROUP_OFFS*group + C_TRAM_BASE + proc * TRAM_SIZE * 4 + offs * 4
             apb_write(addr, d, f' // {comment}TRAM G{group} P{proc} #{offs}')
@@ -277,7 +278,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
         def print_kernel_map(kmap):
             """
-            Print map of all used kernels
+            Print map of all used kernels in kernel map `kmap`.
             """
             table = tabulate.tabulate(kmap, tablefmt='plain', missingval='X')
             print('-' * MASK_WIDTH)
@@ -285,8 +286,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 print(table.replace('  ', ''))
             print('-' * MASK_WIDTH)
 
-        # Kernels
-        # Stack kernels; write only the kernels needed
+        # Kernels: Stack kernels; write only the kernels needed
         chan_kern_max = [0] * MAX_CHANNELS
         kern_offs = [0] * layers
         kern_len = [0] * layers
@@ -317,7 +317,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
             if kern_offs[ll] + kern_len[ll] > MASK_WIDTH:
                 print(f'\nKernel memory exceeded at layer {ll}; offset: {kern_offs[ll]}, '
-                      f'needed: {kern_len[ll]}')
+                      f'needed: {kern_len[ll]}.')
                 print('\nKernel map so far:')
                 print_kernel_map(kernel_map)
                 sys.exit(1)
@@ -355,8 +355,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             print('\nKernel map:')
             print_kernel_map(kernel_map)
 
-        # Bias
-        # Each group has one bias memory (size BIAS_SIZE bytes). Use only the bias memory in
+        # Bias: Each group has one bias memory (size BIAS_SIZE bytes). Use only the bias memory in
         # one selected group for the layer, and only if the layer uses a bias. Keep track of the
         # offsets so they can be programmed into the mask count register later.
         group_bias_max = [0] * P_NUMGROUPS
@@ -367,14 +366,14 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 continue
             if len(bias[ll]) != chan[ll+1]:
                 print(f'Layer {ll}: output channel count {chan[ll+1]} does not match the number '
-                      f'of bias values {len(bias[ll])}')
+                      f'of bias values {len(bias[ll])}.')
                 sys.exit(1)
 
             # Pick the group with the least amount of data in it
             group = argmin(group_bias_max[t] for t in group_map[ll])
             if group_bias_max[group] + chan[ll+1] > BIAS_SIZE:
                 print(f'Layer {ll}: bias memory capacity exceeded - available groups: '
-                      f'{group_map[ll]}, used so far: {group_bias_max}, needed: {chan[ll+1]}')
+                      f'{group_map[ll]}, used so far: {group_bias_max}, needed: {chan[ll+1]}.')
                 sys.exit(1)
 
             bias_group[ll] = group
@@ -882,12 +881,12 @@ def main():
         cfg = yaml.load(cfg_file, Loader=yaml.SafeLoader)
 
     if bool(set(cfg) - set(['dataset', 'layers', 'output_map', 'arch'])):
-        print(f'Configuration file {args.config_file} contains unknown key(s)')
+        print(f'Configuration file {args.config_file} contains unknown key(s).')
         sys.exit(1)
 
     cifar = 'dataset' in cfg and cfg['dataset'].lower() == 'cifar-10'
     if 'layers' not in cfg or 'arch' not in cfg:
-        print(f'Configuration file {args.config_file} does not contain `layers` or `arch`')
+        print(f'Configuration file {args.config_file} does not contain `layers` or `arch`.')
         sys.exit(1)
 
     padding = []
@@ -902,7 +901,7 @@ def main():
     for ll in cfg['layers']:
         if bool(set(ll) - set(['max_pool', 'avg_pool', 'pool_stride', 'out_offset',
                                'activate', 'data_format', 'processors', 'pad'])):
-            print(f'Configuration file {args.config_file} contains unknown key(s) for `layers`')
+            print(f'Configuration file {args.config_file} contains unknown key(s) for `layers`.')
             sys.exit(1)
 
         padding.append(ll['pad'] if 'pad' in ll else 1)
@@ -918,20 +917,20 @@ def main():
         pool_stride.append(ll['pool_stride'] if 'pool_stride' in ll else 0)
         output_offset.append(ll['out_offset'] if 'out_offset' in ll else 0)
         if 'processors' not in ll:
-            print('`processors` key missing for layer in YAML configuration')
+            print('`processors` key missing for layer in YAML configuration.')
             sys.exit(1)
         processor_map.append(ll['processors'])
         if 'activate' in ll:
             if ll['activate'].lower() == 'relu':
                 relu.append(1)
             else:
-                print('unknown value for `activate` in YAML configuration')
+                print('Unknown value for `activate` in YAML configuration.')
                 sys.exit(1)
         else:
             relu.append(0)
         if 'data_format' in ll:
             if big_data:  # Sequence not empty
-                print('`data_format` can only be configured for the first layer')
+                print('`data_format` can only be configured for the first layer.')
                 sys.exit(1)
 
             df = ll['data_format'].lower()
@@ -940,22 +939,22 @@ def main():
             elif df in ['chw', 'big']:
                 big_data.append(True)
             else:
-                print('unknown value for `data_format` in YAML configuration')
+                print('Unknown value for `data_format` in YAML configuration.')
                 sys.exit(1)
         else:
             big_data.append(False)
 
     if any(p < 0 or p > 2 for p in padding):
-        print('Unsupported value for `pad` in YAML configuration')
+        print('Unsupported value for `pad` in YAML configuration.')
         sys.exit(1)
     if any(p & 1 != 0 or p < 0 or p > 4 for p in pool):
-        print('Unsupported value for `max_pool`/`avg_pool` in YAML configuration')
+        print('Unsupported value for `max_pool`/`avg_pool` in YAML configuration.')
         sys.exit(1)
     if any(p == 3 or p < 0 or p > 4 for p in pool_stride):
-        print('Unsupported value for `pool_stride` in YAML configuration')
+        print('Unsupported value for `pool_stride` in YAML configuration.')
         sys.exit(1)
     if any(p < 0 or p > 4*MEM_SIZE for p in output_offset):
-        print('Unsupported value for `out_offset` in YAML configuration')
+        print('Unsupported value for `out_offset` in YAML configuration.')
         sys.exit(1)
 
     # We don't support changing the following, but leave as parameters
@@ -974,7 +973,7 @@ def main():
 
     if checkpoint['arch'].lower() != cfg['arch'].lower():
         print(f"Network architecture of configuration file ({cfg['arch']}) does not match "
-              f"network architecture of checkpoint file ({checkpoint['arch']})")
+              f"network architecture of checkpoint file ({checkpoint['arch']}).")
         sys.exit(1)
 
     checkpoint_state = checkpoint['state_dict']
@@ -1003,7 +1002,8 @@ def main():
                     bias.append(None)
 
     if layers != len(cfg['layers']):
-        print('Number of layers in the YAML configuration file does not match the checkpoint file')
+        print(f"Number of layers in the YAML configuration file ({len(cfg['layers'])}) "
+              f"does not match the checkpoint file ({layers}).")
         sys.exit(1)
 
     if args.stop_after is not None:
