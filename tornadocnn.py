@@ -25,7 +25,7 @@ C_BRAM_BASE = C_CNN_BASE + 0xC800
 C_SRAM_BASE = C_CNN_BASE + 0x10000
 C_GROUP_OFFS = 0x100000
 P_NUMGROUPS = 4
-P_NUMPRO = 16  # Processors per tile
+P_NUMPRO = 16  # Processors per group
 P_SHARED = 4  # Processors sharing a data memory
 
 INSTANCE_SIZE = 1024  # x32

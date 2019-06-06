@@ -481,8 +481,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 # layer.
                 instance = ffs(processor_map[ll+1]) & ~(P_SHARED-1)
                 apb_write_lreg(group, ll, LREG_WPTR_BASE, out_offset[ll] // 4 +
-                               (instance % P_NUMPRO) * INSTANCE_SIZE +
-                               (instance // P_NUMPRO) * GROUP_SIZE,
+                               ((instance % P_NUMPRO) * INSTANCE_SIZE |
+                                (instance // P_NUMPRO) * GROUP_SIZE),
                                verbose, comment=' // SRAM write ptr')
 
                 # Configure write pointer mask offset count
@@ -765,8 +765,6 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     coffs = coffs_start
                     c = 0
                     while c < chan[ll+1]:
-                        # print(f'this_map: {this_map:016x} row {row} row_len {out_size[2]} '
-                        #       f'col {col}')
                         # Get four bytes either from output or zeros and construct HWC word
                         val = 0
                         for _ in range(4):
@@ -779,12 +777,9 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                         # Physical offset into instance and group
                         proc = (coffs % MAX_CHANNELS) & ~(P_SHARED-1)
                         offs = C_SRAM_BASE + out_offset[ll] + \
-                            ((proc % P_NUMPRO) * INSTANCE_SIZE +
-                             (proc // P_NUMPRO) * GROUP_SIZE +
+                            (((proc % P_NUMPRO) * INSTANCE_SIZE |
+                              (proc // P_NUMPRO) * GROUP_SIZE) +
                              row*out_size[2] + col) * 4
-
-                        # print(f'val {val:08x} coffs {coffs} c {c} offs {offs:08x} '
-                        #       f'this_map: {this_map:016x}')
 
                         # If using single layer, make sure we're not overwriting the input
                         if (not overwrite_ok) and in_map[offs >> 2]:
