@@ -29,10 +29,10 @@ APB_BASE = 0x50100000
 
 # CNN hardware parameters
 C_MAX_LAYERS = 16
-P_TRAMABITS = 8
-P_BRAMABITS = 8
-P_MASKABITS = 7
-P_LYRBITS = 5
+MAX_LAYERS = 32
+TRAM_SIZE = 256
+BIAS_SIZE = 256
+MASK_WIDTH = 128
 C_CNN = 4
 C_CNN_BASE = 0
 C_TRAM_BASE = C_CNN_BASE + 0x800
@@ -204,7 +204,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             """
             if comment is None:
                 comment = f' // reg {reg}'
-            addr = C_TILE_OFFS*tile + C_CNN_BASE + C_CNN*4 + reg*4 * 2**P_LYRBITS + layer*4
+            addr = C_TILE_OFFS*tile + C_CNN_BASE + C_CNN*4 + reg*4 * MAX_LAYERS + layer*4
             apb_write(addr, val, comment)
             if debug:
                 print(f'T{tile} L{layer} R{reg:02} ({addr:08x}): {val:08x}{comment}')
@@ -214,9 +214,9 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             Write kernel to .mem file
             """
             assert ch < MAX_CHANNELS
-            assert idx < 2**P_MASKABITS
+            assert idx < MASK_WIDTH
             addr = C_TILE_OFFS*(ch // P_NUMPRO) + C_MRAM_BASE + (ch % P_NUMPRO) * \
-                2**P_MASKABITS * 16 + idx * 16
+                MASK_WIDTH * 16 + idx * 16
             apb_write(addr, k[0] & 0xff, no_verify=True,
                       comment=f' // Layer {ll}: processor {ch} kernel #{idx}')
             apb_write(addr+4, (k[1] & 0xff) << 24 | (k[2] & 0xff) << 16 |
@@ -243,7 +243,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             """
             Write TRAM value to .mem file
             """
-            addr = C_TILE_OFFS*tile + C_TRAM_BASE + proc * 2**P_TRAMABITS * 4 + offs * 4
+            addr = C_TILE_OFFS*tile + C_TRAM_BASE + proc * TRAM_SIZE * 4 + offs * 4
             apb_write(addr, d, f' // {comment}TRAM T {tile} P {proc} #{offs}')
 
         apb_write.foffs = 0
@@ -294,10 +294,10 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             if c_library:
                 addr = apb_base + C_TILE_OFFS*tile + C_TRAM_BASE
                 memfile.write(f'  memset((uint32_t *) 0x{addr:08x}, 0, '
-                              f'{2**P_TRAMABITS * P_NUMPRO * 4}); // Zero TRAM tile {tile}\n')
+                              f'{TRAM_SIZE * P_NUMPRO * 4}); // Zero TRAM tile {tile}\n')
             else:
                 for p in range(P_NUMPRO):
-                    for offs in range(2**P_TRAMABITS):
+                    for offs in range(TRAM_SIZE):
                         apb_write_tram(tile, p, offs, 0, comment='Zero ')
 
             memfile.write('\n')
@@ -318,17 +318,17 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             Print map of all used kernels
             """
             table = tabulate.tabulate(kmap, tablefmt='plain', missingval='X')
-            print('-' * (2**P_MASKABITS))
+            print('-' * MASK_WIDTH)
             if layers < 10:
                 print(table.replace('  ', ''))
-            print('-' * (2**P_MASKABITS))
+            print('-' * MASK_WIDTH)
 
         # Kernels ('load_mask')
         # Stack kernels; write only the kernels needed
         chan_kern_max = [0] * MAX_CHANNELS
         kern_offs = [0] * layers
         kern_len = [0] * layers
-        kernel_map = [[None] * 2**P_MASKABITS for i in range(MAX_CHANNELS)]
+        kernel_map = [[None] * MASK_WIDTH for i in range(MAX_CHANNELS)]
         for ll in range(layers):
             first_channel = ffs(processor_map[ll])
             last_channel = fls(processor_map[ll])
@@ -350,7 +350,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             # We don't have to use dummy columns if there's space available on the left
             kern_offs[ll] = max(0, kern_offs[ll] - (ffs(next_layer_map) % P_SHARED))
 
-            if kern_offs[ll] + kern_len[ll] > 2**P_MASKABITS:
+            if kern_offs[ll] + kern_len[ll] > MASK_WIDTH:
                 print(f'\nKernel memory exceeded at layer {ll}; offset: {kern_offs[ll]}, '
                       f'needed: {kern_len[ll]}')
                 print('\nKernel map so far:')
@@ -391,7 +391,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             print_kernel_map(kernel_map)
 
         # Bias ('zero_bias_ram')
-        # Each tile has one bias memory (size 2**P_BRAMABITS bytes). Use only the bias memory in
+        # Each tile has one bias memory (size BIAS_SIZE bytes). Use only the bias memory in
         # one selected tile for the layer, and only if the layer uses a bias. Keep track of the
         # offsets so they can be programmed into the mask count register later.
         tile_bias_max = [0] * P_NUMTILES
@@ -407,7 +407,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
             # Pick the tile with the least amount of data in it
             tile = argmin(tile_bias_max[t] for t in tile_map[ll])
-            if tile_bias_max[tile] + chan[ll+1] > 2**P_BRAMABITS:
+            if tile_bias_max[tile] + chan[ll+1] > BIAS_SIZE:
                 print(f'Layer {ll}: bias memory capacity exceeded - available tiles: '
                       f'{tile_map[ll]}, used so far: {tile_bias_max}, needed: {chan[ll+1]}')
                 sys.exit(1)
@@ -593,8 +593,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                               verbose, comment=' // TRAM ptr max')
 
                 # Configure mask and processor enables ('config_cnn_mena')
-                # [15:0]  mask enable
-                # [31:16] processor enable (or the reverse?)
+                # [15:0]  processor enable
+                # [31:16] mask enable
                 # When the input data is sourced from 16 independent byte streams, all 16
                 # processors and compute elements need to be enabled.  If there were only 4 input
                 # channels, 0x000f000f would be correct.
@@ -606,30 +606,11 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
             if zero_unused:
                 for ll in range(layers, C_MAX_LAYERS):
-                    apb_write_reg(tile, ll, 0, 0,
-                                  verbose, comment=f' // Zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 1, 0,
-                                  verbose, comment=f' // Zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 3, 0,
-                                  verbose, comment=f' // Zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 4, 0,
-                                  verbose, comment=f' // Zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 5, 0,
-                                  verbose, comment=f' // Zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 6, 0,
-                                  verbose, comment=f' // Zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 7, 0,
-                                  verbose, comment=f' // Zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 8, 0,
-                                  verbose, comment=f' // Zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 9, 0,
-                                  verbose, comment=f' // Zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 10, 0,
-                                  verbose, comment=f' // Zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 11, 0,
-                                  verbose, comment=f' // Zero unused layer {ll} registers')
-                    apb_write_reg(tile, ll, 12, 0,
-                                  verbose, comment=f' // Zero unused layer {ll} registers')
+                    for reg in range(13):
+                        if reg == 2:  # Register 2 not implemented
+                            continue
+                        apb_write_reg(tile, ll, reg, 0,
+                                      verbose, comment=f' // Zero unused layer {ll} registers')
 
         # Load data memory ('admod_sram'/'lildat_sram')
         # Start loading at the first used tile
