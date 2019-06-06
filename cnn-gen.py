@@ -697,7 +697,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             # [8]    one-shot (stop after single layer)
             # [11:9] ext_sync (slave to other group)
             # [12]   irq
-            apb_write_ctl(tile, REG_CTL, 0x807,
+            apb_write_ctl(tile, REG_CTL, 0x807 | tiles_used[0] << 9,
                           verbose, comment=f' // Enable tile {tile}')
 
         # Master control - go
