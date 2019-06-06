@@ -53,3 +53,20 @@ LREG_MCNT = 10
 LREG_TPTR = 11
 LREG_ENA = 12
 MAX_LREG = LREG_ENA
+
+# Implementation specifics
+BIAS_DIV = 1
+
+
+def set_device(ai85):
+    """
+    Change implementation configuration to match the AI84 or AI85, depending on the `ai85`
+    bool input.
+    """
+    global BIAS_DIV  # pylint: disable=global-statement
+
+    print(f'Configuring device: {"AI85" if ai85 else "AI84"}.')
+    if not ai85:
+        return
+
+    BIAS_DIV = 128

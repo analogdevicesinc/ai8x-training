@@ -26,7 +26,8 @@ from tornadocnn import APB_BASE, MAX_LAYERS, TRAM_SIZE, BIAS_SIZE, MASK_WIDTH, \
     P_NUMGROUPS, P_NUMPRO, P_SHARED, INSTANCE_SIZE, GROUP_SIZE, MEM_SIZE, MAX_CHANNELS, \
     REG_CTL, REG_SRAM, REG_LCNT_MAX, \
     LREG_RCNT, LREG_CCNT, LREG_RFU, LREG_PRCNT, LREG_PCCNT, LREG_STRIDE, LREG_WPTR_BASE, \
-    LREG_WPTR_OFFS, LREG_RPTR_BASE, LREG_LCTL, LREG_MCNT, LREG_TPTR, LREG_ENA, MAX_LREG
+    LREG_WPTR_OFFS, LREG_RPTR_BASE, LREG_LCTL, LREG_MCNT, LREG_TPTR, LREG_ENA, MAX_LREG, \
+    BIAS_DIV, set_device
 from simulate import cnn_layer
 from utils import argmin, ffs, fls, popcount, s2u
 
@@ -875,6 +876,9 @@ def main():
                         help="zero unused registers (default: do not touch)")
     args = parser.parse_args()
 
+    # Configure device
+    set_device(args.ai85)
+
     # Load configuration file
     with open(args.config_file) as cfg_file:
         print(f'Reading {args.config_file} to configure network...')
@@ -979,7 +983,6 @@ def main():
     checkpoint_state = checkpoint['state_dict']
     layers = 0
     output_channels = []
-    bias_div = 128 if args.ai85 else 1
     for _, k in enumerate(checkpoint_state.keys()):
         operation, parameter = k.rsplit(sep='.', maxsplit=1)
         if parameter in ['weight']:
@@ -995,7 +998,7 @@ def main():
                 # Is there a bias for this layer?
                 bias_name = operation + '.bias'
                 if bias_name in checkpoint_state:
-                    w = checkpoint_state[bias_name].numpy().astype(np.int64) // bias_div
+                    w = checkpoint_state[bias_name].numpy().astype(np.int64) // BIAS_DIV
                     assert w.min() >= -128 and w.max() <= 127
                     bias.append(w)
                 else:
