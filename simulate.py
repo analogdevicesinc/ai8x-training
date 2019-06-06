@@ -71,9 +71,12 @@ def cnn_layer(layer, verbose,
     out_buf = np.full(shape=(out_size[0], out_size[1]*out_size[2]),
                       fill_value=np.nan, dtype=np.int64)
 
+    if bias is not None:
+        bias = bias * BIAS_DIV
+
     conv2d(data=pooled,
            weight=kernel,
-           bias=bias * BIAS_DIV if bias else None,
+           bias=bias,
            input_size=pooled_size,
            out_channels=output_channels,
            kernel_size=kernel_size,
