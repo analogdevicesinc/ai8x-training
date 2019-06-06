@@ -19,14 +19,14 @@ import tabulate
 import torch
 import yaml
 
+import rtlsim
 import sampledata
-from tornadocnn import APB_BASE, C_MAX_LAYERS, MAX_LAYERS, TRAM_SIZE, BIAS_SIZE, MASK_WIDTH, \
+from tornadocnn import APB_BASE, MAX_LAYERS, TRAM_SIZE, BIAS_SIZE, MASK_WIDTH, \
     C_CNN, C_CNN_BASE, C_TRAM_BASE, C_MRAM_BASE, C_BRAM_BASE, C_SRAM_BASE, C_TILE_OFFS, \
     P_NUMTILES, P_NUMPRO, P_SHARED, INSTANCE_SIZE, TILE_SIZE, MEM_SIZE, MAX_CHANNELS, \
     REG_CTL, REG_SRAM, REG_LCNT_MAX, \
     LREG_RCNT, LREG_CCNT, LREG_RFU, LREG_PRCNT, LREG_PCCNT, LREG_STRIDE, LREG_WPTR_BASE, \
     LREG_WPTR_OFFS, LREG_RPTR_BASE, LREG_LCTL, LREG_MCNT, LREG_TPTR, LREG_ENA, MAX_LREG
-
 from simulate import cnn_layer
 from utils import argmin, ffs, fls, popcount, s2u
 
@@ -573,7 +573,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                                verbose, comment=' // Mask and processor enables')
 
             if zero_unused:
-                for ll in range(layers, C_MAX_LAYERS):
+                for ll in range(layers, MAX_LAYERS):
                     for reg in range(MAX_LREG+1):
                         if reg == LREG_RFU:  # Register 2 not implemented
                             continue
@@ -809,42 +809,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         in_map = out_map
 
     # Create run_test.sv
-    with open(os.path.join(base_directory, test_name, runtest_filename), mode='w') as runfile:
-        if block_mode:
-            runfile.write('// Check default register values.\n')
-            runfile.write('// Write all registers.\n')
-            runfile.write('// Make sure only writable bits will change.\n')
-            runfile.write('int     inp1;\n')
-            runfile.write('string  fn;\n\n')
-            if timeout:
-                runfile.write(f'defparam REPEAT_TIMEOUT = {timeout};\n\n')
-            runfile.write('initial begin\n')
-            runfile.write('  //----------------------------------------------------------------\n')
-            runfile.write('  // Initialize the CNN\n')
-            runfile.write('  //----------------------------------------------------------------\n')
-            runfile.write('  #200000;\n')
-            runfile.write(f'  fn = {{`TARGET_DIR,"/{input_filename}.mem"}};\n')
-            runfile.write('  inp1=$fopen(fn, "r");\n')
-            runfile.write('  if (inp1 == 0) begin\n')
-            runfile.write('    $display("ERROR : CAN NOT OPEN THE FILE");\n')
-            runfile.write('  end\n')
-            runfile.write('  else begin\n')
-            runfile.write('    write_cnn(inp1);\n')
-            runfile.write('    $fclose(inp1);\n')
-            runfile.write('  end\n')
-            runfile.write('end\n\n')
-            runfile.write('initial begin\n')
-            runfile.write('  #1;\n')
-            runfile.write('  error_count = 0;\n')
-            runfile.write('  @(posedge rstn);\n')
-            runfile.write('  #5000;     // for invalidate done\n')
-            runfile.write('  -> StartTest;\n')
-            runfile.write('end\n')
-        else:
-            runfile.write(f'// {runtest_filename}\n')
-            runfile.write('`define ARM_PROG_SOURCE test.c\n')
-            if timeout:
-                runfile.write(f'defparam REPEAT_TIMEOUT = {timeout};\n\n')
+    rtlsim.create_runtest_sv(block_mode, base_directory, test_name, runtest_filename,
+                             input_filename, timeout)
 
     return test_name
 
