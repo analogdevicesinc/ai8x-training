@@ -6,14 +6,13 @@
 # Written by RM
 ###################################################################################################
 """
-Tornado CNN hardware constants
+Tornado CNN hardware constants - AI84
 """
 
 # AI84
 APB_BASE = 0x50100000
 
 # CNN hardware parameters
-C_MAX_LAYERS = 16
 MAX_LAYERS = 32
 TRAM_SIZE = 256
 BIAS_SIZE = 256
