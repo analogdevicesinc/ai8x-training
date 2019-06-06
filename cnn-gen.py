@@ -1052,23 +1052,7 @@ def main():
                     args.c_library,
                     args.ai85)
 
-    # Append to regression list?
-    if not args.top_level:
-        testname = f'tests/{tn}/run_test:{args.queue_name}'
-    else:
-        testname = f'tests/{args.top_level}/{tn}/run_test:{args.queue_name}'
-    found = False
-    try:
-        with open(os.path.join(args.autogen, 'autogen_list'), mode='r') as listfile:
-            for line in listfile:
-                if testname in line:
-                    found = True
-                    break
-    except FileNotFoundError:
-        pass
-    if not found:
-        with open(os.path.join(args.autogen, 'autogen_list'), mode='a') as listfile:
-            listfile.write(f'{testname}\n')
+    rtlsim.append_regression(args.top_level, tn, args.queue_name, args.autogen)
 
 
 def signal_handler(_signal, _frame):
