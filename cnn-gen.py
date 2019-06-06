@@ -98,9 +98,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     (pooled_size[1] - dilation[1] * (kernel_size[1] - 1) - 1 +
                      2 * padding[ll]) // stride[ll] + 1])
 
-    # Complete list of offsets
-    out_offset.insert(0, in_offset)  # All input locations
-    processor_map.append(output_map)  # Final map
+    # Complete list of maps with output map
+    processor_map.append(output_map)
 
     # Write memfile for input
 
@@ -266,13 +265,13 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 sys.exit(1)
             this_map = []
             for tile in range(P_NUMTILES):
-                if (processor_map[ll] >> tile*P_NUMPRO) & (2**P_NUMPRO-1) != 0:
+                if (processor_map[ll] >> tile*P_NUMPRO) % 2**P_NUMPRO:
                     this_map.append(tile)
             tile_map.append(this_map)
 
         tiles_used = []
         for tile in range(P_NUMTILES):
-            if ((processors_used | processor_map[layers]) >> tile*P_NUMPRO) & (2**P_NUMPRO-1) != 0:
+            if ((processors_used | processor_map[layers]) >> tile*P_NUMPRO) % 2**P_NUMPRO:
                 tiles_used.append(tile)
 
         # Initialize CNN registers
@@ -363,29 +362,27 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     # Unused processor
                     continue
 
-                # print(f'c {c}, Kernel dimensions layer {ll}: {kernel[ll].shape}')
-                # print(f'should be {chan[ll]*chan[ll+1]}')
                 # Start at the first used instance
-                this_map = next_layer_map >> (ffs(next_layer_map) & ~(P_SHARED-1))
-                offs = 0
-                for i in range(chan[ll+1]):
+                this_map = next_layer_map >> ffs(next_layer_map)
+                coffs = ffs(next_layer_map) % P_SHARED
+                for col in range(chan[ll+1]):
+                    # Skip over unused bits in the processor map
                     while this_map & 1 == 0:
                         assert this_map != 0
-                        offs += 1
+                        coffs += 1
                         this_map >>= 1
                     this_map >>= 1
 
-                    # print(f'i {i} L {ll} C {c}: Channel index {i + ch*chan[ll+1]} -> ', end='')
-                    k = kernel[ll][ch + i*chan[ll]].flatten()
+                    k = kernel[ll][ch + col*chan[ll]].flatten()
                     if debug:
-                        print(f'Channel {c} Layer {ll} m{i}/{chan[ll+1]-1}: {k}')
-                    apb_write_kern(ll, c, kern_offs[ll] + i + offs, k)
+                        print(f'Channel {c} Layer {ll} m{col}/{chan[ll+1]-1}: {k}')
+                    apb_write_kern(ll, c, kern_offs[ll] + col + coffs, k)
 
                     # Update kernel map
-                    assert kernel_map[c][kern_offs[ll] + i + offs] is None
-                    kernel_map[c][kern_offs[ll] + i + offs] = ll
+                    assert kernel_map[c][kern_offs[ll] + col + coffs] is None
+                    kernel_map[c][kern_offs[ll] + col + coffs] = ll
 
-                assert fls(next_layer_map) - (ffs(next_layer_map) & ~(P_SHARED-1)) == offs + i
+                assert kern_len[ll] == coffs + chan[ll+1]
                 chan_kern_max[c] = kern_offs[ll] + kern_len[ll]
                 ch += 1
 
@@ -427,7 +424,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             print('---------------------')
             print(f'Used processors    = {processors_used:016x}')
             print(f'Used tiles         = {tiles_used}')
-            print(f'Input offset       = {out_offset[0]}')
+            print(f'Input offset       = {in_offset}')
             print('\nPer-tile configuration:')
             print('-----------------------')
             print(f'Used bias memory   = {tile_bias_max}')
@@ -442,7 +439,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             print(f'Kernel lengths     = {kern_len}')
             print(f'Tile with bias     = {bias_tile}')
             print(f'Bias offsets       = {bias_offs}')
-            print(f'Output offsets     = {out_offset[1:]}')
+            print(f'Output offsets     = {out_offset}')
             print('')
 
         def apb_write_byte_flush(offs, comment=''):
@@ -516,7 +513,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 # Get offset to first available instance of the first used processor of the next
                 # layer.
                 instance = ffs(processor_map[ll+1]) & ~(P_SHARED-1)
-                apb_write_reg(tile, ll, 6, out_offset[ll+1] // 4 +
+                apb_write_reg(tile, ll, 6, out_offset[ll] // 4 +
                               (instance % P_NUMPRO) * INSTANCE_SIZE +
                               (instance // P_NUMPRO) * TILE_SIZE,
                               verbose, comment=' // SRAM write ptr')
@@ -536,7 +533,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
                 # Configure sram read ptr count ('config_cnn_rptr') -- read ptr is local
                 # Source address must match write pointer of previous layer (minus global offset)
-                apb_write_reg(tile, ll, 8, out_offset[ll] // 4,
+                apb_write_reg(tile, ll, 8, in_offset // 4 if ll == 0 else out_offset[ll-1] // 4,
                               verbose, comment=' // SRAM read ptr')
 
                 # Configure per-layer control
@@ -564,7 +561,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     for t in range(tile_map[ll][0]+1, P_NUMTILES):
                         # See if any processors other than this one are operating
                         # and set the cnnsiena bit if true
-                        if processor_map[ll] >> (t * P_NUMPRO) & (2**P_NUMPRO-1) != 0:
+                        if (processor_map[ll] >> (t * P_NUMPRO)) % 2**P_NUMPRO:
                             sources |= 1 << t
                     val |= sources << 12
                 apb_write_reg(tile, ll, 9, val,
@@ -584,7 +581,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     # Enable bias only for one tile
                     val |= 0x1000000 | bias_offs[ll] << 16
                 apb_write_reg(tile, ll, 10, val,
-                              verbose, comment=' // Mask count')
+                              verbose, comment=' // Mask offset and count')
 
                 # Configure tram pointer max ('config_cnn_tptr')
                 if pool[ll] > 0:
@@ -603,7 +600,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 # channels, 0x000f000f would be correct.
                 #
                 # Enable at most 16 processors and masks
-                bits = (processor_map[ll] >> tile*P_NUMPRO) & (2**P_NUMPRO - 1)
+                bits = (processor_map[ll] >> tile*P_NUMPRO) % 2**P_NUMPRO
                 apb_write_reg(tile, ll, 12, bits << 16 | bits,
                               verbose, comment=' // Mask and processor enables')
 
@@ -641,7 +638,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         data_offs = 0
         step = 1 if big_data[0] else 4
         for ch in range(0, MAX_CHANNELS, step):
-            if (processor_map[0] >> ch) & (2**step-1) == 0:
+            if not (processor_map[0] >> ch) % 2**step:
                 # Channel or block of four channels not used for input
                 continue
 
@@ -833,7 +830,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
                         # Physical offset into instance and tile
                         proc = (coffs % MAX_CHANNELS) & ~(P_SHARED-1)
-                        offs = C_SRAM_BASE + out_offset[ll+1] + \
+                        offs = C_SRAM_BASE + out_offset[ll] + \
                             ((proc % P_NUMPRO) * INSTANCE_SIZE +
                              (proc // P_NUMPRO) * TILE_SIZE +
                              row*out_size[2] + col) * 4
