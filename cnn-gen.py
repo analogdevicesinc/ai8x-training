@@ -326,6 +326,9 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             # We don't have to use dummy columns if there's space available on the left
             kern_offs[ll] = max(0, kern_offs[ll] - (ffs(next_layer_map) % P_SHARED))
 
+            # The kernel offset needs to start at a multiple of 4.
+            kern_offs[ll] = (kern_offs[ll] + P_SHARED-1) & ~(P_SHARED-1)
+
             if kern_offs[ll] + kern_len[ll] > MASK_WIDTH:
                 print(f'\nKernel memory exceeded at layer {ll}; offset: {kern_offs[ll]}, '
                       f'needed: {kern_len[ll]}')
