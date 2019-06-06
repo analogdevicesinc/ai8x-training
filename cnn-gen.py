@@ -20,7 +20,7 @@ import torch
 import yaml
 
 import sampledata
-from ai84cnn import APB_BASE, C_MAX_LAYERS, MAX_LAYERS, TRAM_SIZE, BIAS_SIZE, MASK_WIDTH, \
+from tornadocnn import APB_BASE, C_MAX_LAYERS, MAX_LAYERS, TRAM_SIZE, BIAS_SIZE, MASK_WIDTH, \
     C_CNN, C_CNN_BASE, C_TRAM_BASE, C_MRAM_BASE, C_BRAM_BASE, C_SRAM_BASE, C_TILE_OFFS, \
     P_NUMTILES, P_NUMPRO, P_SHARED, INSTANCE_SIZE, TILE_SIZE, MEM_SIZE, MAX_CHANNELS
 from simulate import cnn_layer
