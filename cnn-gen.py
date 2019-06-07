@@ -19,10 +19,11 @@ import tabulate
 import torch
 import yaml
 
+import apbaccess
 import rtlsim
 import sampledata
 from tornadocnn import APB_BASE, MAX_LAYERS, TRAM_SIZE, BIAS_SIZE, MASK_WIDTH, \
-    C_CNN, C_CNN_BASE, C_TRAM_BASE, C_MRAM_BASE, C_BRAM_BASE, C_SRAM_BASE, C_GROUP_OFFS, \
+    C_CNN_BASE, C_TRAM_BASE, C_SRAM_BASE, C_GROUP_OFFS, \
     P_NUMGROUPS, P_NUMPRO, P_SHARED, INSTANCE_SIZE, GROUP_SIZE, MEM_SIZE, MAX_CHANNELS, \
     REG_CTL, REG_SRAM, REG_LCNT_MAX, \
     LREG_RCNT, LREG_CCNT, LREG_RFU, LREG_PRCNT, LREG_PCCNT, LREG_STRIDE, LREG_WPTR_BASE, \
@@ -82,31 +83,6 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
     os.makedirs(os.path.join(base_directory, test_name), exist_ok=True)
 
-    def apb_write(addr, val, comment='', check=False, no_verify=False, rv=False):
-        """
-        Write address `addr` and data `val` to .mem or .c file.
-        If `rv` or `check`, then only verify.
-        """
-        assert val >= 0
-        assert addr >= 0
-        addr += apb_base
-        if block_mode:
-            memfile.write(f'@{apb_write.foffs:04x} {addr:08x}\n')
-            memfile.write(f'@{apb_write.foffs+1:04x} {val:08x}\n')
-        else:
-            if rv:
-                memfile.write(f'  if (*((volatile uint32_t *) 0x{addr:08x}) != 0x{val:08x}) '
-                              f'return 0;{comment}\n')
-            elif check:
-                memfile.write(f'  if (*((volatile uint32_t *) 0x{addr:08x}) != 0x{val:08x}) '
-                              f'return 0;{comment}\n')
-            else:
-                memfile.write(f'  *((volatile uint32_t *) 0x{addr:08x}) = 0x{val:08x};{comment}\n')
-                if verify_writes and not no_verify:
-                    memfile.write(f'  if (*((volatile uint32_t *) 0x{addr:08x}) != 0x{val:08x}) '
-                                  'return 0;\n')
-        apb_write.foffs += 2
-
     # Redirect stdout?
     if log:
         sys.stdout = open(os.path.join(base_directory, test_name, log_filename), 'w')
@@ -117,6 +93,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
     else:
         filename = c_filename + '.c'
     with open(os.path.join(base_directory, test_name, filename), mode='w') as memfile:
+        apb = apbaccess.APB(memfile, apb_base, block_mode, verify_writes, no_error_stop)
 
         memfile.write(f'// {test_name}\n')
         memfile.write(f'// Created using {" ".join(str(x) for x in sys.argv)}\n')
@@ -149,68 +126,6 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             memfile.write(f'  while ((*((volatile uint32_t *) 0x{apb_base + C_CNN_BASE:08x}) '
                           '& (1<<12)) != 1<<12) ;\n}\n\n')
             memfile.write('int cnn_load(void)\n{\n')
-
-        def apb_write_ctl(group, reg, val, debug=False, comment=''):
-            """
-            Set global control register `reg` in group `group` to value `val`.
-            """
-            if comment is None:
-                comment = f' // global ctl {reg}'
-            addr = C_GROUP_OFFS*group + C_CNN_BASE + reg*4
-            apb_write(addr, val, comment)
-            if debug:
-                print(f'R{reg:02} ({addr:08x}): {val:08x}{comment}')
-
-        def apb_write_lreg(group, layer, reg, val, debug=False, comment=''):
-            """
-            Set layer `layer` register `reg` in group `group` to value `val`.
-            """
-            if comment is None:
-                comment = f' // reg {reg}'
-            addr = C_GROUP_OFFS*group + C_CNN_BASE + C_CNN*4 + reg*4 * MAX_LAYERS + layer*4
-            apb_write(addr, val, comment)
-            if debug:
-                print(f'G{group} L{layer} R{reg:02} ({addr:08x}): {val:08x}{comment}')
-
-        def apb_write_kern(ll, ch, idx, k):
-            """
-            Write single 3x3 kernel `k` for layer `ll`, channel `ch` to index `idx` in weight
-            memory.
-            """
-            assert ch < MAX_CHANNELS
-            assert idx < MASK_WIDTH
-            addr = C_GROUP_OFFS*(ch // P_NUMPRO) + C_MRAM_BASE + (ch % P_NUMPRO) * \
-                MASK_WIDTH * 16 + idx * 16
-            apb_write(addr, k[0] & 0xff, no_verify=True,
-                      comment=f' // Layer {ll}: processor {ch} kernel #{idx}')
-            apb_write(addr+4, (k[1] & 0xff) << 24 | (k[2] & 0xff) << 16 |
-                      (k[3] & 0xff) << 8 | k[4] & 0xff, no_verify=True)
-            apb_write(addr+8, (k[5] & 0xff) << 24 | (k[6] & 0xff) << 16 |
-                      (k[7] & 0xff) << 8 | k[8] & 0xff, no_verify=True)
-            apb_write(addr+12, 0, no_verify=True)  # Execute write
-            if verify_writes:
-                apb_write(addr, k[0] & 0xff, check=True)
-                apb_write(addr+4, (k[1] & 0xff) << 24 | (k[2] & 0xff) << 16 |
-                          (k[3] & 0xff) << 8 | k[4] & 0xff, check=True)
-                apb_write(addr+8, (k[5] & 0xff) << 24 | (k[6] & 0xff) << 16 |
-                          (k[7] & 0xff) << 8 | k[8] & 0xff, check=True)
-                apb_write(addr+12, 0, check=True)  # Execute write
-
-        def apb_write_bias(group, offs, bias):
-            """
-            Write bias value `bias` to offset `offs` in bias memory #`group`.
-            """
-            addr = C_GROUP_OFFS*group + C_BRAM_BASE + offs * 4
-            apb_write(addr, bias & 0xff, f' // Bias')
-
-        def apb_write_tram(group, proc, offs, d, comment=''):
-            """
-            Write value `d` to TRAM in group `group` and processor `proc` to offset `offs`.
-            """
-            addr = C_GROUP_OFFS*group + C_TRAM_BASE + proc * TRAM_SIZE * 4 + offs * 4
-            apb_write(addr, d, f' // {comment}TRAM G{group} P{proc} #{offs}')
-
-        apb_write.foffs = 0
 
         # Calculate the groups needed, and groups and processors used overall
         processors_used = 0
@@ -247,7 +162,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         # Disable completely unused groups
         for group in range(P_NUMGROUPS):
             if group not in groups_used:
-                apb_write_ctl(group, REG_CTL, 0,
+                apb.write_ctl(group, REG_CTL, 0,
                               verbose, comment=f' // Disable group {group}')
 
         memfile.write('\n')
@@ -262,18 +177,18 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             else:
                 for p in range(P_NUMPRO):
                     for offs in range(TRAM_SIZE):
-                        apb_write_tram(group, p, offs, 0, comment='Zero ')
+                        apb.write_tram(group, p, offs, 0, comment='Zero ')
 
             memfile.write('\n')
 
             # Stop state machine - will be overwritten later
-            apb_write_ctl(group, REG_CTL, 0x06,
+            apb.write_ctl(group, REG_CTL, 0x06,
                           verbose, comment=' // Stop SM')
             # SRAM Control - does not need to be changed
-            apb_write_ctl(group, REG_SRAM, 0x40e,
+            apb.write_ctl(group, REG_SRAM, 0x40e,
                           verbose, comment=' // SRAM control')
             # Number of layers
-            apb_write_ctl(group, REG_LCNT_MAX, layers-1,
+            apb.write_ctl(group, REG_LCNT_MAX, layers-1,
                           verbose, comment=' // Layer count')
             memfile.write('\n')
 
@@ -342,7 +257,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     k = kernel[ll][ch + col*chan[ll]].flatten()
                     if debug:
                         print(f'Channel {c} Layer {ll} m{col}/{chan[ll+1]-1}: {k}')
-                    apb_write_kern(ll, c, kern_offs[ll] + col + coffs, k)
+                    apb.write_kern(ll, c, kern_offs[ll] + col + coffs, k)
 
                     # Update kernel map
                     assert kernel_map[c][kern_offs[ll] + col + coffs] is None
@@ -381,7 +296,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             bias_offs[ll] = group_bias_max[group]
             # Each layer has output_channel number of bias values
             for i in range(chan[ll+1]):
-                apb_write_bias(group, bias_offs[ll] + i, bias[ll][i])
+                apb.write_bias(group, bias_offs[ll] + i, bias[ll][i])
             group_bias_max[group] += chan[ll+1]
 
         if verbose:
@@ -407,40 +322,6 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             print(f'Output offsets     = {out_offset}')
             print('')
 
-        def apb_write_byte_flush(offs, comment=''):
-            if apb_write_byte.num > 0:
-                woffs = apb_write_byte.data_offs - apb_write_byte.num
-                if apb_write_byte_flush.mem[woffs >> 2]:
-                    print(f'Overwriting location {woffs:08x}')
-                    if not no_error_stop:
-                        sys.exit(1)
-                apb_write(woffs, apb_write_byte.data, comment)
-                apb_write_byte_flush.mem[woffs >> 2] = True
-                apb_write_byte.num = 0
-                apb_write_byte.data = 0
-            apb_write_byte.data_offs = offs
-
-        apb_write_byte_flush.mem = [False] * C_GROUP_OFFS * P_NUMGROUPS
-
-        def apb_write_byte(offs, val, comment=''):
-            """
-            Collect bytes and write them to word memory.
-            If discontiguous, flush with zero padding.
-            """
-            if offs != apb_write_byte.data_offs:
-                apb_write_byte_flush(offs)
-
-            # Collect and write if multiple of 4 (little endian byte order)
-            apb_write_byte.data |= (val & 0xff) << (8*apb_write_byte.num)
-            apb_write_byte.num += 1
-            apb_write_byte.data_offs += 1
-            if apb_write_byte.num == 4:
-                apb_write_byte_flush(offs+1, comment)
-
-        apb_write_byte.data = 0
-        apb_write_byte.num = 0
-        apb_write_byte.data_offs = 0
-
         if verbose:
             print('Layer register configuration:')
             print('-----------------------------')
@@ -453,34 +334,34 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 # Configure row count
                 # [7:0] maxcount: lower 8 bits = total of width + pad - 1
                 # [9:8] pad: 2 bits pad
-                apb_write_lreg(group, ll, LREG_RCNT,
+                apb.write_lreg(group, ll, LREG_RCNT,
                                (padding[ll] << 8) | (dim[ll][0]-1 + 2*padding[ll]),
                                verbose, comment=' // Rows')
 
                 # Configure column count
                 # [7:0] width including padding - 1
                 # [9:8] pad count (0 = no pad, 1 = half pad, 2 = full pad)
-                apb_write_lreg(group, ll, LREG_CCNT,
+                apb.write_lreg(group, ll, LREG_CCNT,
                                padding[ll] << 8 | (dim[ll][1]-1 + 2 * padding[ll]),
                                verbose, comment=' // Columns')
 
                 # Configure pooling row count
-                apb_write_lreg(group, ll, LREG_PRCNT, max(1, pool[ll]-1),
+                apb.write_lreg(group, ll, LREG_PRCNT, max(1, pool[ll]-1),
                                verbose, comment=' // Pooling rows')
 
                 # Configure pooling column count
-                apb_write_lreg(group, ll, LREG_PCCNT, max(1, pool[ll]-1),
+                apb.write_lreg(group, ll, LREG_PCCNT, max(1, pool[ll]-1),
                                verbose, comment=' // Pooling columns')
 
                 # Configure pooling stride count
-                apb_write_lreg(group, ll, LREG_STRIDE, pool_stride[ll]-1,
+                apb.write_lreg(group, ll, LREG_STRIDE, pool_stride[ll]-1,
                                verbose, comment=' // Pooling stride')
 
                 # Configure SRAM write pointer -- write ptr is global
                 # Get offset to first available instance of the first used processor of the next
                 # layer.
                 instance = ffs(processor_map[ll+1]) & ~(P_SHARED-1)
-                apb_write_lreg(group, ll, LREG_WPTR_BASE, out_offset[ll] // 4 +
+                apb.write_lreg(group, ll, LREG_WPTR_BASE, out_offset[ll] // 4 +
                                ((instance % P_SHARED) * INSTANCE_SIZE |
                                 ((instance // P_SHARED) << 12)),
                                verbose, comment=' // SRAM write ptr')
@@ -495,12 +376,12 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     val = 0x10000000
                 else:
                     val = 0
-                apb_write_lreg(group, ll, LREG_WPTR_OFFS, val,
+                apb.write_lreg(group, ll, LREG_WPTR_OFFS, val,
                                verbose, comment=' // Mask offset count')
 
                 # Configure sram read ptr count -- read ptr is local
                 # Source address must match write pointer of previous layer (minus global offset)
-                apb_write_lreg(group, ll, LREG_RPTR_BASE,
+                apb.write_lreg(group, ll, LREG_RPTR_BASE,
                                in_offset // 4 if ll == 0 else out_offset[ll-1] // 4,
                                verbose, comment=' // SRAM read ptr')
 
@@ -532,7 +413,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                         if (processor_map[ll] >> (t * P_NUMPRO)) % 2**P_NUMPRO:
                             sources |= 1 << t
                     val |= sources << 12
-                apb_write_lreg(group, ll, LREG_LCTL, val,
+                apb.write_lreg(group, ll, LREG_LCTL, val,
                                verbose, comment=' // Layer control')
 
                 # Configure mask count
@@ -548,7 +429,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 if group == bias_group[ll]:
                     # Enable bias only for one group
                     val |= 0x1000000 | bias_offs[ll] << 16
-                apb_write_lreg(group, ll, LREG_MCNT, val,
+                apb.write_lreg(group, ll, LREG_MCNT, val,
                                verbose, comment=' // Mask offset and count')
 
                 # Configure tram pointer max
@@ -557,7 +438,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                               2*padding[ll] - 3)
                 else:
                     val = max(0, dim[ll][1] + 2*padding[ll] - 3)
-                apb_write_lreg(group, ll, LREG_TPTR, val,
+                apb.write_lreg(group, ll, LREG_TPTR, val,
                                verbose, comment=' // TRAM ptr max')
 
                 # Configure mask and processor enables
@@ -569,7 +450,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 #
                 # Enable at most 16 processors and masks
                 bits = (processor_map[ll] >> group*P_NUMPRO) % 2**P_NUMPRO
-                apb_write_lreg(group, ll, LREG_ENA, bits << 16 | bits,
+                apb.write_lreg(group, ll, LREG_ENA, bits << 16 | bits,
                                verbose, comment=' // Mask and processor enables')
 
             if zero_unused:
@@ -577,7 +458,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     for reg in range(MAX_LREG+1):
                         if reg == LREG_RFU:  # Register 2 not implemented
                             continue
-                        apb_write_lreg(group, ll, reg, 0,
+                        apb.write_lreg(group, ll, reg, 0,
                                        verbose, comment=f' // Zero unused layer {ll} registers')
 
         # Load data memory
@@ -616,7 +497,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     # Add top pad
                     for _ in range(padding[0]):
                         for _ in range(input_size[2]):
-                            apb_write_byte(data_offs, 0)
+                            apb.write_byte(data_offs, 0)
                             data_offs += 1
                 row = 0
                 for s in range(split):
@@ -626,7 +507,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                         overlap = 0
                     while row < (s + 1) * chunk + overlap:
                         for col in range(input_size[2]):
-                            apb_write_byte(data_offs, s2u(data[c][row][col]))
+                            apb.write_byte(data_offs, s2u(data[c][row][col]))
                             data_offs += 1
                         row += 1
                     row -= 2*overlap  # Rewind
@@ -635,13 +516,13 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                         new_data_offs = ((data_offs + INSTANCE_SIZE - 1) //
                                          INSTANCE_SIZE) * INSTANCE_SIZE
                         if new_data_offs != data_offs:
-                            apb_write_byte_flush(0)
+                            apb.write_byte_flush(0)
                         data_offs = new_data_offs
                 if split > 1:
                     # Add bottom pad
                     for _ in range(padding[0]):
                         for _ in range(input_size[2]):
-                            apb_write_byte(data_offs, 0)
+                            apb.write_byte(data_offs, 0)
                             data_offs += 1
                 c += 1
             else:
@@ -652,29 +533,29 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 for row in range(input_size[1]):
                     for col in range(input_size[2]):
                         if c < chan[0]:
-                            apb_write_byte(data_offs, s2u(data[c][row][col]))
+                            apb.write_byte(data_offs, s2u(data[c][row][col]))
                         else:
-                            apb_write_byte(data_offs, 0)
+                            apb.write_byte(data_offs, 0)
                         data_offs += 1
                         # Always write multiple of four bytes even for last input
                         if c+1 < chan[0]:
-                            apb_write_byte(data_offs, s2u(data[c+1][row][col]))
+                            apb.write_byte(data_offs, s2u(data[c+1][row][col]))
                         else:
-                            apb_write_byte(data_offs, 0)
+                            apb.write_byte(data_offs, 0)
                         data_offs += 1
                         if c+2 < chan[0]:
-                            apb_write_byte(data_offs, s2u(data[c+2][row][col]))
+                            apb.write_byte(data_offs, s2u(data[c+2][row][col]))
                         else:
-                            apb_write_byte(data_offs, 0)
+                            apb.write_byte(data_offs, 0)
                         data_offs += 1
                         if c+3 < chan[0]:
-                            apb_write_byte(data_offs, s2u(data[c+3][row][col]))
+                            apb.write_byte(data_offs, s2u(data[c+3][row][col]))
                         else:
-                            apb_write_byte(data_offs, 0)
+                            apb.write_byte(data_offs, 0)
                         data_offs += 1
                 c += 4
 
-            apb_write_byte_flush(0)
+            apb.write_byte_flush(0)
             if c >= chan[0]:
                 # Consumed all available channels
                 break
@@ -697,11 +578,11 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             # [8]    one-shot (stop after single layer)
             # [11:9] ext_sync (slave to other group)
             # [12]   irq
-            apb_write_ctl(group, REG_CTL, 0x807 | groups_used[0] << 9,
+            apb.write_ctl(group, REG_CTL, 0x807 | groups_used[0] << 9,
                           verbose, comment=f' // Enable group {group}')
 
         # Master control - go
-        apb_write_ctl(groups_used[0], REG_CTL, 0x07,
+        apb.write_ctl(groups_used[0], REG_CTL, 0x07,
                       verbose, comment=f' // Master enable group {groups_used[0]}')
 
         if not block_mode:
@@ -713,7 +594,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
         # End of input
 
-    in_map = apb_write_byte_flush.mem
+    in_map = apb.get_mem()
 
     if verbose:
         print('')
@@ -737,7 +618,6 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
         # Write .mem file for output or create the C cnn_check() function to verify the output
         out_map = [False] * C_GROUP_OFFS * P_NUMGROUPS
-        apb_write.foffs = 0  # Position in output file
         if block_mode:
             if ll == layers-1:
                 filename = output_filename + '.mem'  # Final output
@@ -751,6 +631,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 filename = '/dev/null'  # Intermediate output
             filemode = 'a'
         with open(os.path.join(base_directory, test_name, filename), mode=filemode) as memfile:
+            apb.set_memfile(memfile)
             memfile.write(f'// {test_name}\n// Expected output of layer {ll+1}\n')
             if not block_mode:
                 memfile.write('int cnn_check(void)\n{\n  int rv = 1;\n')
@@ -793,7 +674,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                             if not no_error_stop:
                                 sys.exit(1)
                         out_map[offs >> 2] = True
-                        apb_write(offs, val, rv=True)
+                        apb.verify(offs, val, rv=True)
                         coffs += 4
 
             if not block_mode:
