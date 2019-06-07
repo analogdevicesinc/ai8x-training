@@ -22,8 +22,9 @@ import apbaccess
 import commandline
 import rtlsim
 import sampledata
+import toplevel
 from tornadocnn import MAX_LAYERS, TRAM_SIZE, BIAS_SIZE, MASK_WIDTH, \
-    C_CNN_BASE, C_TRAM_BASE, C_SRAM_BASE, C_GROUP_OFFS, \
+    C_TRAM_BASE, C_SRAM_BASE, C_GROUP_OFFS, \
     P_NUMGROUPS, P_NUMPRO, P_SHARED, INSTANCE_SIZE, GROUP_SIZE, MEM_SIZE, MAX_CHANNELS, \
     REG_CTL, REG_SRAM, REG_LCNT_MAX, \
     LREG_RCNT, LREG_CCNT, LREG_RFU, LREG_PRCNT, LREG_PCCNT, LREG_STRIDE, LREG_WPTR_BASE, \
@@ -116,16 +117,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         memfile.write('\n')
 
         if not block_mode:
-            memfile.write('#include "global_functions.h"\n')
-            memfile.write('#include <stdlib.h>\n')
-            memfile.write('#include <stdint.h>\n')
-            if c_library:
-                memfile.write('#include <string.h>\n')
-            memfile.write('\nint cnn_check(void);\n\n')
-            memfile.write('void cnn_wait(void)\n{\n')
-            memfile.write(f'  while ((*((volatile uint32_t *) 0x{apb_base + C_CNN_BASE:08x}) '
-                          '& (1<<12)) != 1<<12) ;\n}\n\n')
-            memfile.write('int cnn_load(void)\n{\n')
+            toplevel.header(memfile, apb_base, c_library)
+            toplevel.load_header(memfile)
 
         # Calculate the groups needed, and groups and processors used overall
         processors_used = 0
@@ -586,11 +579,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                       verbose, comment=f' // Master enable group {groups_used[0]}')
 
         if not block_mode:
-            memfile.write('  return 1;\n}\n\nint main(void)\n{\n  icache_enable();\n')
-            memfile.write('  MXC_GCR->perckcn1 &= ~0x20; // Enable AI clock\n')
-            memfile.write('  if (!cnn_load()) { fail(); pass(); return 0; }\n  cnn_wait();\n')
-            memfile.write('  if (!cnn_check()) fail();\n')
-            memfile.write('  pass();\n  return 0;\n}\n\n')
+            toplevel.load_footer(memfile)
+            toplevel.main(memfile)
 
         # End of input
 
@@ -636,7 +626,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             if memfile is not None:
                 memfile.write(f'// {test_name}\n// Expected output of layer {ll+1}\n')
                 if not block_mode:
-                    memfile.write('int cnn_check(void)\n{\n  int rv = 1;\n')
+                    toplevel.verify_header(memfile)
 
             # Start at the instance of the first active output processor/channel
             coffs_start = ffs(processor_map[ll+1]) & ~(P_SHARED-1)
@@ -680,7 +670,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                         coffs += 4
 
             if memfile is not None and not block_mode:
-                memfile.write('  return rv;\n}\n')
+                toplevel.verify_footer(memfile)
 
         input_size = [out_size[0], out_size[1], out_size[2]]
         data = out_buf.reshape(input_size[0], input_size[1], input_size[2])
