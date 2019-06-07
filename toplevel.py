@@ -11,17 +11,15 @@ Toplevel C file structure generation
 import tornadocnn
 
 
-def header(memfile, apb_base, use_c_library=False):
+def header(memfile, apb_base):
     """
     Write include files and forward definitions to .c file handle `memfile`.
     The APB base address is passed in `apb_base`.
-    If `use_c_library`, adjust headers to include the needed components.
     """
     memfile.write('#include "global_functions.h"\n')
     memfile.write('#include <stdlib.h>\n')
     memfile.write('#include <stdint.h>\n')
-    if use_c_library:
-        memfile.write('#include <string.h>\n')
+    memfile.write('#include <string.h>\n')
     memfile.write('\nint cnn_check(void);\n\n')
 
     memfile.write('void cnn_wait(void)\n{\n')

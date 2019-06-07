@@ -10,6 +10,7 @@ Routines to read and write the APB peripherals.
 """
 import sys
 
+import toplevel
 import tornadocnn
 
 
@@ -171,6 +172,57 @@ class APB(object):
         """
         return self.mem
 
+    def output(self, comment):
+        """
+        Write the string `comment` to the output file without further interpretation.
+        """
+        if self.memfile is None:
+            return
+
+        self.memfile.write(comment)
+
+    def header(self):
+        """
+        Write file headers.
+        The base class does nothing.
+        """
+        return
+
+    def verify_header(self):
+        """
+        Write the header for the CNN verification function.
+        The base class does nothing.
+        """
+        return
+
+    def verify_footer(self):
+        """
+        Write the footer for the CNN verification function.
+        The base class does nothing.
+        """
+        return
+
+    def load_header(self):
+        """
+        Write the header for the CNN configuration loader function.
+        The base class does nothing.
+        """
+        return
+
+    def load_footer(self):
+        """
+        Write the footer for the CNN configuration loader function.
+        The base class does nothing.
+        """
+        return
+
+    def main(self):
+        """
+        Write the main function.
+        The base class does nothing.
+        """
+        return
+
 
 class APBBlockLevel(APB):
     """
@@ -274,6 +326,42 @@ class APBTopLevel(APB):
         else:
             self.memfile.write(f'  if (*((volatile uint32_t *) 0x{addr:08x}) != 0x{val:08x}) '
                                f'return 0;{comment}\n')
+
+    def header(self):
+        """
+        Write include files and forward definitions to .c file.
+        """
+        toplevel.header(self.memfile, self.apb_base)
+
+    def verify_header(self):
+        """
+        Write the header for the CNN verification function.
+        """
+        toplevel.verify_header(self.memfile)
+
+    def verify_footer(self):
+        """
+        Write the footer for the CNN verification function.
+        """
+        toplevel.verify_footer(self.memfile)
+
+    def load_header(self):
+        """
+        Write the header for the CNN configuration loader function.
+        """
+        toplevel.load_header(self.memfile)
+
+    def load_footer(self):
+        """
+        Write the footer for the CNN configuration loader function.
+        """
+        toplevel.load_footer(self.memfile)
+
+    def main(self):
+        """
+        Write the main function.
+        """
+        toplevel.main(self.memfile)
 
 
 def apbwriter(memfile,
