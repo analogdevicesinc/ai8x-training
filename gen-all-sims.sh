@@ -1,4 +1,5 @@
 #!/bin/sh
+./cnn-gen.py --verbose --autogen tests --top-level cnn -L --test-dir tests --prefix fmnist --checkpoint-file ai84.pth.tar --c-library --config-file fashionmnist-chw.yaml --stop-after 0 --verify-writes
 ./cnn-gen.py --verbose --autogen tests --top-level cnn -L --test-dir tests --prefix fmnist --checkpoint-file ai84.pth.tar --c-library --config-file fashionmnist-chw.yaml
 ./cnn-gen.py --verbose --autogen tests --top-level cnn -L --test-dir tests --prefix fmnist --checkpoint-file ai84.pth.tar --c-library --config-file fashionmnist-hwc.yaml
 ./cnn-gen.py --verbose --autogen tests --top-level cnn -L --test-dir tests --prefix cifar --checkpoint-file ai84-cifar10.pth.tar --c-library --config-file cifar10-hwc.yaml --stop-after 0
