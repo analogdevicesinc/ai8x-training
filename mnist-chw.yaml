@@ -1,0 +1,31 @@
+# CHW (big data) configuration for MNIST
+
+arch: ai84net5
+dataset: MNIST
+
+# Define layer parameters in order of the layer sequence
+layers:
+- pad: 1
+  activate: ReLU
+  out_offset: 0x2000
+  processors: 0x0000000000000001
+  data_format: CHW
+- max_pool: 2
+  pool_stride: 2
+  pad: 2
+  activate: ReLU
+  out_offset: 0
+  processors: 0xfffffffffffffff0
+- max_pool: 2
+  pool_stride: 2
+  pad: 1
+  activate: ReLU
+  out_offset: 0x2000
+  processors: 0xfffffffffffffff0
+- avg_pool: 2
+  pool_stride: 2
+  pad: 1
+  activate: ReLU
+  out_offset: 0
+  processors: 0x0ffffffffffffff0
+

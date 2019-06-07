@@ -694,9 +694,13 @@ def main():
         print(f'Configuration file {args.config_file} contains unknown key(s).')
         sys.exit(1)
 
-    cifar = 'dataset' in cfg and cfg['dataset'].lower() == 'cifar-10'
-    if 'layers' not in cfg or 'arch' not in cfg:
-        print(f'Configuration file {args.config_file} does not contain `layers` or `arch`.')
+    if 'layers' not in cfg or 'arch' not in cfg or 'dataset' not in cfg:
+        print(f'Configuration file {args.config_file} does not contain '
+              f'`layers`, `arch`, or `dataset`.')
+        sys.exit(1)
+
+    if bool(set([cfg['dataset'].lower()]) - set(['mnist', 'fashionmnist', 'cifar-10'])):
+        print(f'Configuration file {args.config_file} contains unknown `dataset`.')
         sys.exit(1)
 
     padding = []
@@ -844,7 +848,7 @@ def main():
     activate = [bool(x) for x in relu]
     pool_average = [bool(x) for x in average]
 
-    data = sampledata.get(cifar)
+    data = sampledata.get(cfg['dataset'])
     input_size = list(data.shape)
 
     tn = create_sim(args.prefix, args.verbose,
