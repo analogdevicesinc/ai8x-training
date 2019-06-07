@@ -243,6 +243,9 @@ class APBTopLevel(APB):
         assert addr >= 0
         addr += self.apb_base
 
+        if self.memfile is None:
+            return
+
         self.memfile.write(f'  *((volatile uint32_t *) 0x{addr:08x}) = 0x{val:08x};{comment}\n')
         if self.verify_writes and not no_verify:
             self.memfile.write(f'  if (*((volatile uint32_t *) 0x{addr:08x}) != 0x{val:08x}) '
@@ -261,6 +264,9 @@ class APBTopLevel(APB):
         assert val >= 0
         assert addr >= 0
         addr += self.apb_base
+
+        if self.memfile is None:
+            return
 
         if rv:
             self.memfile.write(f'  if (*((volatile uint32_t *) 0x{addr:08x}) != 0x{val:08x}) '
