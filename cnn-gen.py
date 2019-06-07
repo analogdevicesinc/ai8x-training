@@ -627,14 +627,16 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         else:
             if ll == layers-1:
                 filename = c_filename + '.c'  # Final output
-            else:
+            else:  # FIXME: Make this None and don't rely on /dev/null
                 filename = '/dev/null'  # Intermediate output - used for layer overwrite check
             filemode = 'a'
         with open(os.path.join(base_directory, test_name, filename), mode=filemode) as memfile:
             apb.set_memfile(memfile)
-            memfile.write(f'// {test_name}\n// Expected output of layer {ll+1}\n')
-            if not block_mode:
-                memfile.write('int cnn_check(void)\n{\n  int rv = 1;\n')
+
+            if memfile is not None:
+                memfile.write(f'// {test_name}\n// Expected output of layer {ll+1}\n')
+                if not block_mode:
+                    memfile.write('int cnn_check(void)\n{\n  int rv = 1;\n')
 
             # Start at the instance of the first active output processor/channel
             coffs_start = ffs(processor_map[ll+1]) & ~(P_SHARED-1)
@@ -677,7 +679,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                         apb.verify(offs, val, rv=True)
                         coffs += 4
 
-            if not block_mode:
+            if memfile is not None and not block_mode:
                 memfile.write('  return rv;\n}\n')
 
         input_size = [out_size[0], out_size[1], out_size[2]]
