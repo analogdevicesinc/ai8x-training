@@ -18,13 +18,15 @@ class APB(object):
     APB read and write functionality.
     """
 
-    def __init__(self, memfile, apb_base, block_mode=False,
-                 verify_writes=False, no_error_stop=False):
+    def __init__(self,
+                 memfile,
+                 apb_base,
+                 verify_writes=False,
+                 no_error_stop=False):
         """
         Create an APB class object that writes to memfile.
         """
         self.memfile = memfile
-        self.foffs = 0
         self.apb_base = apb_base
         self.verify_writes = verify_writes
         self.no_error_stop = no_error_stop
@@ -33,73 +35,35 @@ class APB(object):
         self.data_offs = 0
         self.mem = [False] * tornadocnn.C_GROUP_OFFS * tornadocnn.P_NUMGROUPS
 
-        if block_mode:
-            self.write = self.write_block
-            self.verify = self.verify_block
-        else:
-            self.write = self.write_top
-            self.verify = self.verify_top
-
-    def write_block(self, addr, val,
-                    comment='', no_verify=False):  # pylint: disable=unused-argument
+    def write(self,
+              addr,
+              val,
+              comment='',
+              no_verify=False):  # pylint: disable=unused-argument
         """
-        Write address `addr` and data `val` to the .mem file.
-        """
-        assert val >= 0
-        assert addr >= 0
-        addr += self.apb_base
-
-        self.memfile.write(f'@{self.foffs:04x} {addr:08x}\n')
-        self.memfile.write(f'@{self.foffs+1:04x} {val:08x}\n')
-        self.foffs += 2
-
-    def write_top(self, addr, val, comment='', no_verify=False):
-        """
-        Write address `addr` and data `val` to the .c file.
+        Write address `addr` and data `val` to the output file.
         if `no_verify` is `True`, do not check the result of the write operation, even if
         `verify_writes` is globally enabled.
         An optional `comment` can be added to the output.
         """
-        assert val >= 0
-        assert addr >= 0
-        addr += self.apb_base
+        raise NotImplementedError
 
-        self.memfile.write(f'  *((volatile uint32_t *) 0x{addr:08x}) = 0x{val:08x};{comment}\n')
-        if self.verify_writes and not no_verify:
-            self.memfile.write(f'  if (*((volatile uint32_t *) 0x{addr:08x}) != 0x{val:08x}) '
-                               'return 0;\n')
-
-    def verify_block(self, addr, val, comment='', rv=False):  # pylint: disable=unused-argument
+    def verify(self,
+               addr,
+               val,
+               comment='',
+               rv=False):  # pylint: disable=unused-argument
         """
         Verify that memory at address `addr` contains data `val`.
-        In `block_mode`, this function does nothing useful.
         """
-        assert val >= 0
-        assert addr >= 0
+        raise NotImplementedError
 
-    def verify_top(self, addr, val, comment='', rv=False):
-        """
-        Verify that memory at address `addr` contains data `val`.
-        If `rv` is `True`, do not immediately return 0, but just set the status word.
-        An optional `comment` can be added to the output.
-        """
-        assert val >= 0
-        assert addr >= 0
-        addr += self.apb_base
-
-        if rv:
-            self.memfile.write(f'  if (*((volatile uint32_t *) 0x{addr:08x}) != 0x{val:08x}) '
-                               f'return 0;{comment}\n')  # FIXME
-        else:
-            self.memfile.write(f'  if (*((volatile uint32_t *) 0x{addr:08x}) != 0x{val:08x}) '
-                               f'return 0;{comment}\n')
-
-    def set_memfile(self, memfile):
+    def set_memfile(self,
+                    memfile):
         """
         Change the file handle to `memfile` and reset the .mem output location to 0.
         """
         self.memfile = memfile
-        self.foffs = 0
 
     def write_ctl(self, group, reg, val, debug=False, comment=''):
         """
@@ -206,3 +170,125 @@ class APB(object):
         Return reference to the memory array.
         """
         return self.mem
+
+
+class APBBlockLevel(APB):
+    """
+    APB read and write functionality for block level tests.
+    """
+    def __init__(self,
+                 memfile,
+                 apb_base,
+                 verify_writes=False,
+                 no_error_stop=False):
+        super(APBBlockLevel, self).__init__(memfile,
+                                            apb_base,
+                                            verify_writes=verify_writes,
+                                            no_error_stop=no_error_stop)
+        self.foffs = 0
+
+    def write(self,
+              addr,
+              val,
+              comment='',
+              no_verify=False):  # pylint: disable=unused-argument
+        """
+        Write address `addr` and data `val` to the .mem file.
+        """
+        assert val >= 0
+        assert addr >= 0
+        addr += self.apb_base
+
+        self.memfile.write(f'@{self.foffs:04x} {addr:08x}\n')
+        self.memfile.write(f'@{self.foffs+1:04x} {val:08x}\n')
+        self.foffs += 2
+
+    def verify(self,
+               addr,
+               val,
+               comment='',
+               rv=False):  # pylint: disable=unused-argument
+        """
+        Verify that memory at address `addr` contains data `val`.
+        For block level tests, this function does nothing useful other than ensuring the inputs
+        address and data are not negative.
+        """
+        assert val >= 0
+        assert addr >= 0
+
+    def set_memfile(self, memfile):
+        """
+        Change the file handle to `memfile` and reset the .mem output location to 0.
+        """
+        super(APBBlockLevel, self).set_memfile(memfile)
+        self.foffs = 0
+
+
+class APBTopLevel(APB):
+    """
+    APB read and write functionality for top level tests.
+    """
+    def write(self,
+              addr,
+              val,
+              comment='',
+              no_verify=False):
+        """
+        Write address `addr` and data `val` to the .c file.
+        if `no_verify` is `True`, do not check the result of the write operation, even if
+        `verify_writes` is globally enabled.
+        An optional `comment` can be added to the output.
+        """
+        assert val >= 0
+        assert addr >= 0
+        addr += self.apb_base
+
+        self.memfile.write(f'  *((volatile uint32_t *) 0x{addr:08x}) = 0x{val:08x};{comment}\n')
+        if self.verify_writes and not no_verify:
+            self.memfile.write(f'  if (*((volatile uint32_t *) 0x{addr:08x}) != 0x{val:08x}) '
+                               'return 0;\n')
+
+    def verify(self,
+               addr,
+               val,
+               comment='',
+               rv=False):
+        """
+        Verify that memory at address `addr` contains data `val`.
+        If `rv` is `True`, do not immediately return 0, but just set the status word.
+        An optional `comment` can be added to the output.
+        """
+        assert val >= 0
+        assert addr >= 0
+        addr += self.apb_base
+
+        if rv:
+            self.memfile.write(f'  if (*((volatile uint32_t *) 0x{addr:08x}) != 0x{val:08x}) '
+                               f'return 0;{comment}\n')  # FIXME
+        else:
+            self.memfile.write(f'  if (*((volatile uint32_t *) 0x{addr:08x}) != 0x{val:08x}) '
+                               f'return 0;{comment}\n')
+
+
+def apbwriter(memfile,
+              apb_base,
+              block_level=False,
+              verify_writes=False,
+              no_error_stop=False):
+    """
+    Depending on `block_level`, return a block level .mem file writer or a top level .c file
+    writer to the file `memfile` with APB base address `apb_base`.
+    If `verify_writes` is set, read back everything that was written.
+    If `no_error_stop` is set, continue in the case when the data is trying to overwrite
+    previously written data.
+    """
+    if block_level:
+        return APBBlockLevel(memfile,
+                             apb_base,
+                             verify_writes=verify_writes,
+                             no_error_stop=no_error_stop)
+    else:
+        return APBTopLevel(memfile,
+                           apb_base,
+                           verify_writes=verify_writes,
+                           no_error_stop=no_error_stop)

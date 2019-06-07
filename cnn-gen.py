@@ -93,7 +93,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
     else:
         filename = c_filename + '.c'
     with open(os.path.join(base_directory, test_name, filename), mode='w') as memfile:
-        apb = apbaccess.APB(memfile, apb_base, block_mode, verify_writes, no_error_stop)
+        apb = apbaccess.apbwriter(memfile, apb_base, block_mode, verify_writes, no_error_stop)
 
         memfile.write(f'// {test_name}\n')
         memfile.write(f'// Created using {" ".join(str(x) for x in sys.argv)}\n')
@@ -628,7 +628,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             if ll == layers-1:
                 filename = c_filename + '.c'  # Final output
             else:
-                filename = '/dev/null'  # Intermediate output
+                filename = '/dev/null'  # Intermediate output - used for layer overwrite check
             filemode = 'a'
         with open(os.path.join(base_directory, test_name, filename), mode=filemode) as memfile:
             apb.set_memfile(memfile)
