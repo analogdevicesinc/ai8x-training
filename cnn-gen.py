@@ -22,7 +22,6 @@ import apbaccess
 import commandline
 import rtlsim
 import sampledata
-import toplevel
 from tornadocnn import MAX_LAYERS, TRAM_SIZE, BIAS_SIZE, MASK_WIDTH, \
     C_TRAM_BASE, C_SRAM_BASE, C_GROUP_OFFS, \
     P_NUMGROUPS, P_NUMPRO, P_SHARED, INSTANCE_SIZE, GROUP_SIZE, MEM_SIZE, MAX_CHANNELS, \
@@ -66,8 +65,6 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
     # Complete list of maps with output map
     processor_map.append(output_map)
 
-    # Write memfile for input
-
     # Create comment of the form "k1_b0-1x32x32b_2x2s2p14-..."
     test_name = prefix
     for ll in range(layers):
@@ -96,29 +93,27 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
     with open(os.path.join(base_directory, test_name, filename), mode='w') as memfile:
         apb = apbaccess.apbwriter(memfile, apb_base, block_mode, verify_writes, no_error_stop)
 
-        memfile.write(f'// {test_name}\n')
-        memfile.write(f'// Created using {" ".join(str(x) for x in sys.argv)}\n')
+        apb.output(f'// {test_name}\n')
+        apb.output(f'// Created using {" ".join(str(x) for x in sys.argv)}\n')
 
         # Human readable description of test
-        memfile.write(f'\n// Configuring input for {layers} layer{"s" if layers > 1 else ""}\n')
+        apb.output(f'\n// Configuring input for {layers} layer{"s" if layers > 1 else ""}\n')
 
         for ll in range(layers):
-            memfile.write(f'// Layer {ll+1}: {chan[ll]}x{dim[ll][0]}x{dim[ll][1]} '
-                          f'{"(CHW/big data)" if big_data[ll] else "(HWC/little data)"}, ')
+            apb.output(f'// Layer {ll+1}: {chan[ll]}x{dim[ll][0]}x{dim[ll][1]} '
+                       f'{"(CHW/big data)" if big_data[ll] else "(HWC/little data)"}, ')
             if pool[ll] > 0:
-                memfile.write(f'{pool[ll]}x{pool[ll]} {"avg" if pool_average[ll] else "max"} '
-                              f'pool with stride {pool_stride[ll]}')
+                apb.output(f'{pool[ll]}x{pool[ll]} {"avg" if pool_average[ll] else "max"} '
+                           f'pool with stride {pool_stride[ll]}')
             else:
-                memfile.write(f'no pooling')
-            memfile.write(f', {kernel_size[0]}x{kernel_size[1]} convolution '
-                          f'with stride {stride[ll]} '
-                          f'pad {padding[ll]}, {chan[ll+1]}x{dim[ll+1][0]}x{dim[ll+1][1]} out\n')
+                apb.output(f'no pooling')
+            apb.output(f', {kernel_size[0]}x{kernel_size[1]} convolution '
+                       f'with stride {stride[ll]} '
+                       f'pad {padding[ll]}, {chan[ll+1]}x{dim[ll+1][0]}x{dim[ll+1][1]} out\n')
 
-        memfile.write('\n')
-
-        if not block_mode:
-            toplevel.header(memfile, apb_base, c_library)
-            toplevel.load_header(memfile)
+        apb.output('\n')
+        apb.header()
+        apb.load_header()
 
         # Calculate the groups needed, and groups and processors used overall
         processors_used = 0
@@ -158,21 +153,21 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 apb.write_ctl(group, REG_CTL, 0,
                               verbose, comment=f' // Disable group {group}')
 
-        memfile.write('\n')
+        apb.output('\n')
 
         # Configure global control registers for used groups
         for _, group in enumerate(groups_used):
             # Zero out Tornado RAM
             if c_library:
                 addr = apb_base + C_GROUP_OFFS*group + C_TRAM_BASE
-                memfile.write(f'  memset((uint32_t *) 0x{addr:08x}, 0, '
-                              f'{TRAM_SIZE * P_NUMPRO * 4}); // Zero TRAM group {group}\n')
+                apb.output(f'  memset((uint32_t *) 0x{addr:08x}, 0, '
+                           f'{TRAM_SIZE * P_NUMPRO * 4}); // Zero TRAM group {group}\n')
             else:
                 for p in range(P_NUMPRO):
                     for offs in range(TRAM_SIZE):
                         apb.write_tram(group, p, offs, 0, comment='Zero ')
 
-            memfile.write('\n')
+            apb.output('\n')
 
             # Stop state machine - will be overwritten later
             apb.write_ctl(group, REG_CTL, 0x06,
@@ -183,7 +178,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             # Number of layers
             apb.write_ctl(group, REG_LCNT_MAX, layers-1,
                           verbose, comment=' // Layer count')
-            memfile.write('\n')
+            apb.output('\n')
 
         def print_kernel_map(kmap):
             """
@@ -322,7 +317,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         # Configure per-layer control registers
         for _, group in enumerate(groups_used):
             for ll in range(layers):
-                memfile.write(f'\n  // Group {group} layer {ll}\n')
+                apb.output(f'\n  // Group {group} layer {ll}\n')
 
                 # Configure row count
                 # [7:0] maxcount: lower 8 bits = total of width + pad - 1
@@ -456,7 +451,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
         # Load data memory
         # Start loading at the first used group
-        memfile.write(f'\n\n  // {chan[0]}-channel data input\n')
+        apb.output(f'\n\n  // {chan[0]}-channel data input\n')
         c = 0
         data_offs = 0
         step = 1 if big_data[0] else 4
@@ -480,7 +475,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
             if big_data[0]:
                 # CHW ("Big Data") - Separate channel sequences (BBBBB....GGGGG....RRRRR....)
-                memfile.write(f'  // CHW (big data): {dim[0][0]}x{dim[0][1]}, channel {c}\n')
+                apb.output(f'  // CHW (big data): {dim[0][0]}x{dim[0][1]}, channel {c}\n')
 
                 chunk = input_size[1] // split
 
@@ -520,8 +515,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 c += 1
             else:
                 # HWC ("Little Data") - Four channels packed into a word (0BGR0BGR0BGR0BGR0BGR....)
-                memfile.write(f'  // HWC (little data): {dim[0][0]}x{dim[0][1]}, '
-                              f'channels {c} to {min(c+3, chan[0]-1)}\n')
+                apb.output(f'  // HWC (little data): {dim[0][0]}x{dim[0][1]}, '
+                           f'channels {c} to {min(c+3, chan[0]-1)}\n')
 
                 for row in range(input_size[1]):
                     for col in range(input_size[2]):
@@ -553,7 +548,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 # Consumed all available channels
                 break
 
-        memfile.write(f'  // End of data input\n\n')
+        apb.output(f'  // End of data input\n\n')
 
         if verbose:
             print('\nGlobal registers:')
@@ -578,9 +573,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         apb.write_ctl(groups_used[0], REG_CTL, 0x07,
                       verbose, comment=f' // Master enable group {groups_used[0]}')
 
-        if not block_mode:
-            toplevel.load_footer(memfile)
-            toplevel.main(memfile)
+        apb.load_footer()
+        apb.main()
 
         # End of input
 
@@ -623,10 +617,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         with open(os.path.join(base_directory, test_name, filename), mode=filemode) as memfile:
             apb.set_memfile(memfile)
 
-            if memfile is not None:
-                memfile.write(f'// {test_name}\n// Expected output of layer {ll+1}\n')
-                if not block_mode:
-                    toplevel.verify_header(memfile)
+            apb.output(f'// {test_name}\n// Expected output of layer {ll+1}\n')
+            apb.verify_header()
 
             # Start at the instance of the first active output processor/channel
             coffs_start = ffs(processor_map[ll+1]) & ~(P_SHARED-1)
@@ -669,8 +661,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                         apb.verify(offs, val, rv=True)
                         coffs += 4
 
-            if memfile is not None and not block_mode:
-                toplevel.verify_footer(memfile)
+            apb.verify_footer()
 
         input_size = [out_size[0], out_size[1], out_size[2]]
         data = out_buf.reshape(input_size[0], input_size[1], input_size[2])
