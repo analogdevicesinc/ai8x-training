@@ -601,7 +601,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                                       debug=debug_computation)
 
         # Write .mem file for output or create the C cnn_check() function to verify the output
-        out_map = [False] * C_GROUP_OFFS * P_NUMGROUPS
+        out_map = [None] * C_GROUP_OFFS * P_NUMGROUPS
         if block_mode:
             if ll == layers-1:
                 filename = output_filename + '.mem'  # Final output
@@ -647,17 +647,17 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                              row*out_size[2] + col) * 4
 
                         # If using single layer, make sure we're not overwriting the input
-                        if (not overwrite_ok) and in_map[offs >> 2]:
+                        if (not overwrite_ok) and in_map[offs >> 2] is not None:
                             print(f'Layer {ll} output for CHW={c},{row},{col} is overwriting '
                                   f'input at location {offs:08x}')
                             if not no_error_stop:
                                 sys.exit(1)
-                        if out_map[offs >> 2]:
+                        if out_map[offs >> 2] is not None:
                             print(f'Layer {ll} output for CHW={c},{row},{col} is overwriting '
                                   f'itself at location {offs:08x}')
                             if not no_error_stop:
                                 sys.exit(1)
-                        out_map[offs >> 2] = True
+                        out_map[offs >> 2] = val
                         apb.verify(offs, val, rv=True)
                         coffs += 4
 

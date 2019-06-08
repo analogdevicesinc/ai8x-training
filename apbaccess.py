@@ -34,7 +34,7 @@ class APB(object):
         self.data = 0
         self.num = 0
         self.data_offs = 0
-        self.mem = [False] * tornadocnn.C_GROUP_OFFS * tornadocnn.P_NUMGROUPS
+        self.mem = [None] * tornadocnn.C_GROUP_OFFS * tornadocnn.P_NUMGROUPS
 
     def write(self,
               addr,
