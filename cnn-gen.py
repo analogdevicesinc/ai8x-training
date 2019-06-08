@@ -624,42 +624,42 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             coffs_start = ffs(processor_map[ll+1]) & ~(P_SHARED-1)
             next_layer_map = processor_map[ll+1] >> coffs_start
 
-            for row in range(out_size[1]):
-                for col in range(out_size[2]):
-                    this_map = next_layer_map
-                    coffs = coffs_start
-                    c = 0
-                    while c < chan[ll+1]:
-                        # Get four bytes either from output or zeros and construct HWC word
-                        val = 0
-                        for _ in range(4):
-                            val >>= 8
-                            if this_map & 1:
-                                val |= out_buf[c][row][col] << 24
-                                c += 1
-                            this_map >>= 1
+            for doffs in range(out_size[1] * out_size[2]):
+                row, col = divmod(doffs, out_size[2])
+                this_map = next_layer_map
+                coffs = coffs_start
+                c = 0
+                while c < chan[ll+1]:
+                    # Get four bytes either from output or zeros and construct HWC word
+                    val = 0
+                    for _ in range(4):
+                        val >>= 8
+                        if this_map & 1:
+                            val |= out_buf[c][row][col] << 24
+                            c += 1
+                        this_map >>= 1
 
-                        # Physical offset into instance and group
-                        proc = (coffs % MAX_CHANNELS) & ~(P_SHARED-1)
-                        offs = C_SRAM_BASE + out_offset[ll] + \
-                            (((proc % P_NUMPRO) * INSTANCE_SIZE |
-                              (proc // P_NUMPRO) * GROUP_SIZE) +
-                             row*out_size[2] + col) * 4
+                    # Physical offset into instance and group
+                    proc = (coffs % MAX_CHANNELS) & ~(P_SHARED-1)
+                    offs = C_SRAM_BASE + out_offset[ll] + \
+                        (((proc % P_NUMPRO) * INSTANCE_SIZE |
+                          (proc // P_NUMPRO) * GROUP_SIZE) +
+                         doffs) * 4
 
-                        # If using single layer, make sure we're not overwriting the input
-                        if (not overwrite_ok) and in_map[offs >> 2] is not None:
-                            print(f'Layer {ll} output for CHW={c},{row},{col} is overwriting '
-                                  f'input at location {offs:08x}')
-                            if not no_error_stop:
-                                sys.exit(1)
-                        if out_map[offs >> 2] is not None:
-                            print(f'Layer {ll} output for CHW={c},{row},{col} is overwriting '
-                                  f'itself at location {offs:08x}')
-                            if not no_error_stop:
-                                sys.exit(1)
-                        out_map[offs >> 2] = val
-                        apb.verify(offs, val, rv=True)
-                        coffs += 4
+                    # If using single layer, make sure we're not overwriting the input
+                    if (not overwrite_ok) and in_map[offs >> 2] is not None:
+                        print(f'Layer {ll} output for CHW={c},{row}{col} is overwriting '
+                              f'input at location {offs:08x}')
+                        if not no_error_stop:
+                            sys.exit(1)
+                    if out_map[offs >> 2] is not None:
+                        print(f'Layer {ll} output for CHW={c},{row},{col} is overwriting '
+                              f'itself at location {offs:08x}')
+                        if not no_error_stop:
+                            sys.exit(1)
+                    out_map[offs >> 2] = val
+                    apb.verify(offs, val, rv=True)
+                    coffs += 4
 
             apb.verify_footer()
 
