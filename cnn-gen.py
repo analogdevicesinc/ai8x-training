@@ -291,7 +291,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             print('\nGlobal configuration:')
             print('---------------------')
             print(f'Used processors    = {processors_used:016x}')
-            print(f'Used groups         = {groups_used}')
+            print(f'Used groups        = {groups_used}')
             print(f'Input offset       = {in_offset}')
             print('\nPer-group configuration:')
             print('-----------------------')
@@ -848,6 +848,7 @@ def main():
     activate = [bool(x) for x in relu]
     pool_average = [bool(x) for x in average]
 
+    print(f"Configuring data set: {cfg['dataset']}.")
     data = sampledata.get(cfg['dataset'])
     input_size = list(data.shape)
 

@@ -55,3 +55,22 @@ def conv2d(data, weight, bias, input_size, out_channels, kernel_size, stride, pa
                         print(f'+bias {bias[k]} --> output[{k}][{out_offs}] = {val}')
                 output[k][out_offs] = val
                 out_offs += 1
+
+
+def linear(data, weight, bias, in_features, out_features, output, debug=False):
+    """
+    Compute a fully connected layer.
+    """
+
+    for w in range(out_features):
+        val = np.int64(0)
+        for n in range(in_features):
+            val += data[n] * weight[w][n]
+            if debug:
+                print(f'w={w}, n={n}, weight={weight[w][n]}, data={data[n]} '
+                      f'-> accumulator = {val} ')
+        if bias is not None:
+            val += bias[w]
+            if debug:
+                print(f'+bias {bias[w]} --> output[{w}] = {val}')
+        output[w] = val
