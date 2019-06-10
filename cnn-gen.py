@@ -20,6 +20,7 @@ import yaml
 
 import apbaccess
 import commandline
+import load
 import rtlsim
 import sampledata
 from tornadocnn import MAX_LAYERS, TRAM_SIZE, BIAS_SIZE, MASK_WIDTH, \
@@ -30,7 +31,7 @@ from tornadocnn import MAX_LAYERS, TRAM_SIZE, BIAS_SIZE, MASK_WIDTH, \
     LREG_WPTR_OFFS, LREG_RPTR_BASE, LREG_LCTL, LREG_MCNT, LREG_TPTR, LREG_ENA, MAX_LREG, \
     BIAS_DIV, set_device
 from simulate import cnn_layer, linear_layer
-from utils import argmin, ffs, fls, popcount, s2u
+from utils import argmin, ffs, fls, popcount
 
 
 def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwrite_ok, log,
@@ -451,105 +452,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                                        verbose, comment=f' // Zero unused layer {ll} registers')
 
         # Load data memory
-        # Start loading at the first used group
-        apb.output(f'\n\n  // {chan[0]}-channel data input\n')
-        c = 0
-        data_offs = 0
-        step = 1 if big_data[0] else 4
-        for ch in range(0, MAX_CHANNELS, step):
-            if not (processor_map[0] >> ch) % 2**step:
-                # Channel or block of four channels not used for input
-                continue
-
-            # Load channel into shared memory
-            group = ch // P_NUMPRO
-            instance = (ch % P_NUMPRO) // P_SHARED
-            new_data_offs = C_GROUP_OFFS*group + C_SRAM_BASE + INSTANCE_SIZE*4*instance
-            if new_data_offs == data_offs:
-                print('Layer 0 processor map is misconfigured for data input. '
-                      f'There is data overlap between processors {ch-1} and {ch}')
-                sys.exit(1)
-            data_offs = new_data_offs
-
-            if debug:
-                print(f'G{group} L0 data_offs:      {data_offs:08x}')
-
-            if big_data[0]:
-                # CHW ("Big Data") - Separate channel sequences (BBBBB....GGGGG....RRRRR....)
-                apb.output(f'  // CHW (big data): {dim[0][0]}x{dim[0][1]}, channel {c}\n')
-
-                chunk = input_size[1] // split
-
-                # (Note: We do not need to flush here, since that is done at the
-                # end of each channel's output below)
-                if split > 1:
-                    # Add top pad
-                    for _ in range(padding[0]):
-                        for _ in range(input_size[2]):
-                            apb.write_byte(data_offs, 0)
-                            data_offs += 1
-                row = 0
-                for s in range(split):
-                    if split > 1 and s + 1 < split:
-                        overlap = padding[0]
-                    else:
-                        overlap = 0
-                    while row < (s + 1) * chunk + overlap:
-                        for col in range(input_size[2]):
-                            apb.write_byte(data_offs, s2u(data[c][row][col]))
-                            data_offs += 1
-                        row += 1
-                    row -= 2*overlap  # Rewind
-                    # Switch to next memory instance
-                    if split > 1 and s + 1 < split:
-                        new_data_offs = ((data_offs + INSTANCE_SIZE - 1) //
-                                         INSTANCE_SIZE) * INSTANCE_SIZE
-                        if new_data_offs != data_offs:
-                            apb.write_byte_flush(0)
-                        data_offs = new_data_offs
-                if split > 1:
-                    # Add bottom pad
-                    for _ in range(padding[0]):
-                        for _ in range(input_size[2]):
-                            apb.write_byte(data_offs, 0)
-                            data_offs += 1
-                c += 1
-            else:
-                # HWC ("Little Data") - Four channels packed into a word (0BGR0BGR0BGR0BGR0BGR....)
-                apb.output(f'  // HWC (little data): {dim[0][0]}x{dim[0][1]}, '
-                           f'channels {c} to {min(c+3, chan[0]-1)}\n')
-
-                for row in range(input_size[1]):
-                    for col in range(input_size[2]):
-                        if c < chan[0]:
-                            apb.write_byte(data_offs, s2u(data[c][row][col]))
-                        else:
-                            apb.write_byte(data_offs, 0)
-                        data_offs += 1
-                        # Always write multiple of four bytes even for last input
-                        if c+1 < chan[0]:
-                            apb.write_byte(data_offs, s2u(data[c+1][row][col]))
-                        else:
-                            apb.write_byte(data_offs, 0)
-                        data_offs += 1
-                        if c+2 < chan[0]:
-                            apb.write_byte(data_offs, s2u(data[c+2][row][col]))
-                        else:
-                            apb.write_byte(data_offs, 0)
-                        data_offs += 1
-                        if c+3 < chan[0]:
-                            apb.write_byte(data_offs, s2u(data[c+3][row][col]))
-                        else:
-                            apb.write_byte(data_offs, 0)
-                        data_offs += 1
-                c += 4
-
-            apb.write_byte_flush(0)
-            if c >= chan[0]:
-                # Consumed all available channels
-                break
-
-        apb.output(f'  // End of data input\n\n')
+        load.load(apb, big_data[0], processor_map[0], input_size, chan[0], dim[0], data,
+                  padding[0], split=split, debug=debug)
 
         if verbose:
             print('\nGlobal registers:')
