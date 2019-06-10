@@ -84,7 +84,8 @@ def fc_layer(memfile, weights, bias):
 
     memfile.write('static uint8_t conv_data[FC_IN];\n')
     memfile.write('static q15_t fc_buffer[FC_IN];\n')
-    memfile.write('static q15_t fc_output[FC_OUT];\n\n')
+    memfile.write('static q15_t fc_output[FC_OUT];\n')
+    memfile.write('static q15_t fc_softmax[FC_OUT];\n\n')
 
     if bias is not None:
         memfile.write('#define FC_BIAS {')
@@ -98,7 +99,7 @@ def fc_layer(memfile, weights, bias):
                   'FC_IN, FC_OUT, 0, 7, '
                   f'{"fc_bias" if bias is not None else "NULL"}, '
                   'fc_output, fc_buffer);\n')
-    # arm_softmax_q7(output_data, 10, output_data);
+    memfile.write('  arm_softmax_q15(fc_output, FC_OUT, fc_softmax);\n\n')
 
     memfile.write('  return 1;\n}\n\n')
 
