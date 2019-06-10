@@ -226,14 +226,22 @@ def main():
 
     output = np.zeros(10, dtype=np.int64)
 
+    print('Input:', data)
+
     compute.linear(data, weight, bias, in_features=len(data), out_features=weight.shape[0],
                    output=output, debug=True)
 
-    print(output)
+    print('Output before division:', output)
+    output += 64
+    output //= 128
+    print('Output:', output)
 
     compare = np.array([-34711, 37520, 22738, 16559, 2293,
                         -48963, -85140, 136144, -38265, -9148])
+    compare += 64
+    compare //= 128
 
+    print('Expected:', compare)
     print("SUCCESS" if np.array_equal(output, compare) else "*** FAILURE ***")
 
 
