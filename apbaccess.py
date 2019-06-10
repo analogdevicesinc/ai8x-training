@@ -12,6 +12,7 @@ import sys
 
 import toplevel
 import tornadocnn
+import unload
 
 
 class APB(object):
@@ -239,9 +240,11 @@ class APB(object):
         """
         return
 
-    def unload_header(self):
+    def unload_header(self, processor_map, input_shape,  # pylint: disable=unused-argument
+                      output_offset=0):  # pylint: disable=unused-argument
         """
-        Write the header for the unload function.
+        Write the header for the unload function. The layer to unload has the shape `input_shape`,
+        and the optional `output_offset` argument can shift the output.
         The base class does nothing.
         """
         return
@@ -407,11 +410,13 @@ class APBTopLevel(APB):
         """
         toplevel.fc_footer(self.memfile)
 
-    def unload_header(self):
+    def unload_header(self, processor_map, input_shape, output_offset=0):
         """
-        Write the header for the unload function.
+        Write the header for the unload function. The layer to unload has the shape `input_shape`,
+        and the optional `output_offset` argument can shift the output.
         """
         toplevel.unload_header(self.memfile)
+        unload.unload(self.memfile, self.apb_base, processor_map, input_shape, output_offset)
 
     def unload_footer(self):
         """

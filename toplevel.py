@@ -8,7 +8,7 @@
 """
 Toplevel C file structure generation
 """
-import tornadocnn
+from tornadocnn import C_CNN_BASE
 
 
 def header(memfile, apb_base):
@@ -22,7 +22,7 @@ def header(memfile, apb_base):
     memfile.write('#include <string.h>\n\n')
 
     memfile.write('void cnn_wait(void)\n{\n')
-    memfile.write(f'  while ((*((volatile uint32_t *) 0x{apb_base + tornadocnn.C_CNN_BASE:08x}) '
+    memfile.write(f'  while ((*((volatile uint32_t *) 0x{apb_base + C_CNN_BASE:08x}) '
                   '& (1<<12)) != 1<<12) ;\n}\n\n')
 
 
@@ -108,13 +108,11 @@ def unload_header(memfile):
     """
     Write the header for the unload function to `memfile`.
     """
-    memfile.write('// Custom unload for this network:\n'
-                  'void unload(uint8_t *out_buf)\n'
-                  '{\n  uint32_t val, *addr, offs;\n')
+    memfile.write('// Custom unload for this network:\n')
 
 
 def unload_footer(memfile):
     """
     Write the footer for the unload function to `memfile`.
     """
-    memfile.write('\n}\n\n')
+    memfile.write('\n')
