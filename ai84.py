@@ -14,7 +14,9 @@ import torch.nn as nn
 
 
 WEIGHT_BITS = 8
+DATA_BITS = 8
 ACTIVATION_BITS = 8
+FC_ACTIVATION_BITS = 16
 
 WEIGHT_INPUTS = 64
 WEIGHT_DEPTH = 128
@@ -121,10 +123,10 @@ class FusedMaxPoolConv2dReLU(nn.Module):
 
         if simulate:
             bits = ACTIVATION_BITS
-            self.quantize8 = Quantize(num_bits=bits)
+            self.quantize = Quantize(num_bits=bits)
             self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
         else:
-            self.quantize8 = Empty()
+            self.quantize = Empty()
             self.clamp = Clamp(min_val=-1., max_val=1.)  # Do not combine with ReLU
 
         if relu:
@@ -135,7 +137,7 @@ class FusedMaxPoolConv2dReLU(nn.Module):
     def forward(self, x):  # pylint: disable=arguments-differ
         x = self.pool(x)
         x = self.conv2d(x)
-        x = self.clamp(self.quantize8(self.activate(x)))
+        x = self.clamp(self.quantize(self.activate(x)))
         return x
 
 
@@ -169,11 +171,11 @@ class FusedAvgPoolConv2dReLU(nn.Module):
 
         if simulate:
             bits = ACTIVATION_BITS
-            self.quantize8 = Quantize(num_bits=bits)
+            self.quantize = Quantize(num_bits=bits)
             self.quantize_pool = Floor()
             self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
         else:
-            self.quantize8 = Empty()
+            self.quantize = Empty()
             self.quantize_pool = Empty()
             self.clamp = Clamp(min_val=-1., max_val=1.)  # Do not combine with ReLU
 
@@ -185,7 +187,7 @@ class FusedAvgPoolConv2dReLU(nn.Module):
     def forward(self, x):  # pylint: disable=arguments-differ
         x = self.clamp(self.quantize_pool(self.pool(x)))
         x = self.conv2d(x)
-        x = self.clamp(self.quantize8(self.activate(x)))
+        x = self.clamp(self.quantize(self.activate(x)))
         return x
 
 
@@ -213,11 +215,11 @@ class FusedConv2dReLU(nn.Module):
                                 padding=padding, bias=bias)
 
         if simulate:
+            self.quantize = Quantize(num_bits=DATA_BITS)
             bits = ACTIVATION_BITS
-            self.quantize8 = Quantize(num_bits=bits)
             self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
         else:
-            self.quantize8 = Empty()
+            self.quantize = Empty()
             self.clamp = Clamp(min_val=-1., max_val=1.)  # Do not combine with ReLU
 
         if relu:
@@ -227,7 +229,7 @@ class FusedConv2dReLU(nn.Module):
 
     def forward(self, x):  # pylint: disable=arguments-differ
         x = self.conv2d(x)
-        x = self.clamp(self.quantize8(self.activate(x)))
+        x = self.clamp(self.quantize(self.activate(x)))
         return x
 
 
@@ -237,3 +239,39 @@ class Conv2d(FusedConv2dReLU):
     """
     def __init__(self, in_channels, out_channels, kernel_size, **kwargs):
         super(Conv2d, self).__init__(in_channels, out_channels, kernel_size, relu=False, **kwargs)
+
+
+class FusedSoftwareLinearReLU(nn.Module):
+    """
+    AI84 - Fused Linear and ReLU
+    """
+    def __init__(self, in_features, out_features, bias=None, relu=True, simulate=False):
+        super(FusedSoftwareLinearReLU, self).__init__()
+
+        self.linear = nn.Linear(in_features, out_features, bias)
+
+        if simulate:
+            self.quantize = Quantize(num_bits=DATA_BITS)
+            bits = FC_ACTIVATION_BITS
+            self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
+        else:
+            self.quantize = Empty()
+            self.clamp = Clamp(min_val=-1., max_val=1.)  # Do not combine with ReLU
+
+        if relu:
+            self.activate = nn.ReLU(inplace=True)
+        else:
+            self.activate = Empty()
+
+    def forward(self, x):  # pylint: disable=arguments-differ
+        x = self.linear(x)
+        x = self.clamp(self.quantize(self.activate(x)))
+        return x
+
+
+class SoftwareLinear(FusedSoftwareLinearReLU):
+    """
+    AI84 - Linear
+    """
+    def __init__(self, in_features, out_features, **kwargs):
+        super(SoftwareLinear, self).__init__(in_features, out_features, relu=False, **kwargs)
