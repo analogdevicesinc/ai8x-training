@@ -52,9 +52,9 @@ def unload(apb_base, processor_map, input_shape,
     read_addr = None
     write_addr = None
     c = 0
-    while c < input_shape[2]:
-        for doffs in range(input_shape[0] * input_shape[1]):
-            row, col = divmod(doffs, input_shape[1])
+    while c < input_shape[0]:
+        for doffs in range(input_shape[1] * input_shape[2]):
+            row, col = divmod(doffs, input_shape[2])
             this_map = next_layer_map
             this_c = c
 
@@ -74,7 +74,7 @@ def unload(apb_base, processor_map, input_shape,
 
             # Singulate bytes, ignoring unused processors
             for shift in range(4):
-                addr = this_c * input_shape[0] * input_shape[1] + row * input_shape[0] + col
+                addr = this_c * input_shape[1] * input_shape[2] + row * input_shape[1] + col
                 if shift == 0:
                     if addr != write_addr:
                         print(f'  offs = 0x{addr:04x};')
@@ -88,7 +88,7 @@ def unload(apb_base, processor_map, input_shape,
                         out_array[addr] = val & 0xff
                     print('  out_buf[offs', end='')
                     if shift > 0:
-                        print(f'+0x{0x10 << (shift-1):02x}', end='')
+                        print(f'+0x{0x10 * shift:02x}', end='')
                     print('] = ', end='')
                     if shift == 0:
                         print('val', end='')
@@ -220,7 +220,7 @@ def main():
     flattened = expected.flatten()
     computed = np.empty_like(flattened)
     processor_map = 0x0000000000000fff
-    input_shape = (4, 4, 12)  # HWC
+    input_shape = (12, 4, 4)  # CHW - match generator
     out_offset = 0
     unload(APB_BASE, processor_map, input_shape,
            computed, out_offset, mem_image, flatten=True)

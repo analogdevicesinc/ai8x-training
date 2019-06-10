@@ -30,9 +30,9 @@ def unload(memfile, apb_base, processor_map, input_shape, out_offset):
     read_addr = None
     write_addr = None
     c = 0
-    while c < input_shape[2]:
-        for doffs in range(input_shape[0] * input_shape[1]):
-            row, col = divmod(doffs, input_shape[1])
+    while c < input_shape[0]:
+        for doffs in range(input_shape[1] * input_shape[2]):
+            row, col = divmod(doffs, input_shape[2])
             this_map = next_layer_map
             this_c = c
 
@@ -50,7 +50,7 @@ def unload(memfile, apb_base, processor_map, input_shape, out_offset):
 
             # Singulate bytes, ignoring unused processors
             for shift in range(4):
-                addr = this_c * input_shape[0] * input_shape[1] + row * input_shape[0] + col
+                addr = this_c * input_shape[1] * input_shape[2] + row * input_shape[1] + col
                 if shift == 0:
                     if addr != write_addr:
                         memfile.write(f'  offs = 0x{addr:04x};\n')
@@ -60,7 +60,7 @@ def unload(memfile, apb_base, processor_map, input_shape, out_offset):
                 if this_map & 1:
                     memfile.write('  out_buf[offs')
                     if shift > 0:
-                        memfile.write(f'+0x{0x10 << (shift-1):02x}')
+                        memfile.write(f'+0x{0x10 * shift:02x}')
                     memfile.write('] = ')
                     if shift == 0:
                         memfile.write('val')
