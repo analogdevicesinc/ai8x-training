@@ -19,12 +19,11 @@ MEM_INVALID = -2**63  # When  encountering this value, we know the array value w
 MEM_SIZE = 0x10000 >> 2
 
 
-def flatten(apb_base, processor_map, in_array, in_size, chan, out_array, out_offset, out_len):
+def unload_flatten(apb_base, processor_map, in_array, in_size,
+                   chan, out_array, out_offset, out_len):
     """
-    Flatten an HWC `in_array` of dimensions from AI84 and return it in `out_array`.
+    Unload and flatten an HWC `in_array` of dimensions from AI84 and return it in `out_array`.
     """
-    print(f'// Input length: {in_size}, Output length: {out_len}, Channels: {chan}')
-
     def get_val(offs):
         """
         Returns value stored at offset `offs` in the memory array.
@@ -37,13 +36,16 @@ def flatten(apb_base, processor_map, in_array, in_size, chan, out_array, out_off
             raise RuntimeError(f'Trying to read from uninitialized memory at location {offs:04x}.')
         return in_array[offs >> 2]
 
-    print('\n// Custom unload for this network'
-          '\nvoid unload_flatten(uint8_t *out_buf)\n{\n  uint32_t val, *addr;\n')
+    print('// Custom unload for this network:\n'
+          f'// Input length: {in_size}, Output length: {out_len}, Channels: {chan}\n'
+          'void unload_flatten(uint8_t *out_buf)\n'
+          '{\n  uint32_t val, *addr, offs;\n')
 
     coffs = ffs(processor_map) & ~(P_SHARED-1)
     next_layer_map = processor_map >> coffs
-    c = 0
     read_addr = None
+    write_addr = None
+    c = 0
     while c < chan:
         for doffs in range(in_size[0] * in_size[1]):
             row, col = divmod(doffs, in_size[1])
@@ -66,10 +68,24 @@ def flatten(apb_base, processor_map, in_array, in_size, chan, out_array, out_off
 
             # Singulate bytes, ignoring unused processors
             for shift in range(4):
+                addr = this_c * in_size[0] * in_size[1] + row * in_size[0] + col
+                if shift == 0:
+                    if addr != write_addr:
+                        print(f'  offs = 0x{addr:04x};')
+                    else:
+                        print(f'  offs++;')
+                    write_addr = addr + 1
                 if this_map & 1:
-                    addr = this_c * in_size[0] * in_size[1] + row * in_size[0] + col
                     out_array[addr] = val & 0xff
-                    print(f'  out_buf[0x{addr:04x}] = (val >> {shift}) & 0xff;')
+                    print('  out_buf[offs', end='')
+                    if shift > 0:
+                        print(f'+0x{0x10 << (shift-1):02x}', end='')
+                    print('] = ', end='')
+                    if shift == 0:
+                        print('val', end='')
+                    else:
+                        print(f'(val >> {shift * 8})', end='')
+                    print(' & 0xff;')
                     this_c += 1
                 this_map >>= 1
                 val >>= 8
@@ -171,8 +187,8 @@ def main():
     in_size = (4, 4)
     out_chan = 12
     out_offset = 0
-    flatten(APB_BASE, processor_map, mem_image, in_size,
-            out_chan, computed, out_offset, len(computed))
+    unload_flatten(APB_BASE, processor_map, mem_image, in_size,
+                   out_chan, computed, out_offset, len(computed))
 
     print('\n')
     print("// SUCCESS" if np.array_equal(flattened, computed) else "// *** FAILURE ***")
