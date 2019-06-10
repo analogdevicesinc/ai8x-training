@@ -30,6 +30,9 @@ def get_parser():
                         help="C file name base (default: 'test' -> 'input.c')")
     parser.add_argument('--c-library', action='store_true',
                         help="use C library functions such as memset()")
+    parser.add_argument('-f', '--fc-layer', action='store_true',
+                        help="add a fully connected classification layer in software "
+                             "(default: false)")
     parser.add_argument('-D', '--debug', action='store_true',
                         help="debug mode (default: false)")
     parser.add_argument('--debug-computation', action='store_true',
