@@ -95,7 +95,7 @@ def fc_layer(memfile, weights, bias):
                   '{\n  unload(conv_data);\n')
 
     memfile.write('  arm_fully_connected_q7_q15((q7_t *) conv_data, fc_weights, '
-                  'FC_IN, FC_OUT, 0, 0, '
+                  'FC_IN, FC_OUT, 0, 7, '
                   f'{"fc_bias" if bias is not None else "NULL"}, '
                   'fc_output, fc_buffer);\n')
     # arm_softmax_q7(output_data, 10, output_data);
