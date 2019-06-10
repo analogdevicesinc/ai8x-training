@@ -670,7 +670,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         apb.set_memfile(memfile)
 
         if fc_weights:
-            apb.unload_header()
+            apb.unload_header(processor_map[layers], input_size, 0)
             apb.unload_footer()
 
             apb.fc_header(fc_weights[0], fc_bias[0])
