@@ -833,10 +833,10 @@ def main():
                 else:
                     bias.append(None)
             elif fc_layer:
-                print('The network cannot have more than one fully connected layer, and it '
-                      'must be the output layer.')
+                print('The network cannot have more than one fully connected software layer, '
+                      'and it must be the output layer.')
                 sys.exit(1)
-            else:
+            elif args.fc_layer:
                 w = checkpoint_state[k].numpy().astype(np.int64)
                 assert w.min() >= -128 and w.max() <= 127
                 fc_weights.append(w)
