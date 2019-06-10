@@ -37,7 +37,8 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                apb_base, layers, processor_map,
                input_size, kernel_size, chan, padding, dilation, stride,
                pool, pool_stride, pool_average, activate,
-               data, kernel, bias, big_data, output_map, split,
+               data, kernel, bias, big_data, output_map, fc_weights, fc_bias,
+               split,
                in_offset, out_offset,
                input_filename, output_filename, c_filename,
                base_directory, runtest_filename, log_filename,
@@ -574,8 +575,6 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                       verbose, comment=f' // Master enable group {groups_used[0]}')
 
         apb.load_footer()
-        apb.main()
-
         # End of input
 
     in_map = apb.get_mem()
@@ -666,6 +665,18 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         input_size = [out_size[0], out_size[1], out_size[2]]
         data = out_buf.reshape(input_size[0], input_size[1], input_size[2])
         in_map = out_map
+
+    with open(os.path.join(base_directory, test_name, filename), mode=filemode) as memfile:
+        apb.set_memfile(memfile)
+
+        if fc_weights:
+            apb.unload_header()
+            apb.unload_footer()
+
+            apb.fc_header(fc_weights[0], fc_bias[0])
+            apb.fc_footer()
+
+        apb.main(fc_weights)
 
     # Create run_test.sv
     rtlsim.create_runtest_sv(block_mode, base_directory, test_name, runtest_filename,
@@ -777,6 +788,8 @@ def main():
 
     weights = []
     bias = []
+    fc_weights = []
+    fc_bias = []
 
     # Load weights and biases. This also configures the network channels.
     checkpoint = torch.load(args.checkpoint_file, map_location='cpu')
@@ -792,6 +805,7 @@ def main():
 
     checkpoint_state = checkpoint['state_dict']
     layers = 0
+    fc_layer = False
     output_channels = []
     for _, k in enumerate(checkpoint_state.keys()):
         operation, parameter = k.rsplit(sep='.', maxsplit=1)
@@ -813,6 +827,22 @@ def main():
                     bias.append(w)
                 else:
                     bias.append(None)
+            elif fc_layer:
+                print('The network cannot have more than one fully connected layer, and it '
+                      'must be the output layer.')
+                sys.exit(1)
+            else:
+                w = checkpoint_state[k].numpy().astype(np.int64)
+                assert w.min() >= -128 and w.max() <= 127
+                fc_weights.append(w)
+                # Is there a bias for this layer?
+                bias_name = operation + '.bias'
+                if bias_name in checkpoint_state:
+                    w = checkpoint_state[bias_name].numpy().astype(np.int64) // BIAS_DIV
+                    assert w.min() >= -128 and w.max() <= 127
+                    fc_bias.append(w)
+                else:
+                    fc_bias.append(None)
 
     if layers != len(cfg['layers']):
         print(f"Number of layers in the YAML configuration file ({len(cfg['layers'])}) "
@@ -857,7 +887,7 @@ def main():
                     args.overwrite_ok, args.log, args.apb_base, layers, processor_map,
                     input_size, kernel_size, output_channels, padding, dilation, stride,
                     pool, pool_stride, pool_average, activate,
-                    data, weights, bias, big_data, output_map,
+                    data, weights, bias, big_data, output_map, fc_weights, fc_bias,
                     args.input_split,
                     args.input_offset, output_offset,
                     args.input_filename, args.output_filename, args.c_filename,

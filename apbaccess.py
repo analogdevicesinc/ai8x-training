@@ -216,9 +216,39 @@ class APB(object):
         """
         return
 
-    def main(self):
+    def main(self, fc_layer=False):  # pylint: disable=unused-argument
         """
-        Write the main function.
+        Write the main function, including an optional call to the fully connected layer if
+        `fc_layer` is `True`.
+        The base class does nothing.
+        """
+        return
+
+    def fc_header(self, weights, bias):  # pylint: disable=unused-argument
+        """
+        Write the header for the call to the fully connected layer for the given `weights` and
+        `bias`. The `bias` argument can be `None`.
+        The base class does nothing.
+        """
+        return
+
+    def fc_footer(self):
+        """
+        Write the footer for the call to the fully connected layer.
+        The base class does nothing.
+        """
+        return
+
+    def unload_header(self):
+        """
+        Write the header for the unload function.
+        The base class does nothing.
+        """
+        return
+
+    def unload_footer(self):
+        """
+        Write the footer for the unload function.
         The base class does nothing.
         """
         return
@@ -357,11 +387,37 @@ class APBTopLevel(APB):
         """
         toplevel.load_footer(self.memfile)
 
-    def main(self):
+    def main(self, fc_layer=False):
         """
-        Write the main function.
+        Write the main function, including an optional call to the fully connected layer if
+        `fc_layer` is `True`.
         """
-        toplevel.main(self.memfile)
+        toplevel.main(self.memfile, fc_layer)
+
+    def fc_header(self, weights, bias):
+        """
+        Write the header for the call to the fully connected layer for the given `weights` and
+        `bias`. The `bias` argument can be `None`.
+        """
+        toplevel.fc_header(self.memfile, weights, bias)
+
+    def fc_footer(self):
+        """
+        Write the footer for the call to the fully connected layer.
+        """
+        toplevel.fc_footer(self.memfile)
+
+    def unload_header(self):
+        """
+        Write the header for the unload function.
+        """
+        toplevel.unload_header(self.memfile)
+
+    def unload_footer(self):
+        """
+        Write the footer for the unload function.
+        """
+        toplevel.unload_footer(self.memfile)
 
 
 def apbwriter(memfile,
