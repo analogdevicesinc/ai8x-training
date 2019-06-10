@@ -40,7 +40,7 @@ def load_footer(memfile):
     memfile.write('  return 1;\n}\n\n')
 
 
-def main(memfile, fc_layer=False):
+def main(memfile, classification_layer=False):
     """
     Write the main function (including an optional call to the fully connected layer if
     `fc_layer` is `True`) to `memfile`.
@@ -49,8 +49,9 @@ def main(memfile, fc_layer=False):
     memfile.write('  MXC_GCR->perckcn1 &= ~0x20; // Enable AI clock\n')
     memfile.write('  if (!cnn_load()) { fail(); pass(); return 0; }\n  cnn_wait();\n')
     memfile.write('  if (!cnn_check()) fail();\n')
-    if fc_layer:
+    if classification_layer:
         memfile.write('  if (!fc_layer()) fail();\n')
+        memfile.write('  if (!fc_verify()) fail();\n')
     memfile.write('  pass();\n  return 0;\n}\n\n')
 
 
@@ -68,51 +69,46 @@ def verify_footer(memfile):
     memfile.write('  return rv;\n}\n\n')
 
 
-def fc_header(memfile, weights, bias):
+def fc_layer(memfile, weights, bias):
     """
-    Write the header for the call to the fully connected layer with the given `weights` and
+    Write the call to the fully connected layer with the given `weights` and
     `bias` to `memfile`. The `bias` argument can be `None`.
     """
-    memfile.write('// Fully connected layer:\n')
+    memfile.write('// Classification layer (fully connected):\n')
     memfile.write(f'#define FC_IN {weights.shape[1]}\n')
     memfile.write(f'#define FC_OUT {weights.shape[0]}\n')
     memfile.write('#define FC_WEIGHTS {')
     weights.tofile(memfile, sep=',', format='%d')
-    memfile.write('}\nstatic q7_t fc_weights[FC_OUT * FC_IN] = FC_WEIGHTS;\n\n')
+    memfile.write('}\nstatic const q7_t fc_weights[FC_OUT * FC_IN] = FC_WEIGHTS;\n\n')
+
+    memfile.write('static uint8_t conv_data[FC_IN];\n')
+    memfile.write('static q15_t fc_output[FC_OUT];\n\n')
 
     if bias is not None:
         memfile.write('#define FC_BIAS {')
         bias.tofile(memfile, sep=',', format='%d')
-        memfile.write('}\nstatic q7_t ip1_bias[FC_OUT] = FC_BIAS;\n\n')
+        memfile.write('}\nstatic const q7_t fc_bias[FC_OUT] = FC_BIAS;\n\n')
 
-    memfile.write('void fc_layer(uint8_t *input, uint8_t *output, uint8_t *buffer)\n'
-                  '{\n  unload(input);\n')
+    memfile.write('void fc_layer(void)\n'
+                  '{\n  unload(conv_data);\n')
 
-    memfile.write('  arm_fully_connected_mat_q7_vec_q15(input, fc_weights, '
-                  f'{weights.shape[1]}, {weights.shape[0]}, '
-                  f'0, 0, {"fc_bias" if bias is not None else "NULL"}, '
-                  'output, (q15_t *) buffer);\n')
+    memfile.write('  arm_fully_connected_mat_q7_vec_q15((q7_t *) conv_data, fc_weights, '
+                  'FC_IN, FC_OUT, 0, 0, '
+                  f'{"fc_bias" if bias is not None else "NULL"}, '
+                  'fc_output, NULL);\n')
     # arm_softmax_q7(output_data, 10, output_data);
 
-    memfile.write('  return 1;\n')
+    memfile.write('  return 1;\n}\n\n')
 
 
-def fc_footer(memfile):
+def fc_verify(memfile, data):
     """
-    Write the footer for the call to the fully connected layer to `memfile`.
+    Write the code to verify the fully connected layer to `memfile` against `data`.
     """
-    memfile.write('}\n\n')
-
-
-def unload_header(memfile):
-    """
-    Write the header for the unload function to `memfile`.
-    """
-    memfile.write('// Custom unload for this network:\n')
-
-
-def unload_footer(memfile):
-    """
-    Write the footer for the unload function to `memfile`.
-    """
-    memfile.write('\n')
+    memfile.write('// Expected output of classification layer:\n')
+    memfile.write('#define FC_EXPECTED {')
+    data.tofile(memfile, sep=',', format='%d')
+    memfile.write('}\nstatic q15_t fc_expected[FC_OUT] = FC_EXPECTED;\n\n')
+    memfile.write('void fc_verify(void)\n'
+                  '{\n')
+    memfile.write('  return memcmp(fc_output, fc_expected, FC_OUT * sizeof(q15_t));\n}\n\n')

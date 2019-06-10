@@ -20,7 +20,8 @@ def unload(memfile, apb_base, processor_map, input_shape, out_offset):
     `out_offset`. The C code function takes a pointer to a memory array, and the depth of
     the array does not matter (flattened or not flattened) as long as the size is correct.
     """
-    memfile.write(f'// Input shape: {input_shape}\n'
+    memfile.write('// Custom unload for this network:\n'
+                  f'// Input shape: {input_shape}\n'
                   'void unload(uint8_t *out_buf)\n'
                   '{\n  uint32_t val, *addr, offs;\n\n')
 
@@ -73,4 +74,4 @@ def unload(memfile, apb_base, processor_map, input_shape, out_offset):
         c += popcount(next_layer_map & 0x0f)
         next_layer_map >>= 4
 
-    memfile.write('}\n')
+    memfile.write('}\n\n')

@@ -217,41 +217,34 @@ class APB(object):
         """
         return
 
-    def main(self, fc_layer=False):  # pylint: disable=unused-argument
+    def main(self, classification_layer=False):  # pylint: disable=unused-argument
         """
         Write the main function, including an optional call to the fully connected layer if
-        `fc_layer` is `True`.
+        `classification_layer` is `True`.
         The base class does nothing.
         """
         return
 
-    def fc_header(self, weights, bias):  # pylint: disable=unused-argument
+    def fc_layer(self, weights, bias):  # pylint: disable=unused-argument
         """
-        Write the header for the call to the fully connected layer for the given `weights` and
+        Write the call to the fully connected layer for the given `weights` and
         `bias`. The `bias` argument can be `None`.
         The base class does nothing.
         """
         return
 
-    def fc_footer(self):
+    def fc_verify(self, data):  # pylint: disable=unused-argument
         """
-        Write the footer for the call to the fully connected layer.
+        Write the code to verify the fully connected layer against `data`.
         The base class does nothing.
         """
         return
 
-    def unload_header(self, processor_map, input_shape,  # pylint: disable=unused-argument
-                      output_offset=0):  # pylint: disable=unused-argument
+    def unload(self, processor_map, input_shape,  # pylint: disable=unused-argument
+               output_offset=0):  # pylint: disable=unused-argument
         """
-        Write the header for the unload function. The layer to unload has the shape `input_shape`,
+        Write the unload function. The layer to unload has the shape `input_shape`,
         and the optional `output_offset` argument can shift the output.
-        The base class does nothing.
-        """
-        return
-
-    def unload_footer(self):
-        """
-        Write the footer for the unload function.
         The base class does nothing.
         """
         return
@@ -390,39 +383,32 @@ class APBTopLevel(APB):
         """
         toplevel.load_footer(self.memfile)
 
-    def main(self, fc_layer=False):
+    def main(self, classification_layer=False):
         """
         Write the main function, including an optional call to the fully connected layer if
-        `fc_layer` is `True`.
+        `classification_layer` is `True`.
         """
-        toplevel.main(self.memfile, fc_layer)
+        toplevel.main(self.memfile, classification_layer)
 
-    def fc_header(self, weights, bias):
+    def fc_layer(self, weights, bias):
         """
-        Write the header for the call to the fully connected layer for the given `weights` and
+        Write call to the fully connected layer for the given `weights` and
         `bias`. The `bias` argument can be `None`.
         """
-        toplevel.fc_header(self.memfile, weights, bias)
+        toplevel.fc_layer(self.memfile, weights, bias)
 
-    def fc_footer(self):
+    def fc_verify(self, data):
         """
-        Write the footer for the call to the fully connected layer.
+        Write the code to verify the fully connected layer against `data`.
         """
-        toplevel.fc_footer(self.memfile)
+        toplevel.fc_verify(self.memfile, data)
 
-    def unload_header(self, processor_map, input_shape, output_offset=0):
+    def unload(self, processor_map, input_shape, output_offset=0):
         """
-        Write the header for the unload function. The layer to unload has the shape `input_shape`,
+        Write the unload function. The layer to unload has the shape `input_shape`,
         and the optional `output_offset` argument can shift the output.
         """
-        toplevel.unload_header(self.memfile)
         unload.unload(self.memfile, self.apb_base, processor_map, input_shape, output_offset)
-
-    def unload_footer(self):
-        """
-        Write the footer for the unload function.
-        """
-        toplevel.unload_footer(self.memfile)
 
 
 def apbwriter(memfile,

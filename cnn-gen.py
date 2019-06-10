@@ -29,7 +29,7 @@ from tornadocnn import MAX_LAYERS, TRAM_SIZE, BIAS_SIZE, MASK_WIDTH, \
     LREG_RCNT, LREG_CCNT, LREG_RFU, LREG_PRCNT, LREG_PCCNT, LREG_STRIDE, LREG_WPTR_BASE, \
     LREG_WPTR_OFFS, LREG_RPTR_BASE, LREG_LCTL, LREG_MCNT, LREG_TPTR, LREG_ENA, MAX_LREG, \
     BIAS_DIV, set_device
-from simulate import cnn_layer
+from simulate import cnn_layer, linear_layer
 from utils import argmin, ffs, fls, popcount, s2u
 
 
@@ -670,11 +670,16 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         apb.set_memfile(memfile)
 
         if fc_weights:
-            apb.unload_header(processor_map[layers], input_size, 0)
-            apb.unload_footer()
+            data = data.flatten()
 
-            apb.fc_header(fc_weights[0], fc_bias[0])
-            apb.fc_footer()
+            out_buf, out_size = linear_layer(verbose=verbose,
+                                             do_activation=False,
+                                             data=data, weight=fc_weights[0], bias=fc_bias[0],
+                                             debug=debug)
+
+            apb.unload(processor_map[layers], input_size, 0)
+            apb.fc_layer(fc_weights[0], fc_bias[0])
+            apb.fc_verify(out_buf)
 
         apb.main(fc_weights)
 
