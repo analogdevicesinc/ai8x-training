@@ -9,14 +9,14 @@
 Simulate a single CNN layer
 """
 import numpy as np
-from compute import conv2d
+from compute import conv2d, linear
 from tornadocnn import BIAS_DIV
 
 
 def cnn_layer(layer, verbose,
               input_size, kernel_size, output_channels, padding, dilation, stride,
               pool, pool_stride, pool_average, do_activation,
-              kernel, bias, data, ai85=False, debug=False):
+              kernel, bias, data, bits=8, ai85=False, debug=False):
     """
     Perform pooling and convolution for one layer
     """
@@ -94,7 +94,7 @@ def cnn_layer(layer, verbose,
         print('')
 
     out_buf = np.floor(0.5 + out_buf / 128).astype(np.int64)
-    np.clip(out_buf, -128, 127, out_buf)
+    np.clip(out_buf, -(2**bits-1), 2**(bits-1)-1, out_buf)
 
     if verbose:
         print(f"{out_size[0]}x{out_size[1]}x{out_size[2]} OUTPUT "
@@ -103,7 +103,7 @@ def cnn_layer(layer, verbose,
         print('')
 
     if do_activation:
-        np.clip(out_buf, 0, 127, out_buf)
+        np.clip(out_buf, 0, 2**(bits-1)-1, out_buf)
 
         if verbose:
             print(f"{out_size[0]}x{out_size[1]}x{out_size[2]} ACTIVATED OUTPUT:")
@@ -111,3 +111,44 @@ def cnn_layer(layer, verbose,
             print('')
 
     return out_buf, out_size
+
+
+def linear_layer(verbose, do_activation,
+                 weight, bias, data, bits=16, debug=False):
+    """
+    Perform one linear layer.
+    """
+    in_features = data.shape[0]
+    out_features = weight.shape[0]
+
+    if verbose:
+        print("CLASSIFICATION LAYER...\n")
+        print(f"INPUT DATA (size {in_features}):")
+        print(data)
+        print('')
+
+        print(f"WEIGHTS (size {in_features * out_features}):")
+        print(weight)
+        print(f"BIAS: {bias}\n")
+
+    out_buf = np.empty(out_features, dtype=np.int64)
+    linear(data=data, weight=weight, bias=bias,
+           in_features=in_features, out_features=out_features,
+           output=out_buf, debug=debug)
+    out_buf = np.floor(0.5 + out_buf / 128).astype(np.int64)
+    np.clip(out_buf, -2**(bits-1), 2**(bits-1)-1, out_buf)
+
+    if verbose:
+        print(f"OUTPUT (size {out_features}):")
+        print(out_buf)
+        print('')
+
+    if do_activation:
+        np.clip(out_buf, 0, 2**(bits-1)-1, out_buf)
+
+        if verbose:
+            print(f"ACTIVATED OUTPUT (size {out_features}):")
+            print(out_buf)
+            print('')
+
+    return out_buf, out_features
