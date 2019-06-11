@@ -14,9 +14,9 @@ import signal
 import sys
 
 import numpy as np
-import torch
 
 import apbaccess
+import checkpoint
 import commandline
 import kernels
 import load
@@ -29,7 +29,7 @@ from tornadocnn import MAX_LAYERS, TRAM_SIZE, \
     REG_CTL, REG_SRAM, REG_LCNT_MAX, \
     LREG_RCNT, LREG_CCNT, LREG_RFU, LREG_PRCNT, LREG_PCCNT, LREG_STRIDE, LREG_WPTR_BASE, \
     LREG_WPTR_OFFS, LREG_RPTR_BASE, LREG_LCTL, LREG_MCNT, LREG_TPTR, LREG_ENA, MAX_LREG, \
-    BIAS_DIV, set_device
+    set_device
 from simulate import cnn_layer, linear_layer
 from utils import ffs, popcount
 
@@ -507,63 +507,9 @@ def main():
     # Load configuration file
     cfg, settings = yamlcfg.parse(args.config_file)
 
-    # Load weights and biases. This also configures the network channels.
-    weights = []
-    bias = []
-    fc_weights = []
-    fc_bias = []
-
-    checkpoint = torch.load(args.checkpoint_file, map_location='cpu')
-    print(f'Reading {args.checkpoint_file} to configure network weights...')
-
-    if 'state_dict' not in checkpoint or 'arch' not in checkpoint:
-        raise RuntimeError("\nNo `state_dict` or `arch` in checkpoint file.")
-
-    if checkpoint['arch'].lower() != cfg['arch'].lower():
-        print(f"Network architecture of configuration file ({cfg['arch']}) does not match "
-              f"network architecture of checkpoint file ({checkpoint['arch']}).")
-        sys.exit(1)
-
-    checkpoint_state = checkpoint['state_dict']
-    layers = 0
-    fc_layer = False
-    output_channels = []
-    for _, k in enumerate(checkpoint_state.keys()):
-        operation, parameter = k.rsplit(sep='.', maxsplit=1)
-        if parameter in ['weight']:
-            module, _ = k.split(sep='.', maxsplit=1)
-            if module != 'fc':
-                w = checkpoint_state[k].numpy().astype(np.int64)
-                assert w.min() >= -128 and w.max() <= 127
-                if layers == 0:
-                    output_channels.append(w.shape[1])  # Input channels
-                output_channels.append(w.shape[0])
-                weights.append(w.reshape(-1, w.shape[-2], w.shape[-1]))
-                layers += 1
-                # Is there a bias for this layer?
-                bias_name = operation + '.bias'
-                if bias_name in checkpoint_state:
-                    w = checkpoint_state[bias_name].numpy().astype(np.int64) // BIAS_DIV
-                    assert w.min() >= -128 and w.max() <= 127
-                    bias.append(w)
-                else:
-                    bias.append(None)
-            elif fc_layer:
-                print('The network cannot have more than one fully connected software layer, '
-                      'and it must be the output layer.')
-                sys.exit(1)
-            elif args.fc_layer:
-                w = checkpoint_state[k].numpy().astype(np.int64)
-                assert w.min() >= -128 and w.max() <= 127
-                fc_weights.append(w)
-                # Is there a bias for this layer?
-                bias_name = operation + '.bias'
-                if bias_name in checkpoint_state:
-                    w = checkpoint_state[bias_name].numpy().astype(np.int64) // BIAS_DIV
-                    assert w.min() >= -128 and w.max() <= 127
-                    fc_bias.append(w)
-                else:
-                    fc_bias.append(None)
+    # Load weights and biases. This also configures the network's output channels.
+    layers, weights, bias, fc_weights, fc_bias, output_channels = \
+        checkpoint.load(args.checkpoint_file, cfg['arch'], args.fc_layer)
 
     if layers != len(cfg['layers']):
         print(f"Number of layers in the YAML configuration file ({len(cfg['layers'])}) "
