@@ -9,20 +9,28 @@
 Kernel related functions
 """
 import sys
-import tabulate
+import numpy as np
 from tornadocnn import MASK_WIDTH, MAX_CHANNELS, P_SHARED, BIAS_SIZE, P_NUMGROUPS
 from utils import argmin, ffs, fls
 
 
-def print_map(layers, kmap):
+INVALID_VALUE = -(2**63)
+
+
+def print_map(_layers, kmap):
     """
     Print map of all used kernels in kernel map `kmap`.
     """
-    table = tabulate.tabulate(kmap, tablefmt='plain', missingval='X')
-    print('-' * MASK_WIDTH)
-    if layers < 10:
-        print(table.replace('  ', ''))
-    print('-' * MASK_WIDTH)
+    print('-' * kmap.shape[1])
+    for row in range(kmap.shape[0]):
+        for col in range(kmap.shape[1]):
+            val = kmap[row][col]
+            if val == INVALID_VALUE:
+                print('X', end='')
+            else:
+                print(val, end='')
+        print('')
+    print('-' * kmap.shape[1])
 
 
 def load(verbose, embedded_code, apb, layers, kernel, processor_map, chan, debug=False):
@@ -36,7 +44,7 @@ def load(verbose, embedded_code, apb, layers, kernel, processor_map, chan, debug
     chan_kern_max = [0] * MAX_CHANNELS
     kern_offs = [0] * layers
     kern_len = [0] * layers
-    kernel_map = [[None] * MASK_WIDTH for i in range(MAX_CHANNELS)]
+    kernel_map = np.full((MAX_CHANNELS, MASK_WIDTH), INVALID_VALUE, dtype=np.int64)
 
     if embedded_code:
         apb.output('void load_kernels(void)\n{\n')
@@ -86,7 +94,7 @@ def load(verbose, embedded_code, apb, layers, kernel, processor_map, chan, debug
                     print(f'Channel {c} Layer {ll} m{col}/{chan[ll+1]-1}: {k}')
                 apb.write_kern(ll, c, kern_offs[ll] + col + coffs, k)
                 # Update kernel map
-                assert kernel_map[c][kern_offs[ll] + col + coffs] is None
+                assert kernel_map[c][kern_offs[ll] + col + coffs] == INVALID_VALUE
                 kernel_map[c][kern_offs[ll] + col + coffs] = ll
             assert kern_len[ll] == coffs + chan[ll+1]
             chan_kern_max[c] = kern_offs[ll] + kern_len[ll]
