@@ -100,7 +100,7 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         apb.output(f'// Created using {" ".join(str(x) for x in sys.argv)}\n')
 
         # Human readable description of test
-        apb.output(f'\n// Configuring input for {layers} layer{"s" if layers > 1 else ""}\n')
+        apb.output(f'\n// Configuring {layers} layer{"s" if layers > 1 else ""}:\n')
 
         for ll in range(layers):
             apb.output(f'// Layer {ll+1}: {chan[ll]}x{dim[ll][0]}x{dim[ll][1]} '
@@ -147,6 +147,10 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             # Pre-define data memory loader. Inline later when generating RTL sim.
             load.load(embedded_code, apb, big_data[0], processor_map[0], input_size, chan[0],
                       dim[0], data, padding[0], split=split, debug=debug)
+            # Pre-define the kernels
+            kern_offs, kern_len = \
+                kernels.load(verbose, embedded_code, apb, layers, kernel,
+                             processor_map, chan, debug)
 
         apb.load_header()
 
@@ -187,8 +191,12 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                           verbose, comment=' // Layer count')
             apb.output('\n')
 
-        kern_offs, kern_len = \
-            kernels.load(verbose, apb, layers, kernel, processor_map, chan, debug)
+        if not embedded_code:
+            kern_offs, kern_len = \
+                kernels.load(verbose, embedded_code, apb, layers, kernel,
+                             processor_map, chan, debug)
+        else:
+            apb.output('  load_kernels();\n')
 
         bias_offs, bias_group, group_bias_max = \
             kernels.load_bias(verbose, apb, layers, bias, group_map, chan, debug)
