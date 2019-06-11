@@ -33,7 +33,7 @@ def load(checkpoint_file, arch, fc_layer):
     if 'state_dict' not in checkpoint or 'arch' not in checkpoint:
         raise RuntimeError("\nNo `state_dict` or `arch` in checkpoint file.")
 
-    if checkpoint['arch'].lower() != arch.lower():
+    if arch and checkpoint['arch'].lower() != arch.lower():
         print(f"Network architecture of configuration file ({arch}) does not match "
               f"network architecture of checkpoint file ({checkpoint['arch']}).")
         sys.exit(1)
