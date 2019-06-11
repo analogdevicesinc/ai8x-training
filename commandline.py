@@ -26,11 +26,10 @@ def get_parser():
                         help=f"APB base address (default: {tornadocnn.APB_BASE:08x})")
     parser.add_argument('--autogen', default='tests', metavar='S',
                         help="directory location for autogen_list (default: 'tests')")
-    parser.add_argument('--c-filename', default='test', metavar='S',
-                        help="C file name base (default: 'test' -> 'input.c')")
-    parser.add_argument('--c-library', action='store_true',
-                        help="use C library functions such as memset()")
-    parser.add_argument('-d', '--device-code', action='store_true',
+    parser.add_argument('--c-filename', metavar='S',
+                        help="C file name base (sim default: 'test' -> 'test.c', "
+                             "otherwise 'main' -> 'main.c')")
+    parser.add_argument('-e', '--embedded-code', action='store_true',
                         help="generate embedded code for device instead of RTL simulation")
     parser.add_argument('-f', '--fc-layer', action='store_true',
                         help="add a fully connected classification layer in software "
@@ -81,4 +80,9 @@ def get_parser():
                         help="verify write operations (toplevel only, default: false)")
     parser.add_argument('--zero-unused', action='store_true',
                         help="zero unused registers (default: do not touch)")
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    if not args.c_filename:
+        args.c_filename = 'main' if args.embedded_code else 'test'
+
+    return args
