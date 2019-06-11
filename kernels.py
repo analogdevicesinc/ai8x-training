@@ -25,15 +25,21 @@ def print_map(layers, kmap):
     print('-' * MASK_WIDTH)
 
 
-def load(verbose, apb, layers, kernel, processor_map, chan, debug=False):
+def load(verbose, embedded_code, apb, layers, kernel, processor_map, chan, debug=False):
     """
-    Stack `kernel` values and write them to C code.
+    Stack `kernel` values and write them to C code (for `embedded_code` if `True` or
+    RTL simulation). The output is written to the `apb` object.
+    Input is configured with `layers`, `processor_map` and `chan`.
+    This function returns the kernel offsets and the kernel lengths for all layers.
     """
     # Kernels: Stack kernels; write only the kernels needed
     chan_kern_max = [0] * MAX_CHANNELS
     kern_offs = [0] * layers
     kern_len = [0] * layers
     kernel_map = [[None] * MASK_WIDTH for i in range(MAX_CHANNELS)]
+
+    if embedded_code:
+        apb.output('void load_kernels(void)\n{\n')
 
     for ll in range(layers):
         first_channel = ffs(processor_map[ll])
@@ -89,6 +95,9 @@ def load(verbose, apb, layers, kernel, processor_map, chan, debug=False):
     if verbose:
         print('\nKernel map:')
         print_map(layers, kernel_map)
+
+    if embedded_code:
+        apb.output('}\n\n')
 
     return kern_offs, kern_len
 

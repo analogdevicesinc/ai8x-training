@@ -25,7 +25,8 @@ def header(memfile, apb_base):
 
     memfile.write('void cnn_wait(void)\n{\n')
     memfile.write(f'  while ((*((volatile uint32_t *) 0x{apb_base + C_CNN_BASE:08x}) '
-                  '& (1<<12)) != 1<<12) ;\n  CNN_COMPLETE; // Signal processing complete\n}\n\n')
+                  '& (1<<12)) != 1<<12) ;\n  CNN_COMPLETE; '
+                  '// Signal that processing is complete\n}\n\n')
 
 
 def load_header(memfile):
