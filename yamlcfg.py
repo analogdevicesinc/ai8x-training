@@ -115,8 +115,8 @@ def parse(config_file):
     settings['big_data'] = big_data
 
     # We don't support changing the following, but leave as parameters
-    settings['dilation'] = [1, 1]
-    settings['kernel_size'] = [3, 3]
+    settings['dilation'] = [[1, 1]] * len(cfg['layers'])
+    settings['kernel_size'] = [[3, 3]] * len(cfg['layers'])
     settings['stride'] = [1] * len(cfg['layers'])
 
     return cfg, settings

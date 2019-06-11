@@ -59,9 +59,9 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         else:
             pool_stride[ll] = 1
             pooled_size = dim[ll]
-        dim.append([(pooled_size[0] - dilation[0] * (kernel_size[0] - 1) - 1 +
+        dim.append([(pooled_size[0] - dilation[ll][0] * (kernel_size[ll][0] - 1) - 1 +
                      2 * padding[ll]) // stride[ll] + 1,
-                    (pooled_size[1] - dilation[1] * (kernel_size[1] - 1) - 1 +
+                    (pooled_size[1] - dilation[ll][1] * (kernel_size[ll][1] - 1) - 1 +
                      2 * padding[ll]) // stride[ll] + 1])
 
     # Complete list of maps with output map
@@ -109,7 +109,7 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                            f'pool with stride {pool_stride[ll]}')
             else:
                 apb.output(f'no pooling')
-            apb.output(f', {kernel_size[0]}x{kernel_size[1]} convolution '
+            apb.output(f', {kernel_size[ll][0]}x{kernel_size[ll][1]} convolution '
                        f'with stride {stride[ll]} '
                        f'pad {padding[ll]}, {chan[ll+1]}x{dim[ll+1][0]}x{dim[ll+1][1]} out\n')
 
@@ -388,15 +388,15 @@ def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwri
     # Compute layer-by-layer output and chain results into input
     for ll in range(layers):
         out_buf, out_size = cnn_layer(ll + 1, verbose,
-                                      input_size, kernel_size, chan[ll+1],
-                                      [padding[ll], padding[ll]], dilation,
+                                      input_size, kernel_size[ll], chan[ll+1],
+                                      [padding[ll], padding[ll]], dilation[ll],
                                       [stride[ll], stride[ll]],
                                       [pool[ll], pool[ll]],
                                       [pool_stride[ll], pool_stride[ll]],
                                       pool_average[ll],
                                       activate[ll],
                                       kernel[ll].reshape(chan[ll+1], input_size[0],
-                                                         kernel_size[0], kernel_size[1]),
+                                                         kernel_size[ll][0], kernel_size[ll][1]),
                                       bias[ll],
                                       data,
                                       ai85=ai85,
@@ -526,6 +526,7 @@ def main():
         output_map = cfg['output_map']
     else:
         if len(processor_map) > layers:
+            # When truncating the layers, use the first unused layer's map (--stop-after is used)
             output_map = processor_map[layers]
         else:
             # Default to packed, 0-aligned output map
@@ -540,7 +541,6 @@ def main():
     processor_map = processor_map[:layers]
     output_channels = output_channels[:layers+1]
     output_offset = settings['output_offset'][:layers]
-    stride = settings['stride'][:layers]
 
     # Derived configuration options
     activate = [bool(x) for x in settings['relu']]
@@ -554,11 +554,10 @@ def main():
                     args.debug, args.debug_computation, args.no_error_stop,
                     args.overwrite_ok, args.log, args.apb_base, layers, processor_map,
                     input_size, settings['kernel_size'], output_channels, settings['padding'],
-                    settings['dilation'], stride,
+                    settings['dilation'], settings['stride'],
                     settings['pool'], settings['pool_stride'], pool_average, activate,
                     data, weights, bias, settings['big_data'], output_map, fc_weights, fc_bias,
-                    args.input_split,
-                    args.input_offset, output_offset,
+                    args.input_split, args.input_offset, output_offset,
                     args.input_filename, args.output_filename, args.c_filename,
                     args.test_dir, args.runtest_filename, args.log_filename,
                     args.zero_unused, args.timeout, not args.top_level, args.verify_writes,
