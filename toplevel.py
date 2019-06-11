@@ -8,6 +8,7 @@
 """
 Toplevel C file structure generation
 """
+from armx4weights import convert_to_x4_q7_weights
 from tornadocnn import C_CNN_BASE
 
 
@@ -78,6 +79,9 @@ def fc_layer(memfile, weights, bias):
     memfile.write('// Classification layer (fully connected):\n')
     memfile.write(f'#define FC_IN {weights.shape[1]}\n')
     memfile.write(f'#define FC_OUT {weights.shape[0]}\n')
+
+    weights = convert_to_x4_q7_weights(weights)
+
     memfile.write('#define FC_WEIGHTS {')
     weights.tofile(memfile, sep=',', format='%d')
     memfile.write('}\nstatic const q7_t fc_weights[FC_OUT * FC_IN] = FC_WEIGHTS;\n\n')
@@ -95,7 +99,7 @@ def fc_layer(memfile, weights, bias):
     memfile.write('int fc_layer(void)\n'
                   '{\n  unload(conv_data);\n')
 
-    memfile.write('  arm_fully_connected_q7_q15((q7_t *) conv_data, fc_weights, '
+    memfile.write('  arm_fully_connected_q7_q15_opt((q7_t *) conv_data, fc_weights, '
                   'FC_IN, FC_OUT, 0, 7, '
                   f'{"fc_bias" if bias is not None else "NULL"}, '
                   'fc_output, fc_buffer);\n')
