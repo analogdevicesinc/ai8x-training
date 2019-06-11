@@ -116,7 +116,6 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
         apb.output('\n')
         apb.header()
-        apb.load_header()
 
         # Calculate the groups needed, and groups and processors used overall
         processors_used = 0
@@ -144,6 +143,13 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             if ((processors_used | processor_map[layers]) >> group*P_NUMPRO) % 2**P_NUMPRO:
                 groups_used.append(group)
 
+        if embedded_code:
+            # Pre-define data memory loader. Inline later when generating RTL sim.
+            load.load(embedded_code, apb, big_data[0], processor_map[0], input_size, chan[0],
+                      dim[0], data, padding[0], split=split, debug=debug)
+
+        apb.load_header()
+
         # Initialize CNN registers
 
         if verbose:
@@ -155,8 +161,6 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             if group not in groups_used:
                 apb.write_ctl(group, REG_CTL, 0,
                               verbose, comment=f' // Disable group {group}')
-
-        apb.output('\n')
 
         # Configure global control registers for used groups
         for _, group in enumerate(groups_used):
@@ -352,8 +356,12 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                                        verbose, comment=f' // Zero unused layer {ll} registers')
 
         # Load data memory
-        load.load(apb, big_data[0], processor_map[0], input_size, chan[0], dim[0], data,
-                  padding[0], split=split, debug=debug)
+        if embedded_code:
+            # Do the actual code generation later
+            apb.output('\n  load_input(); // Load data input\n\n')
+        else:
+            load.load(embedded_code, apb, big_data[0], processor_map[0], input_size, chan[0],
+                      dim[0], data, padding[0], split=split, debug=debug)
 
         if verbose:
             print('\nGlobal registers:')
