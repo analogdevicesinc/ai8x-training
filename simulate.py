@@ -93,8 +93,8 @@ def cnn_layer(layer, verbose,
         print(out_buf)
         print('')
 
-    out_buf = np.floor(0.5 + out_buf / 128).astype(np.int64)
-    np.clip(out_buf, -(2**bits-1), 2**(bits-1)-1, out_buf)
+    out_buf = np.floor(0.5 + out_buf / 128).astype(np.int64). \
+        clip(-(2**(bits-1)), 2**(bits-1)-1)
 
     if verbose:
         print(f"{out_size[0]}x{out_size[1]}x{out_size[2]} OUTPUT "
@@ -135,8 +135,8 @@ def linear_layer(verbose, do_activation,
     linear(data=data, weight=weight, bias=bias,
            in_features=in_features, out_features=out_features,
            output=out_buf, debug=debug)
-    out_buf = np.floor(0.5 + out_buf / 128).astype(np.int64)
-    np.clip(out_buf, -2**(bits-1), 2**(bits-1)-1, out_buf)
+    out_buf = np.floor(0.5 + out_buf / 128).astype(np.int64). \
+        clip(-(2**(bits-1)), 2**(bits-1)-1)
 
     if verbose:
         print(f"OUTPUT (size {out_features}):")

@@ -15,7 +15,7 @@ from tornadocnn import P_NUMPRO, MAX_CHANNELS, INSTANCE_SIZE, GROUP_SIZE, P_SHAR
 from utils import ffs, popcount
 
 
-MEM_INVALID = -2**63  # When  encountering this value, we know the array value was not initialized
+MEM_INVALID = -(2**63)  # When encountering this value, we know the array value was not initialized
 MEM_SIZE = 0x10000 >> 2
 
 
