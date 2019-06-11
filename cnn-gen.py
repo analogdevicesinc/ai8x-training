@@ -7,7 +7,7 @@
 # Written by RM
 ###################################################################################################
 """
-Simulation test generator program for Tornado CNN
+Embedded network and simulation test generator program for Tornado CNN
 """
 import os
 import signal
@@ -44,7 +44,7 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                input_filename, output_filename, c_filename,
                base_directory, runtest_filename, log_filename,
                zero_unused, timeout, block_mode, verify_writes,
-               c_library=False,
+               embedded_code=False,
                ai85=False):
     """
     Chain multiple CNN layers, create and save input and output
@@ -69,16 +69,17 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
     # Create comment of the form "k1_b0-1x32x32b_2x2s2p14-..."
     test_name = prefix
-    for ll in range(layers):
-        test_name += f'-{chan[ll]}' \
-                     f'x{dim[ll][0]}x{dim[ll][1]}' \
-                     f'{"b" if big_data[ll] else "l"}_' \
-                     f'{"avg" if pool_average[ll] and pool[ll] > 0 else ""}' \
-                     f'{"max" if not pool_average[ll] and pool[ll] > 0 else ""}' \
-                     f'{pool[ll]}x{pool[ll]}s{pool_stride[ll]}' \
-                     f'p{padding[ll]}' \
-                     f'm{chan[ll+1]}' \
-                     f'{"_relu" if activate[ll] else ""}'
+    if not embedded_code:
+        for ll in range(layers):
+            test_name += f'-{chan[ll]}' \
+                        f'x{dim[ll][0]}x{dim[ll][1]}' \
+                        f'{"b" if big_data[ll] else "l"}_' \
+                        f'{"avg" if pool_average[ll] and pool[ll] > 0 else ""}' \
+                        f'{"max" if not pool_average[ll] and pool[ll] > 0 else ""}' \
+                        f'{pool[ll]}x{pool[ll]}s{pool_stride[ll]}' \
+                        f'p{padding[ll]}' \
+                        f'm{chan[ll+1]}' \
+                        f'{"_relu" if activate[ll] else ""}'
     print(f'{test_name}...')
 
     os.makedirs(os.path.join(base_directory, test_name), exist_ok=True)
@@ -160,7 +161,7 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         # Configure global control registers for used groups
         for _, group in enumerate(groups_used):
             # Zero out Tornado RAM
-            if c_library:
+            if embedded_code:
                 addr = apb_base + C_GROUP_OFFS*group + C_TRAM_BASE
                 apb.output(f'  memset((uint32_t *) 0x{addr:08x}, 0, '
                            f'{TRAM_SIZE * P_NUMPRO * 4}); // Zero TRAM group {group}\n')
@@ -487,8 +488,9 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         apb.main(fc_weights)
 
     # Create run_test.sv
-    rtlsim.create_runtest_sv(block_mode, base_directory, test_name, runtest_filename,
-                             input_filename, timeout)
+    if not embedded_code:
+        rtlsim.create_runtest_sv(block_mode, base_directory, test_name, runtest_filename,
+                                 input_filename, timeout)
 
     return test_name
 
@@ -561,10 +563,11 @@ def main():
                     args.input_filename, args.output_filename, args.c_filename,
                     args.test_dir, args.runtest_filename, args.log_filename,
                     args.zero_unused, args.timeout, not args.top_level, args.verify_writes,
-                    args.c_library,
+                    args.embedded_code,
                     args.ai85)
 
-    rtlsim.append_regression(args.top_level, tn, args.queue_name, args.autogen)
+    if not args.embedded_code:
+        rtlsim.append_regression(args.top_level, tn, args.queue_name, args.autogen)
 
 
 def signal_handler(_signal, _frame):
