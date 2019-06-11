@@ -15,7 +15,6 @@ import sys
 
 import numpy as np
 import torch
-import yaml
 
 import apbaccess
 import commandline
@@ -23,9 +22,10 @@ import kernels
 import load
 import rtlsim
 import sampledata
+import yamlcfg
 from tornadocnn import MAX_LAYERS, TRAM_SIZE, \
     C_TRAM_BASE, C_SRAM_BASE, C_GROUP_OFFS, \
-    P_NUMGROUPS, P_NUMPRO, P_SHARED, INSTANCE_SIZE, GROUP_SIZE, MEM_SIZE, MAX_CHANNELS, \
+    P_NUMGROUPS, P_NUMPRO, P_SHARED, INSTANCE_SIZE, GROUP_SIZE, MAX_CHANNELS, \
     REG_CTL, REG_SRAM, REG_LCNT_MAX, \
     LREG_RCNT, LREG_CCNT, LREG_RFU, LREG_PRCNT, LREG_PCCNT, LREG_STRIDE, LREG_WPTR_BASE, \
     LREG_WPTR_OFFS, LREG_RPTR_BASE, LREG_LCTL, LREG_MCNT, LREG_TPTR, LREG_ENA, MAX_LREG, \
@@ -505,101 +505,14 @@ def main():
     set_device(args.ai85)
 
     # Load configuration file
-    with open(args.config_file) as cfg_file:
-        print(f'Reading {args.config_file} to configure network...')
-        cfg = yaml.load(cfg_file, Loader=yaml.SafeLoader)
+    cfg, settings = yamlcfg.parse(args.config_file)
 
-    if bool(set(cfg) - set(['dataset', 'layers', 'output_map', 'arch'])):
-        print(f'Configuration file {args.config_file} contains unknown key(s).')
-        sys.exit(1)
-
-    if 'layers' not in cfg or 'arch' not in cfg or 'dataset' not in cfg:
-        print(f'Configuration file {args.config_file} does not contain '
-              f'`layers`, `arch`, or `dataset`.')
-        sys.exit(1)
-
-    if bool(set([cfg['dataset'].lower()]) - set(['mnist', 'fashionmnist', 'cifar-10'])):
-        print(f'Configuration file {args.config_file} contains unknown `dataset`.')
-        sys.exit(1)
-
-    padding = []
-    pool = []
-    pool_stride = []
-    output_offset = []
-    processor_map = []
-    average = []
-    relu = []
-    big_data = []
-
-    for ll in cfg['layers']:
-        if bool(set(ll) - set(['max_pool', 'avg_pool', 'pool_stride', 'out_offset',
-                               'activate', 'data_format', 'processors', 'pad'])):
-            print(f'Configuration file {args.config_file} contains unknown key(s) for `layers`.')
-            sys.exit(1)
-
-        padding.append(ll['pad'] if 'pad' in ll else 1)
-        if 'max_pool' in ll:
-            pool.append(ll['max_pool'])
-            average.append(0)
-        elif 'avg_pool' in ll:
-            pool.append(ll['avg_pool'])
-            average.append(1)
-        else:
-            pool.append(0)
-            average.append(0)
-        pool_stride.append(ll['pool_stride'] if 'pool_stride' in ll else 0)
-        output_offset.append(ll['out_offset'] if 'out_offset' in ll else 0)
-        if 'processors' not in ll:
-            print('`processors` key missing for layer in YAML configuration.')
-            sys.exit(1)
-        processor_map.append(ll['processors'])
-        if 'activate' in ll:
-            if ll['activate'].lower() == 'relu':
-                relu.append(1)
-            else:
-                print('Unknown value for `activate` in YAML configuration.')
-                sys.exit(1)
-        else:
-            relu.append(0)
-        if 'data_format' in ll:
-            if big_data:  # Sequence not empty
-                print('`data_format` can only be configured for the first layer.')
-                sys.exit(1)
-
-            df = ll['data_format'].lower()
-            if df in ['hwc', 'little']:
-                big_data.append(False)
-            elif df in ['chw', 'big']:
-                big_data.append(True)
-            else:
-                print('Unknown value for `data_format` in YAML configuration.')
-                sys.exit(1)
-        else:
-            big_data.append(False)
-
-    if any(p < 0 or p > 2 for p in padding):
-        print('Unsupported value for `pad` in YAML configuration.')
-        sys.exit(1)
-    if any(p & 1 != 0 or p < 0 or p > 4 for p in pool):
-        print('Unsupported value for `max_pool`/`avg_pool` in YAML configuration.')
-        sys.exit(1)
-    if any(p == 3 or p < 0 or p > 4 for p in pool_stride):
-        print('Unsupported value for `pool_stride` in YAML configuration.')
-        sys.exit(1)
-    if any(p < 0 or p > 4*MEM_SIZE for p in output_offset):
-        print('Unsupported value for `out_offset` in YAML configuration.')
-        sys.exit(1)
-
-    # We don't support changing the following, but leave as parameters
-    dilation = [1, 1]
-    kernel_size = [3, 3]
-
+    # Load weights and biases. This also configures the network channels.
     weights = []
     bias = []
     fc_weights = []
     fc_bias = []
 
-    # Load weights and biases. This also configures the network channels.
     checkpoint = torch.load(args.checkpoint_file, map_location='cpu')
     print(f'Reading {args.checkpoint_file} to configure network weights...')
 
@@ -625,7 +538,7 @@ def main():
                 if layers == 0:
                     output_channels.append(w.shape[1])  # Input channels
                 output_channels.append(w.shape[0])
-                weights.append(w.reshape(-1, kernel_size[0], kernel_size[1]))
+                weights.append(w.reshape(-1, w.shape[-2], w.shape[-1]))
                 layers += 1
                 # Is there a bias for this layer?
                 bias_name = operation + '.bias'
@@ -660,6 +573,8 @@ def main():
     if args.stop_after is not None:
         layers = args.stop_after + 1
 
+    processor_map = settings['processor_map']
+
     if 'output_map' in cfg:
         # Use optional configuration value
         output_map = cfg['output_map']
@@ -678,13 +593,12 @@ def main():
     # Remove extraneous input layer configurations (when --stop-after is used)
     processor_map = processor_map[:layers]
     output_channels = output_channels[:layers+1]
-    output_offset = output_offset[:layers]
+    output_offset = settings['output_offset'][:layers]
+    stride = settings['stride'][:layers]
 
-    # We don't support changing the following, but leave as parameters
-    stride = [1] * layers
-
-    activate = [bool(x) for x in relu]
-    pool_average = [bool(x) for x in average]
+    # Derived configuration options
+    activate = [bool(x) for x in settings['relu']]
+    pool_average = [bool(x) for x in settings['average']]
 
     print(f"Configuring data set: {cfg['dataset']}.")
     data = sampledata.get(cfg['dataset'])
@@ -693,9 +607,10 @@ def main():
     tn = create_sim(args.prefix, args.verbose,
                     args.debug, args.debug_computation, args.no_error_stop,
                     args.overwrite_ok, args.log, args.apb_base, layers, processor_map,
-                    input_size, kernel_size, output_channels, padding, dilation, stride,
-                    pool, pool_stride, pool_average, activate,
-                    data, weights, bias, big_data, output_map, fc_weights, fc_bias,
+                    input_size, settings['kernel_size'], output_channels, settings['padding'],
+                    settings['dilation'], stride,
+                    settings['pool'], settings['pool_stride'], pool_average, activate,
+                    data, weights, bias, settings['big_data'], output_map, fc_weights, fc_bias,
                     args.input_split,
                     args.input_offset, output_offset,
                     args.input_filename, args.output_filename, args.c_filename,
