@@ -16,10 +16,10 @@ def header(memfile, apb_base):
     Write include files and forward definitions to .c file handle `memfile`.
     The APB base address is passed in `apb_base`.
     """
-    memfile.write('#include "global_functions.h" // For RTL Simulation\n')
     memfile.write('#include <stdlib.h>\n')
     memfile.write('#include <stdint.h>\n')
     memfile.write('#include <string.h>\n')
+    memfile.write('#include "global_functions.h" // For RTL Simulation\n')
     memfile.write('#include "tornadocnn.h"\n\n')
 
     memfile.write('void cnn_wait(void)\n{\n')
