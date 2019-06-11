@@ -34,7 +34,7 @@ from simulate import cnn_layer, linear_layer
 from utils import ffs, popcount
 
 
-def create_sim(prefix, verbose, debug, debug_computation, no_error_stop, overwrite_ok, log,
+def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwrite_ok, log,
                apb_base, layers, processor_map,
                input_size, kernel_size, chan, padding, dilation, stride,
                pool, pool_stride, pool_average, activate,
@@ -550,7 +550,7 @@ def main():
     data = sampledata.get(cfg['dataset'])
     input_size = list(data.shape)
 
-    tn = create_sim(args.prefix, args.verbose,
+    tn = create_net(args.prefix, args.verbose,
                     args.debug, args.debug_computation, args.no_error_stop,
                     args.overwrite_ok, args.log, args.apb_base, layers, processor_map,
                     input_size, settings['kernel_size'], output_channels, settings['padding'],
