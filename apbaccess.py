@@ -131,6 +131,15 @@ class APB(object):
                         (k[7] & 0xff) << 8 | k[8] & 0xff)
             self.verify(addr+12, 0)
 
+    def check_overwrite(self, offs):
+        """
+        Check whether we're overwriting location `offs`.
+        """
+        if self.mem[offs >> 2]:
+            print(f'Overwriting location {offs:08x}')
+            if not self.no_error_stop:
+                sys.exit(1)
+
     def write_byte_flush(self, offs, comment=''):
         """
         Flush the contents of the internal buffer at offset `offs`, adding an optional
@@ -140,10 +149,7 @@ class APB(object):
         """
         if self.num > 0:
             woffs = self.data_offs - self.num
-            if self.mem[woffs >> 2]:
-                print(f'Overwriting location {woffs:08x}')
-                if not self.no_error_stop:
-                    sys.exit(1)
+            self.check_overwrite(woffs)
             self.write(woffs, self.data, comment)
             self.mem[woffs >> 2] = True
             self.num = 0
