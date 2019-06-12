@@ -205,7 +205,7 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
         if not embedded_code:
             kern_offs, kern_len = \
-                kernels.load(verbose, embedded_code, apb, layers, kernel,
+                kernels.load(verbose, embedded_code, apb, layers, kernel, kernel_size,
                              processor_map, chan, debug)
         else:
             apb.output('  load_kernels();\n')
