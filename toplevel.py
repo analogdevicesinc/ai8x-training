@@ -12,6 +12,20 @@ from armx4weights import convert_to_x4_q7_weights
 from tornadocnn import C_CNN_BASE
 
 
+COPYRIGHT = \
+    '// ---------------------------------------------------------------------------\n' \
+    '// Copyright (C) 2019 Maxim Integrated Products, Inc.\n' \
+    '// All rights reserved. Product of the U.S.A.\n' \
+    '// ---------------------------------------------------------------------------\n\n'
+
+
+def copyright_header(memfile):
+    """
+    Write the copyright header to .c file handle `memfile`.
+    """
+    memfile.write(COPYRIGHT)
+
+
 def header(memfile, apb_base):
     """
     Write include files and forward definitions to .c file handle `memfile`.
