@@ -81,7 +81,7 @@ def load(embedded_code, apb, chw, processor_map, input_size, chan, dim, data, pa
                     code_buffer[offs] = val
                     offs += 1
 
-                apb.output_define(code_buffer, f'INPUT_{ch}', '0x%08x', 8)
+                apb.output_define(code_buffer, f'INPUT_{ch}', '0x%08x', 8, weights=False)
                 apb.output('static const uint32_t '
                            f'input_{ch}[{offs}] = INPUT_{ch};\n\n')
                 input_list.append((addr, ch, offs))
