@@ -8,29 +8,34 @@
 """
 Kernel related functions
 """
+import math
 import sys
 import numpy as np
 from tornadocnn import MASK_WIDTH, MAX_CHANNELS, P_SHARED, BIAS_SIZE, P_NUMGROUPS
 from utils import argmin, ffs, fls
 
 
-INVALID_VALUE = -(2**63)
+_INVALID_VALUE = -(2**63)
 
 
-def print_map(_layers, kmap):
+def print_map(layers, kmap):
     """
-    Print map of all used kernels in kernel map `kmap`.
+    Print map of all used kernels in kernel map `kmap`. `layers` describes the number of layers
+    in the network and is used to align the map.
     """
-    print('-' * kmap.shape[1])
+    width = int(math.log10(layers)) + 1
+    if width > 1:
+        width += 1  # Add space if wider than a single character
+
+    print('-' * kmap.shape[1] * width)
     for row in range(kmap.shape[0]):
         for col in range(kmap.shape[1]):
             val = kmap[row][col]
-            if val == INVALID_VALUE:
-                print('X', end='')
-            else:
-                print(val, end='')
+            if val == _INVALID_VALUE:
+                val = 'X'
+            print('{:>{w}}'.format(val, w=width), end='')
         print('')
-    print('-' * kmap.shape[1])
+    print('-' * kmap.shape[1] * width)
 
 
 def load(verbose, embedded_code, apb, layers, kernel, processor_map, chan, debug=False):
@@ -44,7 +49,7 @@ def load(verbose, embedded_code, apb, layers, kernel, processor_map, chan, debug
     chan_kern_max = [0] * MAX_CHANNELS
     kern_offs = [0] * layers
     kern_len = [0] * layers
-    kernel_map = np.full((MAX_CHANNELS, MASK_WIDTH), INVALID_VALUE, dtype=np.int64)
+    kernel_map = np.full((MAX_CHANNELS, MASK_WIDTH), _INVALID_VALUE, dtype=np.int64)
 
     if embedded_code:
         apb.output('void load_kernels(void)\n{\n')
@@ -94,7 +99,7 @@ def load(verbose, embedded_code, apb, layers, kernel, processor_map, chan, debug
                     print(f'Channel {c} Layer {ll} m{col}/{chan[ll+1]-1}: {k}')
                 apb.write_kern(ll, c, kern_offs[ll] + col + coffs, k)
                 # Update kernel map
-                assert kernel_map[c][kern_offs[ll] + col + coffs] == INVALID_VALUE
+                assert kernel_map[c][kern_offs[ll] + col + coffs] == _INVALID_VALUE
                 kernel_map[c][kern_offs[ll] + col + coffs] = ll
             assert kern_len[ll] == coffs + chan[ll+1]
             chan_kern_max[c] = kern_offs[ll] + kern_len[ll]
