@@ -81,9 +81,8 @@ def load(embedded_code, apb, chw, processor_map, input_size, chan, dim, data, pa
                     code_buffer[offs] = val
                     offs += 1
 
-                apb.output(f'#define INPUT_{ch} {{')
-                code_buffer.tofile(apb.memfile, sep=',', format='0x%08x')
-                apb.output('}\nstatic const uint32_t '
+                apb.output_define(code_buffer, f'INPUT_{ch}', '0x%08x', 8)
+                apb.output('static const uint32_t '
                            f'input_{ch}[{offs}] = INPUT_{ch};\n\n')
                 input_list.append((addr, ch, offs))
 
@@ -159,9 +158,8 @@ def load(embedded_code, apb, chw, processor_map, input_size, chan, dim, data, pa
                     data_offs += 4
 
             if embedded_code:
-                apb.output(f'#define INPUT_{ch} {{')
-                code_buffer.tofile(apb.memfile, sep=',', format='0x%08x')
-                apb.output('}\nstatic const uint32_t '
+                apb.output_define(code_buffer, f'INPUT_{ch}', '0x%08x', 8)
+                apb.output('static const uint32_t '
                            f'input_{ch}[{input_size[1] * input_size[2]}] = INPUT_{ch};\n\n')
                 input_list.append((addr, ch, offs))
 

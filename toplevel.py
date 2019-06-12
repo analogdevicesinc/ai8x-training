@@ -97,9 +97,8 @@ def fc_layer(memfile, weights, bias):
 
     weights = convert_to_x4_q7_weights(weights)
 
-    memfile.write('#define FC_WEIGHTS {')
-    weights.tofile(memfile, sep=',', format='%d')
-    memfile.write('}\nstatic const q7_t fc_weights[FC_OUT * FC_IN] = FC_WEIGHTS;\n\n')
+    c_define(memfile, weights, 'FC_WEIGHTS', '%d', 16)
+    memfile.write('static const q7_t fc_weights[FC_OUT * FC_IN] = FC_WEIGHTS;\n\n')
 
     memfile.write('static uint8_t conv_data[FC_IN];\n')
     memfile.write('static q15_t fc_buffer[FC_IN];\n')
@@ -107,9 +106,8 @@ def fc_layer(memfile, weights, bias):
     memfile.write('static q15_t fc_softmax[FC_OUT];\n\n')
 
     if bias is not None:
-        memfile.write('#define FC_BIAS {')
-        bias.tofile(memfile, sep=',', format='%d')
-        memfile.write('}\nstatic const q7_t fc_bias[FC_OUT] = FC_BIAS;\n\n')
+        c_define(memfile, bias, 'FC_BIAS', '%d', 16)
+        memfile.write('static const q7_t fc_bias[FC_OUT] = FC_BIAS;\n\n')
 
     memfile.write('int fc_layer(void)\n'
                   '{\n  unload(conv_data);\n')
@@ -128,9 +126,26 @@ def fc_verify(memfile, data):
     Write the code to verify the fully connected layer to `memfile` against `data`.
     """
     memfile.write('// Expected output of classification layer:\n')
-    memfile.write('#define FC_EXPECTED {')
-    data.tofile(memfile, sep=',', format='%d')
-    memfile.write('}\nstatic q15_t fc_expected[FC_OUT] = FC_EXPECTED;\n\n')
+    c_define(memfile, data, 'FC_EXPECTED', '%d', 16)
+    memfile.write('static q15_t fc_expected[FC_OUT] = FC_EXPECTED;\n\n')
     memfile.write('int fc_verify(void)\n'
                   '{\n')
     memfile.write('  return memcmp(fc_output, fc_expected, FC_OUT * sizeof(q15_t)) == 0;\n}\n\n')
+
+
+def c_define(memfile, array, define_name, fmt, columns=8):
+    """
+    Write a #define to `memfile` for array `array` to `define_name`, using format `fmt` and
+    creating a line break after `columns` items each.
+    `fmt` can have two parts, separated by '%'. The part before the '%' sign is an optional
+    prefix and can be empty, the part after the '%' is a formatting directive, e.g. '%08x'.
+    """
+    prefix, formatting = fmt.split('%')
+    memfile.write(f'#define {define_name} {{ \\\n  ')
+    for i, e in enumerate(array):
+        memfile.write('{prefix}{item:{format}}'.format(prefix=prefix, item=e, format=formatting))
+        if i + 1 < len(array):
+            memfile.write(', ')
+            if (i + 1) % columns == 0:
+                memfile.write('\\\n  ')
+    memfile.write(' \\\n}\n')

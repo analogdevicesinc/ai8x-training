@@ -262,6 +262,14 @@ class APB(object):
         """
         return
 
+    def output_define(self, array, define_name, fmt, columns):  # pylint: disable=unused-argument
+        """
+        Write a #define for array `array` to `define_name`, using format `fmt` and creating
+        a line break after `columns` items each.
+        The base class does nothing.
+        """
+        return
+
 
 class APBBlockLevel(APB):
     """
@@ -428,6 +436,13 @@ class APBTopLevel(APB):
         and the optional `output_offset` argument can shift the output.
         """
         unload.unload(self.memfile, self.apb_base, processor_map, input_shape, output_offset)
+
+    def output_define(self, array, define_name, fmt, columns):
+        """
+        Write a #define for array `array` to `define_name`, using format `fmt` and creating
+        a line break after `columns` items each.
+        """
+        toplevel.c_define(self.memfile, array, define_name, fmt, columns)
 
 
 def apbwriter(memfile,
