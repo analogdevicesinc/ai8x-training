@@ -151,7 +151,7 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                       dim[0], data, padding[0], split=split, debug=debug)
             # Pre-define the kernels
             kern_offs, kern_len = \
-                kernels.load(verbose, embedded_code, apb, layers, kernel,
+                kernels.load(verbose, embedded_code, apb, layers, kernel, kernel_size,
                              processor_map, chan, debug)
 
         apb.load_header()
