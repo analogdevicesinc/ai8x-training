@@ -523,7 +523,7 @@ def main():
     set_device(args.ai85)
 
     # Load configuration file
-    cfg, settings = yamlcfg.parse(args.config_file)
+    cfg, params = yamlcfg.parse(args.config_file)
 
     # Load weights and biases. This also configures the network's output channels.
     layers, weights, bias, fc_weights, fc_bias, output_channels = \
@@ -537,7 +537,7 @@ def main():
     if args.stop_after is not None:
         layers = args.stop_after + 1
 
-    processor_map = settings['processor_map']
+    processor_map = params['processor_map']
 
     if 'output_map' in cfg:
         # Use optional configuration value
@@ -558,11 +558,11 @@ def main():
     # Remove extraneous input layer configurations (when --stop-after is used)
     processor_map = processor_map[:layers]
     output_channels = output_channels[:layers+1]
-    output_offset = settings['output_offset'][:layers]
+    output_offset = params['output_offset'][:layers]
 
     # Derived configuration options
-    activate = [bool(x) for x in settings['relu']]
-    pool_average = [bool(x) for x in settings['average']]
+    activate = [bool(x) for x in params['relu']]
+    pool_average = [bool(x) for x in params['average']]
 
     print(f"Configuring data set: {cfg['dataset']}.")
     data = sampledata.get(cfg['dataset'])
@@ -571,10 +571,10 @@ def main():
     tn = create_net(args.prefix, args.verbose,
                     args.debug, args.debug_computation, args.no_error_stop,
                     args.overwrite_ok, args.log, args.apb_base, layers, processor_map,
-                    input_size, settings['kernel_size'], output_channels, settings['padding'],
-                    settings['dilation'], settings['stride'],
-                    settings['pool'], settings['pool_stride'], pool_average, activate,
-                    data, weights, bias, settings['big_data'], output_map, fc_weights, fc_bias,
+                    input_size, params['kernel_size'], output_channels, params['padding'],
+                    params['dilation'], params['stride'],
+                    params['pool'], params['pool_stride'], pool_average, activate,
+                    data, weights, bias, params['big_data'], output_map, fc_weights, fc_bias,
                     args.input_split, args.input_offset, output_offset,
                     args.input_filename, args.output_filename, args.c_filename,
                     args.test_dir, args.runtest_filename, args.log_filename,
