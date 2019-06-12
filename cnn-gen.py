@@ -96,6 +96,8 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
     with open(os.path.join(base_directory, test_name, filename), mode='w') as memfile:
         apb = apbaccess.apbwriter(memfile, apb_base, block_mode, verify_writes, no_error_stop)
 
+        apb.copyright_header()
+
         apb.output(f'// {test_name}\n')
         apb.output(f'// Created using {" ".join(str(x) for x in sys.argv)}\n')
 
