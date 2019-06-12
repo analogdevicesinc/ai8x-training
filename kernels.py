@@ -144,15 +144,15 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, processor_ma
                         chan_kern_max[p+1] and (start & ~(P_NUMPRO-1)) == (p+1 & ~(P_NUMPRO-1))
                 ):
                     p += 1
-                apb.output(f'#define KERNELS_{start} {{')
-                print(f'start {start} p {p}')
+                # Combine multiple channels into one define
+                k = None
                 for i in range(start, p + 1):
-                    print(f'  i {i} chan_kern_max[i] {chan_kern_max[i]}')
-                    kernel_values[i][:chan_kern_max[i] * 4]. \
-                        tofile(apb.memfile, sep=',', format='0x%08x')
-                    if i < p + 1:
-                        apb.output(',')
-                apb.output('}\n')
+                    if k is None:
+                        k = kernel_values[i][:chan_kern_max[i] * 4]
+                    else:
+                        k = np.concatenate((k, kernel_values[i][:chan_kern_max[i] * 4]))
+
+                apb.output_define(k, f'KERNELS_{start}', '0x%08x', 8)
             p += 1
         apb.output('\n')
 
