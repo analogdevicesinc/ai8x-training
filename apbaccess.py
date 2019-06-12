@@ -24,7 +24,9 @@ class APB(object):
                  memfile,
                  apb_base,
                  verify_writes=False,
-                 no_error_stop=False):
+                 no_error_stop=False,
+                 weight_header=None,
+                 sampledata_header=None):
         """
         Create an APB class object that writes to memfile.
         """
@@ -32,6 +34,9 @@ class APB(object):
         self.apb_base = apb_base
         self.verify_writes = verify_writes
         self.no_error_stop = no_error_stop
+        self.weight_header = weight_header
+        self.sampledata_header = sampledata_header
+
         self.data = 0
         self.num = 0
         self.data_offs = 0
@@ -262,7 +267,8 @@ class APB(object):
         """
         return
 
-    def output_define(self, array, define_name, fmt, columns):  # pylint: disable=unused-argument
+    def output_define(self, array, define_name,  # pylint: disable=unused-argument
+                      fmt, columns, weights=True):  # pylint: disable=unused-argument
         """
         Write a #define for array `array` to `define_name`, using format `fmt` and creating
         a line break after `columns` items each.
@@ -279,11 +285,15 @@ class APBBlockLevel(APB):
                  memfile,
                  apb_base,
                  verify_writes=False,
-                 no_error_stop=False):
+                 no_error_stop=False,
+                 weight_header=None,
+                 sampledata_header=None):
         super(APBBlockLevel, self).__init__(memfile,
                                             apb_base,
                                             verify_writes=verify_writes,
-                                            no_error_stop=no_error_stop)
+                                            no_error_stop=no_error_stop,
+                                            weight_header=weight_header,
+                                            sampledata_header=sampledata_header)
         self.foffs = 0
 
     def write(self,
@@ -422,13 +432,13 @@ class APBTopLevel(APB):
         Write call to the fully connected layer for the given `weights` and
         `bias`. The `bias` argument can be `None`.
         """
-        toplevel.fc_layer(self.memfile, weights, bias)
+        toplevel.fc_layer(self.memfile, self.weight_header, weights, bias)
 
     def fc_verify(self, data):
         """
         Write the code to verify the fully connected layer against `data`.
         """
-        toplevel.fc_verify(self.memfile, data)
+        toplevel.fc_verify(self.memfile, self.sampledata_header, data)
 
     def unload(self, processor_map, input_shape, output_offset=0):
         """
@@ -437,19 +447,25 @@ class APBTopLevel(APB):
         """
         unload.unload(self.memfile, self.apb_base, processor_map, input_shape, output_offset)
 
-    def output_define(self, array, define_name, fmt, columns):
+    def output_define(self, array, define_name, fmt, columns, weights=True):
         """
         Write a #define for array `array` to `define_name`, using format `fmt` and creating
         a line break after `columns` items each.
+        If `weight`, write to the `weights.h` file, else to `sampledata.h`.
         """
-        toplevel.c_define(self.memfile, array, define_name, fmt, columns)
+        if weights:
+            toplevel.c_define(self.weight_header, array, define_name, fmt, columns)
+        else:
+            toplevel.c_define(self.sampledata_header, array, define_name, fmt, columns)
 
 
 def apbwriter(memfile,
               apb_base,
               block_level=False,
               verify_writes=False,
-              no_error_stop=False):
+              no_error_stop=False,
+              weight_header=None,
+              sampledata_header=None):
     """
     Depending on `block_level`, return a block level .mem file writer or a top level .c file
     writer to the file `memfile` with APB base address `apb_base`.
@@ -461,9 +477,13 @@ def apbwriter(memfile,
         return APBBlockLevel(memfile,
                              apb_base,
                              verify_writes=verify_writes,
-                             no_error_stop=no_error_stop)
+                             no_error_stop=no_error_stop,
+                             weight_header=weight_header,
+                             sampledata_header=sampledata_header)
     else:
         return APBTopLevel(memfile,
                            apb_base,
                            verify_writes=verify_writes,
-                           no_error_stop=no_error_stop)
+                           no_error_stop=no_error_stop,
+                           weight_header=weight_header,
+                           sampledata_header=sampledata_header)
