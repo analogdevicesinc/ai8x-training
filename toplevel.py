@@ -26,7 +26,7 @@ def copyright_header(memfile):
     memfile.write(COPYRIGHT)
 
 
-def header(memfile, apb_base):
+def header(memfile, apb_base, embedded_code=False):
     """
     Write include files and forward definitions to .c file handle `memfile`.
     The APB base address is passed in `apb_base`.
@@ -35,14 +35,22 @@ def header(memfile, apb_base):
     memfile.write('#include <stdint.h>\n')
     memfile.write('#include <string.h>\n')
     memfile.write('#include "global_functions.h" // For RTL Simulation\n')
+    if embedded_code:
+        memfile.write('#include "tmr_utils.h"\n')
     memfile.write('#include "tornadocnn.h"\n')
     memfile.write('#include "weights.h"\n')
     memfile.write('#include "sampledata.h"\n\n')
 
+    if embedded_code:
+        memfile.write('uint32_t cnn_time; // Stopwatch\n\n')
+
     memfile.write('void cnn_wait(void)\n{\n')
     memfile.write(f'  while ((*((volatile uint32_t *) 0x{apb_base + C_CNN_BASE:08x}) '
                   '& (1<<12)) != 1<<12) ;\n  CNN_COMPLETE; '
-                  '// Signal that processing is complete\n}\n\n')
+                  '// Signal that processing is complete\n')
+    if embedded_code:
+        memfile.write('  cnn_time = TMR_SW_Stop(MXC_TMR0);\n')
+    memfile.write('}\n\n')
 
 
 def load_header(memfile):
@@ -59,18 +67,35 @@ def load_footer(memfile):
     memfile.write('\n  CNN_START; // Allow capture of processing time\n\n  return 1;\n}\n\n')
 
 
-def main(memfile, classification_layer=False):
+def main(memfile, classification_layer=False, embedded_code=False):
     """
     Write the main function (including an optional call to the fully connected layer if
     `fc_layer` is `True`) to `memfile`.
     """
-    memfile.write('int main(void)\n{\n  icache_enable();\n')
-    memfile.write('  MXC_GCR->perckcn1 &= ~0x20; // Enable AI clock\n')
-    memfile.write('  if (!cnn_load()) { fail(); pass(); return 0; }\n  cnn_wait();\n')
+    memfile.write('int main(void)\n{\n')
+    if embedded_code and classification_layer:
+        memfile.write('  int i;\n\n')
+    memfile.write('  icache_enable();\n\n')
+    memfile.write('  MXC_GCR->perckcn1 &= ~0x20; // Enable AI clock\n\n')
+    memfile.write('  if (!cnn_load()) { fail(); pass(); return 0; }\n')
+    if embedded_code:
+        memfile.write('  TMR_SW_Start(MXC_TMR0, NULL);\n')
+    memfile.write('  cnn_wait();\n\n')
     memfile.write('  if (!cnn_check()) fail();\n')
     if classification_layer:
         memfile.write('  if (!fc_layer()) fail();\n')
         memfile.write('  if (!fc_verify()) fail();\n')
+
+    if embedded_code:
+        memfile.write('\n  printf("\\n*** PASS ***\\n\\n");\n')
+        memfile.write('  printf("Time for CNN: %d us\\n\\n", cnn_time);\n\n')
+        if classification_layer:
+            memfile.write('  printf("Classification results:\\n");\n'
+                          '  for (i = 0; i < FC_OUT; i++) {\n'
+                          '    printf("Class %d: %0.1f%%\\n", i, '
+                          '(double) (100.0 * fc_softmax[i] / 32768.0));\n'
+                          '  }\n\n')
+
     memfile.write('  pass();\n  return 0;\n}\n\n')
 
 
