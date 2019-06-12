@@ -38,11 +38,12 @@ def print_map(layers, kmap):
     print('-' * kmap.shape[1] * width)
 
 
-def load(verbose, embedded_code, apb, layers, kernel, processor_map, chan, debug=False):
+def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, processor_map, chan,
+         debug=False):
     """
     Stack `kernel` values and write them to C code (for `embedded_code` if `True` or
     RTL simulation). The output is written to the `apb` object.
-    Input is configured with `layers`, `processor_map` and `chan`.
+    Input is configured with `kernel_size`, `layers`, `processor_map` and `chan`.
     This function returns the kernel offsets and the kernel lengths for all layers.
     """
     # Kernels: Stack kernels; write only the kernels needed
@@ -50,7 +51,6 @@ def load(verbose, embedded_code, apb, layers, kernel, processor_map, chan, debug
     kern_offs = [0] * layers
     kern_len = [0] * layers
     kernel_map = np.full((MAX_CHANNELS, MASK_WIDTH), _INVALID_VALUE, dtype=np.int64)
-
     if embedded_code:
         apb.output('void load_kernels(void)\n{\n')
 
@@ -64,6 +64,7 @@ def load(verbose, embedded_code, apb, layers, kernel, processor_map, chan, debug
                 continue
             # Get highest offset for all used channels
             kern_offs[ll] = max(chan_kern_max[c], kern_offs[ll])
+
         # Determine the number of kernels that need to be programmed. Since each instance
         # spans 4 processors, kernels for all instances that have a single processor enabled
         # need to be written, i.e. round down the first. The last does not need to be rounded
@@ -80,6 +81,7 @@ def load(verbose, embedded_code, apb, layers, kernel, processor_map, chan, debug
             print('\nKernel map so far:')
             print_map(layers, kernel_map)
             sys.exit(1)
+
         for c in range(first_channel, last_channel+1):
             if (processor_map[ll] >> c) & 1 == 0:
                 # Unused processor
@@ -94,6 +96,7 @@ def load(verbose, embedded_code, apb, layers, kernel, processor_map, chan, debug
                     coffs += 1
                     this_map >>= 1
                 this_map >>= 1
+
                 k = kernel[ll][ch + col*chan[ll]].flatten()
                 if debug:
                     print(f'Channel {c} Layer {ll} m{col}/{chan[ll+1]-1}: {k}')
@@ -101,6 +104,7 @@ def load(verbose, embedded_code, apb, layers, kernel, processor_map, chan, debug
                 # Update kernel map
                 assert kernel_map[c][kern_offs[ll] + col + coffs] == _INVALID_VALUE
                 kernel_map[c][kern_offs[ll] + col + coffs] = ll
+
             assert kern_len[ll] == coffs + chan[ll+1]
             chan_kern_max[c] = kern_offs[ll] + kern_len[ll]
             ch += 1
