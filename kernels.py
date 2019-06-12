@@ -154,7 +154,6 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, processor_ma
 
                 apb.output_define(k, f'KERNELS_{start}', '0x%08x', 8)
             p += 1
-        apb.output('\n')
 
         # Second, initialize static const variables as source for memcpy
         p = 0

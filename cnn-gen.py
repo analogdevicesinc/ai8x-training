@@ -44,7 +44,7 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                input_filename, output_filename, c_filename,
                base_directory, runtest_filename, log_filename,
                zero_unused, timeout, block_mode, verify_writes,
-               embedded_code=False,
+               embedded_code=False, weight_filename=None, sample_filename=None,
                ai85=False):
     """
     Chain multiple CNN layers, create and save input and output
@@ -93,8 +93,17 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         filename = input_filename + '.mem'
     else:
         filename = c_filename + '.c'
+    if embedded_code:
+        sampledata_header = \
+            open(os.path.join(base_directory, test_name, sample_filename), mode='w')
+        weight_header = \
+            open(os.path.join(base_directory, test_name, weight_filename), mode='w')
+    else:
+        sampledata_header = weight_header = None
+
     with open(os.path.join(base_directory, test_name, filename), mode='w') as memfile:
-        apb = apbaccess.apbwriter(memfile, apb_base, block_mode, verify_writes, no_error_stop)
+        apb = apbaccess.apbwriter(memfile, apb_base, block_mode, verify_writes, no_error_stop,
+                                  weight_header=weight_header, sampledata_header=sampledata_header)
 
         apb.copyright_header()
 
@@ -505,6 +514,11 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
         apb.main(fc_weights)
 
+    # Close header files
+    if embedded_code:
+        sampledata_header.close()
+        weight_header.close()
+
     # Create run_test.sv
     if not embedded_code:
         rtlsim.create_runtest_sv(block_mode, base_directory, test_name, runtest_filename,
@@ -581,7 +595,7 @@ def main():
                     args.input_filename, args.output_filename, args.c_filename,
                     args.test_dir, args.runtest_filename, args.log_filename,
                     args.zero_unused, args.timeout, not args.top_level, args.verify_writes,
-                    args.embedded_code,
+                    args.embedded_code, args.weight_filename, args.sample_filename,
                     args.ai85)
 
     if not args.embedded_code:

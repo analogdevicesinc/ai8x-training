@@ -35,7 +35,9 @@ def header(memfile, apb_base):
     memfile.write('#include <stdint.h>\n')
     memfile.write('#include <string.h>\n')
     memfile.write('#include "global_functions.h" // For RTL Simulation\n')
-    memfile.write('#include "tornadocnn.h"\n\n')
+    memfile.write('#include "tornadocnn.h"\n')
+    memfile.write('#include "weights.h"\n')
+    memfile.write('#include "sampledata.h"\n\n')
 
     memfile.write('void cnn_wait(void)\n{\n')
     memfile.write(f'  while ((*((volatile uint32_t *) 0x{apb_base + C_CNN_BASE:08x}) '
@@ -86,7 +88,7 @@ def verify_footer(memfile):
     memfile.write('  return rv;\n}\n\n')
 
 
-def fc_layer(memfile, weights, bias):
+def fc_layer(memfile, weights_fh, weights, bias):
     """
     Write the call to the fully connected layer with the given `weights` and
     `bias` to `memfile`. The `bias` argument can be `None`.
@@ -97,7 +99,7 @@ def fc_layer(memfile, weights, bias):
 
     weights = convert_to_x4_q7_weights(weights)
 
-    c_define(memfile, weights, 'FC_WEIGHTS', '%d', 16)
+    c_define(weights_fh, weights, 'FC_WEIGHTS', '%d', 16)
     memfile.write('static const q7_t fc_weights[FC_OUT * FC_IN] = FC_WEIGHTS;\n\n')
 
     memfile.write('static uint8_t conv_data[FC_IN];\n')
@@ -106,7 +108,7 @@ def fc_layer(memfile, weights, bias):
     memfile.write('static q15_t fc_softmax[FC_OUT];\n\n')
 
     if bias is not None:
-        c_define(memfile, bias, 'FC_BIAS', '%d', 16)
+        c_define(weights_fh, bias, 'FC_BIAS', '%d', 16)
         memfile.write('static const q7_t fc_bias[FC_OUT] = FC_BIAS;\n\n')
 
     memfile.write('int fc_layer(void)\n'
@@ -121,12 +123,12 @@ def fc_layer(memfile, weights, bias):
     memfile.write('  return 1;\n}\n\n')
 
 
-def fc_verify(memfile, data):
+def fc_verify(memfile, sampledata, data):
     """
     Write the code to verify the fully connected layer to `memfile` against `data`.
     """
     memfile.write('// Expected output of classification layer:\n')
-    c_define(memfile, data, 'FC_EXPECTED', '%d', 16)
+    c_define(sampledata, data, 'FC_EXPECTED', '%d', 16)
     memfile.write('static q15_t fc_expected[FC_OUT] = FC_EXPECTED;\n\n')
     memfile.write('int fc_verify(void)\n'
                   '{\n')

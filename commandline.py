@@ -27,8 +27,12 @@ def get_parser():
     parser.add_argument('--autogen', default='tests', metavar='S',
                         help="directory location for autogen_list (default: 'tests')")
     parser.add_argument('--c-filename', metavar='S',
-                        help="C file name base (sim default: 'test' -> 'test.c', "
+                        help="C file name base (RTL sim default: 'test' -> 'test.c', "
                              "otherwise 'main' -> 'main.c')")
+    parser.add_argument('--weight-filename', metavar='S', default='weights.h',
+                        help="weight header file name (default: 'weights.h')")
+    parser.add_argument('--sample-filename', metavar='S', default='sampledata.h',
+                        help="sample data header file name (default: 'sampledata.h')")
     parser.add_argument('-e', '--embedded-code', action='store_true',
                         help="generate embedded code for device instead of RTL simulation")
     parser.add_argument('-f', '--fc-layer', action='store_true',

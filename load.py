@@ -31,7 +31,7 @@ def load(embedded_code, apb, chw, processor_map, input_size, chan, dim, data, pa
 
     if not embedded_code:
         apb.output('\n\n  ')
-    apb.output(f'// {chan}-channel {dim[0]}x{dim[1]} data input\n')
+    apb.output(f'// {chan}-channel {dim[0]}x{dim[1]} data input:\n')
     c = 0
     data_offs = 0
     step = 1 if chw else 4
@@ -158,7 +158,7 @@ def load(embedded_code, apb, chw, processor_map, input_size, chan, dim, data, pa
                     data_offs += 4
 
             if embedded_code:
-                apb.output_define(code_buffer, f'INPUT_{ch}', '0x%08x', 8)
+                apb.output_define(code_buffer, f'INPUT_{ch}', '0x%08x', 8, weights=False)
                 apb.output('static const uint32_t '
                            f'input_{ch}[{input_size[1] * input_size[2]}] = INPUT_{ch};\n\n')
                 input_list.append((addr, ch, offs))
