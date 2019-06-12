@@ -38,8 +38,9 @@ def header(memfile, apb_base, embedded_code=False):
     if embedded_code:
         memfile.write('#include "tmr_utils.h"\n')
     memfile.write('#include "tornadocnn.h"\n')
-    memfile.write('#include "weights.h"\n')
-    memfile.write('#include "sampledata.h"\n\n')
+    if embedded_code:
+        memfile.write('#include "weights.h"\n')
+        memfile.write('#include "sampledata.h"\n\n')
 
     if embedded_code:
         memfile.write('uint32_t cnn_time; // Stopwatch\n\n')
