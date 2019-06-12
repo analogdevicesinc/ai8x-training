@@ -103,7 +103,8 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
     with open(os.path.join(base_directory, test_name, filename), mode='w') as memfile:
         apb = apbaccess.apbwriter(memfile, apb_base, block_mode, verify_writes, no_error_stop,
-                                  weight_header=weight_header, sampledata_header=sampledata_header)
+                                  weight_header=weight_header, sampledata_header=sampledata_header,
+                                  embedded_code=embedded_code)
 
         apb.copyright_header()
 

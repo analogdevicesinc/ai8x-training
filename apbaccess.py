@@ -26,7 +26,8 @@ class APB(object):
                  verify_writes=False,
                  no_error_stop=False,
                  weight_header=None,
-                 sampledata_header=None):
+                 sampledata_header=None,
+                 embedded_code=False):
         """
         Create an APB class object that writes to memfile.
         """
@@ -36,6 +37,7 @@ class APB(object):
         self.no_error_stop = no_error_stop
         self.weight_header = weight_header
         self.sampledata_header = sampledata_header
+        self.embedded_code = embedded_code
 
         self.data = 0
         self.num = 0
@@ -287,13 +289,15 @@ class APBBlockLevel(APB):
                  verify_writes=False,
                  no_error_stop=False,
                  weight_header=None,
-                 sampledata_header=None):
+                 sampledata_header=None,
+                 embedded_code=False):
         super(APBBlockLevel, self).__init__(memfile,
                                             apb_base,
                                             verify_writes=verify_writes,
                                             no_error_stop=no_error_stop,
                                             weight_header=weight_header,
-                                            sampledata_header=sampledata_header)
+                                            sampledata_header=sampledata_header,
+                                            embedded_code=embedded_code)
         self.foffs = 0
 
     def write(self,
@@ -394,7 +398,7 @@ class APBTopLevel(APB):
         """
         Write include files and forward definitions to .c file.
         """
-        toplevel.header(self.memfile, self.apb_base)
+        toplevel.header(self.memfile, self.apb_base, embedded_code=self.embedded_code)
 
     def verify_header(self):
         """
@@ -425,7 +429,8 @@ class APBTopLevel(APB):
         Write the main function, including an optional call to the fully connected layer if
         `classification_layer` is `True`.
         """
-        toplevel.main(self.memfile, classification_layer)
+        toplevel.main(self.memfile, classification_layer=classification_layer,
+                      embedded_code=self.embedded_code)
 
     def fc_layer(self, weights, bias):
         """
@@ -465,7 +470,8 @@ def apbwriter(memfile,
               verify_writes=False,
               no_error_stop=False,
               weight_header=None,
-              sampledata_header=None):
+              sampledata_header=None,
+              embedded_code=False):
     """
     Depending on `block_level`, return a block level .mem file writer or a top level .c file
     writer to the file `memfile` with APB base address `apb_base`.
@@ -473,17 +479,11 @@ def apbwriter(memfile,
     If `no_error_stop` is set, continue in the case when the data is trying to overwrite
     previously written data.
     """
-    if block_level:
-        return APBBlockLevel(memfile,
-                             apb_base,
-                             verify_writes=verify_writes,
-                             no_error_stop=no_error_stop,
-                             weight_header=weight_header,
-                             sampledata_header=sampledata_header)
-    else:
-        return APBTopLevel(memfile,
-                           apb_base,
-                           verify_writes=verify_writes,
-                           no_error_stop=no_error_stop,
-                           weight_header=weight_header,
-                           sampledata_header=sampledata_header)
+    APBClass = APBBlockLevel if block_level else APBTopLevel
+    return APBClass(memfile,
+                    apb_base,
+                    verify_writes=verify_writes,
+                    no_error_stop=no_error_stop,
+                    weight_header=weight_header,
+                    sampledata_header=sampledata_header,
+                    embedded_code=embedded_code)
