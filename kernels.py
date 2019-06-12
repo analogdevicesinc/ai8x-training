@@ -11,7 +11,8 @@ Kernel related functions
 import math
 import sys
 import numpy as np
-from tornadocnn import MASK_WIDTH, MAX_CHANNELS, P_SHARED, BIAS_SIZE, P_NUMGROUPS
+from tornadocnn import MASK_WIDTH, MAX_CHANNELS, P_SHARED, BIAS_SIZE, P_NUMGROUPS, C_GROUP_OFFS, \
+    P_NUMPRO, C_MRAM_BASE
 from utils import argmin, ffs, fls
 
 
@@ -52,7 +53,10 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, processor_ma
     kern_len = [0] * layers
     kernel_map = np.full((MAX_CHANNELS, MASK_WIDTH), _INVALID_VALUE, dtype=np.int64)
     if embedded_code:
-        apb.output('void load_kernels(void)\n{\n')
+        # There are four 32-bit words per 9-byte kernel.
+        # The value map is initialized with zeros so we can later ignore unused entries and use
+        # memcpy() on initialized and uninitialized data.
+        kernel_values = np.zeros((MAX_CHANNELS, MASK_WIDTH * 4), dtype=np.int64)
 
     for ll in range(layers):
         first_channel = ffs(processor_map[ll])
@@ -100,7 +104,19 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, processor_ma
                 k = kernel[ll][ch + col*chan[ll]].flatten()
                 if debug:
                     print(f'Channel {c} Layer {ll} m{col}/{chan[ll+1]-1}: {k}')
-                apb.write_kern(ll, c, kern_offs[ll] + col + coffs, k)
+                if not embedded_code:
+                    # Write in-line
+                    apb.write_kern(ll, c, kern_offs[ll] + col + coffs, k)
+                else:
+                    # Store for later
+                    offs = 4 * (kern_offs[ll] + col + coffs)  # Word offset
+                    kernel_values[c][offs] = k[0] & 0xff
+                    kernel_values[c][offs + 1] = (k[1] & 0xff) << 24 | (k[2] & 0xff) << 16 | \
+                        (k[3] & 0xff) << 8 | k[4] & 0xff
+                    kernel_values[c][offs + 2] = (k[5] & 0xff) << 24 | (k[6] & 0xff) << 16 | \
+                        (k[7] & 0xff) << 8 | k[8] & 0xff
+                    kernel_values[c][offs + 3] = 0
+
                 # Update kernel map
                 assert kernel_map[c][kern_offs[ll] + col + coffs] == _INVALID_VALUE
                 kernel_map[c][kern_offs[ll] + col + coffs] = ll
@@ -114,6 +130,68 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, processor_ma
         print_map(layers, kernel_map)
 
     if embedded_code:
+        # Write kernels, combining layers and processors where possible to reduce the number
+        # of constants and calls to memcpy.
+        apb.output('// Kernels:\n')
+
+        # First, define the weights (will move to header file)
+        p = 0
+        while p < MAX_CHANNELS:
+            if chan_kern_max[p] > 0:
+                start = p
+                while (
+                        chan_kern_max[p] == MASK_WIDTH and p+1 < MAX_CHANNELS and
+                        chan_kern_max[p+1] and (start & ~(P_NUMPRO-1)) == (p+1 & ~(P_NUMPRO-1))
+                ):
+                    p += 1
+                apb.output(f'#define KERNELS_{start} {{')
+                print(f'start {start} p {p}')
+                for i in range(start, p + 1):
+                    print(f'  i {i} chan_kern_max[i] {chan_kern_max[i]}')
+                    kernel_values[i][:chan_kern_max[i] * 4]. \
+                        tofile(apb.memfile, sep=',', format='0x%08x')
+                    if i < p + 1:
+                        apb.output(',')
+                apb.output('}\n')
+            p += 1
+        apb.output('\n')
+
+        # Second, initialize static const variables as source for memcpy
+        p = 0
+        while p < MAX_CHANNELS:
+            if chan_kern_max[p] > 0:
+                span = chan_kern_max[p]
+                start = p
+                while (
+                        chan_kern_max[p] == MASK_WIDTH and p+1 < MAX_CHANNELS and
+                        chan_kern_max[p+1] and (start & ~(P_NUMPRO-1)) == (p+1 & ~(P_NUMPRO-1))
+                ):
+                    p += 1
+                    span += chan_kern_max[p]
+                apb.output(f'static const uint32_t kernels_{start}[{span * 4}] = '
+                           f'KERNELS_{start};\n')
+            p += 1
+        apb.output('\n')
+
+        # Generate code to load the weights using memcpy
+        apb.output('void load_kernels(void)\n{\n')
+        p = 0
+        while p < MAX_CHANNELS:
+            if chan_kern_max[p] > 0:
+                span = chan_kern_max[p]
+                start = p
+                addr = apb.apb_base + C_GROUP_OFFS * (p // P_NUMPRO) \
+                    + C_MRAM_BASE + (p % P_NUMPRO) * MASK_WIDTH * 16
+                while (
+                        chan_kern_max[p] == MASK_WIDTH and p+1 < MAX_CHANNELS and
+                        chan_kern_max[p+1] and (start & ~(P_NUMPRO-1)) == (p+1 & ~(P_NUMPRO-1))
+                ):
+                    p += 1
+                    span += chan_kern_max[p]
+                apb.output(f'  memcpy((uint32_t *) 0x{addr:08x}, kernels_{start}, '
+                           f'sizeof(uint32_t) * {span * 4});\n')
+            p += 1
+
         apb.output('}\n\n')
 
     return kern_offs, kern_len
