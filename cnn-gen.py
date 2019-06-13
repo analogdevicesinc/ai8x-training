@@ -159,10 +159,13 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             # Pre-define data memory loader. Inline later when generating RTL sim.
             load.load(embedded_code, apb, big_data[0], processor_map[0], input_size, chan[0],
                       dim[0], data, padding[0], split=split, debug=debug)
-            # Pre-define the kernels
+            # Pre-define the kernels and bias values
             kern_offs, kern_len = \
                 kernels.load(verbose, embedded_code, apb, layers, kernel, kernel_size,
                              processor_map, chan, debug)
+            bias_offs, bias_group, group_bias_max = \
+                kernels.load_bias(verbose, embedded_code, apb, layers, bias,
+                                  group_map, chan, debug)
 
         apb.load_header()
 
@@ -207,11 +210,13 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             kern_offs, kern_len = \
                 kernels.load(verbose, embedded_code, apb, layers, kernel, kernel_size,
                              processor_map, chan, debug)
+            bias_offs, bias_group, group_bias_max = \
+                kernels.load_bias(verbose, embedded_code, apb, layers, bias,
+                                  group_map, chan, debug)
         else:
             apb.output('  load_kernels();\n')
-
-        bias_offs, bias_group, group_bias_max = \
-            kernels.load_bias(verbose, apb, layers, bias, group_map, chan, debug)
+            if max(group_bias_max) > 0:
+                apb.output('  load_bias();\n')
 
         if verbose:
             print('\nGlobal configuration:')

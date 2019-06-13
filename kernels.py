@@ -12,7 +12,7 @@ import math
 import sys
 import numpy as np
 from tornadocnn import MASK_WIDTH, MAX_CHANNELS, P_SHARED, BIAS_SIZE, P_NUMGROUPS, C_GROUP_OFFS, \
-    P_NUMPRO, C_MRAM_BASE
+    P_NUMPRO, C_MRAM_BASE, C_BRAM_BASE
 from utils import argmin, ffs, fls
 
 
@@ -196,7 +196,7 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, processor_ma
     return kern_offs, kern_len
 
 
-def load_bias(verbose, apb, layers,  # pylint: disable=unused-argument
+def load_bias(verbose, embedded_code, apb, layers,  # pylint: disable=unused-argument
               bias, group_map, chan, debug):  # pylint: disable=unused-argument
     """
     Write `bias` values for the network to C code.
@@ -204,6 +204,10 @@ def load_bias(verbose, apb, layers,  # pylint: disable=unused-argument
     # Bias: Each group has one bias memory (size BIAS_SIZE bytes). Use only the bias memory in
     # one selected group for the layer, and only if the layer uses a bias. Keep track of the
     # offsets so they can be programmed into the mask count register later.
+
+    if embedded_code:
+        bias_values = np.zeros((P_NUMGROUPS, BIAS_SIZE), dtype=np.int64)
+
     group_bias_max = [0] * P_NUMGROUPS
     bias_offs = [None] * layers
     bias_group = [None] * layers
@@ -224,7 +228,40 @@ def load_bias(verbose, apb, layers,  # pylint: disable=unused-argument
         bias_offs[ll] = group_bias_max[group]
         # Each layer has output_channel number of bias values
         for i in range(chan[ll+1]):
-            apb.write_bias(group, bias_offs[ll] + i, bias[ll][i])
+            if not embedded_code:
+                apb.write_bias(group, bias_offs[ll] + i, bias[ll][i])
+            else:
+                # Store for later
+                bias_values[group][bias_offs[ll] + i] = bias[ll][i] & 0xff
         group_bias_max[group] += chan[ll+1]
+
+    if embedded_code:
+        if max(group_bias_max) > 0:
+            # At least one bias value exists, output defines
+            for group in range(P_NUMGROUPS):
+                if group_bias_max[group] == 0:
+                    continue  # but not for this group
+                apb.output_define(bias_values[group][:group_bias_max[group]], f'BIAS_{group}',
+                                  '0x%02x', 16)
+            # Output variables
+            for group in range(P_NUMGROUPS):
+                if group_bias_max[group] == 0:
+                    continue
+                apb.output(f'static const uint8_t bias_{group}[{group_bias_max[group]}] = '
+                           f'BIAS_{group};\n')
+            apb.output('\n')
+
+            # Finally, create function and do memcpy()
+            apb.output('void memcpy_8to32(uint32_t *dst, const uint8_t *src, size_t n)\n{\n')
+            apb.output('  while (n-- > 0) {\n    *dst++ = *src++;\n  }\n}\n\n')
+
+            apb.output('void load_bias(void)\n{\n')
+            for group in range(P_NUMGROUPS):
+                if group_bias_max[group] == 0:
+                    continue
+                addr = apb.apb_base + C_GROUP_OFFS*group + C_BRAM_BASE
+                apb.output(f'  memcpy_8to32((uint32_t *) 0x{addr:08x}, bias_{group}, '
+                           f'sizeof(uint8_t) * {group_bias_max[group]});\n')
+            apb.output('}\n\n')
 
     return bias_offs, bias_group, group_bias_max
