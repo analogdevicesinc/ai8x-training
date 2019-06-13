@@ -1,18 +1,26 @@
 # AI84 Model Training and Quantization
+# AI84 Network Loader and RTL Simulation Generator
+
+This software consists of two related projects:
+1. AI84 Model Training and Quantization
+2. AI84 Network Loader and RTL Simulation Generator
 
 ## Installation
 
 ### Prerequisites
 
+When going beyond simple tests, model training requires hardware acceleration (the network loader
+does not require CUDA).
 Install CUDA10 and CUDNN:
 https://developer.nvidia.com/cuda-downloads
 https://developer.nvidia.com/cudnn
 
 ### Project
 
-*The software in this project requires Python 3.6.*
+*The software in this project requires Python 3.6.5 or a later 3.6.x version.*
 
-To manage Python versions, use pyenv (https://github.com/pyenv/pyenv).
+It is not necessary to install Python 3.6.5 system-wide, or to rely on the system-provided
+Python. To manage Python versions, use pyenv (https://github.com/pyenv/pyenv).
 
 On macOS (no CUDA support available):
 
@@ -99,15 +107,143 @@ To install Nervana's distiller:
     backend: TkAgg
 
 
-## Usage
+## Usage: AI84 Model Training and Quantization
 
-The `ai84net.py` file contains models that fit into AI84's weight memory.
+The `ai84net.py` file contains models that fit into AI84's weight memory. These models rely on
+the AI84 hardware operators that are defined in `ai84.py`.
 
-To train the FP32 model for FashionMIST, run `go.sh`. This script will place checkpoint files
-into the log directory. To quantize the checkpoint file after training:
+To train the FP32 model for FashionMIST, run `go_fashionmnist.sh`. This script will place
+checkpoint files into the log directory. To quantize the checkpoint file after training:
 
-    ./ai84ize logs/path-to-checkpoint/checkpoint.pth.tar ai84.pth.tar -v
+    ./ai84ize.py logs/path-to-checkpoint/checkpoint.pth.tar trained/ai84-fashionmnist.pth.tar -v
 
 Now, evaluate the quantized network:
 
-    ./evaluate.sh
+    ./evaluate_fashionmnist.sh
+
+## Limitations of AI84 Networks
+
+The AI84 hardware does not support arbitrary network parameters. For example,
+* Dilation, elementwise addition, and 1D convolutions are not supported.
+* The `Conv2D` kernel size must be 3x3.
+* `Conv2D` padding can be 0, 1, or 2.
+* The only supported activation function is `ReLU`.
+* Pooling is always combined with a convolution. Both `MaxPool2D` and `AvgPool2D` are available.
+* Pooling does not support padding. Pooling must cleanly divide the input data width and height.
+  For example, a 2x2 pool on 17x17 data is not supported.
+* Average pooling does not support more than 2048 bits in the accumulator. This translates to
+  a 4x4 pooling window if activation was used on the prior layer, 3x3 otherwise. Additionally,
+  average pooling is currently implemented as a `floor()` operation. Since there is also a
+  quantization step at the output of the average pooling, it may not perform as intended
+  (for example, a 2x2 AvgPool of `[[0, 0], [0, 3]]` will return `0`).
+* Pooling window sizes must be even numbers, and have equal H and W dimensions.
+* The number of input or output channels must not exceed 64.
+* The number of layers must not exceed 32.
+* Overall weight storage is limited to 64*128 9x9 kernels. However, weights must be arranged
+  in a certain order, see below.
+* The hardware supports only 2D convolution layers. For convenience, a single final fully
+  connected layer with 8-bit inputs/weights/bias, and 16-bit output is supported in software,
+  as well as a software SoftMax operator.
+* Since the internal network format is HWC in groups of four channels, output concatenation only
+  works properly when all components of the concatenation other than the last have multiples
+  of four channels. Output concatenation is not yet supported in the `ai84.py` primitives.
+* It is recommended to not use bias on the AI84 convolutions when using post-training
+  quantization as described in this document. The reason is that the bias is not shifted by the
+  same amount as the weights. This could be mitigated using a more involved training procedure,
+  but since bias values do not significantly improve performance in the example networks, and
+  since this will be corrected for AI85, the string recommendation is to not use bias values
+  for now.
+
+With the exception of weight storage, and bias use, most of these limitations are flagged when
+using the network primitives from `ai84.py`.
+
+
+## Weight Storage
+
+The file `ai84net.xlsx` contains an example for a single-channel CHW input (this example also
+supports or up to four channels in HWC).
+
+*NOTE*: Multiple CHW channels must be loaded into separate
+memory instances. When using a large number of channels, this can cause 'holes' in the processor
+map, which in turn can cause subsequent layers' kernels to require padding.
+
+The AI84 Network Loader prints a kernel map that shows the kernel arrangement based on the provided
+network description. It will also flag cases where kernel memory or bias memory is exceeded.
+
+
+## Adding New Data and Networks
+
+The following steps are needed to add new data formats and networks:
+1. Develop a data loader in PyTorch.
+2. Implement a new network model (see `ai84net.py` for an example).
+3. Add data loader and network model to `train.py`.
+4. Train the new network with the new data. See `go_cifar.sh` for a command line example.
+
+
+## Usage: AI84 Network Loader
+
+_The network loader currently depends on PyToch and Nervana's distiller. This requirement will be
+removed in the long term._
+
+The network loader creates C code that programs the AI84 (for embedded execution, or RTL
+simulation). Additionally, the generated code contains a sample image and the expected output
+for the sample image as well as code that verifies the expected output.
+
+The `cnn-gen.py` program needs two inputs:
+1. A quantized checkpoint file, generated by the AI84 model quantization program `ai84ize.py`.
+2. A YAML description of the network.
+
+An example network description for the ai84net5 architecture and FashionMNIST is shown below:
+
+    # CHW (big data) configuration for FashionMNIST
+
+    arch: ai84net5
+    dataset: FashionMNIST
+
+    # Define layer parameters in order of the layer sequence
+    layers:
+    - pad: 1
+    activate: ReLU
+    out_offset: 0x2000
+    processors: 0x0000000000000001
+    data_format: CHW
+    - max_pool: 2
+    pool_stride: 2
+    pad: 2
+    activate: ReLU
+    out_offset: 0
+    processors: 0xfffffffffffffff0
+    - max_pool: 2
+    pool_stride: 2
+    pad: 1
+    activate: ReLU
+    out_offset: 0x2000
+    processors: 0xfffffffffffffff0
+    - avg_pool: 2
+    pool_stride: 2
+    pad: 1
+    activate: ReLU
+    out_offset: 0
+    processors: 0x0ffffffffffffff0
+
+To generate an embedded AI84 demo in the `demos/FashionMNIST/` folder, use the following command line:
+
+    ./cnn-gen.py --verbose -L --top-level cnn --test-dir demos --prefix FashionMNIST --checkpoint-file trained/ai84-mnist.pth.tar --config-file fashionmnist-chw.yaml --fc-layer --embedded-code
+
+In addition to the network described above, this invocation will also add a fully connected classification
+layer in software. The generated code will include all loading, unloading, and configuration steps.
+
+To generate an RTL simulation for the same network and sample data in the directory `tests/fmnist-....` (where .... is an autogenerated string based on the network topology), use:
+
+    ./cnn-gen.py --verbose --autogen tests --top-level cnn -L --test-dir tests --prefix fmnist --checkpoint-file trained/ai84-fashionmnist.pth.tar --config-file fashionmnist-chw.yaml
+
+Adding new datasets to the AI84 Network Loader is implemented by
+1. Providing a network model, its YAML description and quantized weights.
+2. Providing a sample input, and the expected output (modify `sampledata.py` as well as the
+   `SUPPORTED_DATASETS` in `yamlcfg.py`).
+
+
+## AI85
+
+The `ai84ize.py` quantization tool and the `cnn-gen.py` network generator both have an 
+`--ai85` command line argument that enables code generation for the AI85.
