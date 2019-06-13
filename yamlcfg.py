@@ -13,6 +13,9 @@ import yaml
 from tornadocnn import MEM_SIZE
 
 
+SUPPORTED_DATASETS = ['mnist', 'fashionmnist', 'cifar-10']
+
+
 def parse(config_file):
     """
     Configure network parameters from the YAML configuration file `config_file`.
@@ -32,7 +35,7 @@ def parse(config_file):
               f'`layers`, `arch`, or `dataset`.')
         sys.exit(1)
 
-    if bool(set([cfg['dataset'].lower()]) - set(['mnist', 'fashionmnist', 'cifar-10'])):
+    if bool(set([cfg['dataset'].lower()]) - set(SUPPORTED_DATASETS)):
         print(f'Configuration file {config_file} contains unknown `dataset`.')
         sys.exit(1)
 
