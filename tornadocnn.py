@@ -17,6 +17,7 @@ MAX_LAYERS = 32
 TRAM_SIZE = 256
 BIAS_SIZE = 256
 MASK_WIDTH = 128
+MCNT_SAD_OFFS = 8
 C_CNN = 4
 C_CNN_BASE = 0
 C_TRAM_BASE = C_CNN_BASE + 0x800
@@ -54,6 +55,9 @@ LREG_TPTR = 11
 LREG_ENA = 12
 MAX_LREG = LREG_ENA
 
+LREG_POST = 13
+MAX_LREG_AI85 = LREG_POST
+
 # Implementation specifics
 BIAS_DIV = 1
 
@@ -64,9 +68,13 @@ def set_device(ai85):
     bool input.
     """
     global BIAS_DIV  # pylint: disable=global-statement
+    global MAX_LREG  # pylint: disable=global-statement
+    global MCNT_SAD_OFFS  # pylint: disable=global-statement
 
     print(f'Configuring device: {"AI85" if ai85 else "AI84"}.')
     if not ai85:
         return
 
     BIAS_DIV = 128
+    MCNT_SAD_OFFS = 16
+    MAX_LREG = MAX_LREG_AI85

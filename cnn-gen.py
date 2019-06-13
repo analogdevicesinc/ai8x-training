@@ -29,6 +29,7 @@ from tornadocnn import MAX_LAYERS, TRAM_SIZE, \
     REG_CTL, REG_SRAM, REG_LCNT_MAX, \
     LREG_RCNT, LREG_CCNT, LREG_RFU, LREG_PRCNT, LREG_PCCNT, LREG_STRIDE, LREG_WPTR_BASE, \
     LREG_WPTR_OFFS, LREG_RPTR_BASE, LREG_LCTL, LREG_MCNT, LREG_TPTR, LREG_ENA, MAX_LREG, \
+    MCNT_SAD_OFFS, LREG_POST, \
     set_device
 from simulate import cnn_layer, linear_layer
 from utils import ffs, popcount
@@ -36,7 +37,8 @@ from utils import ffs, popcount
 
 def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwrite_ok, log,
                apb_base, layers, processor_map,
-               input_size, kernel_size, chan, padding, dilation, stride,
+               input_size, kernel_size, quantization,
+               chan, padding, dilation, stride,
                pool, pool_stride, pool_average, activate,
                data, kernel, bias, big_data, output_map, fc_weights, fc_bias,
                split,
@@ -337,6 +339,7 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
 
                 # Configure mask count
                 # Restriction: Every one of the mask memories will have to start from same offset
+                # AI84:
                 # [6:0]   Max count (output channels)
                 # [7]     RFU
                 # [14:8]  Starting address for group of 16
@@ -344,10 +347,14 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 # [23:16] Bias pointer starting address
                 # [24]    Bias enable
                 # [31:25] RFU
-                val = kern_offs[ll] << 8 | kern_len[ll]-1
-                if group == bias_group[ll]:
-                    # Enable bias only for one group
-                    val |= 0x1000000 | bias_offs[ll] << 16
+                # AI85:
+                # [15:0]  Max count (output channels)
+                # [31:16] Starting address for group of 16
+                val = kern_offs[ll] << MCNT_SAD_OFFS | kern_len[ll]-1
+                if not ai85:
+                    if group == bias_group[ll]:
+                        # Enable bias only for one group
+                        val |= 0x1000000 | bias_offs[ll] << 16
                 apb.write_lreg(group, ll, LREG_MCNT, val,
                                verbose, comment=' // Mask offset and count')
 
@@ -359,6 +366,14 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     val = max(0, dim[ll][1] + 2*padding[ll] - 3)
                 apb.write_lreg(group, ll, LREG_TPTR, val,
                                verbose, comment=' // TRAM ptr max')
+
+                if ai85:
+                    val = 0
+                    if group == bias_group[ll]:
+                        # Enable bias only for one group
+                        val |= (1 << 12) | bias_offs[ll]
+                    apb.write_lreg(group, ll, LREG_POST, val,
+                                   verbose, comment=' // AI85 post processing register')
 
                 # Configure mask and processor enables
                 # [15:0]  processor enable
@@ -546,14 +561,19 @@ def main():
 
     # Load configuration file
     cfg, params = yamlcfg.parse(args.config_file)
+    quantization = params['quantization']
 
     # Load weights and biases. This also configures the network's output channels.
     layers, weights, bias, fc_weights, fc_bias, output_channels = \
-        checkpoint.load(args.checkpoint_file, cfg['arch'], args.fc_layer)
+        checkpoint.load(args.checkpoint_file, cfg['arch'], args.fc_layer, quantization)
 
     if layers != len(cfg['layers']):
         print(f"Number of layers in the YAML configuration file ({len(cfg['layers'])}) "
               f"does not match the checkpoint file ({layers}).")
+        sys.exit(1)
+
+    if not args.ai85 and any(q != 8 for q in quantization):
+        print('All quantization configuration values must be 8 for AI84.')
         sys.exit(1)
 
     if args.stop_after is not None:
@@ -593,7 +613,8 @@ def main():
     tn = create_net(args.prefix, args.verbose,
                     args.debug, args.debug_computation, args.no_error_stop,
                     args.overwrite_ok, args.log, args.apb_base, layers, processor_map,
-                    input_size, params['kernel_size'], output_channels, params['padding'],
+                    input_size, params['kernel_size'], quantization,
+                    output_channels, params['padding'],
                     params['dilation'], params['stride'],
                     params['pool'], params['pool_stride'], pool_average, activate,
                     data, weights, bias, params['big_data'], output_map, fc_weights, fc_bias,

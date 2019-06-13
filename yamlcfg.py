@@ -47,10 +47,12 @@ def parse(config_file):
     average = []
     relu = []
     big_data = []
+    quantization = []
 
     for ll in cfg['layers']:
         if bool(set(ll) - set(['max_pool', 'avg_pool', 'pool_stride', 'out_offset',
-                               'activate', 'data_format', 'processors', 'pad'])):
+                               'activate', 'data_format', 'processors', 'pad',
+                               'quantization'])):
             print(f'Configuration file {config_file} contains unknown key(s) for `layers`.')
             sys.exit(1)
 
@@ -64,6 +66,16 @@ def parse(config_file):
         else:
             pool.append(0)
             average.append(0)
+
+        if 'quantization' in ll:
+            q = ll['quantization']
+            if q not in [1, 2, 4, 8]:
+                print('`quantization` must be 1, 2, 4, or 8 in YAML configuration.')
+                sys.exit(1)
+            quantization.append(q)
+        else:
+            quantization.append(8)
+
         pool_stride.append(ll['pool_stride'] if 'pool_stride' in ll else 0)
         output_offset.append(ll['out_offset'] if 'out_offset' in ll else 0)
         if 'processors' not in ll:
@@ -116,6 +128,7 @@ def parse(config_file):
     settings['average'] = average
     settings['relu'] = relu
     settings['big_data'] = big_data
+    settings['quantization'] = quantization
 
     # We don't support changing the following, but leave as parameters
     settings['dilation'] = [[1, 1]] * len(cfg['layers'])
