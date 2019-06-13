@@ -17,6 +17,7 @@ from utils import argmin, ffs, fls
 
 
 _INVALID_VALUE = -(2**63)
+_WORDS_PER_KERNEL = 3
 
 
 def print_map(layers, kmap):
@@ -56,7 +57,7 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, processor_ma
         # There are four 32-bit words per 9-byte kernel.
         # The value map is initialized with zeros so we can later ignore unused entries and use
         # memcpy() on initialized and uninitialized data.
-        kernel_values = np.zeros((MAX_CHANNELS, MASK_WIDTH * 4), dtype=np.int64)
+        kernel_values = np.zeros((MAX_CHANNELS, MASK_WIDTH * _WORDS_PER_KERNEL), dtype=np.int64)
 
     for ll in range(layers):
         first_channel = ffs(processor_map[ll])
@@ -109,13 +110,12 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, processor_ma
                     apb.write_kern(ll, c, kern_offs[ll] + col + coffs, k)
                 else:
                     # Store for later
-                    offs = 4 * (kern_offs[ll] + col + coffs)  # Word offset
+                    offs = _WORDS_PER_KERNEL * (kern_offs[ll] + col + coffs)  # 96-bit word offset
                     kernel_values[c][offs] = k[0] & 0xff
                     kernel_values[c][offs + 1] = (k[1] & 0xff) << 24 | (k[2] & 0xff) << 16 | \
                         (k[3] & 0xff) << 8 | k[4] & 0xff
                     kernel_values[c][offs + 2] = (k[5] & 0xff) << 24 | (k[6] & 0xff) << 16 | \
                         (k[7] & 0xff) << 8 | k[8] & 0xff
-                    kernel_values[c][offs + 3] = 0
 
                 # Update kernel map
                 assert kernel_map[c][kern_offs[ll] + col + coffs] == _INVALID_VALUE
@@ -148,9 +148,11 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, processor_ma
                 k = None
                 for i in range(start, p + 1):
                     if k is None:
-                        k = kernel_values[i][:chan_kern_max[i] * 4]
+                        k = kernel_values[i][:chan_kern_max[i] * _WORDS_PER_KERNEL]
                     else:
-                        k = np.concatenate((k, kernel_values[i][:chan_kern_max[i] * 4]))
+                        k = np.concatenate(
+                            (k, kernel_values[i][:chan_kern_max[i] * _WORDS_PER_KERNEL])
+                        )
 
                 apb.output_define(k, f'KERNELS_{start}', '0x%08x', 8)
             p += 1
@@ -167,12 +169,20 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, processor_ma
                 ):
                     p += 1
                     span += chan_kern_max[p]
-                apb.output(f'static const uint32_t kernels_{start}[{span * 4}] = '
+                apb.output(f'static const uint32_t kernels_{start}[{span * _WORDS_PER_KERNEL}] = '
                            f'KERNELS_{start};\n')
             p += 1
         apb.output('\n')
 
         # Generate code to load the weights using memcpy
+        apb.output('void memcpy_96to128(uint32_t *dst, const uint32_t *src, int n)\n{\n')
+        apb.output('  while (n-- > 0) {\n'
+                   '    *dst++ = *src++;\n'
+                   '    *dst++ = *src++;\n'
+                   '    *dst++ = *src++;\n'
+                   '    *dst++ = 0;  // Execute write\n'
+                   '  }\n}\n\n')
+
         apb.output('void load_kernels(void)\n{\n')
         p = 0
         while p < MAX_CHANNELS:
@@ -187,8 +197,8 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, processor_ma
                 ):
                     p += 1
                     span += chan_kern_max[p]
-                apb.output(f'  memcpy((uint32_t *) 0x{addr:08x}, kernels_{start}, '
-                           f'sizeof(uint32_t) * {span * 4});\n')
+                apb.output(f'  memcpy_96to128((uint32_t *) 0x{addr:08x}, kernels_{start}, '
+                           f'{span});\n')
             p += 1
 
         apb.output('}\n\n')
