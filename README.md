@@ -137,6 +137,7 @@ The AI84 hardware does not support arbitrary network parameters. For example,
   quantization step at the output of the average pooling, it may not perform as intended
   (for example, a 2x2 AvgPool of `[[0, 0], [0, 3]]` will return `0`).
 * Pooling window sizes must be even numbers, and have equal H and W dimensions.
+* The `Conv2D` stride is fixed to 1. However, the pooling stride can be 1, 2, or 4.
 * The number of input or output channels must not exceed 64.
 * The number of layers must not exceed 32.
 * Overall weight storage is limited to 64*128 9x9 kernels. However, weights must be arranged
