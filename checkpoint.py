@@ -11,14 +11,16 @@ Checkpoint File Routines
 import sys
 import numpy as np
 import torch
-from tornadocnn import BIAS_DIV
+import tornadocnn
 
 
-def load(checkpoint_file, arch, fc_layer):
+def load(checkpoint_file, arch, fc_layer, quantization):
     """
     Load weights and biases from `checkpoint_file`. If `arch` is not None and does not match
     the architecuture in the checkpoint file, abort with an error message. If `fc_layer` is
     `True`, configure a single fully connected classification layer.
+    `quantization` is a list of expected bit widths for the layer weights (always 8 for AI84).
+    This value is checked against the weight inputs.
     In addition to returning weights anf biases, this function configures the network output
     channels and the number of layers.
     """
@@ -48,20 +50,22 @@ def load(checkpoint_file, arch, fc_layer):
             module, _ = k.split(sep='.', maxsplit=1)
             if module != 'fc':
                 w = checkpoint_state[k].numpy().astype(np.int64)
-                assert w.min() >= -128 and w.max() <= 127
+                assert w.min() >= -(2**(quantization[layers]-1))
+                assert w.max() < 2**(quantization[layers]-1)
                 if layers == 0:
                     output_channels.append(w.shape[1])  # Input channels
                 output_channels.append(w.shape[0])
                 weights.append(w.reshape(-1, w.shape[-2], w.shape[-1]))
-                layers += 1
                 # Is there a bias for this layer?
                 bias_name = operation + '.bias'
                 if bias_name in checkpoint_state:
-                    w = checkpoint_state[bias_name].numpy().astype(np.int64) // BIAS_DIV
-                    assert w.min() >= -128 and w.max() <= 127
+                    w = checkpoint_state[bias_name].numpy().astype(np.int64) // tornadocnn.BIAS_DIV
+                    assert w.min() >= -(2**(quantization[layers]-1))
+                    assert w.max() < 2**(quantization[layers]-1)
                     bias.append(w)
                 else:
                     bias.append(None)
+                layers += 1
             elif have_fc_layer:
                 print('The network cannot have more than one fully connected software layer, '
                       'and it must be the output layer.')
@@ -73,7 +77,8 @@ def load(checkpoint_file, arch, fc_layer):
                 # Is there a bias for this layer?
                 bias_name = operation + '.bias'
                 if bias_name in checkpoint_state:
-                    w = checkpoint_state[bias_name].numpy().astype(np.int64) // BIAS_DIV
+                    # Do not divide bias for FC
+                    w = checkpoint_state[bias_name].numpy().astype(np.int64)
                     assert w.min() >= -128 and w.max() <= 127
                     fc_bias.append(w)
                 else:
