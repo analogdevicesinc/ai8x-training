@@ -37,7 +37,7 @@ def header(memfile, apb_base, embedded_code=False):
     memfile.write('#include "global_functions.h" // For RTL Simulation\n')
     if embedded_code:
         memfile.write('#include "tmr_utils.h"\n')
-    memfile.write('#include "tornadocnn.h"\n')
+        memfile.write('#include "tornadocnn.h"\n')
     if embedded_code:
         memfile.write('#include "weights.h"\n')
         memfile.write('#include "sampledata.h"\n\n')
@@ -47,9 +47,9 @@ def header(memfile, apb_base, embedded_code=False):
 
     memfile.write('void cnn_wait(void)\n{\n')
     memfile.write(f'  while ((*((volatile uint32_t *) 0x{apb_base + C_CNN_BASE:08x}) '
-                  '& (1<<12)) != 1<<12) ;\n  CNN_COMPLETE; '
-                  '// Signal that processing is complete\n')
+                  '& (1<<12)) != 1<<12) ;\n')
     if embedded_code:
+        memfile.write('  CNN_COMPLETE; // Signal that processing is complete\n')
         memfile.write('  cnn_time = TMR_SW_Stop(MXC_TMR0);\n')
     memfile.write('}\n\n')
 
@@ -61,11 +61,13 @@ def load_header(memfile):
     memfile.write('int cnn_load(void)\n{\n')
 
 
-def load_footer(memfile):
+def load_footer(memfile, embedded_code=False):
     """
     Write the footer for the CNN configuration loader function to `memfile`.
     """
-    memfile.write('\n  CNN_START; // Allow capture of processing time\n\n  return 1;\n}\n\n')
+    if embedded_code:
+        memfile.write('\n  CNN_START; // Allow capture of processing time\n')
+    memfile.write('\n  return 1;\n}\n\n')
 
 
 def main(memfile, classification_layer=False, embedded_code=False):

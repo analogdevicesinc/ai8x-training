@@ -422,7 +422,7 @@ class APBTopLevel(APB):
         """
         Write the footer for the CNN configuration loader function.
         """
-        toplevel.load_footer(self.memfile)
+        toplevel.load_footer(self.memfile, embedded_code=self.embedded_code)
 
     def main(self, classification_layer=False):
         """
