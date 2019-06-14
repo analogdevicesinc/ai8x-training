@@ -40,12 +40,12 @@ def print_map(layers, kmap):
     print('-' * kmap.shape[1] * width)
 
 
-def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, processor_map, chan,
-         debug=False):
+def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, quantization, processor_map,
+         chan, debug=False):
     """
     Stack `kernel` values and write them to C code (for `embedded_code` if `True` or
     RTL simulation). The output is written to the `apb` object.
-    Input is configured with `kernel_size`, `layers`, `processor_map` and `chan`.
+    Input is configured with `kernel_size`, `quantization`, `layers`, `processor_map` and `chan`.
     This function returns the kernel offsets and the kernel lengths for all layers.
     """
     # Kernels: Stack kernels; write only the kernels needed

@@ -14,7 +14,8 @@ from tornadocnn import BIAS_DIV
 
 
 def cnn_layer(layer, verbose,
-              input_size, kernel_size, output_channels, padding, dilation, stride,
+              input_size, kernel_size, quantization,
+              output_channels, padding, dilation, stride,
               pool, pool_stride, pool_average, do_activation,
               kernel, bias, data, bits=8, ai85=False, debug=False):
     """
@@ -93,7 +94,7 @@ def cnn_layer(layer, verbose,
         print(out_buf)
         print('')
 
-    out_buf = np.floor(0.5 + out_buf / 128).astype(np.int64). \
+    out_buf = np.floor(0.5 + out_buf / (2**(quantization-1))).astype(np.int64). \
         clip(-(2**(bits-1)), 2**(bits-1)-1)
 
     if verbose:

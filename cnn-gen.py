@@ -164,7 +164,7 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             # Pre-define the kernels and bias values
             kern_offs, kern_len = \
                 kernels.load(verbose, embedded_code, apb, layers, kernel, kernel_size,
-                             processor_map, chan, debug)
+                             quantization, processor_map, chan, debug)
             bias_offs, bias_group, group_bias_max = \
                 kernels.load_bias(verbose, embedded_code, apb, layers, bias,
                                   group_map, chan, debug)
@@ -368,7 +368,17 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                                verbose, comment=' // TRAM ptr max')
 
                 if ai85:
-                    val = 0
+                    # Compensate for the smaller weights by adjusting the output shift
+                    if quantization[ll] == 1:
+                        val = (3 << 22) | (3 << 13)  # Shift left 3
+                    elif quantization[ll] == 2:
+                        val = (2 << 22) | (2 << 13)  # Shift left 2
+                    elif quantization[ll] == 4:
+                        val = (1 << 22) | (1 << 13)  # Shift left 1
+                    else:
+                        assert quantization[ll] == 8
+                        val = 0  # Do not shift
+
                     if group == bias_group[ll]:
                         # Enable bias only for one group
                         val |= (1 << 12) | bias_offs[ll]
@@ -437,7 +447,8 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
     # Compute layer-by-layer output and chain results into input
     for ll in range(layers):
         out_buf, out_size = cnn_layer(ll + 1, verbose,
-                                      input_size, kernel_size[ll], chan[ll+1],
+                                      input_size, kernel_size[ll], quantization[ll],
+                                      chan[ll+1],
                                       [padding[ll], padding[ll]], dilation[ll],
                                       [stride[ll], stride[ll]],
                                       [pool[ll], pool[ll]],
