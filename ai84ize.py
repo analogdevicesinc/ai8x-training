@@ -99,7 +99,10 @@ def convert_checkpoint(input_file, output_file, arguments):
                 module, _ = k.split(sep='.', maxsplit=1)
 
                 if module != 'fc':
-                    clamp_bits = ai84.WEIGHT_BITS  # FIXME: Use layer config
+                    if not params:
+                        clamp_bits = ai84.WEIGHT_BITS  # Default to 8 bits
+                    else:
+                        clamp_bits = params['quantization'][layers]
                     factor = 2**(clamp_bits-1) * sat_fn(checkpoint_state[k])
                     lower_bound = 0
                     if first:
@@ -111,10 +114,11 @@ def convert_checkpoint(input_file, output_file, arguments):
                     factor = 2**(clamp_bits-1) * fc_sat_fn(checkpoint_state[k])
 
                 if arguments.verbose:
-                    print(k, 'avg_max', avg_max(checkpoint_state[k]),
-                          'max', max_max(checkpoint_state[k]),
-                          'mean', checkpoint_state[k].mean(),
-                          'factor', factor)
+                    print(k, 'avg_max:', avg_max(checkpoint_state[k]),
+                          'max:', max_max(checkpoint_state[k]),
+                          'mean:', checkpoint_state[k].mean(),
+                          'factor:', factor,
+                          'bits:', clamp_bits)
                 weights = factor * checkpoint_state[k]
 
                 # Ensure it fits and is an integer
@@ -177,7 +181,8 @@ def convert_checkpoint(input_file, output_file, arguments):
                     del new_checkpoint_state[k]
                     del new_checkpoint_state[scale]
 
-            layers += 1
+            if module != 'fc':
+                layers += 1
         elif parameter in ['base_b_q']:
             del new_checkpoint_state[k]
 

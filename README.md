@@ -113,7 +113,9 @@ The `ai84net.py` file contains models that fit into AI84's weight memory. These 
 the AI84 hardware operators that are defined in `ai84.py`.
 
 To train the FP32 model for FashionMIST, run `go_fashionmnist.sh`. This script will place
-checkpoint files into the log directory. To quantize the checkpoint file after training:
+checkpoint files into the log directory.
+
+To quantize the checkpoint file after training using _naive post-training quantization_:
 
     ./ai84ize.py logs/path-to-checkpoint/checkpoint.pth.tar trained/ai84-fashionmnist.pth.tar -v
 
