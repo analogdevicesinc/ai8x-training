@@ -186,14 +186,14 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         # Configure global control registers for used groups
         for _, group in enumerate(groups_used):
             # Zero out Tornado RAM
-            if embedded_code:
-                addr = apb_base + C_GROUP_OFFS*group + C_TRAM_BASE
-                apb.output(f'  memset((uint32_t *) 0x{addr:08x}, 0, '
-                           f'{TRAM_SIZE * P_NUMPRO * 4}); // Zero TRAM group {group}\n')
-            else:
+            if not embedded_code:
                 for p in range(P_NUMPRO):
                     for offs in range(TRAM_SIZE):
                         apb.write_tram(group, p, offs, 0, comment='Zero ')
+            # else:
+            #     addr = apb_base + C_GROUP_OFFS*group + C_TRAM_BASE
+            #     apb.output(f'  memset((uint32_t *) 0x{addr:08x}, 0, '
+            #                f'{TRAM_SIZE * P_NUMPRO * 4}); // Zero TRAM group {group}\n')
 
             apb.output('\n')
 
