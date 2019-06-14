@@ -14,7 +14,7 @@ from functools import partial
 import torch
 from distiller.apputils.checkpoint import get_contents_table  # pylint: disable=no-name-in-module
 import ai84
-# import yamlcfg
+import yamlcfg
 from range_linear_ai84 import pow2_round
 
 CONV_SCALE_BITS = 8
@@ -27,7 +27,10 @@ def convert_checkpoint(input_file, output_file, arguments):
     Convert checkpoint file or dump parameters for C code
     """
     # Load configuration file
-    # cfg, params = yamlcfg.parse(args.config_file)
+    if arguments.config_file:
+        _, params = yamlcfg.parse(arguments.config_file)
+    else:
+        params = None
 
     print("Converting checkpoint file", input_file, "to", output_file)
     checkpoint = torch.load(input_file, map_location='cpu')
@@ -84,13 +87,14 @@ def convert_checkpoint(input_file, output_file, arguments):
     fc_sat_fn = get_const
 
     first = True
+    layers = 0
     for _, k in enumerate(checkpoint_state.keys()):
         operation, parameter = k.rsplit(sep='.', maxsplit=1)
         if parameter in ['w_zero_point', 'b_zero_point']:
             if checkpoint_state[k].nonzero().numel() != 0:
                 raise RuntimeError(f"\nParameter {k} is not zero.")
             del new_checkpoint_state[k]
-        elif parameter in ['weight', 'bias']:
+        elif parameter == 'weight':
             if not arguments.quantized:
                 module, _ = k.split(sep='.', maxsplit=1)
 
@@ -106,34 +110,49 @@ def convert_checkpoint(input_file, output_file, arguments):
                     lower_bound = 1  # Accomodate ARM q15_t data type when clamping
                     factor = 2**(clamp_bits-1) * fc_sat_fn(checkpoint_state[k])
 
-                if args.verbose:
+                if arguments.verbose:
                     print(k, 'avg_max', avg_max(checkpoint_state[k]),
                           'max', max_max(checkpoint_state[k]),
                           'mean', checkpoint_state[k].mean(),
                           'factor', factor)
                 weights = factor * checkpoint_state[k]
 
-                # The scale is different for AI84, and this has to happen before clamping.
-                if not arguments.ai85 and module != 'fc' and parameter == 'bias':
-                    weights *= 2**(clamp_bits-1)
-
                 # Ensure it fits and is an integer
                 weights = weights.clamp(min=-(2**(clamp_bits-1)-lower_bound),
                                         max=2**(clamp_bits-1)-1).round()
 
-                # Save conv biases so PyTorch can still use them to run a model. This needs to be
-                # reversed before loading the weights into the AI84/AI85.
-                # When multiplying data with weights, 1.0 * 1.0 corresponds to 128 * 128 and we
-                # divide the output by 128 to compensate. The bias therefore needs to be multiplied
-                # by 128. This depends on the data width, not the weight width, and is therefore
-                # always 128.
-                if arguments.ai85 and module != 'fc' and parameter == 'bias':
-                    weights *= 2**(ai84.DATA_BITS-1)
-
                 # Store modified weight/bias back into model
                 new_checkpoint_state[k] = weights
+
+                # Is there a bias for this layer? Use the same factor as for weights.
+                bias_name = operation + '.bias'
+                if bias_name in checkpoint_state:
+                    if arguments.verbose:
+                        print(' -', bias_name)
+                    weights = factor * checkpoint_state[bias_name]
+
+                    # The scale is different for AI84, and this has to happen before clamping.
+                    if not arguments.ai85 and module != 'fc':
+                        weights *= 2**(clamp_bits-1)
+
+                    # Ensure it fits and is an integer
+                    weights = weights.clamp(min=-(2**(clamp_bits-1)-lower_bound),
+                                            max=2**(clamp_bits-1)-1).round()
+
+                    # Save conv biases so PyTorch can still use them to run a model. This needs
+                    # to be reversed before loading the weights into the AI84/AI85.
+                    # When multiplying data with weights, 1.0 * 1.0 corresponds to 128 * 128 and
+                    # we divide the output by 128 to compensate. The bias therefore needs to be
+                    # multiplied by 128. This depends on the data width, not the weight width,
+                    # and is therefore always 128.
+                    if arguments.ai85 and module != 'fc':
+                        weights *= 2**(ai84.DATA_BITS-1)
+
+                    # Store modified weight/bias back into model
+                    new_checkpoint_state[bias_name] = weights
             else:
-                # Work on a pre-quantized network
+                # Work on a pre-quantized network -- this code is old and probably doesn't work
+                # anymore
                 module, st = operation.rsplit('.', maxsplit=1)
                 if st in ['wrapped_module']:
                     scale = module + '.' + parameter[0] + '_scale'
@@ -157,32 +176,26 @@ def convert_checkpoint(input_file, output_file, arguments):
                     new_checkpoint_state[module + '.' + parameter] = weights
                     del new_checkpoint_state[k]
                     del new_checkpoint_state[scale]
+
+            layers += 1
         elif parameter in ['base_b_q']:
             del new_checkpoint_state[k]
 
-    if not arguments.embedded:
-        checkpoint['state_dict'] = new_checkpoint_state
-        torch.save(checkpoint, output_file)
-    else:
-        # Create parameters for AI84
-        for _, k in enumerate(new_checkpoint_state.keys()):
-            print(f'#define {k.replace(".", "_").upper()} \\')
-            print(new_checkpoint_state[k].numpy().astype(int))
+    checkpoint['state_dict'] = new_checkpoint_state
+    torch.save(checkpoint, output_file)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Checkpoint to AI84 conversion')
     parser.add_argument('input', help='path to the checkpoint file')
     parser.add_argument('output', help='path to the output file')
-    parser.add_argument('-c', '--config-file', metavar='S',  # required=True,
-                        help="YAML configuration file containing layer configuration")
+    parser.add_argument('-c', '--config-file', metavar='S',
+                        help="optional YAML configuration file containing layer configuration")
     parser.add_argument('--ai85', action='store_true', default=False,
                         help='enable AI85 features')
     parser.add_argument('-f', '--fc', type=int, default=FC_CLAMP_BITS, metavar='N',
                         help=f'set number of bits for the fully connnected layers '
                              f'(default: {FC_CLAMP_BITS})')
-    parser.add_argument('-e', '--embedded', action='store_true', default=False,
-                        help='save parameters for embedded (default: rewrite checkpoint)')
     parser.add_argument('-q', '--quantized', action='store_true', default=False,
                         help='work on quantized checkpoint')
     parser.add_argument('-v', '--verbose', action='store_true', default=False,
