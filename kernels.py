@@ -58,6 +58,22 @@ def combine_kernels(k, quantization, col, ch, in_chan, out_chan):
     return val, n
 
 
+def combine_bias(b, quantization, start, out_chan):
+    """
+    When quantizing, combine multiple bias values `b` based on `quantization`. The first kernel
+    index is `start`. `out_chan` is used to determine whether to pad the result with zeros,
+    if necessary.
+    Returns the combined bias values.
+    """
+    val = 0
+    for i in range(8 // quantization):
+        if start + i < out_chan:
+            this_bias = b[start + i] & (2**quantization-1)
+            val |= this_bias << (i * quantization)
+
+    return val
+
+
 def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, quantization, processor_map,
          chan, debug=False):
     """
@@ -93,10 +109,11 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, quantization
         # need to be written, i.e. round down the first. The last does not need to be rounded
         # up because hardware takes care of it.
         next_layer_map = processor_map[ll+1]
-        # FIXME: Deal with gaps when quantization != 8
+        # When using kernels smaller than 8 bit, round up to the next 8-bit boundary
+        # Gaps are accounted for like any other kernel.
         kern_len[ll] = \
             (1 + fls(next_layer_map) - (ffs(next_layer_map) & ~(P_SHARED-1))
-             + (8 // quantization[ll]) - 1) // (8 // quantization[ll])
+             + 8 // quantization[ll] - 1) // (8 // quantization[ll])
         # We don't have to use dummy columns if there's space available on the left
         kern_offs[ll] = \
             max(0, kern_offs[ll] - (((ffs(next_layer_map) % P_SHARED)
@@ -257,22 +274,32 @@ def load_bias(verbose, embedded_code, apb, layers,  # pylint: disable=unused-arg
             print(f'Layer {ll}: output channel count {chan[ll+1]} does not match the number '
                   f'of bias values {len(bias[ll])}.')
             sys.exit(1)
+
+        # Round up the divided length of bias values
+        # FIXME: Is it necessary to handle gaps in the next layer?
+        bias_len = (chan[ll+1] + 8 // quantization[ll] - 1) // (8 // quantization[ll])
+
         # Pick the group with the least amount of data in it
         group = argmin(group_bias_max[t] for t in group_map[ll])
-        if group_bias_max[group] + chan[ll+1] > BIAS_SIZE:
+        if group_bias_max[group] + bias_len > BIAS_SIZE:
             print(f'Layer {ll}: bias memory capacity exceeded - available groups: '
-                  f'{group_map[ll]}, used so far: {group_bias_max}, needed: {chan[ll+1]}.')
+                  f'{group_map[ll]}, used so far: {group_bias_max}, needed: {bias_len}.')
             sys.exit(1)
         bias_group[ll] = group
         bias_offs[ll] = group_bias_max[group]
         # Each layer has output_channel number of bias values
-        for i in range(chan[ll+1]):
+        i = 0
+        target_offs = 0
+        while i < chan[ll+1]:
+            b = combine_bias(bias[ll], quantization[ll], i, chan[ll+1])
             if not embedded_code:
-                apb.write_bias(group, bias_offs[ll] + i, bias[ll][i])
+                apb.write_bias(group, bias_offs[ll] + target_offs, b)
             else:
                 # Store for later
-                bias_values[group][bias_offs[ll] + i] = bias[ll][i] & 0xff
-        group_bias_max[group] += chan[ll+1]
+                bias_values[group][bias_offs[ll] + target_offs] = b & 0xff
+            i += 8 // quantization[ll]
+            target_offs += 1
+        group_bias_max[group] += bias_len
 
     if embedded_code:
         if max(group_bias_max) > 0:
