@@ -167,7 +167,7 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                              quantization, processor_map, chan, debug)
             bias_offs, bias_group, group_bias_max = \
                 kernels.load_bias(verbose, embedded_code, apb, layers, bias,
-                                  group_map, chan, debug)
+                                  quantization, group_map, chan, debug)
 
         apb.load_header()
 
@@ -214,7 +214,7 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                              quantization, processor_map, chan, debug)
             bias_offs, bias_group, group_bias_max = \
                 kernels.load_bias(verbose, embedded_code, apb, layers, bias,
-                                  group_map, chan, debug)
+                                  quantization, group_map, chan, debug)
         else:
             apb.output('  load_kernels();\n')
             if max(group_bias_max) > 0:
