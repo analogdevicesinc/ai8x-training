@@ -14,6 +14,7 @@ from functools import partial
 import torch
 from distiller.apputils.checkpoint import get_contents_table  # pylint: disable=no-name-in-module
 import ai84
+import yamlcfg
 from range_linear_ai84 import pow2_round
 
 CONV_SCALE_BITS = 8
@@ -25,6 +26,9 @@ def convert_checkpoint(input_file, output_file, arguments):
     """
     Convert checkpoint file or dump parameters for C code
     """
+    # Load configuration file
+    cfg, params = yamlcfg.parse(args.config_file)
+
     print("Converting checkpoint file", input_file, "to", output_file)
     checkpoint = torch.load(input_file, map_location='cpu')
 
@@ -91,7 +95,7 @@ def convert_checkpoint(input_file, output_file, arguments):
                 module, _ = k.split(sep='.', maxsplit=1)
 
                 if module != 'fc':
-                    clamp_bits = ai84.WEIGHT_BITS
+                    clamp_bits = ai84.WEIGHT_BITS  # FIXME: Use layer config
                     factor = 2**(clamp_bits-1) * sat_fn(checkpoint_state[k])
                     lower_bound = 0
                     if first:
@@ -166,6 +170,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Checkpoint to AI84 conversion')
     parser.add_argument('input', help='path to the checkpoint file')
     parser.add_argument('output', help='path to the output file')
+    parser.add_argument('-c', '--config-file', required=True, metavar='S',
+                        help="YAML configuration file containing layer configuration")
     parser.add_argument('--ai85', action='store_true', default=False,
                         help='enable AI85 features')
     parser.add_argument('-f', '--fc', type=int, default=FC_CLAMP_BITS, metavar='N',

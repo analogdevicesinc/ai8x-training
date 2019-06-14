@@ -211,7 +211,7 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         if not embedded_code:
             kern_offs, kern_len = \
                 kernels.load(verbose, embedded_code, apb, layers, kernel, kernel_size,
-                             processor_map, chan, debug)
+                             quantization, processor_map, chan, debug)
             bias_offs, bias_group, group_bias_max = \
                 kernels.load_bias(verbose, embedded_code, apb, layers, bias,
                                   group_map, chan, debug)
@@ -238,6 +238,9 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             print(f'Group map          = {group_map}')
             print(f'Kernel offsets     = {kern_offs}')
             print(f'Kernel lengths     = {kern_len}')
+            if ai85:
+                print(f'Kernel dimensions  = {kernel_size}')
+                print(f'Kernel bits        = {quantization}')
             print(f'Group with bias    = {bias_group}')
             print(f'Bias offsets       = {bias_offs}')
             print(f'Output offsets     = {out_offset}')
@@ -612,6 +615,8 @@ def main():
     processor_map = processor_map[:layers]
     output_channels = output_channels[:layers+1]
     output_offset = params['output_offset'][:layers]
+    kernel_size = params['kernel_size'][:layers]
+    quantization = quantization[:layers]
 
     # Derived configuration options
     activate = [bool(x) for x in params['relu']]
@@ -624,7 +629,7 @@ def main():
     tn = create_net(args.prefix, args.verbose,
                     args.debug, args.debug_computation, args.no_error_stop,
                     args.overwrite_ok, args.log, args.apb_base, layers, processor_map,
-                    input_size, params['kernel_size'], quantization,
+                    input_size, kernel_size, quantization,
                     output_channels, params['padding'],
                     params['dilation'], params['stride'],
                     params['pool'], params['pool_stride'], pool_average, activate,

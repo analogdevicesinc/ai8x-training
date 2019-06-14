@@ -1,0 +1,36 @@
+# HWC (little data) configuration for CIFAR-10
+# This test configuration quantizes the layer weights to 4 bit.
+
+arch: ai84net5
+dataset: CIFAR-10
+
+# Define layer parameters in order of the layer sequence
+layers:
+- pad: 1
+  activate: ReLU
+  out_offset: 0x2000
+  processors: 0x0000000000000007
+  data_format: HWC
+  quantization: 4
+- max_pool: 2
+  pool_stride: 2
+  pad: 1
+  activate: ReLU
+  out_offset: 0
+  processors: 0xfffffffffffffff0
+  quantization: 4
+- max_pool: 2
+  pool_stride: 2
+  pad: 1
+  activate: ReLU
+  out_offset: 0x2000
+  processors: 0xfffffffffffffff0
+  quantization: 4
+- avg_pool: 2
+  pool_stride: 2
+  pad: 1
+  activate: ReLU
+  out_offset: 0
+  processors: 0x0ffffffffffffff0
+  quantization: 4
+
