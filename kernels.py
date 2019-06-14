@@ -236,7 +236,7 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, quantization
 
 
 def load_bias(verbose, embedded_code, apb, layers,  # pylint: disable=unused-argument
-              bias, group_map, chan, debug):  # pylint: disable=unused-argument
+              bias, quantization, group_map, chan, debug):  # pylint: disable=unused-argument
     """
     Write `bias` values for the network to C code.
     """
