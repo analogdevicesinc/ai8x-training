@@ -14,7 +14,7 @@ from functools import partial
 import torch
 from distiller.apputils.checkpoint import get_contents_table  # pylint: disable=no-name-in-module
 import ai84
-import yamlcfg
+# import yamlcfg
 from range_linear_ai84 import pow2_round
 
 CONV_SCALE_BITS = 8
@@ -27,7 +27,7 @@ def convert_checkpoint(input_file, output_file, arguments):
     Convert checkpoint file or dump parameters for C code
     """
     # Load configuration file
-    cfg, params = yamlcfg.parse(args.config_file)
+    # cfg, params = yamlcfg.parse(args.config_file)
 
     print("Converting checkpoint file", input_file, "to", output_file)
     checkpoint = torch.load(input_file, map_location='cpu')
@@ -123,8 +123,12 @@ def convert_checkpoint(input_file, output_file, arguments):
 
                 # Save conv biases so PyTorch can still use them to run a model. This needs to be
                 # reversed before loading the weights into the AI84/AI85.
+                # When multiplying data with weights, 1.0 * 1.0 corresponds to 128 * 128 and we
+                # divide the output by 128 to compensate. The bias therefore needs to be multiplied
+                # by 128. This depends on the data width, not the weight width, and is therefore
+                # always 128.
                 if arguments.ai85 and module != 'fc' and parameter == 'bias':
-                    weights *= 2**(clamp_bits-1)
+                    weights *= 2**(ai84.DATA_BITS-1)
 
                 # Store modified weight/bias back into model
                 new_checkpoint_state[k] = weights
@@ -170,7 +174,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Checkpoint to AI84 conversion')
     parser.add_argument('input', help='path to the checkpoint file')
     parser.add_argument('output', help='path to the output file')
-    parser.add_argument('-c', '--config-file', required=True, metavar='S',
+    parser.add_argument('-c', '--config-file', metavar='S',  # required=True,
                         help="YAML configuration file containing layer configuration")
     parser.add_argument('--ai85', action='store_true', default=False,
                         help='enable AI85 features')
