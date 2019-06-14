@@ -54,7 +54,7 @@ class AI84Net5(nn.Module):
         dim //= pool  # pooling, padding 0 -> 4x4
         # padding 1 -> no change in dimensions
 
-        self.fc = ai84.SoftwareLinear(fc_inputs*dim*dim, num_classes, simulate=simulate)
+        self.fc = ai84.SoftwareLinear(fc_inputs*dim*dim, num_classes, bias=True, simulate=simulate)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
