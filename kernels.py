@@ -40,6 +40,24 @@ def print_map(layers, kmap):
     print('-' * kmap.shape[1] * width)
 
 
+def combine_kernels(k, quantization, col, ch, in_chan, out_chan):
+    """
+    When quantizing, combine multiple kernels `k` based on `quantization`. The first kernel
+    index is `ch` + `col` * `in_chan`. `out_chan` is used to pad the result with zeros,
+    if necessary.
+    Returns the combined kernels.
+    """
+    val = np.zeros_like(k[ch + col*in_chan].flatten())
+    n = 0
+    for i in range(8 // quantization):
+        if col + i < out_chan:  # FIXME: Also skip over gaps
+            this_kern = k[ch + (col+i)*in_chan].flatten() & (2**quantization-1)
+            val |= this_kern << (i * quantization)
+            n += 1
+
+    return val, n
+
+
 def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, quantization, processor_map,
          chan, debug=False):
     """
@@ -75,9 +93,14 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, quantization
         # need to be written, i.e. round down the first. The last does not need to be rounded
         # up because hardware takes care of it.
         next_layer_map = processor_map[ll+1]
-        kern_len[ll] = 1 + fls(next_layer_map) - (ffs(next_layer_map) & ~(P_SHARED-1))
+        # FIXME: Deal with gaps when quantization != 8
+        kern_len[ll] = \
+            (1 + fls(next_layer_map) - (ffs(next_layer_map) & ~(P_SHARED-1))
+             + (8 // quantization[ll]) - 1) // (8 // quantization[ll])
         # We don't have to use dummy columns if there's space available on the left
-        kern_offs[ll] = max(0, kern_offs[ll] - (ffs(next_layer_map) % P_SHARED))
+        kern_offs[ll] = \
+            max(0, kern_offs[ll] - (((ffs(next_layer_map) % P_SHARED)
+                                     + (8 // quantization[ll]) - 1) // (8 // quantization[ll])))
         # The kernel offset needs to start at a multiple of 4.
         kern_offs[ll] = (kern_offs[ll] + P_SHARED-1) & ~(P_SHARED-1)
         if kern_offs[ll] + kern_len[ll] > MASK_WIDTH:
@@ -94,23 +117,27 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, quantization
             # Start at the first used instance
             this_map = next_layer_map >> ffs(next_layer_map)
             coffs = ffs(next_layer_map) % P_SHARED
-            for col in range(chan[ll+1]):
+            col_target = 0  # target column - this can differ from the source column
+            col = 0
+            while col < chan[ll+1]:
                 # Skip over unused bits in the processor map
                 while this_map & 1 == 0:
+                    # FIXME: Fix gaps in quantization != 8
                     assert this_map != 0
                     coffs += 1
                     this_map >>= 1
-                this_map >>= 1
+                this_map >>= 8 // quantization[ll]
 
-                k = kernel[ll][ch + col*chan[ll]].flatten()
+                # k = kernel[ll][ch + col*chan[ll]].flatten()
+                k, n = combine_kernels(kernel[ll], quantization[ll], col, ch, chan[ll], chan[ll+1])
                 if debug:
-                    print(f'Channel {c} Layer {ll} m{col}/{chan[ll+1]-1}: {k}')
+                    print(f'Channel {c} Layer {ll} m[{col}..{col+n}] of {chan[ll+1]-1}: {k}')
                 if not embedded_code:
                     # Write in-line
-                    apb.write_kern(ll, c, kern_offs[ll] + col + coffs, k)
+                    apb.write_kern(ll, c, kern_offs[ll] + col_target + coffs, k)
                 else:
                     # Store for later
-                    offs = _WORDS_PER_KERNEL * (kern_offs[ll] + col + coffs)  # 96-bit word offset
+                    offs = _WORDS_PER_KERNEL * (kern_offs[ll] + col_target + coffs)  # 96-bit words
                     kernel_values[c][offs] = k[0] & 0xff
                     kernel_values[c][offs + 1] = (k[1] & 0xff) << 24 | (k[2] & 0xff) << 16 | \
                         (k[3] & 0xff) << 8 | k[4] & 0xff
@@ -118,10 +145,12 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, quantization
                         (k[7] & 0xff) << 8 | k[8] & 0xff
 
                 # Update kernel map
-                assert kernel_map[c][kern_offs[ll] + col + coffs] == _INVALID_VALUE
-                kernel_map[c][kern_offs[ll] + col + coffs] = ll
+                assert kernel_map[c][kern_offs[ll] + col_target + coffs] == _INVALID_VALUE
+                kernel_map[c][kern_offs[ll] + col_target + coffs] = ll
+                col_target += 1
+                col += 8 // quantization[ll]
 
-            assert kern_len[ll] == coffs + chan[ll+1]
+            assert kern_len[ll] == coffs + col_target
             chan_kern_max[c] = kern_offs[ll] + kern_len[ll]
             ch += 1
 
