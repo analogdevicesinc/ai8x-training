@@ -77,7 +77,10 @@ def main(memfile, classification_layer=False, embedded_code=False):
     if embedded_code and classification_layer:
         memfile.write('  int i;\n\n')
     memfile.write('  icache_enable();\n\n')
-    memfile.write('  MXC_GCR->perckcn1 &= ~0x20; // Enable AI clock\n\n')
+    if embedded_code:
+        memfile.write('  SYS_ClockEnable(SYS_PERIPH_CLOCK_AI);\n\n')
+    else:
+        memfile.write('  MXC_GCR->perckcn1 &= ~0x20; // Enable AI clock\n\n')
     memfile.write('  if (!cnn_load()) { fail(); pass(); return 0; }\n')
     if embedded_code:
         memfile.write('  TMR_SW_Start(MXC_TMR0, NULL);\n')
