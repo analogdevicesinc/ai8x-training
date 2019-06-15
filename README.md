@@ -113,15 +113,49 @@ The `ai84net.py` file contains models that fit into AI84's weight memory. These 
 the AI84 hardware operators that are defined in `ai84.py`.
 
 To train the FP32 model for FashionMIST, run `go_fashionmnist.sh`. This script will place
-checkpoint files into the log directory.
+checkpoint files into the log directory. Training makes use of the Distiller framework, but
+the `train.py` software has been modified slightly to improve it and add some AI84 specific
+modifications.
 
-To quantize the checkpoint file after training using _naive post-training quantization_:
+### Quantization
+
+There are two main approaches to quantization -- quantization aware training and post-training
+quantization.
+
+Since performance for 8-bit weights is decent enough, _naive post-training quantization_ is used
+in the `ai84ize.py` software. While several approaches are implemented, a simple fixed scale
+factor is used based on experimental results. The approach requires the clamping operators
+implemented in `ai84.py` to be present.
+
+The software quantizes an existing PyTorch checkpoint file and writes
+out a new PyTorch checkpoint file that can then be used to evaluate the quality of the
+quantized network, using the same PyTorch framework used for training.
+The same new checkpoint file will also be used to feed the AI84 Network Loader.
+
+Example:
 
     ./ai84ize.py logs/path-to-checkpoint/checkpoint.pth.tar trained/ai84-fashionmnist.pth.tar -v
 
-Now, evaluate the quantized network:
+To evaluate the quantized network:
 
     ./evaluate_fashionmnist.sh
+
+### Alternative Quantization Approaches
+
+Post-training quantization can be improved using more sophosticated methods. For example, see
+https://github.com/ARM-software/ML-examples/tree/master/cmsisnn-cifar10,
+https://github.com/ARM-software/ML-KWS-for-MCU/blob/master/Deployment/Quant_guide.md,
+or Distiller's approach (installed with this software).
+
+Further, a quantized network can be refined using post-quantization training (see Distiller).
+
+The software also includes an `AI84RangeLinear` training quantizer that plugs into the Distiller
+frameworkf for quantization aware training. However, it needs work as its performance is not
+good enough yet.
+
+In all cases, ensure that the quantizer writes out a checkpoint file that the AI84 Network Loader
+can read.
+
 
 ## Limitations of AI84 Networks
 
