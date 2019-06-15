@@ -16,3 +16,11 @@ arm_fully_connected_q7_q15(const q7_t * pV,
                            const uint16_t bias_shift,
                            const uint16_t out_shift, const q7_t * bias, q15_t * pOut, q15_t * vec_buffer);
 
+arm_status
+arm_fully_connected_q7_q15_opt(const q7_t * pV,
+                               const q7_t * pM,
+                               const uint16_t dim_vec,
+                               const uint16_t num_of_rows,
+                               const uint16_t bias_shift,
+                               const uint16_t out_shift, const q7_t * bias, q15_t * pOut, q15_t * vec_buffer);
+
