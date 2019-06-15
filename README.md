@@ -313,9 +313,11 @@ demonstrate the efficacy of the custom CNN accelerator.
 
 The `Device/` folder contains a sample Makefile, an edited `arm_math.h` header file (which allows
 code execution on a host instead of a microcontroller), and a custom fully connected layer in the
-file `arm_fully_connected_q7_q15_opt.c` that returns 16-bit outputs instead of 8-bit (this code is
-also used for the software classificaiton layer on AI84/AI85). Additionally, a `tornadocnn.h`
-header file is included which helps for both embedded examples as well as CMSIS NN code.
+file `arm_fully_connected_q7_q15_opt.c` that returns 16-bit outputs instead of 8-bit, and a custom
+`arm_softmax_q7_q15.c` which is aware of the scaled input (both of these files are also used for
+the software classification layer on AI84/AI85).
+Additionally, a `tornadocnn.h` header file is included which helps for both embedded examples as
+well as CMSIS NN code.
 
 For example, the following command would generate code that performs a CIFAR-10 inference from the
 `trained/ai84-cifar10.pth.tar` checkpoint file and the `cifar10-hwc.yaml` network description
