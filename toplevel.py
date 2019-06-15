@@ -158,7 +158,7 @@ def fc_layer(memfile, weights_fh, weights, bias, cmsis_nn=False):
                   'FC_IN, FC_OUT, 0, 7, '
                   f'{"fc_bias" if bias is not None else "NULL"}, '
                   'fc_output, fc_buffer);\n')
-    memfile.write('  arm_softmax_q15(fc_output, FC_OUT, fc_softmax);\n\n')
+    memfile.write('  arm_softmax_q7_q15(fc_output, FC_OUT, fc_softmax);\n\n')
 
     memfile.write('  return 1;\n}\n\n')
 
