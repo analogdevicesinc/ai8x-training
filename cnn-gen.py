@@ -17,6 +17,7 @@ import numpy as np
 
 import apbaccess
 import checkpoint
+import cmsisnn
 import commandline
 import kernels
 import load
@@ -626,23 +627,34 @@ def main():
     data = sampledata.get(cfg['dataset'])
     input_size = list(data.shape)
 
-    tn = create_net(args.prefix, args.verbose,
-                    args.debug, args.debug_computation, args.no_error_stop,
-                    args.overwrite_ok, args.log, args.apb_base, layers, processor_map,
-                    input_size, kernel_size, quantization,
-                    output_channels, params['padding'],
-                    params['dilation'], params['stride'],
-                    params['pool'], params['pool_stride'], pool_average, activate,
-                    data, weights, bias, params['big_data'], output_map, fc_weights, fc_bias,
-                    args.input_split, args.input_offset, output_offset,
-                    args.input_filename, args.output_filename, args.c_filename,
-                    args.test_dir, args.runtest_filename, args.log_filename,
-                    args.zero_unused, args.timeout, not args.top_level, args.verify_writes,
-                    args.embedded_code, args.weight_filename, args.sample_filename,
-                    args.ai85)
-
-    if not args.embedded_code:
-        rtlsim.append_regression(args.top_level, tn, args.queue_name, args.autogen)
+    if not args.cmsis_software_nn:
+        tn = create_net(args.prefix, args.verbose,
+                        args.debug, args.debug_computation, args.no_error_stop,
+                        args.overwrite_ok, args.log, args.apb_base, layers, processor_map,
+                        input_size, kernel_size, quantization,
+                        output_channels, params['padding'],
+                        params['dilation'], params['stride'],
+                        params['pool'], params['pool_stride'], pool_average, activate,
+                        data, weights, bias, params['big_data'], output_map, fc_weights, fc_bias,
+                        args.input_split, args.input_offset, output_offset,
+                        args.input_filename, args.output_filename, args.c_filename,
+                        args.test_dir, args.runtest_filename, args.log_filename,
+                        args.zero_unused, args.timeout, not args.top_level, args.verify_writes,
+                        args.embedded_code, args.weight_filename, args.sample_filename,
+                        args.ai85)
+        if not args.embedded_code:
+            rtlsim.append_regression(args.top_level, tn, args.queue_name, args.autogen)
+    else:
+        cmsisnn.create_net(args.prefix, args.verbose, args.debug, args.log,
+                           layers, input_size, kernel_size, quantization,
+                           output_channels, params['padding'],
+                           params['dilation'], params['stride'],
+                           params['pool'], params['pool_stride'], pool_average, activate,
+                           data, weights, bias, fc_weights, fc_bias,
+                           args.c_filename,
+                           args.test_dir, args.log_filename,
+                           args.weight_filename, args.sample_filename,
+                           args.ai85)
 
 
 def signal_handler(_signal, _frame):

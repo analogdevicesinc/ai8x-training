@@ -26,32 +26,36 @@ def copyright_header(memfile):
     memfile.write(COPYRIGHT)
 
 
-def header(memfile, apb_base, embedded_code=False):
+def header(memfile, apb_base, embedded_code=False, cmsis_nn=False):
     """
     Write include files and forward definitions to .c file handle `memfile`.
     The APB base address is passed in `apb_base`.
     """
     memfile.write('#include <stdlib.h>\n')
     memfile.write('#include <stdint.h>\n')
-    memfile.write('#include <string.h>\n')
-    memfile.write('#include "global_functions.h" // For RTL Simulation\n')
     if embedded_code:
-        memfile.write('#include "tmr_utils.h"\n')
+        memfile.write('#include <string.h>\n')
+        memfile.write('#include <stdio.h>\n')
+    if not cmsis_nn:
+        memfile.write('#include "global_functions.h" // For RTL Simulation\n')
+        if embedded_code:
+            memfile.write('#include "tmr_utils.h"\n')
+    if embedded_code:
         memfile.write('#include "tornadocnn.h"\n')
-    if embedded_code:
         memfile.write('#include "weights.h"\n')
         memfile.write('#include "sampledata.h"\n\n')
 
-    if embedded_code:
-        memfile.write('uint32_t cnn_time; // Stopwatch\n\n')
+    if not cmsis_nn:
+        if embedded_code:
+            memfile.write('uint32_t cnn_time; // Stopwatch\n\n')
 
-    memfile.write('void cnn_wait(void)\n{\n')
-    memfile.write(f'  while ((*((volatile uint32_t *) 0x{apb_base + C_CNN_BASE:08x}) '
-                  '& (1<<12)) != 1<<12) ;\n')
-    if embedded_code:
-        memfile.write('  CNN_COMPLETE; // Signal that processing is complete\n')
-        memfile.write('  cnn_time = TMR_SW_Stop(MXC_TMR0);\n')
-    memfile.write('}\n\n')
+        memfile.write('void cnn_wait(void)\n{\n')
+        memfile.write(f'  while ((*((volatile uint32_t *) 0x{apb_base + C_CNN_BASE:08x}) '
+                      '& (1<<12)) != 1<<12) ;\n')
+        if embedded_code:
+            memfile.write('  CNN_COMPLETE; // Signal that processing is complete\n')
+            memfile.write('  cnn_time = TMR_SW_Stop(MXC_TMR0);\n')
+        memfile.write('}\n\n')
 
 
 def load_header(memfile):
@@ -98,8 +102,8 @@ def main(memfile, classification_layer=False, embedded_code=False):
         if classification_layer:
             memfile.write('  printf("Classification results:\\n");\n'
                           '  for (i = 0; i < FC_OUT; i++) {\n'
-                          '    printf("Class %d: %0.1f%%\\n", i, '
-                          '(double) (100.0 * fc_softmax[i] / 32768.0));\n'
+                          '    printf("[%6d] -> Class %d: %0.1f%%\\n", fc_output[i], '
+                          'i, (double) (100.0 * fc_softmax[i] / 32768.0));\n'
                           '  }\n\n')
 
     memfile.write('  pass();\n  return 0;\n}\n\n')
@@ -119,7 +123,7 @@ def verify_footer(memfile):
     memfile.write('  return rv;\n}\n\n')
 
 
-def fc_layer(memfile, weights_fh, weights, bias):
+def fc_layer(memfile, weights_fh, weights, bias, cmsis_nn=False):
     """
     Write the call to the fully connected layer with the given `weights` and
     `bias` to `memfile`. The `bias` argument can be `None`.
@@ -133,7 +137,8 @@ def fc_layer(memfile, weights_fh, weights, bias):
     c_define(weights_fh, weights, 'FC_WEIGHTS', '%d', 16)
     memfile.write('static const q7_t fc_weights[FC_OUT * FC_IN] = FC_WEIGHTS;\n\n')
 
-    memfile.write('static uint8_t conv_data[FC_IN];\n')
+    if not cmsis_nn:
+        memfile.write('static uint8_t conv_data[FC_IN];\n')
     memfile.write('static q15_t fc_buffer[FC_IN];\n')
     memfile.write('static q15_t fc_output[FC_OUT];\n')
     memfile.write('static q15_t fc_softmax[FC_OUT];\n\n')
@@ -142,8 +147,12 @@ def fc_layer(memfile, weights_fh, weights, bias):
         c_define(weights_fh, bias, 'FC_BIAS', '%d', 16)
         memfile.write('static const q7_t fc_bias[FC_OUT] = FC_BIAS;\n\n')
 
-    memfile.write('int fc_layer(void)\n'
-                  '{\n  unload(conv_data);\n')
+    if not cmsis_nn:
+        memfile.write('int fc_layer(void)\n'
+                      '{\n  unload(conv_data);\n')
+    else:
+        memfile.write('int fc_layer(q7_t *conv_data)\n'
+                      '{\n')
 
     memfile.write('  arm_fully_connected_q7_q15_opt((q7_t *) conv_data, fc_weights, '
                   'FC_IN, FC_OUT, 0, 7, '
