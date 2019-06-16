@@ -154,11 +154,11 @@ def fc_layer(memfile, weights_fh, weights, bias, cmsis_nn=False):
         memfile.write('int fc_layer(q7_t *conv_data)\n'
                       '{\n')
 
-    memfile.write('  arm_fully_connected_q7_q15_opt((q7_t *) conv_data, fc_weights, '
+    memfile.write('  arm_fully_connected_q7_s8p7_opt((q7_t *) conv_data, fc_weights, '
                   'FC_IN, FC_OUT, 0, 7, '
                   f'{"fc_bias" if bias is not None else "NULL"}, '
                   'fc_output, fc_buffer);\n')
-    memfile.write('  arm_softmax_q7_q15(fc_output, FC_OUT, fc_softmax);\n\n')
+    memfile.write('  arm_softmax_s8p7_q15(fc_output, FC_OUT, fc_softmax);\n\n')
 
     memfile.write('  return 1;\n}\n\n')
 

@@ -313,8 +313,8 @@ demonstrate the efficacy of the custom CNN accelerator.
 
 The `Device/` folder contains a sample Makefile, an edited `arm_math.h` header file (which allows
 code execution on a host instead of a microcontroller), and a custom fully connected layer in the
-file `arm_fully_connected_q7_q15_opt.c` that returns 16-bit outputs instead of 8-bit, and a custom
-`arm_softmax_q7_q15.c` which is aware of the scaled input (both of these files are also used for
+file `arm_fully_connected_q7_s8p7_opt.c` that returns s8.7 fixed-point outputs, and a custom
+`arm_softmax_s8p7_q15.c` which is aware of the fixed-point input (both of these files are also used for
 the software classification layer on AI84/AI85).
 Additionally, a `tornadocnn.h` header file is included which helps for both embedded examples as
 well as CMSIS NN code.
