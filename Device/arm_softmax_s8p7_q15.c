@@ -18,8 +18,8 @@
 
 /* ----------------------------------------------------------------------
  * Project:      CMSIS NN Library
- * Title:        arm_softmax_q7_q15.c
- * Description:  Mixed Q7-Q15 softmax function
+ * Title:        arm_softmax_s8p7_q15.c
+ * Description:  S8.7 softmax function with Q15 output
  *
  * $Date:        20. February 2018
  * $Revision:    V.1.0.0
@@ -41,7 +41,7 @@
  */
 
   /**
-   * @brief Mixed Q7 Q15 softmax function
+   * @brief S8.7 fixed point softmax function, returns Q15
    * @param[in]       vec_in      pointer to input vector
    * @param[in]       dim_vec     input vector dimention
    * @param[out]      p_out       pointer to output vector
@@ -60,7 +60,7 @@
    *
    */
 
-void arm_softmax_q7_q15(const q15_t * vec_in, const uint16_t dim_vec, q15_t * p_out)
+void arm_softmax_s8p7_q15(const q15_t * vec_in, const uint16_t dim_vec, q15_t * p_out)
 {
     q31_t     sum;
     int16_t   i;
