@@ -8,7 +8,7 @@
 """
 Unload AI84 HWC memory into standard representation.
 """
-from tornadocnn import P_NUMPRO, MAX_CHANNELS, INSTANCE_SIZE, GROUP_SIZE, P_SHARED, C_SRAM_BASE
+import tornadocnn as tc
 from utils import ffs, popcount
 
 
@@ -25,7 +25,7 @@ def unload(memfile, apb_base, processor_map, input_shape, out_offset):
                   'void unload(uint8_t *out_buf)\n'
                   '{\n  uint32_t val, *addr, offs;\n\n')
 
-    coffs = ffs(processor_map) & ~(P_SHARED-1)
+    coffs = ffs(processor_map) & ~(tc.P_SHARED-1)
     next_layer_map = processor_map >> coffs
     read_addr = None
     write_addr = None
@@ -37,14 +37,14 @@ def unload(memfile, apb_base, processor_map, input_shape, out_offset):
             this_c = c
 
             # Get four bytes from memory array
-            proc = (coffs % MAX_CHANNELS) & ~(P_SHARED-1)
+            proc = (coffs % tc.MAX_CHANNELS) & ~(tc.P_SHARED-1)
             offs = out_offset + \
-                (((proc % P_NUMPRO) * INSTANCE_SIZE |
-                  (proc // P_NUMPRO) * GROUP_SIZE) +
+                (((proc % tc.P_NUMPRO) * tc.INSTANCE_SIZE |
+                  (proc // tc.P_NUMPRO) * tc.GROUP_SIZE) +
                  doffs) * 4
 
             if offs != read_addr:
-                memfile.write(f'  addr = (uint32_t *) 0x{apb_base + C_SRAM_BASE + offs:08x};\n')
+                memfile.write(f'  addr = (uint32_t *) 0x{apb_base + tc.C_SRAM_BASE + offs:08x};\n')
             memfile.write(f'  val = *addr++;\n')
             read_addr = offs + 4
 

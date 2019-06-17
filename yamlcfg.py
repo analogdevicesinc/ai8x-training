@@ -10,7 +10,7 @@ YAML Configuration Routines
 """
 import sys
 import yaml
-from tornadocnn import MEM_SIZE
+import tornadocnn as tc
 
 
 SUPPORTED_DATASETS = ['mnist', 'fashionmnist', 'cifar-10']
@@ -115,7 +115,7 @@ def parse(config_file):
     if any(p == 3 or p < 0 or p > 4 for p in pool_stride):
         print('Unsupported value for `pool_stride` in YAML configuration.')
         sys.exit(1)
-    if any(p < 0 or p > 4*MEM_SIZE for p in output_offset):
+    if any(p < 0 or p > 4*tc.MEM_SIZE for p in output_offset):
         print('Unsupported value for `out_offset` in YAML configuration.')
         sys.exit(1)
 

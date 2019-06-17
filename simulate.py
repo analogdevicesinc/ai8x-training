@@ -10,7 +10,7 @@ Simulate a single CNN layer
 """
 import numpy as np
 from compute import conv2d, linear
-from tornadocnn import BIAS_DIV
+import tornadocnn as tc
 
 
 def cnn_layer(layer, verbose,
@@ -73,7 +73,7 @@ def cnn_layer(layer, verbose,
                       fill_value=np.nan, dtype=np.int64)
 
     if bias is not None:
-        bias = bias * BIAS_DIV
+        bias = bias * tc.BIAS_DIV
 
     conv2d(data=pooled,
            weight=kernel,
