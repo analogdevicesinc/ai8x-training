@@ -129,7 +129,7 @@ def create_net(prefix, verbose, debug, log, layers, input_size, kernel_size,
         for ll in range(layers):
             c_file.write(f'  // Layer {ll}: {input_size} -> ')
             if pool[ll]:
-                print(f'[{input_size[0]}, {pooled_size[ll][0]}, {pooled_size[ll][1]}] -> ', end='')
+                c_file.write(f'[{input_size[0]}, {pooled_size[ll][0]}, {pooled_size[ll][1]}] -> ')
             out_buf, out_size = cnn_layer(ll + 1, verbose,
                                           input_size, kernel_size[ll], quantization[ll],
                                           chan[ll+1],
