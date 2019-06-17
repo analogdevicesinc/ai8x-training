@@ -8,8 +8,8 @@
 """
 Toplevel C file structure generation
 """
+import tornadocnn as tc
 from armx4weights import convert_to_x4_q7_weights
-from tornadocnn import C_CNN_BASE
 
 
 COPYRIGHT = \
@@ -50,7 +50,7 @@ def header(memfile, apb_base, embedded_code=False, cmsis_nn=False):
             memfile.write('uint32_t cnn_time; // Stopwatch\n\n')
 
         memfile.write('void cnn_wait(void)\n{\n')
-        memfile.write(f'  while ((*((volatile uint32_t *) 0x{apb_base + C_CNN_BASE:08x}) '
+        memfile.write(f'  while ((*((volatile uint32_t *) 0x{apb_base + tc.C_CNN_BASE:08x}) '
                       '& (1<<12)) != 1<<12) ;\n')
         if embedded_code:
             memfile.write('  CNN_COMPLETE; // Signal that processing is complete\n')

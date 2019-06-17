@@ -10,9 +10,7 @@ Load Tornado CNN data memory
 """
 import sys
 import numpy as np
-
-from tornadocnn import C_SRAM_BASE, C_GROUP_OFFS, P_NUMPRO, P_SHARED, INSTANCE_SIZE, \
-    MAX_CHANNELS
+import tornadocnn as tc
 from utils import s2u
 
 
@@ -35,15 +33,15 @@ def load(embedded_code, apb, chw, processor_map, input_size, chan, dim, data, pa
     c = 0
     data_offs = 0
     step = 1 if chw else 4
-    for ch in range(0, MAX_CHANNELS, step):
+    for ch in range(0, tc.MAX_CHANNELS, step):
         if not (processor_map >> ch) % 2**step:
             # Channel or block of four channels not used for input
             continue
 
         # Load channel into shared memory
-        group = ch // P_NUMPRO
-        instance = (ch % P_NUMPRO) // P_SHARED
-        new_data_offs = C_GROUP_OFFS*group + C_SRAM_BASE + INSTANCE_SIZE*4*instance
+        group = ch // tc.P_NUMPRO
+        instance = (ch % tc.P_NUMPRO) // tc.P_SHARED
+        new_data_offs = tc.C_GROUP_OFFS*group + tc.C_SRAM_BASE + tc.INSTANCE_SIZE*4*instance
         if new_data_offs == data_offs:
             print('Layer 0 processor map is misconfigured for data input. '
                   f'There is data overlap between processors {ch-1} and {ch}')
@@ -116,8 +114,8 @@ def load(embedded_code, apb, chw, processor_map, input_size, chan, dim, data, pa
                     row -= 2*overlap  # Rewind
                     # Switch to next memory instance
                     if split > 1 and s + 1 < split:
-                        new_data_offs = ((data_offs + INSTANCE_SIZE - 1) //
-                                         INSTANCE_SIZE) * INSTANCE_SIZE
+                        new_data_offs = ((data_offs + tc.INSTANCE_SIZE - 1) //
+                                         tc.INSTANCE_SIZE) * tc.INSTANCE_SIZE
                         if new_data_offs != data_offs:
                             apb.write_byte_flush(0)
                         data_offs = new_data_offs

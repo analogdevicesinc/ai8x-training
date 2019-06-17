@@ -11,8 +11,7 @@ Kernel related functions
 import math
 import sys
 import numpy as np
-from tornadocnn import MASK_WIDTH, MAX_CHANNELS, P_SHARED, BIAS_SIZE, P_NUMGROUPS, C_GROUP_OFFS, \
-    P_NUMPRO, C_MRAM_BASE, C_BRAM_BASE
+import tornadocnn as tc
 from utils import argmin, ffs, fls
 
 
@@ -84,15 +83,16 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, quantization
     This function returns the kernel offsets and the kernel lengths for all layers.
     """
     # Kernels: Stack kernels; write only the kernels needed
-    chan_kern_max = [0] * MAX_CHANNELS
+    chan_kern_max = [0] * tc.MAX_CHANNELS
     kern_offs = [0] * layers
     kern_len = [0] * layers
-    kernel_map = np.full((MAX_CHANNELS, MASK_WIDTH), _INVALID_VALUE, dtype=np.int64)
+    kernel_map = np.full((tc.MAX_CHANNELS, tc.MASK_WIDTH), _INVALID_VALUE, dtype=np.int64)
     if embedded_code:
         # There are four 32-bit words per 9-byte kernel.
         # The value map is initialized with zeros so we can later ignore unused entries and use
         # memcpy() on initialized and uninitialized data.
-        kernel_values = np.zeros((MAX_CHANNELS, MASK_WIDTH * _WORDS_PER_KERNEL), dtype=np.int64)
+        kernel_values = np.zeros((tc.MAX_CHANNELS, tc.MASK_WIDTH * _WORDS_PER_KERNEL),
+                                 dtype=np.int64)
 
     for ll in range(layers):
         first_channel = ffs(processor_map[ll])
@@ -113,15 +113,15 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, quantization
         # When using kernels smaller than 8 bit, round up to the next 8-bit boundary
         # Gaps are accounted for like any other kernel.
         kern_len[ll] = \
-            (1 + fls(next_layer_map) - (ffs(next_layer_map) & ~(P_SHARED-1))
+            (1 + fls(next_layer_map) - (ffs(next_layer_map) & ~(tc.P_SHARED-1))
              + 8 // quantization[ll] - 1) // (8 // quantization[ll])
         # We don't have to use dummy columns if there's space available on the left
         kern_offs[ll] = \
-            max(0, kern_offs[ll] - (((ffs(next_layer_map) % P_SHARED)
+            max(0, kern_offs[ll] - (((ffs(next_layer_map) % tc.P_SHARED)
                                      + (8 // quantization[ll]) - 1) // (8 // quantization[ll])))
         # The kernel offset needs to start at a multiple of 4.
-        kern_offs[ll] = (kern_offs[ll] + P_SHARED-1) & ~(P_SHARED-1)
-        if kern_offs[ll] + kern_len[ll] > MASK_WIDTH:
+        kern_offs[ll] = (kern_offs[ll] + tc.P_SHARED-1) & ~(tc.P_SHARED-1)
+        if kern_offs[ll] + kern_len[ll] > tc.MASK_WIDTH:
             print(f'\nKernel memory exceeded at layer {ll}; offset: {kern_offs[ll]}, '
                   f'needed: {kern_len[ll]}.')
             print('\nKernel map so far:')
@@ -135,7 +135,7 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, quantization
                 continue
             # Start at the first used instance
             this_map = next_layer_map >> ffs(next_layer_map)
-            col_target = ffs(next_layer_map) % P_SHARED  # target column
+            col_target = ffs(next_layer_map) % tc.P_SHARED  # target column
             col = 0
             while col < chan[ll+1]:
                 # Skip over unused bits in the target processor map
@@ -185,12 +185,14 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, quantization
 
         # First, define the weights (will move to header file)
         p = 0
-        while p < MAX_CHANNELS:
+        while p < tc.MAX_CHANNELS:
             if chan_kern_max[p] > 0:
                 start = p
                 while (
-                        chan_kern_max[p] == MASK_WIDTH and p+1 < MAX_CHANNELS and
-                        chan_kern_max[p+1] and (start & ~(P_NUMPRO-1)) == (p+1 & ~(P_NUMPRO-1))
+                        chan_kern_max[p] == tc.MASK_WIDTH and
+                        p+1 < tc.MAX_CHANNELS and
+                        chan_kern_max[p+1] and
+                        (start & ~(tc.P_NUMPRO-1)) == (p+1 & ~(tc.P_NUMPRO-1))
                 ):
                     p += 1
                 # Combine multiple channels into one define
@@ -208,13 +210,15 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, quantization
 
         # Second, initialize static const variables as source for memcpy
         p = 0
-        while p < MAX_CHANNELS:
+        while p < tc.MAX_CHANNELS:
             if chan_kern_max[p] > 0:
                 span = chan_kern_max[p]
                 start = p
                 while (
-                        chan_kern_max[p] == MASK_WIDTH and p+1 < MAX_CHANNELS and
-                        chan_kern_max[p+1] and (start & ~(P_NUMPRO-1)) == (p+1 & ~(P_NUMPRO-1))
+                        chan_kern_max[p] == tc.MASK_WIDTH and
+                        p+1 < tc.MAX_CHANNELS and
+                        chan_kern_max[p+1] and
+                        (start & ~(tc.P_NUMPRO-1)) == (p+1 & ~(tc.P_NUMPRO-1))
                 ):
                     p += 1
                     span += chan_kern_max[p]
@@ -234,15 +238,17 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, quantization
 
         apb.output('void load_kernels(void)\n{\n')
         p = 0
-        while p < MAX_CHANNELS:
+        while p < tc.MAX_CHANNELS:
             if chan_kern_max[p] > 0:
                 span = chan_kern_max[p]
                 start = p
-                addr = apb.apb_base + C_GROUP_OFFS * (p // P_NUMPRO) \
-                    + C_MRAM_BASE + (p % P_NUMPRO) * MASK_WIDTH * 16
+                addr = apb.apb_base + tc.C_GROUP_OFFS * (p // tc.P_NUMPRO) \
+                    + tc.C_MRAM_BASE + (p % tc.P_NUMPRO) * tc.MASK_WIDTH * 16
                 while (
-                        chan_kern_max[p] == MASK_WIDTH and p+1 < MAX_CHANNELS and
-                        chan_kern_max[p+1] and (start & ~(P_NUMPRO-1)) == (p+1 & ~(P_NUMPRO-1))
+                        chan_kern_max[p] == tc.MASK_WIDTH and
+                        p+1 < tc.MAX_CHANNELS and
+                        chan_kern_max[p+1] and
+                        (start & ~(tc.P_NUMPRO-1)) == (p+1 & ~(tc.P_NUMPRO-1))
                 ):
                     p += 1
                     span += chan_kern_max[p]
@@ -260,14 +266,14 @@ def load_bias(verbose, embedded_code, apb, layers,  # pylint: disable=unused-arg
     """
     Write `bias` values for the network to C code.
     """
-    # Bias: Each group has one bias memory (size BIAS_SIZE bytes). Use only the bias memory in
+    # Bias: Each group has one bias memory (size tc.BIAS_SIZE bytes). Use only the bias memory in
     # one selected group for the layer, and only if the layer uses a bias. Keep track of the
     # offsets so they can be programmed into the mask count register later.
 
     if embedded_code:
-        bias_values = np.zeros((P_NUMGROUPS, BIAS_SIZE), dtype=np.int64)
+        bias_values = np.zeros((tc.P_NUMGROUPS, tc.BIAS_SIZE), dtype=np.int64)
 
-    group_bias_max = [0] * P_NUMGROUPS
+    group_bias_max = [0] * tc.P_NUMGROUPS
     bias_offs = [None] * layers
     bias_group = [None] * layers
     for ll in range(layers):
@@ -284,7 +290,7 @@ def load_bias(verbose, embedded_code, apb, layers,  # pylint: disable=unused-arg
 
         # Pick the group with the least amount of data in it
         group = argmin(group_bias_max[t] for t in group_map[ll])
-        if group_bias_max[group] + bias_len > BIAS_SIZE:
+        if group_bias_max[group] + bias_len > tc.BIAS_SIZE:
             print(f'Layer {ll}: bias memory capacity exceeded - available groups: '
                   f'{group_map[ll]}, used so far: {group_bias_max}, needed: {bias_len}.')
             sys.exit(1)
@@ -307,13 +313,13 @@ def load_bias(verbose, embedded_code, apb, layers,  # pylint: disable=unused-arg
     if embedded_code:
         if max(group_bias_max) > 0:
             # At least one bias value exists, output defines
-            for group in range(P_NUMGROUPS):
+            for group in range(tc.P_NUMGROUPS):
                 if group_bias_max[group] == 0:
                     continue  # but not for this group
                 apb.output_define(bias_values[group][:group_bias_max[group]], f'BIAS_{group}',
                                   '0x%02x', 16)
             # Output variables
-            for group in range(P_NUMGROUPS):
+            for group in range(tc.P_NUMGROUPS):
                 if group_bias_max[group] == 0:
                     continue
                 apb.output(f'static const uint8_t bias_{group}[{group_bias_max[group]}] = '
@@ -325,10 +331,10 @@ def load_bias(verbose, embedded_code, apb, layers,  # pylint: disable=unused-arg
             apb.output('  while (n-- > 0) {\n    *dst++ = *src++;\n  }\n}\n\n')
 
             apb.output('void load_bias(void)\n{\n')
-            for group in range(P_NUMGROUPS):
+            for group in range(tc.P_NUMGROUPS):
                 if group_bias_max[group] == 0:
                     continue
-                addr = apb.apb_base + C_GROUP_OFFS*group + C_BRAM_BASE
+                addr = apb.apb_base + tc.C_GROUP_OFFS*group + tc.C_BRAM_BASE
                 apb.output(f'  memcpy_8to32((uint32_t *) 0x{addr:08x}, bias_{group}, '
                            f'sizeof(uint8_t) * {group_bias_max[group]});\n')
             apb.output('}\n\n')
