@@ -18,3 +18,6 @@ arm_fully_connected_q7_s8p7_opt(const q7_t * pV,
 
 
 void arm_softmax_s8p7_q15(const q15_t * vec_in, const uint16_t dim_vec, q15_t * p_out);
+
+void arm_softmax_s8p7_q15_frac(const q15_t * vec_in, const uint16_t dim_vec, q15_t * p_out);
+
