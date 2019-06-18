@@ -121,7 +121,7 @@ class APB(object):
         assert idx < tornadocnn.MASK_WIDTH
         addr = tornadocnn.C_GROUP_OFFS * (ch // tornadocnn.P_NUMPRO) \
             + tornadocnn.C_MRAM_BASE \
-            + (ch % tornadocnn.P_NUMPRO) * tornadocnn.MASK_WIDTH * 16 + idx * 16
+            + (ch % tornadocnn.P_NUMPRO) * tornadocnn.MASK_OFFS * 16 + idx * 16
 
         self.write(addr, k[0] & 0xff, no_verify=True,
                    comment=f' // Layer {ll}: processor {ch} kernel #{idx}')

@@ -185,11 +185,12 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, quantization
 
         # First, define the weights (will move to header file)
         p = 0
+        # Combining memcopy() requires stacked memories
         while p < tc.MAX_CHANNELS:
             if chan_kern_max[p] > 0:
                 start = p
                 while (
-                        chan_kern_max[p] == tc.MASK_WIDTH and
+                        chan_kern_max[p] == tc.MASK_OFFS and
                         p+1 < tc.MAX_CHANNELS and
                         chan_kern_max[p+1] and
                         (start & ~(tc.P_NUMPRO-1)) == (p+1 & ~(tc.P_NUMPRO-1))
@@ -215,7 +216,7 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, quantization
                 span = chan_kern_max[p]
                 start = p
                 while (
-                        chan_kern_max[p] == tc.MASK_WIDTH and
+                        chan_kern_max[p] == tc.MASK_OFFS and
                         p+1 < tc.MAX_CHANNELS and
                         chan_kern_max[p+1] and
                         (start & ~(tc.P_NUMPRO-1)) == (p+1 & ~(tc.P_NUMPRO-1))
@@ -243,9 +244,9 @@ def load(verbose, embedded_code, apb, layers, kernel, _kernel_size, quantization
                 span = chan_kern_max[p]
                 start = p
                 addr = apb.apb_base + tc.C_GROUP_OFFS * (p // tc.P_NUMPRO) \
-                    + tc.C_MRAM_BASE + (p % tc.P_NUMPRO) * tc.MASK_WIDTH * 16
+                    + tc.C_MRAM_BASE + (p % tc.P_NUMPRO) * tc.MASK_OFFS * 16
                 while (
-                        chan_kern_max[p] == tc.MASK_WIDTH and
+                        chan_kern_max[p] == tc.MASK_OFFS and
                         p+1 < tc.MAX_CHANNELS and
                         chan_kern_max[p+1] and
                         (start & ~(tc.P_NUMPRO-1)) == (p+1 & ~(tc.P_NUMPRO-1))

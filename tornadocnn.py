@@ -17,6 +17,9 @@ MAX_LAYERS = 32
 TRAM_SIZE = 256
 BIAS_SIZE = 256
 MASK_WIDTH = 128
+MASK_OFFS_AI84 = 128
+MASK_OFFS_AI85 = 128  # 4096 if not stacked
+MASK_OFFS = MASK_OFFS_AI84
 
 MCNT_SAD_OFFS_AI84 = 8
 MCNT_SAD_OFFS_AI85 = 16
@@ -89,6 +92,7 @@ def set_device(ai85):
     global C_MRAM_BASE  # pylint: disable=global-statement
     global C_SRAM_BASE  # pylint: disable=global-statement
     global C_GROUP_OFFS  # pylint: disable=global-statement
+    global MASK_OFFS  # pylint: disable=global-statement
 
     print(f'Configuring device: {"AI85" if ai85 else "AI84"}.')
     if not ai85:
@@ -101,3 +105,4 @@ def set_device(ai85):
     C_MRAM_BASE = C_MRAM_BASE_AI85
     C_SRAM_BASE = C_SRAM_BASE_AI85
     C_GROUP_OFFS = C_GROUP_OFFS_AI85
+    MASK_OFFS = MASK_OFFS_AI85
