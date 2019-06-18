@@ -22,8 +22,12 @@ MASK_OFFS_AI85 = 128  # 4096 if not stacked
 MASK_OFFS = MASK_OFFS_AI84
 
 MCNT_SAD_OFFS_AI84 = 8
-MCNT_SAD_OFFS_AI85 = 16
+MCNT_SAD_OFFS_AI85 = 19
 MCNT_SAD_OFFS = MCNT_SAD_OFFS_AI84
+
+MCNT_MAX_OFFS_AI84 = 0
+MCNT_MAX_OFFS_AI85 = 3
+MCNT_MAX_OFFS = MCNT_MAX_OFFS_AI84
 
 C_CNN = 4
 C_CNN_BASE = 0
@@ -87,6 +91,7 @@ def set_device(ai85):
     """
     global BIAS_DIV  # pylint: disable=global-statement
     global MAX_LREG  # pylint: disable=global-statement
+    global MCNT_MAX_OFFS  # pylint: disable=global-statement
     global MCNT_SAD_OFFS  # pylint: disable=global-statement
     global C_BRAM_BASE  # pylint: disable=global-statement
     global C_MRAM_BASE  # pylint: disable=global-statement
@@ -99,6 +104,7 @@ def set_device(ai85):
         return
 
     BIAS_DIV = BIAS_DIV_AI85
+    MCNT_MAX_OFFS = MCNT_MAX_OFFS_AI85
     MCNT_SAD_OFFS = MCNT_SAD_OFFS_AI85
     MAX_LREG = MAX_LREG_AI85
     C_BRAM_BASE = C_BRAM_BASE_AI85
