@@ -19,6 +19,7 @@ import apbaccess
 import checkpoint
 import cmsisnn
 import commandline
+import compute
 import kernels
 import load
 import rtlsim
@@ -648,6 +649,8 @@ def main():
                            args.test_dir, args.log_filename,
                            args.weight_filename, args.sample_filename,
                            args.ai85)
+
+    print(f'Computed MACs: Conv2D {compute.macs_2d}, FC {compute.macs_fc}')
 
 
 def signal_handler(_signal, _frame):

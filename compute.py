@@ -12,6 +12,10 @@ Compatible with PyTorch
 import numpy as np
 
 
+macs_2d = 0
+macs_fc = 0
+
+
 def conv2d(data, weight, bias, input_size, out_channels, kernel_size, stride, pad,
            dilation, output, debug=False):
     """
@@ -21,6 +25,7 @@ def conv2d(data, weight, bias, input_size, out_channels, kernel_size, stride, pa
 
     Note that all PyTorch numbers are ordered (C, H, W)
     """
+    global macs_2d  # pylint: disable=global-statement
     in_channels = input_size[0]
 
     # Compute convolution
@@ -44,6 +49,7 @@ def conv2d(data, weight, bias, input_size, out_channels, kernel_size, stride, pa
                                            (y + h * dilation[0]) * input_size[2]
                                 wt_offs = h * kernel_size[0] + w
                                 val += weight[k][c][wt_offs] * data[c][src_offs]
+                                macs_2d += 1
                                 if debug:
                                     print(f'k={k}, c={c}, x={x}, y={y}, src_offs={src_offs}, '
                                           f'wt_offs={wt_offs}: weight*data={weight[k][c][wt_offs]}'
@@ -61,11 +67,13 @@ def linear(data, weight, bias, in_features, out_features, output, debug=False):
     """
     Compute a fully connected layer.
     """
+    global macs_fc  # pylint: disable=global-statement
 
     for w in range(out_features):
         val = np.int64(0)
         for n in range(in_features):
             val += data[n] * weight[w][n]
+            macs_fc += 1
             if debug:
                 print(f'w={w}, n={n}, weight={weight[w][n]}, data={data[n]} '
                       f'-> accumulator = {val} ')
