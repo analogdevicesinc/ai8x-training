@@ -10,8 +10,7 @@
 Test flatten() software operator
 """
 import numpy as np
-from tornadocnn import P_NUMPRO, MAX_CHANNELS, INSTANCE_SIZE, GROUP_SIZE, P_SHARED, C_SRAM_BASE, \
-    APB_BASE
+import tornadocnn as tc
 from utils import ffs, popcount
 
 
@@ -47,7 +46,7 @@ def unload(apb_base, processor_map, input_shape,
           'void unload(uint8_t *out_buf)\n'
           '{\n  uint32_t val, *addr, offs;\n')
 
-    coffs = ffs(processor_map) & ~(P_SHARED-1)
+    coffs = ffs(processor_map) & ~(tc.P_SHARED-1)
     next_layer_map = processor_map >> coffs
     read_addr = None
     write_addr = None
@@ -59,16 +58,16 @@ def unload(apb_base, processor_map, input_shape,
             this_c = c
 
             # Get four bytes from memory array
-            proc = (coffs % MAX_CHANNELS) & ~(P_SHARED-1)
+            proc = (coffs % tc.MAX_CHANNELS) & ~(tc.P_SHARED-1)
             offs = out_offset + \
-                (((proc % P_NUMPRO) * INSTANCE_SIZE |
-                  (proc // P_NUMPRO) * GROUP_SIZE) +
+                (((proc % tc.P_NUMPRO) * tc.INSTANCE_SIZE |
+                  (proc // tc.P_NUMPRO) * tc.C_GROUP_OFFS // 4) +
                  doffs) * 4
 
             val = get_val(offs)
 
             if offs != read_addr:
-                print(f'  addr = (uint32_t *) 0x{apb_base + C_SRAM_BASE + offs:08x};')
+                print(f'  addr = (uint32_t *) 0x{apb_base + tc.C_SRAM_BASE + offs:08x};')
             print(f'  val = *addr++;')
             read_addr = offs + 4
 
@@ -222,14 +221,14 @@ def main():
     processor_map = 0x0000000000000fff
     input_shape = (12, 4, 4)  # CHW - match generator
     out_offset = 0
-    unload(APB_BASE, processor_map, input_shape,
+    unload(tc.APB_BASE, processor_map, input_shape,
            computed, out_offset, mem_image, flatten=True)
 
     print('\n// unload(flatten=True):')
     print("// SUCCESS" if np.array_equal(flattened, computed) else "// *** FAILURE ***")
 
     computed = np.empty_like(expected)
-    unload(APB_BASE, processor_map, input_shape,
+    unload(tc.APB_BASE, processor_map, input_shape,
            computed, out_offset, mem_image)
 
     print('\n// unload():')

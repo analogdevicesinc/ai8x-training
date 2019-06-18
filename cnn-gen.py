@@ -503,7 +503,7 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     proc = (coffs % tc.MAX_CHANNELS) & ~(tc.P_SHARED-1)
                     offs = tc.C_SRAM_BASE + out_offset[ll] + \
                         (((proc % tc.P_NUMPRO) * tc.INSTANCE_SIZE |
-                          (proc // tc.P_NUMPRO) * tc.GROUP_SIZE) +
+                          (proc // tc.P_NUMPRO) * tc.C_GROUP_OFFS // 4) +
                          doffs) * 4
 
                     # If using single layer, make sure we're not overwriting the input
