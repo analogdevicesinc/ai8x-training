@@ -51,7 +51,6 @@ P_NUMPRO = 16  # Processors per group
 P_SHARED = 4  # Processors sharing a data memory
 
 INSTANCE_SIZE = 1024  # x32
-GROUP_SIZE = 0x40000
 MEM_SIZE = INSTANCE_SIZE * P_NUMPRO * P_NUMGROUPS // P_SHARED  # x32
 MAX_CHANNELS = P_NUMPRO * P_NUMGROUPS
 

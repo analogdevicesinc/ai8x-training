@@ -40,7 +40,7 @@ def unload(memfile, apb_base, processor_map, input_shape, out_offset):
             proc = (coffs % tc.MAX_CHANNELS) & ~(tc.P_SHARED-1)
             offs = out_offset + \
                 (((proc % tc.P_NUMPRO) * tc.INSTANCE_SIZE |
-                  (proc // tc.P_NUMPRO) * tc.GROUP_SIZE) +
+                  (proc // tc.P_NUMPRO) * tc.C_GROUP_OFFS // 4) +
                  doffs) * 4
 
             if offs != read_addr:
