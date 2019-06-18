@@ -348,7 +348,7 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 # AI85:
                 # [15:0]  Max count (output channels)
                 # [31:16] Starting address for group of 16
-                val = kern_offs[ll] << tc.MCNT_SAD_OFFS | kern_len[ll]-1
+                val = kern_offs[ll] << tc.MCNT_SAD_OFFS | (kern_len[ll]-1) << tc.MCNT_MAX_OFFS
                 if not ai85:
                     if group == bias_group[ll]:
                         # Enable bias only for one group
