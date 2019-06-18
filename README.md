@@ -180,7 +180,7 @@ The AI84 hardware does not support arbitrary network parameters. For example,
 * The `Conv2D` stride is fixed to 1. However, the pooling stride can be 1, 2, or 4.
 * The number of input or output channels must not exceed 64.
 * The number of layers must not exceed 32.
-* Overall weight storage is limited to 64*128 9x9 kernels. However, weights must be arranged
+* Overall weight storage is limited to 64*128 3x3 kernels. However, weights must be arranged
   in a certain order, see below.
 * The hardware supports only 2D convolution layers. For convenience, a single final fully
   connected layer with 8-bit inputs/weights/bias, and 16-bit output is supported in software,
@@ -192,8 +192,7 @@ The AI84 hardware does not support arbitrary network parameters. For example,
   quantization as described in this document. The reason is that the bias is not shifted by the
   same amount as the weights. This could be mitigated using a more involved training procedure,
   but since bias values do not significantly improve performance in the example networks, and
-  since this will be corrected for AI85, the string recommendation is to not use bias values
-  for now.
+  since this will be corrected for AI85, the recommendation is to not use bias values for now.
 
 With the exception of weight storage, and bias use, most of these limitations are flagged when
 using the network primitives from `ai84.py`.
@@ -209,7 +208,7 @@ memory instances. When using a large number of channels, this can cause 'holes' 
 map, which in turn can cause subsequent layers' kernels to require padding.
 
 The AI84 Network Loader prints a kernel map that shows the kernel arrangement based on the provided
-network description. It will also flag cases where kernel memory or bias memory is exceeded.
+network description. It will also flag cases where kernel or bias memories are exceeded.
 
 
 ## Adding New Data and Networks
@@ -244,28 +243,28 @@ An example network description for the ai84net5 architecture and FashionMNIST is
     # Define layer parameters in order of the layer sequence
     layers:
     - pad: 1
-    activate: ReLU
-    out_offset: 0x2000
-    processors: 0x0000000000000001
-    data_format: CHW
+      activate: ReLU
+      out_offset: 0x2000
+      processors: 0x0000000000000001
+      data_format: CHW
     - max_pool: 2
-    pool_stride: 2
-    pad: 2
-    activate: ReLU
-    out_offset: 0
-    processors: 0xfffffffffffffff0
+      pool_stride: 2
+      pad: 2
+      activate: ReLU
+      out_offset: 0
+      processors: 0xfffffffffffffff0
     - max_pool: 2
-    pool_stride: 2
-    pad: 1
-    activate: ReLU
-    out_offset: 0x2000
-    processors: 0xfffffffffffffff0
+      pool_stride: 2
+      pad: 1
+      activate: ReLU
+      out_offset: 0x2000
+      processors: 0xfffffffffffffff0
     - avg_pool: 2
-    pool_stride: 2
-    pad: 1
-    activate: ReLU
-    out_offset: 0
-    processors: 0x0ffffffffffffff0
+      pool_stride: 2
+      pad: 1
+      activate: ReLU
+      out_offset: 0
+      processors: 0x0ffffffffffffff0
 
 To generate an embedded AI84 demo in the `demos/FashionMNIST/` folder, use the following command
 line:
