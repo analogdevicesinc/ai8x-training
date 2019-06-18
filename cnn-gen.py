@@ -367,11 +367,11 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                 if ai85:
                     # Compensate for the smaller weights by adjusting the output shift
                     if quantization[ll] == 1:
-                        val = (3 << 22) | (3 << 13)  # Shift left 3
+                        val = (1 << 22) | (3 << 13)  # Shift left 3
                     elif quantization[ll] == 2:
                         val = (2 << 22) | (2 << 13)  # Shift left 2
                     elif quantization[ll] == 4:
-                        val = (1 << 22) | (1 << 13)  # Shift left 1
+                        val = (3 << 22) | (1 << 13)  # Shift left 1
                     else:
                         assert quantization[ll] == 8
                         val = 0  # Do not shift
