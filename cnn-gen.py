@@ -236,9 +236,12 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
             if ai85:
                 print(f'Kernel dimensions  = {kernel_size}')
                 print(f'Kernel bits        = {quantization}')
+            print(f'Padding            = {padding}')
             print(f'Group with bias    = {bias_group}')
             print(f'Bias offsets       = {bias_offs}')
             print(f'Output offsets     = {out_offset}')
+            print(f'Pooling            = {pool}')
+            print(f'Pooling stride     = {pool_stride}')
             print('')
 
         if verbose:
