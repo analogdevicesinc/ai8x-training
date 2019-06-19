@@ -9,8 +9,10 @@
 Simulate a single CNN layer
 """
 import numpy as np
-from compute import conv2d, linear
+
+import stats
 import tornadocnn as tc
+from compute import conv2d, linear
 
 
 def cnn_layer(layer, verbose,
@@ -52,6 +54,11 @@ def cnn_layer(layer, verbose,
                   f"{input_size} -> {pooled_size}:")
             print(pooled)
             print('')
+
+        if pool_average:
+            stats.add += pool[0] * pool[1] * pooled_size[0] * pooled_size[1] * pooled_size[2]
+        else:
+            stats.comp += pool[0] * pool[1] * pooled_size[0] * pooled_size[1] * pooled_size[2]
     else:
         pooled_size = input_size
         pooled = data
@@ -94,6 +101,9 @@ def cnn_layer(layer, verbose,
         print(out_buf)
         print('')
 
+    stats.macc += pooled_size[0] * kernel_size[0] * kernel_size[1] * out_size[0] \
+        * out_size[1] * out_size[2]
+
     out_buf = np.floor(0.5 + out_buf / (2**(quantization-1))).astype(np.int64). \
         clip(-(2**(bits-1)), 2**(bits-1)-1)
 
@@ -110,6 +120,8 @@ def cnn_layer(layer, verbose,
             print(f"{out_size[0]}x{out_size[1]}x{out_size[2]} ACTIVATED OUTPUT:")
             print(out_buf)
             print('')
+
+        stats.comp += out_size[0] * out_size[1] * out_size[2]
 
     return out_buf, out_size
 
@@ -144,6 +156,8 @@ def linear_layer(verbose, do_activation,
         print(out_buf)
         print('')
 
+    stats.sw_macc += in_features * out_features
+
     if do_activation:
         np.clip(out_buf, 0, 2**(bits-1)-1, out_buf)
 
@@ -151,5 +165,7 @@ def linear_layer(verbose, do_activation,
             print(f"ACTIVATED OUTPUT (size {out_features}):")
             print(out_buf)
             print('')
+
+        stats.sw_comp += out_features
 
     return out_buf, out_features

@@ -19,13 +19,13 @@ import apbaccess
 import checkpoint
 import cmsisnn
 import commandline
-import compute
 import kernels
 import load
 import rtlsim
 import sampledata
-import yamlcfg
+import stats
 import tornadocnn as tc
+import yamlcfg
 from simulate import cnn_layer, linear_layer
 from utils import ffs, popcount
 
@@ -650,7 +650,8 @@ def main():
                            args.weight_filename, args.sample_filename,
                            args.ai85)
 
-    print(f'Computed MACs: Conv2D {compute.macs_2d}, FC {compute.macs_fc}')
+    print("SUMMARY OF OPS")
+    stats.print_summary()
 
 
 def signal_handler(_signal, _frame):
