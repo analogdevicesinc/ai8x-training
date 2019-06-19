@@ -104,6 +104,14 @@ def main():
         {'name': 'ai84net5',
          'module': 'ai84net',
          'min_input': 1,
+         'dim': 2},
+        {'name': 'ai84netsmall',
+         'module': 'ai84net',
+         'min_input': 1,
+         'dim': 2},
+        {'name': 'ai84netextrasmall',
+         'module': 'ai84net',
+         'min_input': 1,
          'dim': 2}
     ]
 
