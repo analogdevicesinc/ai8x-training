@@ -101,7 +101,7 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
     with open(os.path.join(base_directory, test_name, filename), mode='w') as memfile:
         apb = apbaccess.apbwriter(memfile, apb_base, block_mode, verify_writes, no_error_stop,
                                   weight_header=weight_header, sampledata_header=sampledata_header,
-                                  embedded_code=embedded_code)
+                                  embedded_code=embedded_code, ai85=ai85)
 
         apb.copyright_header()
 
@@ -508,6 +508,8 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                         (((proc % tc.P_NUMPRO) * tc.INSTANCE_SIZE |
                           (proc // tc.P_NUMPRO) * tc.C_GROUP_OFFS // 4) +
                          doffs) * 4
+                    if not ai85 and pool[ll] == 4:
+                        offs += (doffs // 4) * 8 + 8
 
                     # If using single layer, make sure we're not overwriting the input
                     if (not overwrite_ok) and in_map[offs >> 2] is not None:
@@ -541,7 +543,7 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                                              data=data, weight=fc_weights[0], bias=fc_bias[0],
                                              debug=debug)
 
-            apb.unload(processor_map[layers], input_size, 0)
+            apb.unload(processor_map[layers], input_size, out_offset[layers-1], pool[layers-1])
             apb.fc_layer(fc_weights[0], fc_bias[0])
             apb.fc_verify(out_buf)
 

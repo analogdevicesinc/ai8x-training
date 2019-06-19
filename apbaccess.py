@@ -27,7 +27,8 @@ class APB(object):
                  no_error_stop=False,
                  weight_header=None,
                  sampledata_header=None,
-                 embedded_code=False):
+                 embedded_code=False,
+                 ai85=False):
         """
         Create an APB class object that writes to memfile.
         """
@@ -38,6 +39,7 @@ class APB(object):
         self.weight_header = weight_header
         self.sampledata_header = sampledata_header
         self.embedded_code = embedded_code
+        self.ai85 = ai85
 
         self.data = 0
         self.num = 0
@@ -261,7 +263,7 @@ class APB(object):
         return
 
     def unload(self, processor_map, input_shape,  # pylint: disable=unused-argument
-               output_offset=0):  # pylint: disable=unused-argument
+               output_offset=0, pool=None):  # pylint: disable=unused-argument
         """
         Write the unload function. The layer to unload has the shape `input_shape`,
         and the optional `output_offset` argument can shift the output.
@@ -445,12 +447,13 @@ class APBTopLevel(APB):
         """
         toplevel.fc_verify(self.memfile, self.sampledata_header, data)
 
-    def unload(self, processor_map, input_shape, output_offset=0):
+    def unload(self, processor_map, input_shape, output_offset=0, pool=None):
         """
         Write the unload function. The layer to unload has the shape `input_shape`,
         and the optional `output_offset` argument can shift the output.
         """
-        unload.unload(self.memfile, self.apb_base, processor_map, input_shape, output_offset)
+        unload.unload(self.memfile, self.apb_base, processor_map, input_shape, output_offset,
+                      pool=pool, ai84=not self.ai85)
 
     def output_define(self, array, define_name, fmt, columns, weights=True):
         """
@@ -471,7 +474,8 @@ def apbwriter(memfile,
               no_error_stop=False,
               weight_header=None,
               sampledata_header=None,
-              embedded_code=False):
+              embedded_code=False,
+              ai85=False):
     """
     Depending on `block_level`, return a block level .mem file writer or a top level .c file
     writer to the file `memfile` with APB base address `apb_base`.
@@ -486,4 +490,5 @@ def apbwriter(memfile,
                     no_error_stop=no_error_stop,
                     weight_header=weight_header,
                     sampledata_header=sampledata_header,
-                    embedded_code=embedded_code)
+                    embedded_code=embedded_code,
+                    ai85=ai85)
