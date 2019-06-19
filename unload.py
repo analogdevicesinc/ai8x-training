@@ -12,7 +12,7 @@ import tornadocnn as tc
 from utils import ffs, popcount
 
 
-def unload(memfile, apb_base, processor_map, input_shape, out_offset):
+def unload(memfile, apb_base, processor_map, input_shape, out_offset, pool=None, ai84=True):
     """
     Unload HWC memory from AI84, writing C code to the `memfile` handle.
     The generated C code is specific to the network configuration passed in in `processor_map`,
@@ -42,6 +42,8 @@ def unload(memfile, apb_base, processor_map, input_shape, out_offset):
                 (((proc % tc.P_NUMPRO) * tc.INSTANCE_SIZE |
                   (proc // tc.P_NUMPRO) * tc.C_GROUP_OFFS // 4) +
                  doffs) * 4
+            if ai84 and pool == 4:
+                offs += (doffs // 4) * 8 + 8
 
             if offs != read_addr:
                 memfile.write(f'  addr = (uint32_t *) 0x{apb_base + tc.C_SRAM_BASE + offs:08x};\n')

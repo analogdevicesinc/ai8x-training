@@ -177,6 +177,9 @@ The AI84 hardware does not support arbitrary network parameters. For example,
   quantization step at the output of the average pooling, it may not perform as intended
   (for example, a 2x2 AvgPool of `[[0, 0], [0, 3]]` will return `0`).
 * Pooling window sizes must be even numbers, and have equal H and W dimensions.
+* Pooling other than 2x2 is only supported in the last convolutional layer via a workaround
+  in the unload function. AI84 generates additional output data for 4x4 pooling, and thus layers
+  cannot be chained.
 * The `Conv2D` stride is fixed to 1. However, the pooling stride can be 1, 2, or 4.
 * The number of input or output channels must not exceed 64.
 * The number of layers must not exceed 32.
