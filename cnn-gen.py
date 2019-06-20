@@ -474,10 +474,15 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
         else:
             if ll == layers-1:
                 filename = c_filename + '.c'  # Final output
-            else:  # FIXME: Make this None and don't rely on /dev/null
-                filename = '/dev/null'  # Intermediate output - used for layer overwrite check
+            else:
+                filename = None  # Intermediate output - used for layer overwrite check
             filemode = 'a'
-        with open(os.path.join(base_directory, test_name, filename), mode=filemode) as memfile:
+
+        try:
+            if filename:
+                memfile = open(os.path.join(base_directory, test_name, filename), mode=filemode)
+            else:
+                memfile = None
             apb.set_memfile(memfile)
 
             apb.output(f'// {test_name}\n// Expected output of layer {ll+1}\n')
@@ -527,6 +532,9 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                     coffs += 4
 
             apb.verify_footer()
+        finally:
+            if memfile:
+                memfile.close()
 
         input_size = [out_size[0], out_size[1], out_size[2]]
         data = out_buf.reshape(input_size[0], input_size[1], input_size[2])
