@@ -105,7 +105,7 @@ def cnn_layer(layer, verbose,
     stats.macc += pooled_size[0] * kernel_size[0] * kernel_size[1] * out_size[0] \
         * out_size[1] * out_size[2]
 
-    out_buf = np.floor(0.5 + out_buf / (2**(quantization-1))).astype(np.int64). \
+    out_buf = np.floor(0.5 + out_buf / (16*quantization)).astype(np.int64). \
         clip(-(2**(bits-1)), 2**(bits-1)-1)
 
     if verbose:
