@@ -18,8 +18,8 @@
 
 /* ----------------------------------------------------------------------
  * Project:      CMSIS NN Library
- * Title:        arm_fully_connected_q7_s8p7_opt.c
- * Description:  Q7 basic fully-connected layer function with S8.7 output
+ * Title:        arm_fully_connected_q7_q8p7_opt.c
+ * Description:  Q7 basic fully-connected layer function with Q8.7 output
  *
  * $Date:        17. January 2018
  * $Revision:    V.1.0.0
@@ -41,7 +41,7 @@
  */
 
   /**
-   * @brief Q7 opt fully-connected layer function with s8p7 fixed-point output
+   * @brief Q7 opt fully-connected layer function with Q8.7 fixed-point output
    * @param[in]       pV          pointer to input vector
    * @param[in]       pM          pointer to matrix weights
    * @param[in]       dim_vec     length of the vector
@@ -126,7 +126,7 @@
    */
 
 arm_status
-arm_fully_connected_q7_s8p7_opt(const q7_t * pV,
+arm_fully_connected_q7_q8p7_opt(const q7_t * pV,
                            const q7_t * pM,
                            const uint16_t dim_vec,
                            const uint16_t num_of_rows,

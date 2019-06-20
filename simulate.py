@@ -19,9 +19,10 @@ def cnn_layer(layer, verbose,
               input_size, kernel_size, quantization,
               output_channels, padding, dilation, stride,
               pool, pool_stride, pool_average, do_activation,
-              kernel, bias, data, bits=8, ai85=False, debug=False):
+              kernel, bias, data, bits=8,
+              ai85=False, debug=False):  # pylint: disable=unused-argument
     """
-    Perform pooling and convolution for one layer
+    Perform pooling and convolution for one layer.
     """
     if verbose:
         print(f"LAYER {layer}...\n")

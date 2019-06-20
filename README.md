@@ -178,7 +178,7 @@ The AI84 hardware does not support arbitrary network parameters. For example,
   (for example, a 2x2 AvgPool of `[[0, 0], [0, 3]]` will return `0`).
 * Pooling window sizes must be even numbers, and have equal H and W dimensions.
 * Pooling other than 2x2 is only supported in the last convolutional layer via a workaround
-  in the unload function. AI84 generates additional output data for 4x4 pooling, and thus layers
+  in the unload function. AI84 generates additional output data when pooling 4x4, and thus layers
   cannot be chained.
 * The `Conv2D` stride is fixed to 1. However, the pooling stride can be 1, 2, or 4.
 * The number of input or output channels must not exceed 64.
@@ -313,11 +313,10 @@ and https://github.com/ARM-software/CMSIS_5 for the source code.
 The results of the generated code have been verified to match AI84 exactly and may be used to
 demonstrate the efficacy of the custom CNN accelerator.
 
-The `Device/` folder contains a sample Makefile, an edited `arm_math.h` header file (which allows
-code execution on a host instead of a microcontroller), and a custom fully connected layer in the
-file `arm_fully_connected_q7_s8p7_opt.c` that returns s8.7 fixed-point outputs, and a custom
-`arm_softmax_s8p7_q15.c` which is aware of the fixed-point input (both of these files are also used for
-the software classification layer on AI84/AI85).
+The `Device/` folder contains a sample Makefile, and a custom fully connected layer in the
+file `arm_fully_connected_q7_q8p7_opt.c` that returns Q8.7 fixed-point outputs, and a custom
+`arm_softmax_q8p7_q15.c` which is aware of the fixed-point input (both of these files are also used
+for the software classification layer on AI84/AI85).
 Additionally, a `tornadocnn.h` header file is included which helps for both embedded examples as
 well as CMSIS NN code.
 

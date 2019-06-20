@@ -39,10 +39,11 @@ SUMMARY_CHOICES = ['sparsity', 'compute', 'model', 'modules', 'png', 'png_w_para
 
 def get_parser(model_names, dataset_names):
     parser = argparse.ArgumentParser(description='Image classification model')
-    parser.add_argument('--ai84', action='store_true', default=False,
-                        help='AI84 mode')
+    parser.add_argument('--ai84', '--ai85', '--ai86', '--ai8x', action='store_true', default=False,
+                        help='AI84/AI85/AI86 mode (not currently very useful)')
     parser.add_argument('--8-bit-mode', '-8', dest='act_mode_8bit', action='store_true',
-                        default=False, help='simluate device operation (8-bit quantization)')
+                        default=False,
+                        help='simluate device operation (8-bit data)')
     parser.add_argument('--arch', '-a', '--model', metavar='ARCH', required=True,
                         type=lambda s: s.lower(), dest='cnn',
                         choices=model_names,
