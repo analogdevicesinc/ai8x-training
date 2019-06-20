@@ -102,6 +102,10 @@ To install Nervana's distiller:
     (ai84) $ cp requirements.txt.distiller distiller/requirements.txt
     (ai84) $ pip3 install -e distiller
 
+On macOS, comment out the following line in `distiller/apputils/execution_env.py`:
+
+    # logger.debug("Number of CPUs: %d", len(os.sched_getaffinity(0)))
+
 (macOS) Add to ~/.matplotlib/matplotrc:
 
     backend: TkAgg
@@ -143,6 +147,7 @@ To evaluate the quantized network:
 ### Alternative Quantization Approaches
 
 Post-training quantization can be improved using more sophosticated methods. For example, see
+https://github.com/pytorch/glow/blob/master/docs/Quantization.md,
 https://github.com/ARM-software/ML-examples/tree/master/cmsisnn-cifar10,
 https://github.com/ARM-software/ML-KWS-for-MCU/blob/master/Deployment/Quant_guide.md,
 or Distiller's approach (installed with this software).
@@ -151,11 +156,14 @@ Further, a quantized network can be refined using post-quantization training (se
 
 The software also includes an `AI84RangeLinear` training quantizer that plugs into the Distiller
 frameworkf for quantization aware training. However, it needs work as its performance is not
-good enough yet.
+good enough yet and the distiller source needs to be patched to enable it (add 
+`from range_linear_ai84 import QuantAwareTrainRangeLinearQuantizerAI84` to `distiller/config.py`
+and remove `False and` from `if False and args.ai84` in `train.py`).
 
 Note that AI84 does not have a configurable per-layer output shift. The addition of this
 shift value will allow easier quantization on AI85, since fractional bits can be used if weights
-do not span the full 8-bit range.
+do not span the full 8-bit range (most read-made quantization approaches require a weight scale
+or output shift).
 
 In all cases, ensure that the quantizer writes out a checkpoint file that the AI84 Network Loader
 can read.

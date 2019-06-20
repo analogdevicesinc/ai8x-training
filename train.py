@@ -88,7 +88,7 @@ from distiller.data_loggers.collector import SummaryActivationStatsCollector, \
 from distiller.quantization.range_linear import PostTrainLinearQuantizer
 from distiller.data_loggers.logger import TensorBoardLogger, PythonLogger
 import examples.automated_deep_compression as adc
-from range_linear_ai84 import PostTrainLinearQuantizerAI84
+# from range_linear_ai84 import PostTrainLinearQuantizerAI84
 
 
 # Logger handle
@@ -775,7 +775,7 @@ def evaluate_model(model, criterion, test_loader, loggers, activations_collector
 
     if args.quantize_eval:
         model.cpu()
-        if args.ai84:
+        if False and args.ai84:
             quantizer = PostTrainLinearQuantizerAI84.from_args(model, args)
         else:
             quantizer = PostTrainLinearQuantizer.from_args(model, args)
