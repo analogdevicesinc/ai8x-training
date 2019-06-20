@@ -406,12 +406,16 @@ class APBTopLevel(APB):
         """
         Write the header for the CNN verification function.
         """
+        if self.memfile is None:
+            return
         toplevel.verify_header(self.memfile)
 
     def verify_footer(self):
         """
         Write the footer for the CNN verification function.
         """
+        if self.memfile is None:
+            return
         toplevel.verify_footer(self.memfile)
 
     def load_header(self):
