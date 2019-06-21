@@ -177,17 +177,19 @@ The AI84 hardware does not support arbitrary network parameters. For example,
 * `Conv2D` padding can be 0, 1, or 2.
 * The only supported activation function is `ReLU`.
 * Pooling is always combined with a convolution. Both `MaxPool2D` and `AvgPool2D` are available.
-* Pooling does not support padding. Pooling must cleanly divide the input data width and height.
-  For example, a 2x2 pool on 17x17 data is not supported.
+* Pooling does not support padding.
+* On AI84, three pooling sizes are supported:
+  - 2x2 with stride 1
+  - 2x2 with stride 2
+  - and, in the last layer, using a custom unload function, 4x4 stride 4.
+* Pooling must cleanly divide the input data width and height. For example, a 2x2 pool on
+  17x17 data is not supported.
 * Average pooling does not support more than 2048 bits in the accumulator. This translates to
   a 4x4 pooling window if activation was used on the prior layer, 3x3 otherwise. Additionally,
   average pooling is currently implemented as a `floor()` operation. Since there is also a
   quantization step at the output of the average pooling, it may not perform as intended
   (for example, a 2x2 AvgPool of `[[0, 0], [0, 3]]` will return `0`).
 * Pooling window sizes must be even numbers, and have equal H and W dimensions.
-* Pooling other than 2x2 is only supported in the last convolutional layer via a workaround
-  in the unload function. AI84 generates additional output data when pooling 4x4, and thus layers
-  cannot be chained.
 * The `Conv2D` stride is fixed to 1. However, the pooling stride can be 1, 2, or 4.
 * The number of input or output channels must not exceed 64.
 * The number of layers must not exceed 32.
@@ -297,17 +299,23 @@ Adding new datasets to the AI84 Network Loader is implemented by
    `SUPPORTED_DATASETS` in `yamlcfg.py`).
 
 
-## AI85
+## AI85/AI86
 
 The `ai84ize.py` quantization tool and the `cnn-gen.py` network generator both have an 
-`--ai85` command line argument that enables code generation for the AI85.
+`--ai85` command line argument that enables code generation for the AI85 and AI86.
 
 The `--ai85` option enables:
-* Bias shift << 7.
-* Per-layer support for 1, 2 and 4-bit weight sizes in addition to 8-bit weights.
-* A scale factor on the output of Conv2D that allows for better use of the entire range of weight
-  bits.
-* Support for more memory.
+* Bias shift << 7 (done).
+* Per-layer support for 1, 2 and 4-bit weight sizes in addition to 8-bit weights (this is
+  supported using the `quantization` keyword in the configuration file, and the configuration
+  file can also be read by the quantization tool) (done).
+* A scale factor on the output of `Conv2D` that allows for better use of the entire range of
+  weight bits (done).
+* Support for many more pooling sizes, and strides, and larger limits for `AvgPool2D`
+  (in progress).
+* 1D convolutions (in progress).
+* 1x1 kernels (in progress).
+* Support for more weight memory, and more channels (in progress).
 
 
 ## CMSIS5 NN Emulation

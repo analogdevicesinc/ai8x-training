@@ -514,7 +514,7 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                         (((proc % tc.P_NUMPRO) * tc.INSTANCE_SIZE |
                           (proc // tc.P_NUMPRO) * tc.C_GROUP_OFFS // 4) +
                          doffs) * 4
-                    if not ai85 and pool[ll] == 4:
+                    if not ai85 and pool[ll] == 4 and pool_stride[ll] == 4:
                         offs += (doffs // 4) * 8 + 8
 
                     # If using single layer, make sure we're not overwriting the input
@@ -552,7 +552,8 @@ def create_net(prefix, verbose, debug, debug_computation, no_error_stop, overwri
                                              data=data, weight=fc_weights[0], bias=fc_bias[0],
                                              debug=debug)
 
-            apb.unload(processor_map[layers], input_size, out_offset[layers-1], pool[layers-1])
+            apb.unload(processor_map[layers], input_size, out_offset[layers-1], pool[layers-1],
+                       pool_stride[layers-1])
             apb.fc_layer(fc_weights[0], fc_bias[0])
             apb.fc_verify(out_buf)
 
