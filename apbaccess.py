@@ -263,7 +263,7 @@ class APB(object):
         return
 
     def unload(self, processor_map, input_shape,  # pylint: disable=unused-argument
-               output_offset=0, pool=None):  # pylint: disable=unused-argument
+               output_offset=0, pool=None, pool_stride=1):  # pylint: disable=unused-argument
         """
         Write the unload function. The layer to unload has the shape `input_shape`,
         and the optional `output_offset` argument can shift the output.
@@ -451,13 +451,13 @@ class APBTopLevel(APB):
         """
         toplevel.fc_verify(self.memfile, self.sampledata_header, data)
 
-    def unload(self, processor_map, input_shape, output_offset=0, pool=None):
+    def unload(self, processor_map, input_shape, output_offset=0, pool=None, pool_stride=1):
         """
         Write the unload function. The layer to unload has the shape `input_shape`,
         and the optional `output_offset` argument can shift the output.
         """
         unload.unload(self.memfile, self.apb_base, processor_map, input_shape, output_offset,
-                      pool=pool, ai84=not self.ai85)
+                      pool=pool, pool_stride=pool_stride, ai84=not self.ai85)
 
     def output_define(self, array, define_name, fmt, columns, weights=True):
         """
