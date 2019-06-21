@@ -584,20 +584,32 @@ def main():
 
     # Load configuration file
     cfg, params = yamlcfg.parse(args.config_file)
-    quantization = params['quantization']
 
     # Load weights and biases. This also configures the network's output channels.
     layers, weights, bias, fc_weights, fc_bias, output_channels = \
-        checkpoint.load(args.checkpoint_file, cfg['arch'], args.fc_layer, quantization)
+        checkpoint.load(args.checkpoint_file, cfg['arch'], args.fc_layer, params['quantization'])
 
     if layers != len(cfg['layers']):
         print(f"Number of layers in the YAML configuration file ({len(cfg['layers'])}) "
               f"does not match the checkpoint file ({layers}).")
         sys.exit(1)
 
-    if not args.ai85 and any(q != 8 for q in quantization):
-        print('All quantization configuration values must be 8 for AI84.')
+    if any(p < 0 or p > 4*tc.MEM_SIZE for p in params['output_offset']):
+        print('Unsupported value for `out_offset` in YAML configuration.')
         sys.exit(1)
+
+    if not args.ai85:
+        if any(q != 8 for q in params['quantization']):
+            print('All quantization configuration values must be 8 for AI84.')
+            sys.exit(1)
+
+        if any(p & 1 != 0 or p < 0 or p > 4 for p in params['pool']):
+            print('Unsupported value for `max_pool`/`avg_pool` for AI84 in YAML configuration.')
+            sys.exit(1)
+
+        if any(p == 3 or p < 0 or p > 4 for p in params['pool_stride']):
+            print('Unsupported value for `pool_stride` in YAML configuration.')
+            sys.exit(1)
 
     if args.stop_after is not None:
         layers = args.stop_after + 1
@@ -625,7 +637,10 @@ def main():
     output_channels = output_channels[:layers+1]
     output_offset = params['output_offset'][:layers]
     kernel_size = params['kernel_size'][:layers]
-    quantization = quantization[:layers]
+    quantization = params['quantization'][:layers]
+    pool = params['pool'][:layers]
+    pool_stride = params['pool_stride'][:layers]
+    padding = params['padding'][:layers]
 
     # Derived configuration options
     activate = [bool(x) for x in params['relu']]
@@ -640,9 +655,9 @@ def main():
                         args.debug, args.debug_computation, args.no_error_stop,
                         args.overwrite_ok, args.log, args.apb_base, layers, processor_map,
                         input_size, kernel_size, quantization,
-                        output_channels, params['padding'],
+                        output_channels, padding,
                         params['dilation'], params['stride'],
-                        params['pool'], params['pool_stride'], pool_average, activate,
+                        pool, pool_stride, pool_average, activate,
                         data, weights, bias, params['big_data'], output_map, fc_weights, fc_bias,
                         args.input_split, args.input_offset, output_offset,
                         args.input_filename, args.output_filename, args.c_filename,
@@ -655,9 +670,9 @@ def main():
     else:
         cmsisnn.create_net(args.prefix, args.verbose, args.debug, args.log,
                            layers, input_size, kernel_size, quantization,
-                           output_channels, params['padding'],
+                           output_channels, padding,
                            params['dilation'], params['stride'],
-                           params['pool'], params['pool_stride'], pool_average, activate,
+                           pool, pool_stride, pool_average, activate,
                            data, weights, bias, fc_weights, fc_bias,
                            args.c_filename,
                            args.test_dir, args.log_filename,

@@ -10,7 +10,6 @@ YAML Configuration Routines
 """
 import sys
 import yaml
-import tornadocnn as tc
 
 
 SUPPORTED_DATASETS = ['mnist', 'fashionmnist', 'cifar-10']
@@ -108,15 +107,6 @@ def parse(config_file):
 
     if any(p < 0 or p > 2 for p in padding):
         print('Unsupported value for `pad` in YAML configuration.')
-        sys.exit(1)
-    if any(p & 1 != 0 or p < 0 or p > 4 for p in pool):
-        print('Unsupported value for `max_pool`/`avg_pool` in YAML configuration.')
-        sys.exit(1)
-    if any(p == 3 or p < 0 or p > 4 for p in pool_stride):
-        print('Unsupported value for `pool_stride` in YAML configuration.')
-        sys.exit(1)
-    if any(p < 0 or p > 4*tc.MEM_SIZE for p in output_offset):
-        print('Unsupported value for `out_offset` in YAML configuration.')
         sys.exit(1)
 
     settings = {}
