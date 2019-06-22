@@ -7,7 +7,7 @@
 # Written by RM
 ###################################################################################################
 """
-Test flatten() software operator
+Test unload() / flatten() software operator
 """
 import numpy as np
 import tornadocnn as tc
@@ -105,9 +105,9 @@ def unload(apb_base, processor_map, input_shape,
     print('}')
 
 
-def main():
+def test_unload():
     """
-    main() - when invoked from command line
+    test case for unload()
     """
     np.set_printoptions(threshold=np.inf, linewidth=80,
                         formatter={'int': lambda x: f'{x:02x}'})
@@ -227,6 +227,8 @@ def main():
     print('\n// unload(flatten=True):')
     print("// SUCCESS" if np.array_equal(flattened, computed) else "// *** FAILURE ***")
 
+    assert np.array_equal(expected.flatten(), computed)
+
     computed = np.empty_like(expected)
     unload(tc.APB_BASE, processor_map, input_shape,
            computed, out_offset, mem_image)
@@ -234,6 +236,8 @@ def main():
     print('\n// unload():')
     print("// SUCCESS" if np.array_equal(expected, computed) else "// *** FAILURE ***")
 
+    assert np.array_equal(expected, computed)
+
 
 if __name__ == '__main__':
-    main()
+    test_unload()
