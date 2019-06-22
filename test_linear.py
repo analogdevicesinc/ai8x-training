@@ -13,7 +13,7 @@ import numpy as np
 import compute
 
 
-def main():
+def test_linear():
     """Main program to test compute.linear."""
     weight = np.array(
         [[-16, 26, 35, -6, -40, -31, -27, -54, -51, -84, -69, -65,
@@ -244,6 +244,8 @@ def main():
     print('Expected:', compare)
     print("SUCCESS" if np.array_equal(output, compare) else "*** FAILURE ***")
 
+    assert np.array_equal(output, compare)
+
 
 if __name__ == '__main__':
-    main()
+    test_linear()

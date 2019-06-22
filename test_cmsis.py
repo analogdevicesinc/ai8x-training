@@ -10,13 +10,14 @@
 Test the CMSIS NN network generator.
 """
 import numpy as np
+import pytest
+
 import cmsisnn
 
 
-def main():
+@pytest.mark.parametrize('test_no', [0, 1, 2, 3, 4])
+def test_cmsis(test_no):
     """Main program to test cmsisnn.create_net."""
-
-    test_no = 0
 
     weight = []
     bias = []
@@ -134,4 +135,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    for i in range(5):
+        test_cmsis(i)
