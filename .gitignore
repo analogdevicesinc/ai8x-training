@@ -12,7 +12,6 @@
 /build
 /checkpoint
 /data
-/demos
 /distiller
 /etc
 /go
@@ -34,5 +33,3 @@
 /vision
 /weights_sparsity.csv
 __pycache__
-/tests
-/tests.old

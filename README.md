@@ -1,9 +1,17 @@
 # AI84 Model Training and Quantization
 # AI84 Network Loader and RTL Simulation Generator
 
+_6/24/2019_
+
 This software consists of two related projects:
 1. AI84 Model Training and Quantization
 2. AI84 Network Loader and RTL Simulation Generator
+
+Including the SDK from SVN, the expected file system layout is:
+
+    ..../ai8x-training/
+    ..../ai8x-synthesis/
+    ..../AI84SDK/
 
 ## Installation
 
@@ -44,27 +52,27 @@ Next, install Python 3.6.5:
 
 Then,
 
-    $ mkdir ai84
-    $ cd ai84
+    $ mkdir ai8x-training
+    $ cd ai8x-training
     $ pyenv local 3.6.5
     $ python3 -m venv .
     $ source bin/activate
-    (ai84) $ pip3 install -U pip setuptools
-    (ai84) $ pip3 install numpy
-    (ai84) $ pip3 install pyyaml tabulate future six typing
-    (ai84) $ pip3 install scipy
+    (ai8x-training) $ pip3 install -U pip setuptools
+    (ai8x-training) $ pip3 install numpy
+    (ai8x-training) $ pip3 install pyyaml tabulate future six typing
+    (ai8x-training) $ pip3 install scipy
 
 For macOS:
     
-    (ai84) $ pip3 install torch
+    (ai8x-training) $ pip3 install torch
 
 For CUDA 10 on Linux (see https://pytorch.org/get-started/locally/):
 
-    (ai84) $ pip3 install https://download.pytorch.org/whl/cu100/torch-1.1.0-cp36-cp36m-linux_x86_64.whl
+    (ai8x-training) $ pip3 install https://download.pytorch.org/whl/cu100/torch-1.1.0-cp36-cp36m-linux_x86_64.whl
 
 On all systems, install Tensorflow:
 
-    (ai84) $ pip3 install tensorflow
+    (ai8x-training) $ pip3 install tensorflow
 
 *NOTE*: On x86 systems, the pre-built Tensorflow wheels require AVX (`sysctl -n machdep.cpu.features`
 to find out). Running an unsupported Tensorflow wheel that requires AVX instructions results
@@ -81,26 +89,26 @@ Once Bazel is installed, compile and install Tensorflow. On Jetson TX1, disable 
 https://github.com/peterlee0127/tensorflow-nvJetson/blob/master/patch/tensorflow1.12.patch
 The removal of "-mfpu=neon" does not seem to be necessary.
 
-    (ai84) $ pip3 install keras_preprocessing
-    (ai84) $ git clone https://github.com/tensorflow/tensorflow 
-    (ai84) $ cd tensorflow
-    (ai84) $ git checkout tags/v1.13.1
-    (ai84) $ ./configure
-    (ai84) $ bazel build --config=opt //tensorflow/tools/pip_package:build_pip_package
-    (ai84) $ bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg
-    (ai84) $ pip3 install /tmp/tensorflow_pkg/tensorflow-1.13.1-cp36-cp36m-macosx_10_13_x86_64.whl 
+    (ai8x-training) $ pip3 install keras_preprocessing
+    (ai8x-training) $ git clone https://github.com/tensorflow/tensorflow 
+    (ai8x-training) $ cd tensorflow
+    (ai8x-training) $ git checkout tags/v1.13.1
+    (ai8x-training) $ ./configure
+    (ai8x-training) $ bazel build --config=opt //tensorflow/tools/pip_package:build_pip_package
+    (ai8x-training) $ bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg
+    (ai8x-training) $ pip3 install /tmp/tensorflow_pkg/tensorflow-1.13.1-cp36-cp36m-macosx_10_13_x86_64.whl 
 
 To install torchvision (the wheels are frequently outdated):
 
-    (ai84) $ git clone https://github.com/pytorch/vision.git
-    (ai84) $ cd vision ; git checkout tags/v0.3.0 ; cd ..
-    (ai84) $ pip3 install -e vision
+    (ai8x-training) $ git clone https://github.com/pytorch/vision.git
+    (ai8x-training) $ cd vision ; git checkout tags/v0.3.0 ; cd ..
+    (ai8x-training) $ pip3 install -e vision
 
 To install Nervana's distiller:
 
-    (ai84) $ git clone https://github.com/NervanaSystems/distiller.git
-    (ai84) $ cp requirements.txt.distiller distiller/requirements.txt
-    (ai84) $ pip3 install -e distiller
+    (ai8x-training) $ git clone https://github.com/NervanaSystems/distiller.git
+    (ai8x-training) $ cp requirements.txt.distiller distiller/requirements.txt
+    (ai8x-training) $ pip3 install -e distiller
 
 On macOS, comment out the following line in `distiller/apputils/execution_env.py`:
 
@@ -110,16 +118,24 @@ On macOS, comment out the following line in `distiller/apputils/execution_env.py
 
     backend: TkAgg
 
+Instead of repeating these steps for `ai8x-synthesis`, it is easier to copy the installation:
+
+    cd ROOT_OF_SOURCE
+    mkdir ai8x-synthesis
+    rsync -Hax ../ai8x-training/ .
+    python3 -m venv .
+    source bin/activate
+
 
 ## Usage: AI84 Model Training and Quantization
 
 The `ai84net.py` file contains models that fit into AI84's weight memory. These models rely on
 the AI84 hardware operators that are defined in `ai84.py`.
 
-To train the FP32 model for FashionMIST, run `go_fashionmnist.sh`. This script will place
-checkpoint files into the log directory. Training makes use of the Distiller framework, but
-the `train.py` software has been modified slightly to improve it and add some AI84 specific
-modifications.
+To train the FP32 model for FashionMIST, run `go_fashionmnist.sh` in the `ai8x-training` project.
+This script will place checkpoint files into the log directory. Training makes use of the Distiller
+framework, but the `train.py` software has been modified slightly to improve it and add some AI84
+specific modifications.
 
 ### Quantization
 
@@ -136,13 +152,15 @@ out a new PyTorch checkpoint file that can then be used to evaluate the quality 
 quantized network, using the same PyTorch framework used for training.
 The same new checkpoint file will also be used to feed the AI84 Network Loader.
 
+Copy the weight files into the `trained/` folder of the `ai8x-synthesis` project.
+
 Example:
 
-    ./ai84ize.py logs/path-to-checkpoint/checkpoint.pth.tar trained/ai84-fashionmnist.pth.tar -v
+    (ai8x-synthesis) ./ai84ize.py logs/path-to-checkpoint/checkpoint.pth.tar trained/ai84-fashionmnist.pth.tar -v
 
 To evaluate the quantized network:
 
-    ./evaluate_fashionmnist.sh
+    (ai8x-synthesis) ./evaluate_fashionmnist.sh
 
 ### Alternative Quantization Approaches
 
@@ -298,6 +316,30 @@ Adding new datasets to the AI84 Network Loader is implemented by
 2. Providing a sample input, and the expected output (modify `sampledata.py` as well as the
    `SUPPORTED_DATASETS` in `yamlcfg.py`).
 
+### AI84 SDK
+
+Check out the AI84 SDK from SVN, https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/Firmware/trunk/.
+Additionally, the Arm embedded compiler is required, it is available from https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads.
+
+In order for the debugger to work, the Op2nOCD `max32xxx` branch from
+https://github.com/MaximIntegratedMicros/openocd.git must be installed, and an ai84.cfg file must
+be installed in `/usr/local/share/openocd/scripts/target/` (or 
+`C:\Maxim\Toolchain\share\openocd\scripts\target\` on Windows). A copy of the file is contained in
+the `hardware` folder of the `ai8x-synthesis` project.
+
+Windows binaries for OpenOCD can be installed via https://www.maximintegrated.com/en/design/software-description.html/swpart=SFW0001500A.
+
+To compile and install this OpenOCD version on macOS, use:
+
+    git clone https://github.com/MaximIntegratedMicros/openocd.git
+    cd openocd
+    git checkout max32xxx
+    MAKEINFO=true LIBTOOL=/usr/local/bin/glibtool ./configure --disable-dependency-tracking --enable-dummy --enable-buspirate --enable-jtag_vpi --enable-remote-bitbang --enable-legacy-ft2232_libftdi
+    make
+    make install
+
+Additional SDK instructions can be found in a separate document,
+https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/docs/trunk/AI84%20Test%20Board%20Setup%20Instructions.docx.
 
 ## AI85/AI86
 
@@ -340,7 +382,7 @@ For example, the following command would generate code that performs a CIFAR-10 
 `trained/ai84-cifar10.pth.tar` checkpoint file and the `cifar10-hwc.yaml` network description
 file:
 
-    ./cnn-gen.py --top-level cnn --test-dir demos --prefix CIFAR-10-Arm --checkpoint-file trained/ai84-cifar10.pth.tar --config-file cifar10-hwc.yaml --fc-layer --embedded-code --cmsis-software-nn
+    (ai8x-synthesis) ./cnn-gen.py --top-level cnn --test-dir demos --prefix CIFAR-10-Arm --checkpoint-file trained/ai84-cifar10.pth.tar --config-file cifar10-hwc.yaml --fc-layer --embedded-code --cmsis-software-nn
 
 
 -----------------------
