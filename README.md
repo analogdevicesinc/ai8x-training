@@ -46,7 +46,7 @@ Then, add to ~/.bash_profile or ~/.profile (as shown by the previous step):
     eval "$(pyenv init -)"
     eval "$(pyenv virtualenv-init -)"
 
-Next, install Python 3.6.5:
+Next, close the Terminal and install Python 3.6.5:
 
     $ pyenv install 3.6.5
 
@@ -110,7 +110,7 @@ To install Nervana's distiller:
     (ai8x-training) $ cp requirements.txt.distiller distiller/requirements.txt
     (ai8x-training) $ pip3 install -e distiller
 
-On macOS, comment out the following line in `distiller/apputils/execution_env.py`:
+On macOS, comment out the following line in `distiller/distiller/apputils/execution_env.py`:
 
     # logger.debug("Number of CPUs: %d", len(os.sched_getaffinity(0)))
 
@@ -118,13 +118,7 @@ On macOS, comment out the following line in `distiller/apputils/execution_env.py
 
     backend: TkAgg
 
-Instead of repeating these steps for `ai8x-synthesis`, it is easier to copy the installation:
-
-    cd ROOT_OF_SOURCE
-    mkdir ai8x-synthesis
-    rsync -Hax ../ai8x-training/ .
-    python3 -m venv .
-    source bin/activate
+Repeat these steps for `ai8x-synthesis`.
 
 
 ## Usage: AI84 Model Training and Quantization
@@ -318,10 +312,13 @@ Adding new datasets to the AI84 Network Loader is implemented by
 
 ### AI84 SDK
 
-Check out the AI84 SDK from SVN, https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/Firmware/trunk/.
+Check out the AI84 SDK from SVN, https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/.
+
+    svn co https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/ AI84SDK
+
 Additionally, the Arm embedded compiler is required, it is available from https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads.
 
-In order for the debugger to work, the Op2nOCD `max32xxx` branch from
+In order for the debugger to work, the OpenOCD `max32xxx` branch from
 https://github.com/MaximIntegratedMicros/openocd.git must be installed, and an ai84.cfg file must
 be installed in `/usr/local/share/openocd/scripts/target/` (or 
 `C:\Maxim\Toolchain\share\openocd\scripts\target\` on Windows). A copy of the file is contained in
