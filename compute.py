@@ -6,7 +6,7 @@
 # Written by RM
 ###################################################################################################
 """
-Pure Python implementation of conv2d. Allows debug of individual accumulations.
+Pure Python implementation of Conv1d, Conv2d, and Linear. Allows debug of individual accumulations.
 Compatible with PyTorch
 """
 import numpy as np
@@ -16,7 +16,7 @@ import stats
 def conv2d(data, weight, bias, input_size, out_channels, kernel_size, stride, pad,
            dilation, output, debug=False):
     """
-    Compute a convolution.
+    Compute a 2D convolution.
 
     SIMPLIFIED TO REMOVE GROUPS
 
@@ -24,7 +24,7 @@ def conv2d(data, weight, bias, input_size, out_channels, kernel_size, stride, pa
     """
     in_channels = input_size[0]
 
-    # Compute convolution
+    # Compute 2D convolution
     for k in range(out_channels):
         out_offs = 0
         for y in range(-pad[0],
@@ -57,6 +57,41 @@ def conv2d(data, weight, bias, input_size, out_channels, kernel_size, stride, pa
                         print(f'+bias {bias[k]} --> output[{k}][{out_offs}] = {val}')
                 output[k][out_offs] = val
                 out_offs += 1
+
+
+def conv1d(data, weight, bias, input_size, out_channels, kernel_size, stride, pad,
+           dilation, output, debug=False):
+    """
+    Compute a 1D convolution.
+
+    SIMPLIFIED TO REMOVE GROUPS
+
+    Note that all PyTorch numbers are ordered (C, L)
+    """
+    in_channels = input_size[0]
+
+    # Compute 1D convolution
+    for k in range(out_channels):
+        out_offs = 0
+        for x in range(-pad, input_size[1] - dilation * (kernel_size - 1) + pad, stride):
+            val = np.int64(0)
+            for c in range(in_channels):
+                for w in range(kernel_size):
+                    src_offs = x + w * dilation
+                    if src_offs >= 0 and src_offs < input_size[1]:
+                        val += weight[k][c][w] * data[c][src_offs]
+                        stats.true_macc += 1
+                        if debug:
+                            print(f'k={k}, c={c}, x={x}, src_offs={src_offs}, '
+                                  f'wt_offs={w}: weight*data={weight[k][c][w]}'
+                                  f'*{data[c][src_offs]} -> accumulator = {val}')
+
+            if bias is not None:
+                val += bias[k]
+                if debug:
+                    print(f'+bias {bias[k]} --> output[{k}][{out_offs}] = {val}')
+            output[k][out_offs] = val
+            out_offs += 1
 
 
 def linear(data, weight, bias, in_features, out_features, output, debug=False):
