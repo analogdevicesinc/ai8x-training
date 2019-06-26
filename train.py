@@ -68,7 +68,7 @@ from collections import OrderedDict
 from functools import partial
 from pydoc import locate
 import operator
-import parser
+import parsecmd
 import numpy as np
 import torch
 import torch.nn as nn
@@ -135,7 +135,7 @@ def main():
     model_names = [item['name'] for item in supported_models]
     dataset_names = [item['name'] for item in supported_sources]
     # Parse arguments
-    args = parser.get_parser(model_names, dataset_names).parse_args()
+    args = parsecmd.get_parser(model_names, dataset_names).parse_args()
     if args.epochs is None:
         args.epochs = 90
 
