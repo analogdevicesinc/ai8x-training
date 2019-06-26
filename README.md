@@ -25,8 +25,8 @@ Including the SDK from SVN, the expected file system layout will be:
 
 Change to the project root (denoted as `....` above).
 
-    git clone https://user.name@gerrit.maxim-ic.com:8443/ai8x-training
-    git clone https://user.name@gerrit.maxim-ic.com:8443/ai8x-synthesis
+    git clone https://first.last@gerrit.maxim-ic.com:8443/ai8x-training
+    git clone https://first.last@gerrit.maxim-ic.com:8443/ai8x-synthesis
  
 
 ### Prerequisites
@@ -64,9 +64,10 @@ Next, close the Terminal and install Python 3.6.5:
 
     $ pyenv install 3.6.5
 
-Then,
+#### Creating the Virtual Environment
 
-    $ mkdir ai8x-training
+To create the virtual environment and install basic wheels:
+
     $ cd ai8x-training
     $ pyenv local 3.6.5
     $ python3 -m venv .
@@ -76,7 +77,7 @@ Then,
     (ai8x-training) $ pip3 install pyyaml tabulate future six typing
     (ai8x-training) $ pip3 install scipy
 
-For macOS:
+For macOS and systems without CUDA:
     
     (ai8x-training) $ pip3 install torch
 
@@ -92,8 +93,11 @@ On all systems, install Tensorflow:
 to find out). Running an unsupported Tensorflow wheel that requires AVX instructions results
 in `Illegal instruction: 4` on startup.
 
+#### Building Tensorflow
+
 If the CPU does not support AVX, or to enable suport for AVX2, or CUDA, or AMD64, build
-Tensorflow locally. This requires Java 8 and Bazel, and takes over two hours.
+Tensorflow locally. This requires Java 8 and Bazel, and takes over two hours. _Building Tensorflow
+is not needed when the binary wheels are functioning properly._
 
 Building Tensorflow requires Bazel 0.21.0 (newer or much older versions do not work). See
 https://docs.bazel.build/versions/master/install-compile-source.html#build-bazel-using-bazel for
@@ -132,7 +136,9 @@ On macOS, comment out the following line in `distiller/distiller/apputils/execut
 
     backend: TkAgg
 
-Repeat these steps for `ai8x-synthesis`.
+#### Repeat for the Synthesis Project
+
+Repeat these steps for `ai8x-synthesis`, starting at _Creating the Virtual Environment_.
 
 
 ## Usage: AI84 Model Training and Quantization
