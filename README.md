@@ -1,19 +1,33 @@
 # AI84 Model Training and Quantization
 # AI84 Network Loader and RTL Simulation Generator
 
-_6/24/2019_
+_6/26/2019_
+
+_Open this file in a markdown enabled viewer, for example Visual Studio Code
+(https://code.visualstudio.com)._
 
 This software consists of two related projects:
 1. AI84 Model Training and Quantization
 2. AI84 Network Loader and RTL Simulation Generator
 
-Including the SDK from SVN, the expected file system layout is:
+The followong graphic shows an overview of the development flow:
+![Development Flow](docs/DevelopmentFlow.png)
+
+Including the SDK from SVN, the expected file system layout will be:
 
     ..../ai8x-training/
     ..../ai8x-synthesis/
     ..../AI84SDK/
 
 ## Installation
+
+### Upstream Code
+
+Change to the project root (denoted as `....` above).
+
+    git clone https://user.name@gerrit.maxim-ic.com:8443/ai8x-training
+    git clone https://user.name@gerrit.maxim-ic.com:8443/ai8x-synthesis
+ 
 
 ### Prerequisites
 
@@ -381,5 +395,10 @@ file:
 
     (ai8x-synthesis) ./cnn-gen.py --top-level cnn --test-dir demos --prefix CIFAR-10-Arm --checkpoint-file trained/ai84-cifar10.pth.tar --config-file cifar10-hwc.yaml --fc-layer --embedded-code --cmsis-software-nn
 
+## Contributing Code
+
+Both projects are set up for flake8, pylint, and mypy. The line width is related to 100 (instead
+of the default of 80), and the number of lineas per module was increased.
+Code should not generate any warnings in any of the tools.
 
 -----------------------
