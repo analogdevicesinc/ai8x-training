@@ -1,7 +1,7 @@
 # AI84 Model Training and Quantization
 # AI84 Network Loader and RTL Simulation Generator
 
-_6/26/2019_
+_6/27/2019_
 
 _Open this file in a markdown enabled viewer, for example Visual Studio Code
 (https://code.visualstudio.com)._
@@ -19,6 +19,16 @@ Including the SDK from SVN, the expected file system layout will be:
     ..../ai8x-synthesis/
     ..../AI84SDK/
 
+## Recommended Software
+
+The following software is optional, and can be replaced with other similar software of the 
+user's choosing.
+
+1. Visual Studio Code (Editor, Free), https://code.visualstudio.com
+2. CoolTerm (Serial Terminal, Free), http://freeware.the-meiers.org
+3. Git Fork (Graphical Git Client, Free), https://git-fork.com
+4. Beyond Compare (Diff and Merge Tool, $60), https://scootersoftware.com
+
 ## Installation
 
 ### Upstream Code
@@ -27,7 +37,6 @@ Change to the project root (denoted as `....` above).
 
     git clone https://first.last@gerrit.maxim-ic.com:8443/ai8x-training
     git clone https://first.last@gerrit.maxim-ic.com:8443/ai8x-synthesis
- 
 
 ### Prerequisites
 
@@ -406,5 +415,9 @@ file:
 Both projects are set up for flake8, pylint, and mypy. The line width is related to 100 (instead
 of the default of 80), and the number of lineas per module was increased.
 Code should not generate any warnings in any of the tools.
+
+flake8, pylint and mypy need to be installed into the virtual environment:
+
+    pip3 install flake8 pylint mypy
 
 -----------------------
