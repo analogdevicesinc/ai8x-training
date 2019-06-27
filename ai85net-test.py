@@ -73,3 +73,9 @@ def ai85netwide(pretrained=False, **kwargs):
     return AI85NetWide(**kwargs)
 
 
+def ai85net80wide(pretrained=False, **kwargs):
+    """
+    Constructs a AI85NetWide model.
+    """
+    assert not pretrained
+    return AI85NetWide(planes=80, **kwargs)
