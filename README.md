@@ -412,6 +412,8 @@ file:
 
 ## Contributing Code
 
+### Linting
+
 Both projects are set up for flake8, pylint, and mypy. The line width is related to 100 (instead
 of the default of 80), and the number of lineas per module was increased.
 Code should not generate any warnings in any of the tools.
@@ -419,5 +421,36 @@ Code should not generate any warnings in any of the tools.
 flake8, pylint and mypy need to be installed into the virtual environment:
 
     pip3 install flake8 pylint mypy
+
+### Submitting Changes
+
+Do not try to push any changes into the master branch. Instead, create a local "feature" branch.
+The easiest way to do this is using a graphical client. The command line equivalent is:
+
+    $ git checkout ​-​b my-new-feature
+    $ git status
+    On branch my-new-feature
+    ...
+
+Commit changes and create a description of the changes:
+
+    $ git commit
+
+Check what the Maxim server is called:
+
+    $ git remote -v
+    origin	https://first.last@gerrit.maxim-ic.com:8443/ai8x-synthesis (fetch)
+    origin	https://first.last@gerrit.maxim-ic.com:8443/ai8x-synthesis (push)
+
+And push the changes to Maxim's Gerrit server using the name ('origin' in this example;
+do not change 'master' to anything else even though the local branch is called 'my-new-feature'):
+
+    $ git push origin HEAD​:​refs​/f​or​/m​aster
+    ...
+    remote​:
+    To​ URL
+    ​*​ ​[​new​ branch​]​ my-new-feature ​->​ refs​/​for​/​master
+
+Open the URL in a web browser and request a review for the change list.
 
 -----------------------
