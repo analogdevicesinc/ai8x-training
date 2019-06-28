@@ -1,7 +1,7 @@
 # AI84 Model Training and Quantization
 # AI84 Network Loader and RTL Simulation Generator
 
-_6/27/2019_
+_6/28/2019_
 
 _Open this file in a markdown enabled viewer, for example Visual Studio Code
 (https://code.visualstudio.com)._
@@ -10,7 +10,7 @@ This software consists of two related projects:
 1. AI84 Model Training and Quantization
 2. AI84 Network Loader and RTL Simulation Generator
 
-The followong graphic shows an overview of the development flow:
+The following graphic shows an overview of the development flow:
 ![Development Flow](docs/DevelopmentFlow.png)
 
 Including the SDK from SVN, the expected file system layout will be:
@@ -94,27 +94,27 @@ For CUDA 10 on Linux (see https://pytorch.org/get-started/locally/):
 
     (ai8x-training) $ pip3 install https://download.pytorch.org/whl/cu100/torch-1.1.0-cp36-cp36m-linux_x86_64.whl
 
-On all systems, install Tensorflow:
+On all systems, install TensorFlow:
 
     (ai8x-training) $ pip3 install tensorflow
 
-*NOTE*: On x86 systems, the pre-built Tensorflow wheels require AVX (`sysctl -n machdep.cpu.features`
-to find out). Running an unsupported Tensorflow wheel that requires AVX instructions results
+*NOTE*: On x86 systems, the pre-built TensorFlow wheels require AVX (`sysctl -n machdep.cpu.features`
+to find out). Running an unsupported TensorFlow wheel that requires AVX instructions results
 in `Illegal instruction: 4` on startup.
 
-#### Building Tensorflow
+#### Building TensorFlow
 
-If the CPU does not support AVX, or to enable suport for AVX2, or CUDA, or AMD64, build
-Tensorflow locally. This requires Java 8 and Bazel, and takes over two hours. _Building Tensorflow
+If the CPU does not support AVX, or to enable support for AVX2, or CUDA, or AMD64, build
+TensorFlow locally. This requires Java 8 and Bazel, and takes over two hours. _Building Tensorflow
 is not needed when the binary wheels are functioning properly._
 
-Building Tensorflow requires Bazel 0.21.0 (newer or much older versions do not work). See
+Building TensorFlow requires Bazel 0.21.0 (newer or much older versions do not work). See
 https://docs.bazel.build/versions/master/install-compile-source.html#build-bazel-using-bazel for
 build instructions.
 
 Once Bazel is installed, compile and install Tensorflow. On Jetson TX1, disable S3. See 
 https://github.com/peterlee0127/tensorflow-nvJetson/blob/master/patch/tensorflow1.12.patch
-The removal of "-mfpu=neon" does not seem to be necessary.
+The removal of `-mfpu=neon` does not seem to be necessary.
 
     (ai8x-training) $ pip3 install keras_preprocessing
     (ai8x-training) $ git clone https://github.com/tensorflow/tensorflow 
@@ -125,7 +125,7 @@ The removal of "-mfpu=neon" does not seem to be necessary.
     (ai8x-training) $ bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg
     (ai8x-training) $ pip3 install /tmp/tensorflow_pkg/tensorflow-1.13.1-cp36-cp36m-macosx_10_13_x86_64.whl 
 
-To install torchvision (the wheels are frequently outdated):
+To install `torchvision` (the wheels are frequently outdated):
 
     (ai8x-training) $ git clone https://github.com/pytorch/vision.git
     (ai8x-training) $ cd vision ; git checkout tags/v0.3.0 ; cd ..
@@ -141,7 +141,7 @@ On macOS, comment out the following line in `distiller/distiller/apputils/execut
 
     # logger.debug("Number of CPUs: %d", len(os.sched_getaffinity(0)))
 
-(macOS) Add to ~/.matplotlib/matplotrc:
+(macOS) Add to `~/.matplotlib/matplotrc`:
 
     backend: TkAgg
 
@@ -187,7 +187,7 @@ To evaluate the quantized network:
 
 ### Alternative Quantization Approaches
 
-Post-training quantization can be improved using more sophosticated methods. For example, see
+Post-training quantization can be improved using more sophisticated methods. For example, see
 https://github.com/pytorch/glow/blob/master/docs/Quantization.md,
 https://github.com/ARM-software/ML-examples/tree/master/cmsisnn-cifar10,
 https://github.com/ARM-software/ML-KWS-for-MCU/blob/master/Deployment/Quant_guide.md,
@@ -196,7 +196,7 @@ or Distiller's approach (installed with this software).
 Further, a quantized network can be refined using post-quantization training (see Distiller).
 
 The software also includes an `AI84RangeLinear` training quantizer that plugs into the Distiller
-frameworkf for quantization aware training. However, it needs work as its performance is not
+framework for quantization aware training. However, it needs work as its performance is not
 good enough yet and the distiller source needs to be patched to enable it (add 
 `from range_linear_ai84 import QuantAwareTrainRangeLinearQuantizerAI84` to `distiller/config.py`
 and remove `False and` from `if False and args.ai84` in `train.py`).
@@ -210,10 +210,133 @@ In all cases, ensure that the quantizer writes out a checkpoint file that the AI
 can read.
 
 
-## Limitations of AI84 Networks
+## AI84 Resources
 
-The AI84 hardware does not support arbitrary network parameters. For example,
-* Dilation, elementwise addition, and 1D convolutions are not supported.
+AI84 is an embedded accelerator. Unlike GPUs, it does not have gigabytes of weight memory, and cannot
+support arbitrary data (image) sizes.
+
+### Number Format
+
+All weights and data are stored and computed in Q7 format (signed two's complement 8-bit integers,
+[-128...+127]).
+
+### Channel Data Formats
+
+#### HWC
+
+All internal data are stored in HWC format, 4 channels per 32-bit word. Assuming a 3-color (or
+3-channel input), one byte will be unused. Example:
+
+![0BGR 0BGR 0 BGR 0BGR...](docs/HWC.png)
+
+#### CHW
+
+The input layer can also use the CHW format (sequence of channels), for example:
+  
+![RRRRRR...GGGGGG...BBBBBB...](docs/CHW.png)
+
+### Accelerator Limits
+
+* The total weight memory supports up to 128 * 64 3x3 Q7 kernels. However, weights must be arranged
+  according to specific rules detailed below.
+* There are 16 instances of 16 KB data memory. Any data channel (input, intermediate, or output)
+  must completely fit into one memory instance. This limits the input to 128x128 pixels per
+  channel in the CHW format. However, when using more than one input channel, the HWC format may
+  be preferred. In this case, the limit is four channels per memory instance -- or 64x64 pixels per
+  channel. Note that the first layer commonly creates a wide expansion (i.e., large number of output
+  channels) that needs to fit into data memory, so the input size limit is mostly theoretical.
+* The maximum number of layers is 32.
+* The maximum number of input or output channels in any layer is 64 each.
+
+## Data, Weight, and Processors
+
+Data memory, weight memory, and processors are interrelated.
+
+In the AI84 accelerator, processors are organized as follows:
+
+* Each processor is connected to its own dedicated weight memory instance.
+* Four processors share one data memory instance.
+* A group of sixteen processors shares certain common controls and can be operated as a slave
+  to another group, or independently/separately.
+
+Any given processor has visibility of:
+
+* Its dedicated weight memory, and
+* The data memory instance it shares with three other processors.
+
+### Weight Memory
+
+For each of the four 16-processor groups, weight memory and processors can be visualized as
+follows. Assuming one input channel processed by processor 0, and 8 output channels, the shaded kernels
+will be used:
+
+![Weight Memory Map](docs/KernelMemory.png)
+
+### Data Memory
+
+Data memory connections can be visualized as follows:
+
+![Data Memory Map](docs/DataMemory.png)
+
+All input data must be located in the data memory instance the processor can access. Conversely,
+output data can be written to any data memory instance inside the accelerator (but not to general
+purpose SRAM on the ARM microcontroller bus).
+
+The data memory instances inside the accelerator are single port memories. This means that only
+one read operation can happen per clock cycle. When using the HWC data format, this means that
+each of the four processors sharing the data memory instance will receive one byte of data per
+clock cycle (since each 32-bit data word consists of four packed channels).
+
+### CHW Data Format and Consequences for Weight Memory Layout
+
+On the other hand, when using the CHW data format, only one of the four processors sharing the data
+memory instance can be used. The next channel needs to use a processor connected to a different
+data memory instance, so that the machine can deliver one byte per clock cycle.
+
+Because of the fact that a processor has its own dedicated weight memory, this will introduce
+"gaps" in the weight memory map, as shown in the following illustration:
+
+![Kernel Memory Gaps](docs/KernelMemoryGaps.png)
+
+
+## Active Processors and Layers
+
+For each layer, a set of active processors must be specified. The number of active processors
+must be the same as the number of input channels for the layer, and the input data for that
+layer must be located in data memory instances accessible to the selected processors.
+
+It is possible to specify a relative offset into the data memory instance that applies to all
+processors. Example: Assuming HWC data format, specifying the offset as 8192 bytes will cause
+processors 0-3 to read their input from the second half of data memory 0, processors 4-7 will
+read from the second half of data memory instance 1, etc.
+
+### Layers and Weight Memory
+
+For each layer, the weight memory start column must be specified. The start column must be a
+multiple of 4, and the value applies to all processors.
+
+The following example shows the weight memory layout for two layers. The first layer (L0) has 7
+inputs and 9 outputs, and the second layer (L1) has 9 inputs and 2 outputs.
+
+![Layers and Weight Memory](docs/KernelMemoryLayers.png)
+
+
+### Weight Storage Example
+
+The file `ai84net.xlsx` contains an example for a single-channel CHW input using the `AI85Net5`
+network (this example also supports or up to four channels in HWC).
+
+*NOTE*: As described above, multiple CHW channels must be loaded into separate
+memory instances. When using a large number of channels, this can cause 'holes' in the processor
+map, which in turn can cause subsequent layers' kernels to require padding.
+
+The AI84 Network Loader prints a kernel map that shows the kernel arrangement based on the provided
+network description. It will also flag cases where kernel or bias memories are exceeded.
+
+### Limitations of AI84 Networks
+
+The AI84 hardware does not support arbitrary network parameters. Specifically,
+* Dilation, element-wise addition, and 1D convolutions are not supported.
 * The `Conv2D` kernel size must be 3x3.
 * `Conv2D` padding can be 0, 1, or 2.
 * The only supported activation function is `ReLU`.
@@ -235,7 +358,7 @@ The AI84 hardware does not support arbitrary network parameters. For example,
 * The number of input or output channels must not exceed 64.
 * The number of layers must not exceed 32.
 * Overall weight storage is limited to 64*128 3x3 kernels. However, weights must be arranged
-  in a certain order, see below.
+  in a certain order, see above.
 * The hardware supports only 2D convolution layers. For convenience, a single final fully
   connected layer with 8-bit inputs/weights/bias, and 16-bit output is supported in software,
   as well as a software SoftMax operator.
@@ -252,19 +375,6 @@ With the exception of weight storage, and bias use, most of these limitations ar
 using the network primitives from `ai84.py`.
 
 
-## Weight Storage
-
-The file `ai84net.xlsx` contains an example for a single-channel CHW input (this example also
-supports or up to four channels in HWC).
-
-*NOTE*: Multiple CHW channels must be loaded into separate
-memory instances. When using a large number of channels, this can cause 'holes' in the processor
-map, which in turn can cause subsequent layers' kernels to require padding.
-
-The AI84 Network Loader prints a kernel map that shows the kernel arrangement based on the provided
-network description. It will also flag cases where kernel or bias memories are exceeded.
-
-
 ## Adding New Data and Networks
 
 The following steps are needed to add new data formats and networks:
@@ -276,7 +386,7 @@ The following steps are needed to add new data formats and networks:
 
 ## Usage: AI84 Network Loader
 
-_The network loader currently depends on PyToch and Nervana's distiller. This requirement will be
+_The network loader currently depends on PyTorch and Nervana's distiller. This requirement will be
 removed in the long term._
 
 The network loader creates C code that programs the AI84 (for embedded execution, or RTL
@@ -415,7 +525,7 @@ file:
 ### Linting
 
 Both projects are set up for flake8, pylint, and mypy. The line width is related to 100 (instead
-of the default of 80), and the number of lineas per module was increased.
+of the default of 80), and the number of lines per module was increased.
 Code should not generate any warnings in any of the tools.
 
 flake8, pylint and mypy need to be installed into the virtual environment:
