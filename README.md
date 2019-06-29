@@ -1,7 +1,7 @@
-# AI84 Model Training and Quantization
-# AI84 Network Loader and RTL Simulation Generator
+# AI8X Model Training and Quantization
+# AI8X Network Loader and RTL Simulation Generator
 
-_6/28/2019_
+_6/30/2019_
 
 _Open this file in a markdown enabled viewer, for example Visual Studio Code
 (https://code.visualstudio.com)._
@@ -10,14 +10,53 @@ This software consists of two related projects:
 1. AI84 Model Training and Quantization
 2. AI84 Network Loader and RTL Simulation Generator
 
+## Contents
+
+- [Contents](#Contents)
+- [Overview](#Overview)
+- [Recommended Software](#Recommended-Software)
+- [Installation](#Installation)
+  - [File System Layout](#File-System-Layout)
+  - [Upstream Code](#Upstream-Code)
+  - [Prerequisites](#Prerequisites)
+  - [Project](#Project)
+    - [Creating the Virtual Environment](#Creating-the-Virtual-Environment)
+    - [Building TensorFlow (for old CPUs)](#Building-TensorFlow-for-old-CPUs)
+    - [Nervana Distiller](#Nervana-Distiller)
+    - [Repeat for the Synthesis Project](#Repeat-for-the-Synthesis-Project)
+- [Usage: AI84 Model Training and Quantization](#Usage-AI84-Model-Training-and-Quantization)
+  - [Quantization](#Quantization)
+  - [Alternative Quantization Approaches](#Alternative-Quantization-Approaches)
+- [AI84 Hardware and Resources](#AI84-Hardware-and-Resources)
+  - [Overview](#Overview-1)
+  - [Number Format](#Number-Format)
+  - [Channel Data Formats](#Channel-Data-Formats)
+    - [HWC](#HWC)
+    - [CHW](#CHW)
+  - [Accelerator Limits](#Accelerator-Limits)
+- [Data, Weight, and Processors](#Data-Weight-and-Processors)
+  - [Weight Memory](#Weight-Memory)
+  - [Data Memory](#Data-Memory)
+  - [CHW Data Format and Consequences for Weight Memory Layout](#CHW-Data-Format-and-Consequences-for-Weight-Memory-Layout)
+- [Active Processors and Layers](#Active-Processors-and-Layers)
+  - [Layers and Weight Memory](#Layers-and-Weight-Memory)
+  - [Weight Storage Example](#Weight-Storage-Example)
+  - [Limitations of AI84 Networks](#Limitations-of-AI84-Networks)
+- [Adding Datasets and New Networks](#Adding-Datasets-and-New-Networks)
+- [Usage: AI84 Network Loader](#Usage-AI84-Network-Loader)
+  - [Adding Datasets](#Adding-Datasets)
+- [AI84 SDK](#AI84-SDK)
+- [AI85/AI86](#AI85AI86)
+- [CMSIS5 NN Emulation](#CMSIS5-NN-Emulation)
+- [Contributing Code](#Contributing-Code)
+  - [Linting](#Linting)
+  - [Submitting Changes](#Submitting-Changes)
+
+## Overview
+
 The following graphic shows an overview of the development flow:
+
 ![Development Flow](docs/DevelopmentFlow.png)
-
-Including the SDK from SVN, the expected file system layout will be:
-
-    ..../ai8x-training/
-    ..../ai8x-synthesis/
-    ..../AI84SDK/
 
 ## Recommended Software
 
@@ -30,6 +69,14 @@ user's choosing.
 4. Beyond Compare (Diff and Merge Tool, $60), https://scootersoftware.com
 
 ## Installation
+
+### File System Layout
+
+Including the SDK from SVN, the expected file system layout will be:
+
+    ..../ai8x-training/
+    ..../ai8x-synthesis/
+    ..../AI84SDK/
 
 ### Upstream Code
 
@@ -51,7 +98,7 @@ https://developer.nvidia.com/cudnn
 *The software in this project requires Python 3.6.5 or a later 3.6.x version.*
 
 It is not necessary to install Python 3.6.5 system-wide, or to rely on the system-provided
-Python. To manage Python versions, use pyenv (https://github.com/pyenv/pyenv).
+Python. To manage Python versions, use `pyenv` (https://github.com/pyenv/pyenv).
 
 On macOS (no CUDA support available):
 
@@ -94,25 +141,30 @@ For CUDA 10 on Linux (see https://pytorch.org/get-started/locally/):
 
     (ai8x-training) $ pip3 install https://download.pytorch.org/whl/cu100/torch-1.1.0-cp36-cp36m-linux_x86_64.whl
 
-On all systems, install TensorFlow:
+On all systems, install TorchVision:
+
+    (ai8x-training) $ pip3 install torchvision
+
+Next, install TensorFlow. TensorFlow is needed for TensorBoard support.
 
     (ai8x-training) $ pip3 install tensorflow
 
 *NOTE*: On x86 systems, the pre-built TensorFlow wheels require AVX (`sysctl -n machdep.cpu.features`
-to find out). Running an unsupported TensorFlow wheel that requires AVX instructions results
+to find out). Running a TensorFlow wheel that requires AVX instructions on unsupported CPUs results
 in `Illegal instruction: 4` on startup.
 
-#### Building TensorFlow
+#### Building TensorFlow (for old CPUs)
 
 If the CPU does not support AVX, or to enable support for AVX2, or CUDA, or AMD64, build
-TensorFlow locally. This requires Java 8 and Bazel, and takes over two hours. _Building Tensorflow
-is not needed when the binary wheels are functioning properly._
+TensorFlow locally. Otherwise, skip ahead to [TorchVision and Distiller](#TorchVision-and-Distiller).
+_To repeat: Building TensorFlow is not needed when the binary wheels are functioning properly._
 
+The TensorFlow build requires Java 8 and Bazel, and takes over two hours. 
 Building TensorFlow requires Bazel 0.21.0 (newer or much older versions do not work). See
 https://docs.bazel.build/versions/master/install-compile-source.html#build-bazel-using-bazel for
 build instructions.
 
-Once Bazel is installed, compile and install Tensorflow. On Jetson TX1, disable S3. See 
+Once Bazel is installed, compile and install TensorFlow. On Jetson TX1, disable S3. See 
 https://github.com/peterlee0127/tensorflow-nvJetson/blob/master/patch/tensorflow1.12.patch
 The removal of `-mfpu=neon` does not seem to be necessary.
 
@@ -125,11 +177,7 @@ The removal of `-mfpu=neon` does not seem to be necessary.
     (ai8x-training) $ bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg
     (ai8x-training) $ pip3 install /tmp/tensorflow_pkg/tensorflow-1.13.1-cp36-cp36m-macosx_10_13_x86_64.whl 
 
-To install `torchvision` (the wheels are frequently outdated):
-
-    (ai8x-training) $ git clone https://github.com/pytorch/vision.git
-    (ai8x-training) $ cd vision ; git checkout tags/v0.3.0 ; cd ..
-    (ai8x-training) $ pip3 install -e vision
+#### Nervana Distiller
 
 To install Nervana's distiller:
 
@@ -147,8 +195,9 @@ On macOS, comment out the following line in `distiller/distiller/apputils/execut
 
 #### Repeat for the Synthesis Project
 
-Repeat these steps for `ai8x-synthesis`, starting at _Creating the Virtual Environment_.
+Repeat these steps for `ai8x-synthesis`, starting at [Creating the Virtual Environment](#Creating-the-Virtual-Environment).
 
+----
 
 ## Usage: AI84 Model Training and Quantization
 
@@ -158,32 +207,32 @@ the AI84 hardware operators that are defined in `ai84.py`.
 To train the FP32 model for FashionMIST, run `go_fashionmnist.sh` in the `ai8x-training` project.
 This script will place checkpoint files into the log directory. Training makes use of the Distiller
 framework, but the `train.py` software has been modified slightly to improve it and add some AI84
-specific modifications.
+specifics.
 
 ### Quantization
 
-There are two main approaches to quantization -- quantization aware training and post-training
+There are two main approaches to quantization -- quantization-aware training and post-training
 quantization.
 
 Since performance for 8-bit weights is decent enough, _naive post-training quantization_ is used
 in the `ai84ize.py` software. While several approaches are implemented, a simple fixed scale
 factor is used based on experimental results. The approach requires the clamping operators
-implemented in `ai84.py` to be present.
+implemented in `ai84.py`.
 
 The software quantizes an existing PyTorch checkpoint file and writes
 out a new PyTorch checkpoint file that can then be used to evaluate the quality of the
 quantized network, using the same PyTorch framework used for training.
-The same new checkpoint file will also be used to feed the AI84 Network Loader.
+The same new checkpoint file will also be used to feed the [AI84 Network Loader](#Usage-AI84-Network-Loader).
 
 Copy the weight files into the `trained/` folder of the `ai8x-synthesis` project.
 
 Example:
 
-    (ai8x-synthesis) ./ai84ize.py logs/path-to-checkpoint/checkpoint.pth.tar trained/ai84-fashionmnist.pth.tar -v
+    (ai8x-synthesis) $ ./ai84ize.py logs/path-to-checkpoint/checkpoint.pth.tar ../ai8x-synthesis/trained/ai84-fashionmnist.pth.tar -v
 
 To evaluate the quantized network:
 
-    (ai8x-synthesis) ./evaluate_fashionmnist.sh
+    (ai8x-synthesis) $ ./evaluate_fashionmnist.sh
 
 ### Alternative Quantization Approaches
 
@@ -195,8 +244,8 @@ or Distiller's approach (installed with this software).
 
 Further, a quantized network can be refined using post-quantization training (see Distiller).
 
-The software also includes an `AI84RangeLinear` training quantizer that plugs into the Distiller
-framework for quantization aware training. However, it needs work as its performance is not
+The software also includes an `AI84RangeLinear.py` training quantizer that plugs into the Distiller
+framework for quantization-aware training. However, it needs work as its performance is not
 good enough yet and the distiller source needs to be patched to enable it (add 
 `from range_linear_ai84 import QuantAwareTrainRangeLinearQuantizerAI84` to `distiller/config.py`
 and remove `False and` from `if False and args.ai84` in `train.py`).
@@ -210,10 +259,14 @@ In all cases, ensure that the quantizer writes out a checkpoint file that the AI
 can read.
 
 
-## AI84 Resources
+## AI84 Hardware and Resources
 
 AI84 is an embedded accelerator. Unlike GPUs, it does not have gigabytes of weight memory, and cannot
 support arbitrary data (image) sizes.
+
+### Overview
+
+TBD
 
 ### Number Format
 
@@ -224,8 +277,8 @@ All weights and data are stored and computed in Q7 format (signed two's compleme
 
 #### HWC
 
-All internal data are stored in HWC format, 4 channels per 32-bit word. Assuming a 3-color (or
-3-channel input), one byte will be unused. Example:
+All internal data are stored in HWC format, 4 channels per 32-bit word. Assuming 3-color (or
+3-channel) input, one byte will be unused. Example:
 
 ![0BGR 0BGR 0 BGR 0BGR...](docs/HWC.png)
 
@@ -237,14 +290,15 @@ The input layer can also use the CHW format (sequence of channels), for example:
 
 ### Accelerator Limits
 
-* The total weight memory supports up to 128 * 64 3x3 Q7 kernels. However, weights must be arranged
+* The weight memory supports up to 128 * 64 3x3 Q7 kernels. However, weights must be arranged
   according to specific rules detailed below.
 * There are 16 instances of 16 KB data memory. Any data channel (input, intermediate, or output)
-  must completely fit into one memory instance. This limits the input to 128x128 pixels per
-  channel in the CHW format. However, when using more than one input channel, the HWC format may
-  be preferred. In this case, the limit is four channels per memory instance -- or 64x64 pixels per
-  channel. Note that the first layer commonly creates a wide expansion (i.e., large number of output
-  channels) that needs to fit into data memory, so the input size limit is mostly theoretical.
+  must completely fit into one memory instance. This limits the first-layer input to 128x128 pixels
+  per channel in the CHW format. However, when using more than one input channel, the HWC format may
+  be preferred, and all layer output are in HWC format as well. In those cases, it is required that
+  four channels fit into a single memory instance -- or 64x64 pixels per channel. Note that the
+  first layer commonly creates a wide expansion (i.e., large number of output channels) that needs
+  to fit into data memory, so the input size limit is mostly theoretical.
 * The maximum number of layers is 32.
 * The maximum number of input or output channels in any layer is 64 each.
 
@@ -280,9 +334,9 @@ Data memory connections can be visualized as follows:
 
 All input data must be located in the data memory instance the processor can access. Conversely,
 output data can be written to any data memory instance inside the accelerator (but not to general
-purpose SRAM on the ARM microcontroller bus).
+purpose SRAM on the Arm microcontroller bus).
 
-The data memory instances inside the accelerator are single port memories. This means that only
+The data memory instances inside the accelerator are single-port memories. This means that only
 one read operation can happen per clock cycle. When using the HWC data format, this means that
 each of the four processors sharing the data memory instance will receive one byte of data per
 clock cycle (since each 32-bit data word consists of four packed channels).
@@ -291,7 +345,8 @@ clock cycle (since each 32-bit data word consists of four packed channels).
 
 On the other hand, when using the CHW data format, only one of the four processors sharing the data
 memory instance can be used. The next channel needs to use a processor connected to a different
-data memory instance, so that the machine can deliver one byte per clock cycle.
+data memory instance, so that the machine can deliver one byte per clock cycle to each enabled
+processor.
 
 Because of the fact that a processor has its own dedicated weight memory, this will introduce
 "gaps" in the weight memory map, as shown in the following illustration:
@@ -306,9 +361,19 @@ must be the same as the number of input channels for the layer, and the input da
 layer must be located in data memory instances accessible to the selected processors.
 
 It is possible to specify a relative offset into the data memory instance that applies to all
-processors. Example: Assuming HWC data format, specifying the offset as 8192 bytes will cause
+processors. _Example:_ Assuming HWC data format, specifying the offset as 8192 bytes will cause
 processors 0-3 to read their input from the second half of data memory 0, processors 4-7 will
 read from the second half of data memory instance 1, etc.
+
+For most simple networks with limited data sizes, it is easiest to ping-pong between the first
+and second halves of the data memories - specify the data offset as 0 for the first layer, 0x2000
+for the second layer, 0 for the third layer, etc. This strategy avoids overlapping inputs and
+outputs when a given processor is used in two consecutive layers.
+
+Even though this is supported by the accelerator, the AI84 Network Generator will not
+be able to check for inadvertent overwriting of unprocessed input data by newly generated output
+data. Use the `--overlap-data` command line switch to disable these checks, and to allow overlapped
+data.
 
 ### Layers and Weight Memory
 
@@ -352,7 +417,7 @@ The AI84 hardware does not support arbitrary network parameters. Specifically,
   a 4x4 pooling window if activation was used on the prior layer, 3x3 otherwise. Additionally,
   average pooling is currently implemented as a `floor()` operation. Since there is also a
   quantization step at the output of the average pooling, it may not perform as intended
-  (for example, a 2x2 AvgPool of `[[0, 0], [0, 3]]` will return `0`).
+  (for example, a 2x2 `AvgPool2d` of `[[0, 0], [0, 3]]` will return `0`).
 * Pooling window sizes must be even numbers, and have equal H and W dimensions.
 * The `Conv2D` stride is fixed to 1. However, the pooling stride can be 1, 2, or 4.
 * The number of input or output channels must not exceed 64.
@@ -361,7 +426,7 @@ The AI84 hardware does not support arbitrary network parameters. Specifically,
   in a certain order, see above.
 * The hardware supports only 2D convolution layers. For convenience, a single final fully
   connected layer with 8-bit inputs/weights/bias, and 16-bit output is supported in software,
-  as well as a software SoftMax operator.
+  as well as a software `SoftMax` operator.
 * Since the internal network format is HWC in groups of four channels, output concatenation only
   works properly when all components of the concatenation other than the last have multiples
   of four channels. Output concatenation is not yet supported in the `ai84.py` primitives.
@@ -375,7 +440,7 @@ With the exception of weight storage, and bias use, most of these limitations ar
 using the network primitives from `ai84.py`.
 
 
-## Adding New Data and Networks
+## Adding Datasets and New Networks
 
 The following steps are needed to add new data formats and networks:
 1. Develop a data loader in PyTorch.
@@ -435,21 +500,23 @@ line:
 
     ./cnn-gen.py --verbose -L --top-level cnn --test-dir demos --prefix FashionMNIST --checkpoint-file trained/ai84-mnist.pth.tar --config-file networks/fashionmnist-chw.yaml --fc-layer --embedded-code
 
-In addition to the network described above, this invocation will also add a fully connected
-classification layer in software. The generated code will include all loading, unloading, and
-configuration steps.
+Running this command will combine the network described above with a fully connected software
+classification layer. The generated code will include all loading, unloading, and configuration
+steps.
 
 To generate an RTL simulation for the same network and sample data in the directory
 `tests/fmnist-....` (where .... is an autogenerated string based on the network topology), use:
 
     ./cnn-gen.py --verbose --autogen rtlsim --top-level cnn -L --test-dir rtlsim --prefix fmnist --checkpoint-file trained/ai84-fashionmnist.pth.tar --config-file networks/fashionmnist-chw.yaml
 
+### Adding Datasets
+
 Adding new datasets to the AI84 Network Loader is implemented by
 1. Providing a network model, its YAML description and quantized weights.
 2. Providing a sample input, and the expected output (modify `sampledata.py` as well as the
    `SUPPORTED_DATASETS` in `yamlcfg.py`).
 
-### AI84 SDK
+## AI84 SDK
 
 Check out the AI84 SDK from SVN, https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/.
 
@@ -463,7 +530,8 @@ be installed in `/usr/local/share/openocd/scripts/target/` (or
 `C:\Maxim\Toolchain\share\openocd\scripts\target\` on Windows). A copy of the file is contained in
 the `hardware` folder of the `ai8x-synthesis` project.
 
-Windows binaries for OpenOCD can be installed via https://www.maximintegrated.com/en/design/software-description.html/swpart=SFW0001500A.
+Windows binaries for OpenOCD can be installed via https://www.maximintegrated.com/en/design/software-description.html/swpart=SFW0001500A. This download also includes a version of the Arm
+compilers.
 
 To compile and install this OpenOCD version on macOS, use:
 
@@ -494,6 +562,7 @@ The `--ai85` option enables:
 * 1D convolutions (in progress).
 * 1x1 kernels (in progress).
 * Support for more weight memory, and more channels (in progress).
+* Support for 32-bit Q25.7 output on the last layer (in progress).
 
 
 ## CMSIS5 NN Emulation
@@ -511,31 +580,33 @@ The `Device/` folder contains a sample Makefile, and a custom fully connected la
 file `arm_fully_connected_q7_q8p7_opt.c` that returns Q8.7 fixed-point outputs, and a custom
 `arm_softmax_q8p7_q15.c` which is aware of the fixed-point input (both of these files are also used
 for the software classification layer on AI84/AI85).
-Additionally, a `tornadocnn.h` header file is included which helps for both embedded examples as
+Additionally, a `tornadocnn.h` header file is included which helps both embedded examples as
 well as CMSIS NN code.
 
 For example, the following command would generate code that performs a CIFAR-10 inference from the
 `trained/ai84-cifar10.pth.tar` checkpoint file and the `cifar10-hwc.yaml` network description
 file:
 
-    (ai8x-synthesis) ./cnn-gen.py --top-level cnn --test-dir demos --prefix CIFAR-10-Arm --checkpoint-file trained/ai84-cifar10.pth.tar --config-file networks/cifar10-hwc.yaml --fc-layer --embedded-code --cmsis-software-nn
+    (ai8x-synthesis) $ ./cnn-gen.py --top-level cnn --test-dir demos --prefix CIFAR-10-Arm --checkpoint-file trained/ai84-cifar10.pth.tar --config-file networks/cifar10-hwc.yaml --fc-layer --embedded-code --cmsis-software-nn
 
 ## Contributing Code
 
 ### Linting
 
-Both projects are set up for flake8, pylint, and mypy. The line width is related to 100 (instead
+Both projects are set up for `flake8`, `pylint`, and `mypy`. The line width is related to 100 (instead
 of the default of 80), and the number of lines per module was increased.
-Code should not generate any warnings in any of the tools.
+Code should not generate any warnings in any of the tools (some of the components in the
+`ai8x-training` project will create warnings as they are based on third-party code).
 
-flake8, pylint and mypy need to be installed into the virtual environment:
+`flake8`, `pylint` and `mypy` need to be installed into the virtual environment:
 
-    pip3 install flake8 pylint mypy
+    (ai8x-synthesis) $ pip3 install flake8 pylint mypy
 
 ### Submitting Changes
 
 Do not try to push any changes into the master branch. Instead, create a local "feature" branch.
-The easiest way to do this is using a graphical client. The command line equivalent is:
+The easiest way to do this is using a graphical client such as [Fork](#Recommended-Software).
+The command line equivalent is:
 
     $ git checkout ​-​b my-new-feature
     $ git status
