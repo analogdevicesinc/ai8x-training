@@ -7,6 +7,10 @@
 	"settings": {
 		"python.pythonPath": "./bin/python3",
 		"python.linting.flake8Enabled": true,
-		"python.linting.pylintArgs": ["--rcfile=.pylintrc"]
+		"python.linting.pylintArgs": [
+			"--rcfile=.pylintrc"
+		],
+		"markdown.extension.toc.levels": "2..6",
+		"python.linting.mypyEnabled": true
 	}
 }
