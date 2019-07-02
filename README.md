@@ -1,10 +1,11 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_6/30/2019_
+_7/2/2019_
 
 _Open this file in a markdown enabled viewer, for example Visual Studio Code
-(https://code.visualstudio.com)._
+(https://code.visualstudio.com). See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
+for a description of Markdown._
 
 This software consists of two related projects:
 1. AI84 Model Training and Quantization
@@ -23,7 +24,7 @@ This software consists of two related projects:
     - [Creating the Virtual Environment](#Creating-the-Virtual-Environment)
     - [Building TensorFlow (for old CPUs)](#Building-TensorFlow-for-old-CPUs)
     - [Nervana Distiller](#Nervana-Distiller)
-    - [Repeat for the Synthesis Project](#Repeat-for-the-Synthesis-Project)
+    - [Synthesis Project](#Synthesis-Project)
 - [Usage: AI84 Model Training and Quantization](#Usage-AI84-Model-Training-and-Quantization)
   - [Quantization](#Quantization)
   - [Alternative Quantization Approaches](#Alternative-Quantization-Approaches)
@@ -44,6 +45,28 @@ This software consists of two related projects:
   - [Limitations of AI84 Networks](#Limitations-of-AI84-Networks)
 - [Adding Datasets and New Networks](#Adding-Datasets-and-New-Networks)
 - [Usage: AI84 Network Loader](#Usage-AI84-Network-Loader)
+  - [Network Loader Configuration Language](#Network-Loader-Configuration-Language)
+    - [Global Configuration](#Global-Configuration)
+      - [`arch` (Mandatory)](#arch-Mandatory)
+      - [`dataset` (Mandatory)](#dataset-Mandatory)
+      - [`output_map` (Optional)](#outputmap-Optional)
+      - [`layers` (Mandatory)](#layers-Mandatory)
+    - [Per-Layer Configuration](#Per-Layer-Configuration)
+      - [`sequence` (Optional)](#sequence-Optional)
+      - [`processors` (Mandatory)](#processors-Mandatory)
+      - [`output_processors` (Optional)](#outputprocessors-Optional)
+      - [`out_offset` (Optional)](#outoffset-Optional)
+      - [`in_offset` (Optional)](#inoffset-Optional)
+      - [`output_width` (Optional)](#outputwidth-Optional)
+      - [`data_format` (Optional)](#dataformat-Optional)
+      - [`convolution` (Optional)](#convolution-Optional)
+      - [`activate` (Optional)](#activate-Optional)
+      - [`quantization` (Optional)](#quantization-Optional)
+      - [`kernel_size` (Optional)](#kernelsize-Optional)
+      - [`pad` (Optional)](#pad-Optional)
+      - [`max_pool` (Optional)](#maxpool-Optional)
+      - [`avg_pool` (Optional)](#avgpool-Optional)
+      - [`pool_stride` (Optional)](#poolstride-Optional)
   - [Adding Datasets](#Adding-Datasets)
 - [AI84 SDK](#AI84-SDK)
 - [AI85/AI86](#AI85AI86)
@@ -193,9 +216,23 @@ On macOS, comment out the following line in `distiller/distiller/apputils/execut
 
     backend: TkAgg
 
-#### Repeat for the Synthesis Project
+#### Synthesis Project
 
-Repeat these steps for `ai8x-synthesis`, starting at [Creating the Virtual Environment](#Creating-the-Virtual-Environment).
+For `ai8x-synthesis`, some of the installation steps can be simplified. Specifically, TorchVision,
+TensorFlow, and SciPy are not needed, CUDA is unnecessary, and Distiller can be installed from the
+`ai8x-training` project.
+
+Start by creating a second virtual environment:
+
+    $ cd ai8x-synthesis
+    $ pyenv local 3.6.5
+    $ python3 -m venv .
+    $ source bin/activate
+    (ai8x-synthesis) $ pip3 install -U pip setuptools
+    (ai8x-synthesis) $ pip3 install numpy
+    (ai8x-synthesis) $ pip3 install pyyaml tabulate future six typing
+    (ai8x-synthesis) $ pip3 install torch
+    (ai8x-synethsis) $ pip3 install -e ../ai8x-training/distiller
 
 ----
 
@@ -422,6 +459,8 @@ The AI84 hardware does not support arbitrary network parameters. Specifically,
 * The `Conv2D` stride is fixed to 1. However, the pooling stride can be 1, 2, or 4.
 * The number of input or output channels must not exceed 64.
 * The number of layers must not exceed 32.
+* The maximum dimension for input or output data is 256.
+* Input data must be square (i.e., rows == columns).
 * Overall weight storage is limited to 64*128 3x3 kernels. However, weights must be arranged
   in a certain order, see above.
 * The hardware supports only 2D convolution layers. For convenience, a single final fully
@@ -509,6 +548,136 @@ To generate an RTL simulation for the same network and sample data in the direct
 
     ./cnn-gen.py --verbose --autogen rtlsim --top-level cnn -L --test-dir rtlsim --prefix fmnist --checkpoint-file trained/ai84-fashionmnist.pth.tar --config-file networks/fashionmnist-chw.yaml
 
+### Network Loader Configuration Language
+
+Network descriptions are written in YAML (see https://en.wikipedia.org/wiki/YAML). There are two
+sections in each file - global statements and a sequence of layer descriptions.
+
+#### Global Configuration
+
+##### `arch` (Mandatory)
+
+`arch` specifies the network architecture, for example `ai84net5`. This key is matched against
+the architecture embedded in the checkpoint file.
+
+##### `dataset` (Mandatory)
+
+`dataset` configures the data set for the network. This determines the input data size and
+dimensions as well as the number of input channels.
+
+Supported data sets at this time are `mnist`, `fashionmnist`, and `cifar-10`.
+
+##### `output_map` (Optional)
+
+The global `output_map`, if specified, overrides the memory instances where the last layer outputs
+its results. If not specified, this will be either the `output_processors` specified for the last
+layer, or, if that key does not exist, default to the number of processors needed for the output
+channels, starting at 0.
+
+Example: `output_map: 0x0000000000000ff0`
+
+##### `layers` (Mandatory)
+
+`layers` is a list that defines the per-layer description.
+
+#### Per-Layer Configuration
+
+Each layer in the `layers` list describes the layer's processors, convolution type, activation,
+pooling, weight and output sizes, data input format, data memory offsets, and its processing
+sequence. Several examples are located in the `networks/` and `tests/` folders.
+
+##### `sequence` (Optional)
+
+This key allows overriding of the processing sequence. The default is `0` for the first layer, or
+the previous layer's sequence + 1 for other layers.
+
+`sequence` numbers may have gaps. The software will sort layers by their numeric value, with the
+lowest value first.
+
+##### `processors` (Mandatory)
+
+`processors` specifies which processors will handle the input data. The processor map must match
+the number of input channels, and the input data format. For example, in CHW format, processors
+must be attached to different data memory instances.
+
+Example: `processors: 0x0000000000000111`
+
+##### `output_processors` (Optional)
+
+`output_processors` specifies which data memory instances and 32-bit word offsets to use for the
+layer's output data. When not specified, this key defaults to the next layer's `processors`, or,
+for the last layer, to the global `output_map`.
+
+##### `out_offset` (Optional)
+
+`out_offset` specifies the relative offset inside the data memory instance where the output data
+should be written to. When not specified, `out_offset` defaults to `0`.
+
+Example: `out_offset: 0x2000`.
+
+##### `in_offset` (Optional)
+
+`in_offset` specifies the offset into the data memory instances where the input data should be
+loaded from. When not specified, this key defaults to the previous layer's `out_offset`, or `0` for
+the first layer.
+
+Example: `in_offset: 0x2000`.
+
+##### `output_width` (Optional)
+
+On AI84, this value (if specified) has to be `8`.
+
+On AI85, when __not__ using an `activation`, the last layer can output `32` bits of unclipped data
+in Q25.7 format. The default is `8` bits.
+
+##### `data_format` (Optional)
+
+When specified for the first layer only, `data_format` can be either `chw`/`big` or `hwc`/`little`.
+The default is `hwc`. Note that the data format interacts with `processors`. 
+
+##### `convolution` (Optional)
+
+On AI84, this must always be `conv2d`.
+
+##### `activate` (Optional)
+
+This key describes whether to activate the layer output (the default is to not activate). When
+specified, this key must be `ReLU`.
+
+##### `quantization` (Optional)
+
+On AI84, this key must always be `8` (the default value).
+
+On AI85, this key describes the width of the weight memory in bits and can be `1`, `2`, `4`, or
+`8` (`8` is the default).
+
+##### `kernel_size` (Optional)
+
+This key must always be `3x3` (the default).
+
+##### `pad` (Optional)
+
+`pad` sets the padding for the convolution and can be `0`, `1` (the default), or `2`.
+
+##### `max_pool` (Optional)
+
+When specified, performs a `MaxPool2D` before the convolution.
+
+Example: `max_pool: 2`
+
+##### `avg_pool` (Optional)
+
+When specified, performs an `AvgPool2D` before the convolution.
+
+Example: `avg_pool: 2`
+
+##### `pool_stride` (Optional)
+
+When performing a pooling operation, this key describes the pool stride. The default is `1`.
+
+Example: `pool_stride: 2`
+
+
 ### Adding Datasets
 
 Adding new datasets to the AI84 Network Loader is implemented by
@@ -561,8 +730,9 @@ The `--ai85` option enables:
   (in progress).
 * 1D convolutions (in progress).
 * 1x1 kernels (in progress).
-* Support for more weight memory, and more channels (in progress).
-* Support for 32-bit Q25.7 output on the last layer (in progress).
+* Support for more weight memory, and more input and output channels (in progress).
+* Support for non-square data (in progress).
+* Support for 32-bit Q25.7 data output for last layer when not using ReLU (in progress).
 
 
 ## CMSIS5 NN Emulation
