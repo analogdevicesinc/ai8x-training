@@ -63,6 +63,7 @@ This software consists of two related projects:
       - [`activate` (Optional)](#activate-Optional)
       - [`quantization` (Optional)](#quantization-Optional)
       - [`kernel_size` (Optional)](#kernelsize-Optional)
+      - [`stride` (Optional)](#stride-Optional)
       - [`pad` (Optional)](#pad-Optional)
       - [`max_pool` (Optional)](#maxpool-Optional)
       - [`avg_pool` (Optional)](#avgpool-Optional)
@@ -439,11 +440,18 @@ network description. It will also flag cases where kernel or bias memories are e
 
 The AI84 hardware does not support arbitrary network parameters. Specifically,
 * Dilation, element-wise addition, and 1D convolutions are not supported.
-* The `Conv2D` kernel size must be 3x3.
+* `Conv2D` kernel sizes must be 3x3.
 * `Conv2D` padding can be 0, 1, or 2.
+* The `Conv2D` stride is fixed to 1 when pooling is used.
+* `Conv1D` kernel sizes must be 9.
+* `Conv1D` padding can be 0, 3, or 6.
+* The `Conv1D` stride is fixed to 3 in all cases.
 * The only supported activation function is `ReLU`.
-* Pooling is always combined with a convolution. Both `MaxPool2D` and `AvgPool2D` are available.
+* Pooling is only supported for `Conv2D`.
+* Pooling is always combined with a convolution. Both max pooling and average pooling are
+  available.
 * Pooling does not support padding.
+* Pooling strides can be 1, 2, or 4.
 * On AI84, three pooling sizes are supported:
   - 2x2 with stride 1
   - 2x2 with stride 2
@@ -454,9 +462,8 @@ The AI84 hardware does not support arbitrary network parameters. Specifically,
   a 4x4 pooling window if activation was used on the prior layer, 3x3 otherwise. Additionally,
   average pooling is currently implemented as a `floor()` operation. Since there is also a
   quantization step at the output of the average pooling, it may not perform as intended
-  (for example, a 2x2 `AvgPool2d` of `[[0, 0], [0, 3]]` will return `0`).
+  (for example, a 2x2 `AvgPool2D` of `[[0, 0], [0, 3]]` will return `0`).
 * Pooling window sizes must be even numbers, and have equal H and W dimensions.
-* The `Conv2D` stride is fixed to 1. However, the pooling stride can be 1, 2, or 4.
 * The number of input or output channels must not exceed 64.
 * The number of layers must not exceed 32.
 * The maximum dimension for input or output data is 256.
@@ -637,7 +644,7 @@ The default is `hwc`. Note that the data format interacts with `processors`.
 
 ##### `convolution` (Optional)
 
-On AI84, this must always be `conv2d`.
+This selects between a 2D convolution (`conv2d`) and a 1D convolution (`conv1d`).
 
 ##### `activate` (Optional)
 
@@ -655,19 +662,31 @@ On AI85, this key describes the width of the weight memory in bits and can be `1
 
 This key must always be `3x3` (the default).
 
+##### `stride` (Optional)
+
+2D convolutions:
+
+When pooling is used, this key must be `1`. When pooling is not used, this key can be set from `1`
+to TBD.
+
+1D convolutions:
+
+This key must be set to `3`.
+
 ##### `pad` (Optional)
 
-`pad` sets the padding for the convolution and can be `0`, `1` (the default), or `2`.
+`pad` sets the padding for the convolution. For `Conv2D`, this value can be `0`, `1` (the default),
+or `2`. For `Conv1D`, the value can be `0`, `3` (the default), or `6`.
 
 ##### `max_pool` (Optional)
 
-When specified, performs a `MaxPool2D` before the convolution.
+When specified, performs a `MaxPool` before the convolution.
 
 Example: `max_pool: 2`
 
 ##### `avg_pool` (Optional)
 
-When specified, performs an `AvgPool2D` before the convolution.
+When specified, performs an `AvgPool` before the convolution.
 
 Example: `avg_pool: 2`
 
@@ -724,9 +743,9 @@ The `--ai85` option enables:
 * Per-layer support for 1, 2 and 4-bit weight sizes in addition to 8-bit weights (this is
   supported using the `quantization` keyword in the configuration file, and the configuration
   file can also be read by the quantization tool) (done).
-* A scale factor on the output of `Conv2D` that allows for better use of the entire range of
+* A scale factor on the output of the convolution that allows for better use of the entire range of
   weight bits (done).
-* Support for many more pooling sizes, and strides, and larger limits for `AvgPool2D`
+* Support for many more pooling sizes, and strides, and larger limits for average pooling
   (in progress).
 * 1D convolutions (in progress).
 * 1x1 kernels (in progress).
