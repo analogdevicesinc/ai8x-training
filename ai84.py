@@ -275,3 +275,45 @@ class SoftwareLinear(FusedSoftwareLinearReLU):
     """
     def __init__(self, in_features, out_features, **kwargs):
         super(SoftwareLinear, self).__init__(in_features, out_features, relu=False, **kwargs)
+
+
+class FusedConv1dReLU(nn.Module):
+    """
+    AI84 - Fused 1D Convolution and ReLU
+    """
+    def __init__(self, in_channels, out_channels, kernel_size, stride=3, padding=0, bias=True,
+                 relu=True, simulate=False):
+        super(FusedConv1dReLU, self).__init__()
+
+        assert stride == 3
+        assert padding in [0, 3, 6]
+        assert kernel_size == 9
+
+        self.conv1d = nn.Conv1d(in_channels, out_channels, kernel_size, stride=stride,
+                                padding=padding, bias=bias)
+
+        if simulate:
+            self.quantize = Quantize(num_bits=DATA_BITS)
+            bits = ACTIVATION_BITS
+            self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
+        else:
+            self.quantize = Empty()
+            self.clamp = Clamp(min_val=-1., max_val=1.)  # Do not combine with ReLU
+
+        if relu:
+            self.activate = nn.ReLU(inplace=True)
+        else:
+            self.activate = Empty()
+
+    def forward(self, x):  # pylint: disable=arguments-differ
+        x = self.conv1d(x)
+        x = self.clamp(self.quantize(self.activate(x)))
+        return x
+
+
+class Conv1d(FusedConv2dReLU):
+    """
+    AI84 - 1D Convolution without activation
+    """
+    def __init__(self, in_channels, out_channels, kernel_size, **kwargs):
+        super(Conv1d, self).__init__(in_channels, out_channels, kernel_size, relu=False, **kwargs)
