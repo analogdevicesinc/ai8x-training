@@ -1,50 +1,52 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_7/2/2019_
+_7/3/2019_
 
 _Open this file in a markdown enabled viewer, for example Visual Studio Code
 (https://code.visualstudio.com). See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
 for a description of Markdown._
 
 This software consists of two related projects:
-1. AI84 Model Training and Quantization
-2. AI84 Network Loader and RTL Simulation Generator
+1. AI8X Model Training and Quantization
+2. AI8X Network Loader and RTL Simulation Generator
+
+---
 
 ## Contents
 
 - [Contents](#Contents)
 - [Overview](#Overview)
-- [Recommended Software](#Recommended-Software)
 - [Installation](#Installation)
   - [File System Layout](#File-System-Layout)
   - [Upstream Code](#Upstream-Code)
   - [Prerequisites](#Prerequisites)
-  - [Project](#Project)
+    - [Recommended Software](#Recommended-Software)
+  - [Project Installation](#Project-Installation)
     - [Creating the Virtual Environment](#Creating-the-Virtual-Environment)
     - [Building TensorFlow (for old CPUs)](#Building-TensorFlow-for-old-CPUs)
     - [Nervana Distiller](#Nervana-Distiller)
     - [Synthesis Project](#Synthesis-Project)
-- [Usage: AI84 Model Training and Quantization](#Usage-AI84-Model-Training-and-Quantization)
-  - [Quantization](#Quantization)
-  - [Alternative Quantization Approaches](#Alternative-Quantization-Approaches)
 - [AI84 Hardware and Resources](#AI84-Hardware-and-Resources)
   - [Overview](#Overview-1)
+  - [Data, Weights, and Processors](#Data-Weights-and-Processors)
+    - [Weight Memory](#Weight-Memory)
+    - [Data Memory](#Data-Memory)
+  - [Accelerator Limits](#Accelerator-Limits)
   - [Number Format](#Number-Format)
   - [Channel Data Formats](#Channel-Data-Formats)
     - [HWC](#HWC)
     - [CHW](#CHW)
-  - [Accelerator Limits](#Accelerator-Limits)
-- [Data, Weight, and Processors](#Data-Weight-and-Processors)
-  - [Weight Memory](#Weight-Memory)
-  - [Data Memory](#Data-Memory)
   - [CHW Data Format and Consequences for Weight Memory Layout](#CHW-Data-Format-and-Consequences-for-Weight-Memory-Layout)
-- [Active Processors and Layers](#Active-Processors-and-Layers)
+  - [Active Processors and Layers](#Active-Processors-and-Layers)
   - [Layers and Weight Memory](#Layers-and-Weight-Memory)
   - [Weight Storage Example](#Weight-Storage-Example)
   - [Limitations of AI84 Networks](#Limitations-of-AI84-Networks)
-- [Adding Datasets and New Networks](#Adding-Datasets-and-New-Networks)
-- [Usage: AI84 Network Loader](#Usage-AI84-Network-Loader)
+- [Model Training and Quantization](#Model-Training-and-Quantization)
+  - [Quantization](#Quantization)
+  - [Alternative Quantization Approaches](#Alternative-Quantization-Approaches)
+  - [Adding Datasets and New Networks to the Training Process](#Adding-Datasets-and-New-Networks-to-the-Training-Process)
+- [Network Loader](#Network-Loader)
   - [Network Loader Configuration Language](#Network-Loader-Configuration-Language)
     - [Global Configuration](#Global-Configuration)
       - [`arch` (Mandatory)](#arch-Mandatory)
@@ -68,10 +70,10 @@ This software consists of two related projects:
       - [`max_pool` (Optional)](#maxpool-Optional)
       - [`avg_pool` (Optional)](#avgpool-Optional)
       - [`pool_stride` (Optional)](#poolstride-Optional)
-  - [Adding Datasets](#Adding-Datasets)
+  - [Adding Datasets to the Network Loader](#Adding-Datasets-to-the-Network-Loader)
+  - [CMSIS5 NN Emulation](#CMSIS5-NN-Emulation)
 - [AI84 SDK](#AI84-SDK)
-- [AI85/AI86](#AI85AI86)
-- [CMSIS5 NN Emulation](#CMSIS5-NN-Emulation)
+- [AI85/AI86 Changes](#AI85AI86-Changes)
 - [Contributing Code](#Contributing-Code)
   - [Linting](#Linting)
   - [Submitting Changes](#Submitting-Changes)
@@ -81,16 +83,6 @@ This software consists of two related projects:
 The following graphic shows an overview of the development flow:
 
 ![Development Flow](docs/DevelopmentFlow.png)
-
-## Recommended Software
-
-The following software is optional, and can be replaced with other similar software of the 
-user's choosing.
-
-1. Visual Studio Code (Editor, Free), https://code.visualstudio.com
-2. CoolTerm (Serial Terminal, Free), http://freeware.the-meiers.org
-3. Git Fork (Graphical Git Client, Free), https://git-fork.com
-4. Beyond Compare (Diff and Merge Tool, $60), https://scootersoftware.com
 
 ## Installation
 
@@ -117,7 +109,17 @@ Install CUDA10 and CUDNN:
 https://developer.nvidia.com/cuda-downloads
 https://developer.nvidia.com/cudnn
 
-### Project
+#### Recommended Software
+
+The following software is optional, and can be replaced with other similar software of the 
+user's choosing.
+
+1. Visual Studio Code (Editor, Free), https://code.visualstudio.com
+2. CoolTerm (Serial Terminal, Free), http://freeware.the-meiers.org
+3. Git Fork (Graphical Git Client, Free), https://git-fork.com
+4. Beyond Compare (Diff and Merge Tool, $60), https://scootersoftware.com
+
+### Project Installation
 
 *The software in this project requires Python 3.6.5 or a later 3.6.x version.*
 
@@ -180,7 +182,7 @@ in `Illegal instruction: 4` on startup.
 #### Building TensorFlow (for old CPUs)
 
 If the CPU does not support AVX, or to enable support for AVX2, or CUDA, or AMD64, build
-TensorFlow locally. Otherwise, skip ahead to [TorchVision and Distiller](#TorchVision-and-Distiller).
+TensorFlow locally. Otherwise, skip ahead to [Nervana Distiller](#Nervana-Distiller).
 _To repeat: Building TensorFlow is not needed when the binary wheels are functioning properly._
 
 The TensorFlow build requires Java 8 and Bazel, and takes over two hours. 
@@ -235,9 +237,209 @@ Start by creating a second virtual environment:
     (ai8x-synthesis) $ pip3 install torch
     (ai8x-synethsis) $ pip3 install -e ../ai8x-training/distiller
 
-----
+---
 
-## Usage: AI84 Model Training and Quantization
+## AI84 Hardware and Resources
+
+AI84 is an embedded accelerator. Unlike GPUs, it does not have gigabytes of memory, and cannot
+support arbitrary data (image) sizes.
+
+### Overview
+
+AI84's accelerator consists of 64 parallel processors. Each processor includes a pooling unit and
+a convolutional engine with dedicated weight memory:
+
+![Overview](docs/Overview.png)
+
+Data is read from data memory associated with the processor, and written out to any data memory
+located within the accelerator. To run a deep convolutional neural network, multiple layers are
+chained together, where each layer's operation is individually configurable. The output data from
+one layer is used as the input data for the next layer, for up to 32 layers.
+
+### Data, Weights, and Processors
+
+Data memory, weight memory, and processors are interrelated.
+
+In the AI84 accelerator, processors are organized as follows:
+
+* Each processor is connected to its own dedicated weight memory instance.
+* Four processors share one data memory instance.
+* A group of sixteen processors shares certain common controls and can be operated as a slave
+  to another group, or independently/separately.
+
+Any given processor has visibility of:
+
+* Its dedicated weight memory, and
+* The data memory instance it shares with three other processors.
+
+#### Weight Memory
+
+For each of the four 16-processor groups, weight memory and processors can be visualized as
+follows. Assuming one input channel processed by processor 0, and 8 output channels, the 8 shaded
+kernels will be used:
+
+![Weight Memory Map](docs/KernelMemory.png)
+
+#### Data Memory
+
+Data memory connections can be visualized as follows:
+
+![Data Memory Map](docs/DataMemory.png)
+
+All input data must be located in the data memory instance the processor can access. Conversely,
+output data can be written to any data memory instance inside the accelerator (but not to general
+purpose SRAM on the Arm microcontroller bus).
+
+The data memory instances inside the accelerator are single-port memories. This means that only
+one read operation can happen per clock cycle. When using the HWC data format (see
+[Channel Data Formats](#Channel-Data-Formats)), this means that each of the four processors
+sharing the data memory instance will receive one byte of data per clock cycle (since each 32-bit
+data word consists of four packed channels).
+
+### Accelerator Limits
+
+* The maximum number of layers is 32.
+* The maximum number of input or output channels in any layer is 64 each.
+* The weight memory supports up to 128 * 64 3x3 Q7 kernels (see [Number Format](#Number-Format)).
+  However, weights must be arranged according to specific rules detailed below.
+* There are 16 instances of 16 KB data memory. Any data channel (input, intermediate, or output)
+  must completely fit into one memory instance. This limits the first-layer input to 128x128 pixels
+  per channel in the CHW format. However, when using more than one input channel, the HWC format
+  may be preferred, and all layer output are in HWC format as well. In those cases, it is required
+  that four channels fit into a single memory instance -- or 64x64 pixels per channel. Note that
+  the first layer commonly creates a wide expansion (i.e., large number of output channels) that
+  needs to fit into data memory, so the input size limit is mostly theoretical.
+
+### Number Format
+
+All weights and data are stored and computed in Q7 format (signed two's complement 8-bit integers,
+[-128...+127]).
+
+### Channel Data Formats
+
+#### HWC
+
+All internal data are stored in HWC format, 4 channels per 32-bit word. Assuming 3-color (or
+3-channel) input, one byte will be unused. Example:
+
+![0BGR 0BGR 0 BGR 0BGR...](docs/HWC.png)
+
+#### CHW
+
+The input layer can also use the CHW format (sequence of channels), for example:
+  
+![RRRRRR...GGGGGG...BBBBBB...](docs/CHW.png)
+
+### CHW Data Format and Consequences for Weight Memory Layout
+
+When using the CHW data format, only one of the four processors sharing the data
+memory instance can be used. The next channel needs to use a processor connected to a different
+data memory instance, so that the machine can deliver one byte per clock cycle to each enabled
+processor.
+
+Because of the fact that a processor has its own dedicated weight memory, this will introduce
+"gaps" in the weight memory map, as shown in the following illustration:
+
+![Kernel Memory Gaps](docs/KernelMemoryGaps.png)
+
+
+### Active Processors and Layers
+
+For each layer, a set of active processors must be specified. The number of active processors
+must be the same as the number of input channels for the layer, and the input data for that
+layer must be located in data memory instances accessible to the selected processors.
+
+It is possible to specify a relative offset into the data memory instance that applies to all
+processors. _Example:_ Assuming HWC data format, specifying the offset as 8192 bytes will cause
+processors 0-3 to read their input from the second half of data memory 0, processors 4-7 will
+read from the second half of data memory instance 1, etc.
+
+For most simple networks with limited data sizes, it is easiest to ping-pong between the first
+and second halves of the data memories - specify the data offset as 0 for the first layer, 0x2000
+for the second layer, 0 for the third layer, etc. This strategy avoids overlapping inputs and
+outputs when a given processor is used in two consecutive layers.
+
+Even though it is supported by the accelerator, the Network Generator will not
+be able to check for inadvertent overwriting of unprocessed input data by newly generated output
+data when overlapping data. Use the `--overlap-data` command line switch to disable these checks,
+and to allow overlapped data.
+
+### Layers and Weight Memory
+
+For each layer, the weight memory start column is automatically configured by the Network Loader.
+The start column must be a multiple of 4, and the value applies to all processors.
+
+The following example shows the weight memory layout for two layers. The first layer (L0) has 7
+inputs and 9 outputs, and the second layer (L1) has 9 inputs and 2 outputs.
+
+![Layers and Weight Memory](docs/KernelMemoryLayers.png)
+
+
+### Weight Storage Example
+
+The file `ai84net.xlsx` contains an example for a single-channel CHW input using the `AI85Net5`
+network (this example also supports up to four channels in HWC).
+
+*NOTE*: As described above, multiple CHW channels must be loaded into separate
+memory instances. When using a large number of channels, this can cause 'holes' in the processor
+map, which in turn can cause subsequent layers' kernels to require padding.
+
+The Network Loader prints a kernel map that shows the kernel arrangement based on the provided
+network description. It will also flag cases where kernel or bias memories are exceeded.
+
+### Limitations of AI84 Networks
+
+The AI84 hardware does not support arbitrary network parameters. Specifically,
+* Dilation, element-wise addition, and batch normalization are not supported.
+* `Conv2d` input data must be square (i.e., rows == columns).
+* `Conv2d` kernel sizes must be 3x3.
+* `Conv2d` padding can be 0, 1, or 2.
+* The `Conv2d` stride is fixed to 1 when pooling is used.
+* `Conv1d` input data lengths must be a multiple of 3.
+* `Conv1d` kernel sizes must be 9.
+* `Conv1d` padding can be 0, 3, or 6.
+* The `Conv1d` stride is fixed to 3 in all cases.
+* The only supported activation function is `ReLU`.
+* Pooling is only supported for `Conv2d`.
+* Pooling is always combined with a convolution. Both max pooling and average pooling are
+  available.
+* Pooling does not support padding.
+* Pooling strides can be 1, 2, or 4.
+* On AI84, three pooling sizes are supported:
+  - 2x2 with stride 1
+  - 2x2 with stride 2
+  - and, for the last layer, 4x4 stride 4 using a custom unload function.
+* Pooling must cleanly divide the input data width and height. For example, a 2x2 pool on
+  17x17 data is not supported.
+* Average pooling does not support more than 2048 bits in the accumulator. This translates to
+  a 4x4 pooling window if activation was used on the prior layer, 3x3 otherwise. Additionally,
+  average pooling is currently implemented as a `floor()` operation. Since there is also a
+  quantization step at the output of the average pooling, it may not perform as intended
+  (for example, a 2x2 `AvgPool2d` of `[[0, 0], [0, 3]]` will return `0`).
+* Pooling window sizes must be even numbers, and have equal H and W dimensions.
+* The number of input or output channels must not exceed 64.
+* The number of layers must not exceed 32.
+* The maximum dimension (number of rows or columns) for input or output data is 256.
+* Overall weight storage is limited to 64*128 3x3 kernels. However, weights must be arranged
+  in a certain order, see above.
+* The hardware supports 1D and 2D convolution layers. For convenience, a single final fully
+  connected layer with 8-bit inputs/weights/bias, and 16-bit output is supported in software,
+  as well as a software `SoftMax` operator.
+* Since the internal network format is HWC in groups of four channels, output concatenation only
+  works properly when all components of the concatenation other than the last have multiples
+  of four channels. _Output concatenation is not yet supported in the `ai84.py` primitives._
+* It is recommended to not use bias on the AI84 convolutions when using post-training
+  quantization as described in this document. The reason is that the bias is not shifted by the
+  same amount as the weights. This could be mitigated using a more involved training procedure,
+  but since bias values do not significantly improve performance in the example networks, and
+  since this will be corrected for AI85, the recommendation is to not use bias values for now.
+
+With the exception of weight storage, and bias use, most of these limitations will be flagged when
+using the network primitives from `ai84.py`, see [Model Training and Quantization](#AI84-Model-Training-and-Quantization).
+
+---
+
+## Model Training and Quantization
 
 The `ai84net.py` file contains models that fit into AI84's weight memory. These models rely on
 the AI84 hardware operators that are defined in `ai84.py`.
@@ -260,7 +462,7 @@ implemented in `ai84.py`.
 The software quantizes an existing PyTorch checkpoint file and writes
 out a new PyTorch checkpoint file that can then be used to evaluate the quality of the
 quantized network, using the same PyTorch framework used for training.
-The same new checkpoint file will also be used to feed the [AI84 Network Loader](#Usage-AI84-Network-Loader).
+The same new checkpoint file will also be used to feed the [Network Loader](#Network-Loader).
 
 Copy the weight files into the `trained/` folder of the `ai8x-synthesis` project.
 
@@ -284,7 +486,7 @@ Further, a quantized network can be refined using post-quantization training (se
 
 The software also includes an `AI84RangeLinear.py` training quantizer that plugs into the Distiller
 framework for quantization-aware training. However, it needs work as its performance is not
-good enough yet and the distiller source needs to be patched to enable it (add 
+good enough yet and the Distiller source needs to be patched to enable it (add 
 `from range_linear_ai84 import QuantAwareTrainRangeLinearQuantizerAI84` to `distiller/config.py`
 and remove `False and` from `if False and args.ai84` in `train.py`).
 
@@ -293,216 +495,27 @@ shift value will allow easier quantization on AI85, since fractional bits can be
 do not span the full 8-bit range (most read-made quantization approaches require a weight scale
 or output shift).
 
-In all cases, ensure that the quantizer writes out a checkpoint file that the AI84 Network Loader
+In all cases, ensure that the quantizer writes out a checkpoint file that the Network Loader
 can read.
 
-
-## AI84 Hardware and Resources
-
-AI84 is an embedded accelerator. Unlike GPUs, it does not have gigabytes of weight memory, and cannot
-support arbitrary data (image) sizes.
-
-### Overview
-
-TBD
-
-### Number Format
-
-All weights and data are stored and computed in Q7 format (signed two's complement 8-bit integers,
-[-128...+127]).
-
-### Channel Data Formats
-
-#### HWC
-
-All internal data are stored in HWC format, 4 channels per 32-bit word. Assuming 3-color (or
-3-channel) input, one byte will be unused. Example:
-
-![0BGR 0BGR 0 BGR 0BGR...](docs/HWC.png)
-
-#### CHW
-
-The input layer can also use the CHW format (sequence of channels), for example:
-  
-![RRRRRR...GGGGGG...BBBBBB...](docs/CHW.png)
-
-### Accelerator Limits
-
-* The weight memory supports up to 128 * 64 3x3 Q7 kernels. However, weights must be arranged
-  according to specific rules detailed below.
-* There are 16 instances of 16 KB data memory. Any data channel (input, intermediate, or output)
-  must completely fit into one memory instance. This limits the first-layer input to 128x128 pixels
-  per channel in the CHW format. However, when using more than one input channel, the HWC format may
-  be preferred, and all layer output are in HWC format as well. In those cases, it is required that
-  four channels fit into a single memory instance -- or 64x64 pixels per channel. Note that the
-  first layer commonly creates a wide expansion (i.e., large number of output channels) that needs
-  to fit into data memory, so the input size limit is mostly theoretical.
-* The maximum number of layers is 32.
-* The maximum number of input or output channels in any layer is 64 each.
-
-## Data, Weight, and Processors
-
-Data memory, weight memory, and processors are interrelated.
-
-In the AI84 accelerator, processors are organized as follows:
-
-* Each processor is connected to its own dedicated weight memory instance.
-* Four processors share one data memory instance.
-* A group of sixteen processors shares certain common controls and can be operated as a slave
-  to another group, or independently/separately.
-
-Any given processor has visibility of:
-
-* Its dedicated weight memory, and
-* The data memory instance it shares with three other processors.
-
-### Weight Memory
-
-For each of the four 16-processor groups, weight memory and processors can be visualized as
-follows. Assuming one input channel processed by processor 0, and 8 output channels, the shaded kernels
-will be used:
-
-![Weight Memory Map](docs/KernelMemory.png)
-
-### Data Memory
-
-Data memory connections can be visualized as follows:
-
-![Data Memory Map](docs/DataMemory.png)
-
-All input data must be located in the data memory instance the processor can access. Conversely,
-output data can be written to any data memory instance inside the accelerator (but not to general
-purpose SRAM on the Arm microcontroller bus).
-
-The data memory instances inside the accelerator are single-port memories. This means that only
-one read operation can happen per clock cycle. When using the HWC data format, this means that
-each of the four processors sharing the data memory instance will receive one byte of data per
-clock cycle (since each 32-bit data word consists of four packed channels).
-
-### CHW Data Format and Consequences for Weight Memory Layout
-
-On the other hand, when using the CHW data format, only one of the four processors sharing the data
-memory instance can be used. The next channel needs to use a processor connected to a different
-data memory instance, so that the machine can deliver one byte per clock cycle to each enabled
-processor.
-
-Because of the fact that a processor has its own dedicated weight memory, this will introduce
-"gaps" in the weight memory map, as shown in the following illustration:
-
-![Kernel Memory Gaps](docs/KernelMemoryGaps.png)
-
-
-## Active Processors and Layers
-
-For each layer, a set of active processors must be specified. The number of active processors
-must be the same as the number of input channels for the layer, and the input data for that
-layer must be located in data memory instances accessible to the selected processors.
-
-It is possible to specify a relative offset into the data memory instance that applies to all
-processors. _Example:_ Assuming HWC data format, specifying the offset as 8192 bytes will cause
-processors 0-3 to read their input from the second half of data memory 0, processors 4-7 will
-read from the second half of data memory instance 1, etc.
-
-For most simple networks with limited data sizes, it is easiest to ping-pong between the first
-and second halves of the data memories - specify the data offset as 0 for the first layer, 0x2000
-for the second layer, 0 for the third layer, etc. This strategy avoids overlapping inputs and
-outputs when a given processor is used in two consecutive layers.
-
-Even though this is supported by the accelerator, the AI84 Network Generator will not
-be able to check for inadvertent overwriting of unprocessed input data by newly generated output
-data. Use the `--overlap-data` command line switch to disable these checks, and to allow overlapped
-data.
-
-### Layers and Weight Memory
-
-For each layer, the weight memory start column must be specified. The start column must be a
-multiple of 4, and the value applies to all processors.
-
-The following example shows the weight memory layout for two layers. The first layer (L0) has 7
-inputs and 9 outputs, and the second layer (L1) has 9 inputs and 2 outputs.
-
-![Layers and Weight Memory](docs/KernelMemoryLayers.png)
-
-
-### Weight Storage Example
-
-The file `ai84net.xlsx` contains an example for a single-channel CHW input using the `AI85Net5`
-network (this example also supports or up to four channels in HWC).
-
-*NOTE*: As described above, multiple CHW channels must be loaded into separate
-memory instances. When using a large number of channels, this can cause 'holes' in the processor
-map, which in turn can cause subsequent layers' kernels to require padding.
-
-The AI84 Network Loader prints a kernel map that shows the kernel arrangement based on the provided
-network description. It will also flag cases where kernel or bias memories are exceeded.
-
-### Limitations of AI84 Networks
-
-The AI84 hardware does not support arbitrary network parameters. Specifically,
-* Dilation, element-wise addition, and 1D convolutions are not supported.
-* `Conv2D` kernel sizes must be 3x3.
-* `Conv2D` padding can be 0, 1, or 2.
-* The `Conv2D` stride is fixed to 1 when pooling is used.
-* `Conv1D` kernel sizes must be 9.
-* `Conv1D` padding can be 0, 3, or 6.
-* The `Conv1D` stride is fixed to 3 in all cases.
-* The only supported activation function is `ReLU`.
-* Pooling is only supported for `Conv2D`.
-* Pooling is always combined with a convolution. Both max pooling and average pooling are
-  available.
-* Pooling does not support padding.
-* Pooling strides can be 1, 2, or 4.
-* On AI84, three pooling sizes are supported:
-  - 2x2 with stride 1
-  - 2x2 with stride 2
-  - and, in the last layer, using a custom unload function, 4x4 stride 4.
-* Pooling must cleanly divide the input data width and height. For example, a 2x2 pool on
-  17x17 data is not supported.
-* Average pooling does not support more than 2048 bits in the accumulator. This translates to
-  a 4x4 pooling window if activation was used on the prior layer, 3x3 otherwise. Additionally,
-  average pooling is currently implemented as a `floor()` operation. Since there is also a
-  quantization step at the output of the average pooling, it may not perform as intended
-  (for example, a 2x2 `AvgPool2D` of `[[0, 0], [0, 3]]` will return `0`).
-* Pooling window sizes must be even numbers, and have equal H and W dimensions.
-* The number of input or output channels must not exceed 64.
-* The number of layers must not exceed 32.
-* The maximum dimension for input or output data is 256.
-* Input data must be square (i.e., rows == columns).
-* Overall weight storage is limited to 64*128 3x3 kernels. However, weights must be arranged
-  in a certain order, see above.
-* The hardware supports only 2D convolution layers. For convenience, a single final fully
-  connected layer with 8-bit inputs/weights/bias, and 16-bit output is supported in software,
-  as well as a software `SoftMax` operator.
-* Since the internal network format is HWC in groups of four channels, output concatenation only
-  works properly when all components of the concatenation other than the last have multiples
-  of four channels. Output concatenation is not yet supported in the `ai84.py` primitives.
-* It is recommended to not use bias on the AI84 convolutions when using post-training
-  quantization as described in this document. The reason is that the bias is not shifted by the
-  same amount as the weights. This could be mitigated using a more involved training procedure,
-  but since bias values do not significantly improve performance in the example networks, and
-  since this will be corrected for AI85, the recommendation is to not use bias values for now.
-
-With the exception of weight storage, and bias use, most of these limitations are flagged when
-using the network primitives from `ai84.py`.
-
-
-## Adding Datasets and New Networks
+### Adding Datasets and New Networks to the Training Process
 
 The following steps are needed to add new data formats and networks:
-1. Develop a data loader in PyTorch.
+1. Develop a data loader in PyTorch, see https://pytorch.org/tutorials/beginner/data_loading_tutorial.html.
 2. Implement a new network model (see `ai84net.py` for an example).
 3. Add data loader and network model to `train.py`.
 4. Train the new network with the new data. See `go_cifar.sh` for a command line example.
 
+---
 
-## Usage: AI84 Network Loader
+## Network Loader
 
-_The network loader currently depends on PyTorch and Nervana's distiller. This requirement will be
+_The network loader currently depends on PyTorch and Nervana's Distiller. This requirement will be
 removed in the long term._
 
 The network loader creates C code that programs the AI84 (for embedded execution, or RTL
-simulation). Additionally, the generated code contains a sample image and the expected output
-for the sample image as well as code that verifies the expected output.
+simulation, or CMSIS NN comparison). Additionally, the generated code contains sample input data
+and the expected output for the sample, as well as code that verifies the expected output.
 
 The `cnn-gen.py` program needs two inputs:
 1. A quantized checkpoint file, generated by the AI84 model quantization program `ai84ize.py`.
@@ -644,7 +657,7 @@ The default is `hwc`. Note that the data format interacts with `processors`.
 
 ##### `convolution` (Optional)
 
-This selects between a 2D convolution (`conv2d`) and a 1D convolution (`conv1d`).
+This selects between a 2D convolution (`Conv2d`) and a 1D convolution (`Conv1d`).
 
 ##### `activate` (Optional)
 
@@ -675,18 +688,20 @@ This key must be set to `3`.
 
 ##### `pad` (Optional)
 
-`pad` sets the padding for the convolution. For `Conv2D`, this value can be `0`, `1` (the default),
-or `2`. For `Conv1D`, the value can be `0`, `3` (the default), or `6`.
+`pad` sets the padding for the convolution. For `Conv2d`, this value can be `0`, `1` (the default),
+or `2`. For `Conv1d`, the value can be `0`, `3` (the default), or `6`.
 
 ##### `max_pool` (Optional)
 
-When specified, performs a `MaxPool` before the convolution.
+When specified, performs a `MaxPool` before the convolution. `max_pool` is only supported for 2D
+convolutions.
 
 Example: `max_pool: 2`
 
 ##### `avg_pool` (Optional)
 
-When specified, performs an `AvgPool` before the convolution.
+When specified, performs an `AvgPool` before the convolution. `avg_pool` is only supported for 2D
+convolutions.
 
 Example: `avg_pool: 2`
 
@@ -697,16 +712,43 @@ When performing a pooling operation, this key describes the pool stride. The def
 Example: `pool_stride: 2`
 
 
-### Adding Datasets
+### Adding Datasets to the Network Loader
 
-Adding new datasets to the AI84 Network Loader is implemented by
+Adding new datasets to the Network Loader is implemented by:
 1. Providing a network model, its YAML description and quantized weights.
 2. Providing a sample input, and the expected output (modify `sampledata.py` as well as the
    `SUPPORTED_DATASETS` in `yamlcfg.py`).
 
+
+### CMSIS5 NN Emulation
+
+The Network Loader tool can also create code that executes the same exact network using
+Arm's CMSISv5 Neural Networking library, optimized for Arm's Microcontroller DSP (reportedly
+4.6x faster than executing on the CPU), see
+https://developer.arm.com/solutions/machine-learning-on-arm/developer-material/how-to-guides/converting-a-neural-network-for-arm-cortex-m-with-cmsis-nn
+and https://github.com/ARM-software/CMSIS_5 for the source code.
+
+The results of the generated code have been verified to match AI84 exactly and may be used to
+demonstrate the efficacy of the custom CNN accelerator.
+
+The `Device/` folder contains a sample Makefile, and a custom fully connected layer in the
+file `arm_fully_connected_q7_q8p7_opt.c` that returns Q8.7 fixed-point outputs, and a custom
+`arm_softmax_q8p7_q15.c` which is aware of the fixed-point input (both of these files are also used
+for the software classification layer on AI84/AI85).
+Additionally, a `tornadocnn.h` header file is included which helps both embedded examples as
+well as CMSIS NN code.
+
+For example, the following command would generate code that performs a CIFAR-10 inference from the
+`trained/ai84-cifar10.pth.tar` checkpoint file and the `cifar10-hwc.yaml` network description
+file:
+
+    (ai8x-synthesis) $ ./cnn-gen.py --top-level cnn --test-dir demos --prefix CIFAR-10-Arm --checkpoint-file trained/ai84-cifar10.pth.tar --config-file networks/cifar10-hwc.yaml --fc-layer --embedded-code --cmsis-software-nn
+
+---
+
 ## AI84 SDK
 
-Check out the AI84 SDK from SVN, https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/.
+Use SVN to check out the AI84 SDK from https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/.
 
     svn co https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/ AI84SDK
 
@@ -733,18 +775,20 @@ To compile and install this OpenOCD version on macOS, use:
 Additional SDK instructions can be found in a separate document,
 https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/docs/trunk/AI84%20Test%20Board%20Setup%20Instructions.docx.
 
-## AI85/AI86
+---
+
+## AI85/AI86 Changes
 
 The `ai84ize.py` quantization tool and the `cnn-gen.py` network generator both have an 
 `--ai85` command line argument that enables code generation for the AI85 and AI86.
 
 The `--ai85` option enables:
-* Bias shift << 7 (done).
+* Bias shift << 7.
 * Per-layer support for 1, 2 and 4-bit weight sizes in addition to 8-bit weights (this is
   supported using the `quantization` keyword in the configuration file, and the configuration
-  file can also be read by the quantization tool) (done).
+  file can also be read by the quantization tool).
 * A scale factor on the output of the convolution that allows for better use of the entire range of
-  weight bits (done).
+  weight bits.
 * Support for many more pooling sizes, and strides, and larger limits for average pooling
   (in progress).
 * 1D convolutions (in progress).
@@ -753,30 +797,7 @@ The `--ai85` option enables:
 * Support for non-square data (in progress).
 * Support for 32-bit Q25.7 data output for last layer when not using ReLU (in progress).
 
-
-## CMSIS5 NN Emulation
-
-The AI84 Network Loader tool can _also_ create code that executes the same exact network using
-Arm's CMSISv5 Neural Networking library, optimized for Arm's Microcontroller DSP (reportedly
-4.6x faster than executing on the CPU), see
-https://developer.arm.com/solutions/machine-learning-on-arm/developer-material/how-to-guides/converting-a-neural-network-for-arm-cortex-m-with-cmsis-nn
-and https://github.com/ARM-software/CMSIS_5 for the source code.
-
-The results of the generated code have been verified to match AI84 exactly and may be used to
-demonstrate the efficacy of the custom CNN accelerator.
-
-The `Device/` folder contains a sample Makefile, and a custom fully connected layer in the
-file `arm_fully_connected_q7_q8p7_opt.c` that returns Q8.7 fixed-point outputs, and a custom
-`arm_softmax_q8p7_q15.c` which is aware of the fixed-point input (both of these files are also used
-for the software classification layer on AI84/AI85).
-Additionally, a `tornadocnn.h` header file is included which helps both embedded examples as
-well as CMSIS NN code.
-
-For example, the following command would generate code that performs a CIFAR-10 inference from the
-`trained/ai84-cifar10.pth.tar` checkpoint file and the `cifar10-hwc.yaml` network description
-file:
-
-    (ai8x-synthesis) $ ./cnn-gen.py --top-level cnn --test-dir demos --prefix CIFAR-10-Arm --checkpoint-file trained/ai84-cifar10.pth.tar --config-file networks/cifar10-hwc.yaml --fc-layer --embedded-code --cmsis-software-nn
+---
 
 ## Contributing Code
 
@@ -823,4 +844,4 @@ do not change 'master' to anything else even though the local branch is called '
 
 Open the URL in a web browser and request a review for the change list.
 
------------------------
+---
