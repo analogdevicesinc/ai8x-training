@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_7/3/2019_
+_7/8/2019_
 
 _Open this file in a markdown enabled viewer, for example Visual Studio Code
 (https://code.visualstudio.com). See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
@@ -23,6 +23,7 @@ This software consists of two related projects:
   - [Prerequisites](#Prerequisites)
     - [Recommended Software](#Recommended-Software)
   - [Project Installation](#Project-Installation)
+    - [Windows Systems](#Windows-Systems)
     - [Creating the Virtual Environment](#Creating-the-Virtual-Environment)
     - [Building TensorFlow (for old CPUs)](#Building-TensorFlow-for-old-CPUs)
     - [Nervana Distiller](#Nervana-Distiller)
@@ -145,6 +146,10 @@ Then, add to ~/.bash_profile or ~/.profile (as shown by the previous step):
 Next, close the Terminal and install Python 3.6.5:
 
     $ pyenv install 3.6.5
+
+#### Windows Systems
+
+Please see `docs/Windows.md` for Windows installation notes.
 
 #### Creating the Virtual Environment
 
