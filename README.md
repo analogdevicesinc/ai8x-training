@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_7/8/2019_
+_7/12/2019_
 
 _Open this file in a markdown enabled viewer, for example Visual Studio Code
 (https://code.visualstudio.com). See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
@@ -135,7 +135,7 @@ On Ubuntu 18.04 LTS:
 
     $ sudo apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
         libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
-        xz-utils tk-dev libffi-dev liblzma-dev libbz2-dev libreadline-dev libssl-dev
+        xz-utils tk-dev libffi-dev liblzma-dev
     $ curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
 
 Then, add to ~/.bash_profile or ~/.profile (as shown by the previous step):
@@ -734,7 +734,9 @@ https://developer.arm.com/solutions/machine-learning-on-arm/developer-material/h
 and https://github.com/ARM-software/CMSIS_5 for the source code.
 
 The results of the generated code have been verified to match AI84 exactly and may be used to
-demonstrate the efficacy of the custom CNN accelerator.
+demonstrate the efficacy of the custom CNN accelerator. However, note that results of the
+average pooling operation will differ from AI84, and that there may be rounding errors in the
+CMSIS code when enabling SIMD.
 
 The `Device/` folder contains a sample Makefile, and a custom fully connected layer in the
 file `arm_fully_connected_q7_q8p7_opt.c` that returns Q8.7 fixed-point outputs, and a custom
@@ -748,6 +750,8 @@ For example, the following command would generate code that performs a CIFAR-10 
 file:
 
     (ai8x-synthesis) $ ./cnn-gen.py --top-level cnn --test-dir demos --prefix CIFAR-10-Arm --checkpoint-file trained/ai84-cifar10.pth.tar --config-file networks/cifar10-hwc.yaml --fc-layer --embedded-code --cmsis-software-nn
+
+When compiling the CMSIS code, you may have to disable compiler optimizations.
 
 ---
 
