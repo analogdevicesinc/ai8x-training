@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_7/12/2019_
+_7/15/2019_
 
 _Open this file in a markdown enabled viewer, for example Visual Studio Code
 (https://code.visualstudio.com). See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
@@ -734,9 +734,10 @@ https://developer.arm.com/solutions/machine-learning-on-arm/developer-material/h
 and https://github.com/ARM-software/CMSIS_5 for the source code.
 
 The results of the generated code have been verified to match AI84 exactly and may be used to
-demonstrate the efficacy of the custom CNN accelerator. However, note that results of the
-average pooling operation will differ from AI84, and that there may be rounding errors in the
-CMSIS code when enabling SIMD.
+demonstrate the efficacy of the custom CNN accelerator.
+Note there are minor rounding errors in the CMSIS average pooling code when enabling SIMD
+(`-DARM_MATH_DSP`). If there are hard faults on the device, try limiting compiler optimizations
+to `-O1`.
 
 The `Device/` folder contains a sample Makefile, and a custom fully connected layer in the
 file `arm_fully_connected_q7_q8p7_opt.c` that returns Q8.7 fixed-point outputs, and a custom
