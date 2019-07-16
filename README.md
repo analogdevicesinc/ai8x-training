@@ -202,7 +202,7 @@ The removal of `-mfpu=neon` does not seem to be necessary.
     (ai8x-training) $ pip3 install keras_preprocessing
     (ai8x-training) $ git clone https://github.com/tensorflow/tensorflow 
     (ai8x-training) $ cd tensorflow
-    (ai8x-training) $ git checkout tags/v1.13.1
+    (ai8x-training) $ git checkout tags/v1.14.0
     (ai8x-training) $ ./configure
     (ai8x-training) $ bazel build --config=opt //tensorflow/tools/pip_package:build_pip_package
     (ai8x-training) $ bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg
@@ -213,7 +213,6 @@ The removal of `-mfpu=neon` does not seem to be necessary.
 To install Nervana's distiller:
 
     (ai8x-training) $ git clone https://github.com/NervanaSystems/distiller.git
-    (ai8x-training) $ cp requirements.txt.distiller distiller/requirements.txt
     (ai8x-training) $ pip3 install -e distiller
 
 On macOS, comment out the following line in `distiller/distiller/apputils/execution_env.py`:
