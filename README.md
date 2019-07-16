@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_7/15/2019_
+_7/16/2019_
 
 _Open this file in a markdown enabled viewer, for example Visual Studio Code
 (https://code.visualstudio.com). See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
@@ -160,13 +160,13 @@ To create the virtual environment and install basic wheels:
     $ python3 -m venv .
     $ source bin/activate
     (ai8x-training) $ pip3 install -U pip setuptools
-    (ai8x-training) $ pip3 install numpy
-    (ai8x-training) $ pip3 install pyyaml tabulate future six typing
-    (ai8x-training) $ pip3 install scipy
+    (ai8x-training) $ pip3 install -r requirements.txt
+    (ai8x-training) $ git submodule init
+    (ai8x-training) $ git submodule update
 
 For macOS and systems without CUDA:
     
-    (ai8x-training) $ pip3 install torch
+    (ai8x-training) $ pip3 install torch==1.1.0
 
 For CUDA 10 on Linux (see https://pytorch.org/get-started/locally/):
 
@@ -174,15 +174,16 @@ For CUDA 10 on Linux (see https://pytorch.org/get-started/locally/):
 
 On all systems, install TorchVision:
 
-    (ai8x-training) $ pip3 install torchvision
+    (ai8x-training) $ pip3 install torchvision==0.3.0
 
 Next, install TensorFlow. TensorFlow is needed for TensorBoard support.
 
-    (ai8x-training) $ pip3 install tensorflow
+    (ai8x-training) $ pip3 install "tensorflow>=1.14"
 
-*NOTE*: On x86 systems, the pre-built TensorFlow wheels require AVX (`sysctl -n machdep.cpu.features`
-to find out). Running a TensorFlow wheel that requires AVX instructions on unsupported CPUs results
-in `Illegal instruction: 4` on startup.
+*NOTE*: On x86 systems, the pre-built TensorFlow wheels require AVX (on macOS, run
+`sysctl -n machdep.cpu.features` to find out, on Linux use `cat /proc/cpuinfo | grep avx`).
+Running a TensorFlow wheel that requires AVX instructions on unsupported CPUs results in
+`Illegal instruction: 4` on startup.
 
 #### Building TensorFlow (for old CPUs)
 
@@ -206,13 +207,12 @@ The removal of `-mfpu=neon` does not seem to be necessary.
     (ai8x-training) $ ./configure
     (ai8x-training) $ bazel build --config=opt //tensorflow/tools/pip_package:build_pip_package
     (ai8x-training) $ bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg
-    (ai8x-training) $ pip3 install /tmp/tensorflow_pkg/tensorflow-1.13.1-cp36-cp36m-macosx_10_13_x86_64.whl 
+    (ai8x-training) $ pip3 install /tmp/tensorflow_pkg/tensorflow-1.14.0-cp36-cp36m-macosx_10_13_x86_64.whl 
 
 #### Nervana Distiller
 
 To install Nervana's distiller:
 
-    (ai8x-training) $ git clone https://github.com/NervanaSystems/distiller.git
     (ai8x-training) $ pip3 install -e distiller
 
 On macOS, comment out the following line in `distiller/distiller/apputils/execution_env.py`:
@@ -226,8 +226,8 @@ On macOS, comment out the following line in `distiller/distiller/apputils/execut
 #### Synthesis Project
 
 For `ai8x-synthesis`, some of the installation steps can be simplified. Specifically, TorchVision,
-TensorFlow, and SciPy are not needed, CUDA is unnecessary, and Distiller can be installed from the
-`ai8x-training` project.
+TensorFlow, and SciPy are not needed, CUDA is unnecessary, and Distiller will automatically be
+installed from the `ai8x-training` project.
 
 Start by creating a second virtual environment:
 
@@ -236,10 +236,7 @@ Start by creating a second virtual environment:
     $ python3 -m venv .
     $ source bin/activate
     (ai8x-synthesis) $ pip3 install -U pip setuptools
-    (ai8x-synthesis) $ pip3 install numpy
-    (ai8x-synthesis) $ pip3 install pyyaml tabulate future six typing
-    (ai8x-synthesis) $ pip3 install torch
-    (ai8x-synethsis) $ pip3 install -e ../ai8x-training/distiller
+    (ai8x-synthesis) $ pip3 install -r requirements.txt
 
 ---
 
@@ -317,7 +314,7 @@ data word consists of four packed channels).
 ### Number Format
 
 All weights and data are stored and computed in Q7 format (signed two's complement 8-bit integers,
-[-128...+127]).
+[-128...+127]). See https://en.wikipedia.org/wiki/Q_%28number_format%29.
 
 ### Channel Data Formats
 
@@ -452,6 +449,13 @@ To train the FP32 model for FashionMIST, run `go_fashionmnist.sh` in the `ai8x-t
 This script will place checkpoint files into the log directory. Training makes use of the Distiller
 framework, but the `train.py` software has been modified slightly to improve it and add some AI84
 specifics.
+
+Training progress can be observed by starting TensorBoard and pointing a web browser to its local
+server.
+
+    (ai8x-training) $ tensorboard --logdir='./logs'
+    TensorBoard 1.14.0 at http://127.0.0.1:6006/ (Press CTRL+C to quit)
+
 
 ### Quantization
 
