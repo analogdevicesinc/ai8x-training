@@ -122,9 +122,9 @@ user's choosing.
 
 ### Project Installation
 
-*The software in this project requires Python 3.6.5 or a later 3.6.x version.*
+*The software in this project requires Python 3.6.9 or a later 3.6.x version.*
 
-It is not necessary to install Python 3.6.5 system-wide, or to rely on the system-provided
+It is not necessary to install Python 3.6.9 system-wide, or to rely on the system-provided
 Python. To manage Python versions, use `pyenv` (https://github.com/pyenv/pyenv).
 
 On macOS (no CUDA support available):
@@ -143,9 +143,9 @@ Then, add to ~/.bash_profile or ~/.profile (as shown by the previous step):
     eval "$(pyenv init -)"
     eval "$(pyenv virtualenv-init -)"
 
-Next, close the Terminal and install Python 3.6.5:
+Next, close the Terminal and install Python 3.6.9:
 
-    $ pyenv install 3.6.5
+    $ pyenv install 3.6.9
 
 #### Windows Systems
 
@@ -156,7 +156,7 @@ Please see `docs/Windows.md` for Windows installation notes.
 To create the virtual environment and install basic wheels:
 
     $ cd ai8x-training
-    $ pyenv local 3.6.5
+    $ pyenv local 3.6.9
     $ python3 -m venv .
     $ source bin/activate
     (ai8x-training) $ pip3 install -U pip setuptools
@@ -167,14 +167,12 @@ To create the virtual environment and install basic wheels:
 For macOS and systems without CUDA:
     
     (ai8x-training) $ pip3 install torch==1.1.0
+    (ai8x-training) $ pip3 install torchvision==0.3.0
 
 For CUDA 10 on Linux (see https://pytorch.org/get-started/locally/):
 
     (ai8x-training) $ pip3 install https://download.pytorch.org/whl/cu100/torch-1.1.0-cp36-cp36m-linux_x86_64.whl
-
-On all systems, install TorchVision:
-
-    (ai8x-training) $ pip3 install torchvision==0.3.0
+    (ai8x-training) $ pip3 install pip3 install https://download.pytorch.org/whl/cu100/torchvision-0.3.0-cp36-cp36m-linux_x86_64.whl
 
 Next, install TensorFlow. TensorFlow is needed for TensorBoard support.
 
@@ -227,7 +225,7 @@ is unnecessary, and Distiller will automatically be installed from the `ai8x-tra
 Start by creating a second virtual environment:
 
     $ cd ai8x-synthesis
-    $ pyenv local 3.6.5
+    $ pyenv local 3.6.9
     $ python3 -m venv .
     $ source bin/activate
     (ai8x-synthesis) $ pip3 install -U pip setuptools
