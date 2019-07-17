@@ -71,6 +71,7 @@ This software consists of two related projects:
       - [`max_pool` (Optional)](#maxpool-Optional)
       - [`avg_pool` (Optional)](#avgpool-Optional)
       - [`pool_stride` (Optional)](#poolstride-Optional)
+      - [`in_dim` (Optional)](#indim-Optional)
   - [Adding Datasets to the Network Loader](#Adding-Datasets-to-the-Network-Loader)
   - [CMSIS5 NN Emulation](#CMSIS5-NN-Emulation)
 - [AI84 SDK](#AI84-SDK)
@@ -711,6 +712,13 @@ Example: `avg_pool: 2`
 When performing a pooling operation, this key describes the pool stride. The default is `1`.
 
 Example: `pool_stride: 2`
+
+##### `in_dim` (Optional)
+
+`in_dim` specifies the dimensions of the input data. This is usually automatically computed;
+however, when merging layers or flattening data, this key allows overriding of the dimensions.
+
+Example: `in_dim: [64, 64]`.
 
 
 ### Adding Datasets to the Network Loader

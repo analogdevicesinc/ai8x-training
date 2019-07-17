@@ -124,6 +124,10 @@ def main():
         {'name': 'ai85net80expansion',
          'module': 'ai85net-test',
          'min_input': 1,
+         'dim': 2},
+        {'name': 'ai85net6',
+         'module': 'ai85net-test',
+         'min_input': 1,
          'dim': 2}
     ]
 

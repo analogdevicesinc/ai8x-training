@@ -107,14 +107,14 @@ class FusedMaxPoolConv2dReLU(nn.Module):
     AI84 - Fused 2D Max Pool, 2D Convolution and ReLU
     """
     def __init__(self, in_channels, out_channels, kernel_size, pool_size=2, pool_stride=2,
-                 stride=1, padding=0, bias=True, relu=True, simulate=False):
+                 stride=1, padding=0, bias=True, relu=True, simulate=False, device=84):
         super(FusedMaxPoolConv2dReLU, self).__init__()
 
         assert pool_size & 1 == 0
         assert pool_size <= 16
         assert 0 < pool_stride <= 16
         assert 0 <= padding <= 2
-        assert kernel_size == 3
+        assert device >= 85 or kernel_size == 3
         assert stride == 1
 
         self.pool = nn.MaxPool2d(kernel_size=pool_size, stride=pool_stride, padding=0)
@@ -155,14 +155,14 @@ class FusedAvgPoolConv2dReLU(nn.Module):
     AI84 - Fused 2D Avg Pool, 2D Convolution and ReLU
     """
     def __init__(self, in_channels, out_channels, kernel_size, pool_size=2, pool_stride=2,
-                 stride=1, padding=0, bias=True, relu=True, simulate=False):
+                 stride=1, padding=0, bias=True, relu=True, simulate=False, device=84):
         super(FusedAvgPoolConv2dReLU, self).__init__()
 
         assert pool_size & 1 == 0
         assert pool_size <= 4
         assert 0 < pool_stride <= 4
         assert 0 <= padding <= 2
-        assert kernel_size == 3
+        assert device >= 85 or kernel_size == 3
         assert stride == 1
 
         self.pool = nn.AvgPool2d(kernel_size=pool_size, stride=pool_stride, padding=0)
