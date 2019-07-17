@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_7/16/2019_
+_7/17/2019_
 
 _Open this file in a markdown enabled viewer, for example Visual Studio Code
 (https://code.visualstudio.com). See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
@@ -192,7 +192,7 @@ TensorFlow locally. Otherwise, skip ahead to [Nervana Distiller](#Nervana-Distil
 _To repeat: Building TensorFlow is not needed when the binary wheels are functioning properly._
 
 The TensorFlow build requires Java 8 and Bazel, and takes over two hours. 
-Building TensorFlow requires Bazel 0.21.0 (newer or much older versions do not work). See
+Building TensorFlow requires Bazel 0.25.2 (newer or much older versions do not work). See
 https://docs.bazel.build/versions/master/install-compile-source.html#build-bazel-using-bazel for
 build instructions.
 
@@ -215,19 +215,14 @@ To install Nervana's distiller:
 
     (ai8x-training) $ pip3 install -e distiller
 
-On macOS, comment out the following line in `distiller/distiller/apputils/execution_env.py`:
-
-    # logger.debug("Number of CPUs: %d", len(os.sched_getaffinity(0)))
-
-(macOS) Add to `~/.matplotlib/matplotrc`:
+On macOS, add to `~/.matplotlib/matplotrc`:
 
     backend: TkAgg
 
 #### Synthesis Project
 
-For `ai8x-synthesis`, some of the installation steps can be simplified. Specifically, TorchVision,
-TensorFlow, and SciPy are not needed, CUDA is unnecessary, and Distiller will automatically be
-installed from the `ai8x-training` project.
+For `ai8x-synthesis`, some of the installation steps can be simplified. Specifically, CUDA is
+is unnecessary, and Distiller will automatically be installed from the `ai8x-training` project.
 
 Start by creating a second virtual environment:
 
