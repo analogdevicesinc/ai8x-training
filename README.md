@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_7/18/2019_
+_7/19/2019_
 
 _Open this file in a markdown enabled viewer, for example Visual Studio Code
 (https://code.visualstudio.com). See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
@@ -696,20 +696,24 @@ or `2`. For `Conv1d`, the value can be `0`, `3` (the default), or `6`.
 ##### `max_pool` (Optional)
 
 When specified, performs a `MaxPool` before the convolution. `max_pool` is only supported for 2D
-convolutions.
+convolutions. The pooling size can specified as an integer (when the value is identical for both
+dimensions), or as two values in order `[H, W]`.
 
 Example: `max_pool: 2`
 
 ##### `avg_pool` (Optional)
 
 When specified, performs an `AvgPool` before the convolution. `avg_pool` is only supported for 2D
-convolutions.
+convolutions. The pooling size can specified as an integer (when the value is identical for both
+dimensions), or as two values in order `[H, W]`.
 
 Example: `avg_pool: 2`
 
 ##### `pool_stride` (Optional)
 
-When performing a pooling operation, this key describes the pool stride. The default is `1`.
+When performing a pooling operation, this key describes the pool stride. The pooling stride can be
+specified as an integer (when the value is identical for both dimensions), or as two values in
+order `[H, W]`. The default is `1` or `[1, 1]`.
 
 Example: `pool_stride: 2`
 
