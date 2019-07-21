@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_7/19/2019_
+_7/21/2019_
 
 _Open this file in a markdown enabled viewer, for example Visual Studio Code
 (https://code.visualstudio.com). See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
@@ -76,6 +76,7 @@ This software consists of two related projects:
   - [CMSIS5 NN Emulation](#CMSIS5-NN-Emulation)
 - [AI84 SDK](#AI84-SDK)
 - [AI85/AI86 Changes](#AI85AI86-Changes)
+- [Updating the Project](#Updating-the-Project)
 - [Contributing Code](#Contributing-Code)
   - [Linting](#Linting)
   - [Submitting Changes](#Submitting-Changes)
@@ -157,13 +158,12 @@ Please see `docs/Windows.md` for Windows installation notes.
 To create the virtual environment and install basic wheels:
 
     $ cd ai8x-training
+    $ git submodule update --init
     $ pyenv local 3.6.9
     $ python3 -m venv .
     $ source bin/activate
     (ai8x-training) $ pip3 install -U pip setuptools
     (ai8x-training) $ pip3 install -r requirements.txt
-    (ai8x-training) $ git submodule init
-    (ai8x-training) $ git submodule update
 
 For macOS and systems without CUDA:
     
@@ -226,6 +226,7 @@ is unnecessary, and Distiller will automatically be installed from the `ai8x-tra
 Start by creating a second virtual environment:
 
     $ cd ai8x-synthesis
+    $ git submodule update --init
     $ pyenv local 3.6.9
     $ python3 -m venv .
     $ source bin/activate
@@ -741,7 +742,8 @@ The Network Loader tool can also create code that executes the same exact networ
 Arm's CMSISv5 Neural Networking library, optimized for Arm's Microcontroller DSP (reportedly
 4.6x faster than executing on the CPU), see
 https://developer.arm.com/solutions/machine-learning-on-arm/developer-material/how-to-guides/converting-a-neural-network-for-arm-cortex-m-with-cmsis-nn
-and https://github.com/ARM-software/CMSIS_5 for the source code.
+and https://github.com/ARM-software/CMSIS_5 for the source code. A version of this repository
+is automatically checked out as part of the `ai8x-synthesis` project.
 
 The results of the generated code have been verified to match AI84 exactly and may be used to
 demonstrate the efficacy of the custom CNN accelerator.
@@ -752,9 +754,11 @@ to `-O1`.
 The `Device/` folder contains a sample Makefile, and a custom fully connected layer in the
 file `arm_fully_connected_q7_q8p7_opt.c` that returns Q8.7 fixed-point outputs, and a custom
 `arm_softmax_q8p7_q15.c` which is aware of the fixed-point input (both of these files are also used
-for the software classification layer on AI84/AI85).
-Additionally, a `tornadocnn.h` header file is included which helps both embedded examples as
-well as CMSIS NN code.
+for the software classification layer on AI84/AI85). Additionally, a number of files are provided
+that provide non-square pooling support, and activation support for more than 64 KB of data (these
+files are not needed for AI84/AI85 hardware).
+The `tornadocnn.h` header file is included which helps both embedded examples as well as CMSIS NN
+code.
 
 For example, the following command would generate code that performs a CIFAR-10 inference from the
 `trained/ai84-cifar10.pth.tar` checkpoint file and the `cifar10-hwc.yaml` network description
@@ -813,11 +817,19 @@ The `--ai85` option enables:
   (in progress).
 * 1D convolutions (in progress).
 * 1x1 kernels (in progress).
+* Data 'flattening' and fully connected layers (in progress).
 * Support for more weight memory, and more input and output channels (in progress).
-* Support for non-square data (in progress).
+* Support for non-square data and non-square pooling kernels (in progress).
 * Support for 32-bit Q25.7 data output for last layer when not using ReLU (in progress).
 
 ---
+
+## Updating the Project
+
+To pull the latest code, in either project use:
+
+    $ git pull
+    $ git submodule update --init
 
 ## Contributing Code
 
