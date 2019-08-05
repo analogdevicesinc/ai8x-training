@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_7/21/2019_
+_8/5/2019_
 
 _Open this file in a markdown enabled viewer, for example Visual Studio Code
 (https://code.visualstudio.com). See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
@@ -15,71 +15,71 @@ This software consists of two related projects:
 
 ## Contents
 
-- [Contents](#Contents)
-- [Overview](#Overview)
-- [Installation](#Installation)
-  - [File System Layout](#File-System-Layout)
-  - [Upstream Code](#Upstream-Code)
-  - [Prerequisites](#Prerequisites)
-    - [Recommended Software](#Recommended-Software)
-  - [Project Installation](#Project-Installation)
-    - [Windows Systems](#Windows-Systems)
-    - [Creating the Virtual Environment](#Creating-the-Virtual-Environment)
-    - [Building TensorFlow (for old CPUs)](#Building-TensorFlow-for-old-CPUs)
-    - [Nervana Distiller](#Nervana-Distiller)
-    - [Synthesis Project](#Synthesis-Project)
-- [AI84 Hardware and Resources](#AI84-Hardware-and-Resources)
-  - [Overview](#Overview-1)
-  - [Data, Weights, and Processors](#Data-Weights-and-Processors)
-    - [Weight Memory](#Weight-Memory)
-    - [Data Memory](#Data-Memory)
-  - [Accelerator Limits](#Accelerator-Limits)
-  - [Number Format](#Number-Format)
-  - [Channel Data Formats](#Channel-Data-Formats)
-    - [HWC](#HWC)
-    - [CHW](#CHW)
-  - [CHW Data Format and Consequences for Weight Memory Layout](#CHW-Data-Format-and-Consequences-for-Weight-Memory-Layout)
-  - [Active Processors and Layers](#Active-Processors-and-Layers)
-  - [Layers and Weight Memory](#Layers-and-Weight-Memory)
-  - [Weight Storage Example](#Weight-Storage-Example)
-  - [Limitations of AI84 Networks](#Limitations-of-AI84-Networks)
-- [Model Training and Quantization](#Model-Training-and-Quantization)
-  - [Quantization](#Quantization)
-  - [Alternative Quantization Approaches](#Alternative-Quantization-Approaches)
-  - [Adding Datasets and New Networks to the Training Process](#Adding-Datasets-and-New-Networks-to-the-Training-Process)
-- [Network Loader](#Network-Loader)
-  - [Network Loader Configuration Language](#Network-Loader-Configuration-Language)
-    - [Global Configuration](#Global-Configuration)
-      - [`arch` (Mandatory)](#arch-Mandatory)
-      - [`dataset` (Mandatory)](#dataset-Mandatory)
-      - [`output_map` (Optional)](#outputmap-Optional)
-      - [`layers` (Mandatory)](#layers-Mandatory)
-    - [Per-Layer Configuration](#Per-Layer-Configuration)
-      - [`sequence` (Optional)](#sequence-Optional)
-      - [`processors` (Mandatory)](#processors-Mandatory)
-      - [`output_processors` (Optional)](#outputprocessors-Optional)
-      - [`out_offset` (Optional)](#outoffset-Optional)
-      - [`in_offset` (Optional)](#inoffset-Optional)
-      - [`output_width` (Optional)](#outputwidth-Optional)
-      - [`data_format` (Optional)](#dataformat-Optional)
-      - [`convolution` (Optional)](#convolution-Optional)
-      - [`activate` (Optional)](#activate-Optional)
-      - [`quantization` (Optional)](#quantization-Optional)
-      - [`kernel_size` (Optional)](#kernelsize-Optional)
-      - [`stride` (Optional)](#stride-Optional)
-      - [`pad` (Optional)](#pad-Optional)
-      - [`max_pool` (Optional)](#maxpool-Optional)
-      - [`avg_pool` (Optional)](#avgpool-Optional)
-      - [`pool_stride` (Optional)](#poolstride-Optional)
-      - [`in_dim` (Optional)](#indim-Optional)
-  - [Adding Datasets to the Network Loader](#Adding-Datasets-to-the-Network-Loader)
-  - [CMSIS5 NN Emulation](#CMSIS5-NN-Emulation)
-- [AI84 SDK](#AI84-SDK)
-- [AI85/AI86 Changes](#AI85AI86-Changes)
-- [Updating the Project](#Updating-the-Project)
-- [Contributing Code](#Contributing-Code)
-  - [Linting](#Linting)
-  - [Submitting Changes](#Submitting-Changes)
+- [Contents](#contents)
+- [Overview](#overview)
+- [Installation](#installation)
+  - [File System Layout](#file-system-layout)
+  - [Upstream Code](#upstream-code)
+  - [Prerequisites](#prerequisites)
+    - [Recommended Software](#recommended-software)
+  - [Project Installation](#project-installation)
+    - [Windows Systems](#windows-systems)
+    - [Creating the Virtual Environment](#creating-the-virtual-environment)
+    - [Building TensorFlow (for old CPUs)](#building-tensorflow-for-old-cpus)
+    - [Nervana Distiller](#nervana-distiller)
+    - [Synthesis Project](#synthesis-project)
+- [AI84 Hardware and Resources](#ai84-hardware-and-resources)
+  - [Overview](#overview-1)
+  - [Data, Weights, and Processors](#data-weights-and-processors)
+    - [Weight Memory](#weight-memory)
+    - [Data Memory](#data-memory)
+  - [Accelerator Limits](#accelerator-limits)
+  - [Number Format](#number-format)
+  - [Channel Data Formats](#channel-data-formats)
+    - [HWC](#hwc)
+    - [CHW](#chw)
+  - [CHW Data Format and Consequences for Weight Memory Layout](#chw-data-format-and-consequences-for-weight-memory-layout)
+  - [Active Processors and Layers](#active-processors-and-layers)
+  - [Layers and Weight Memory](#layers-and-weight-memory)
+  - [Weight Storage Example](#weight-storage-example)
+  - [Limitations of AI84 Networks](#limitations-of-ai84-networks)
+- [Model Training and Quantization](#model-training-and-quantization)
+  - [Quantization](#quantization)
+  - [Alternative Quantization Approaches](#alternative-quantization-approaches)
+  - [Adding Datasets and New Networks to the Training Process](#adding-datasets-and-new-networks-to-the-training-process)
+- [Network Loader](#network-loader)
+  - [Network Loader Configuration Language](#network-loader-configuration-language)
+    - [Global Configuration](#global-configuration)
+      - [`arch` (Mandatory)](#arch-mandatory)
+      - [`dataset` (Mandatory)](#dataset-mandatory)
+      - [`output_map` (Optional)](#outputmap-optional)
+      - [`layers` (Mandatory)](#layers-mandatory)
+    - [Per-Layer Configuration](#per-layer-configuration)
+      - [`sequence` (Optional)](#sequence-optional)
+      - [`processors` (Mandatory)](#processors-mandatory)
+      - [`output_processors` (Optional)](#outputprocessors-optional)
+      - [`out_offset` (Optional)](#outoffset-optional)
+      - [`in_offset` (Optional)](#inoffset-optional)
+      - [`output_width` (Optional)](#outputwidth-optional)
+      - [`data_format` (Optional)](#dataformat-optional)
+      - [`convolution` (Optional)](#convolution-optional)
+      - [`activate` (Optional)](#activate-optional)
+      - [`quantization` (Optional)](#quantization-optional)
+      - [`kernel_size` (Optional)](#kernelsize-optional)
+      - [`stride` (Optional)](#stride-optional)
+      - [`pad` (Optional)](#pad-optional)
+      - [`max_pool` (Optional)](#maxpool-optional)
+      - [`avg_pool` (Optional)](#avgpool-optional)
+      - [`pool_stride` (Optional)](#poolstride-optional)
+      - [`in_dim` (Optional)](#indim-optional)
+  - [Adding Datasets to the Network Loader](#adding-datasets-to-the-network-loader)
+  - [CMSIS5 NN Emulation](#cmsis5-nn-emulation)
+- [AI84 SDK](#ai84-sdk)
+- [AI85/AI86 Changes](#ai85ai86-changes)
+- [Updating the Project](#updating-the-project)
+- [Contributing Code](#contributing-code)
+  - [Linting](#linting)
+  - [Submitting Changes](#submitting-changes)
 
 ## Overview
 
@@ -119,6 +119,7 @@ user's choosing.
 
 1. Visual Studio Code (Editor, Free), https://code.visualstudio.com
 2. CoolTerm (Serial Terminal, Free), http://freeware.the-meiers.org
+   or Serial ($30), https://apps.apple.com/us/app/serial/id877615577?mt=12
 3. Git Fork (Graphical Git Client, Free), https://git-fork.com
 4. Beyond Compare (Diff and Merge Tool, $60), https://scootersoftware.com
 
@@ -221,7 +222,7 @@ On macOS, add to `~/.matplotlib/matplotrc`:
 #### Synthesis Project
 
 For `ai8x-synthesis`, some of the installation steps can be simplified. Specifically, CUDA is
-is unnecessary, and Distiller will automatically be installed from the `ai8x-training` project.
+is not necessary.
 
 Start by creating a second virtual environment:
 
@@ -390,7 +391,7 @@ The AI84 hardware does not support arbitrary network parameters. Specifically,
 * `Conv2d` input data must be square (i.e., rows == columns).
 * `Conv2d` kernel sizes must be 3x3.
 * `Conv2d` padding can be 0, 1, or 2.
-* The `Conv2d` stride is fixed to 1 when pooling is used.
+* The `Conv2d` stride is fixed to 1.
 * `Conv1d` input data lengths must be a multiple of 3.
 * `Conv1d` kernel sizes must be 9.
 * `Conv1d` padding can be 0, 3, or 6.
@@ -682,8 +683,7 @@ This key must always be `3x3` (the default).
 
 2D convolutions:
 
-When pooling is used, this key must be `1`. When pooling is not used, this key can be set from `1`
-to TBD.
+This key must be `1`.
 
 1D convolutions:
 
@@ -813,14 +813,13 @@ The `--ai85` option enables:
   file can also be read by the quantization tool).
 * A scale factor on the output of the convolution that allows for better use of the entire range of
   weight bits.
-* Support for many more pooling sizes, and strides, and larger limits for average pooling
-  (in progress).
-* 1D convolutions (in progress).
-* 1x1 kernels (in progress).
-* Data 'flattening' and fully connected layers (in progress).
-* Support for more weight memory, and more input and output channels (in progress).
-* Support for non-square data and non-square pooling kernels (in progress).
-* Support for 32-bit Q25.7 data output for last layer when not using ReLU (in progress).
+* Support for many more pooling sizes and pooling strides, and larger limits for average pooling.
+* 1D convolutions.
+* 1x1 kernels for 2D convolutions.
+* Data 'flattening', allowing the use of 1x1 kernels to emulate fully connected layers.
+* Support for more weight memory, and more input and output channels.
+* Support for non-square data and non-square pooling kernels.
+* Support for 32-bit Q25.7 data output for last layer when not using ReLU.
 
 ---
 
