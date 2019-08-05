@@ -312,6 +312,16 @@ data word consists of four packed channels).
 All weights and data are stored and computed in Q7 format (signed two's complement 8-bit integers,
 [-128...+127]). See https://en.wikipedia.org/wiki/Q_%28number_format%29.
 
+On AI85, _weights_ can be 1, 2, 4, or 8 bits wide (configurable per layer using the `quantization`
+key). Data is always 8 bits wide.
+
+|wt bits| min  | max  |
+|:-----:|-----:|-----:|
+|    8  | –128 | +127 |
+|    4  |   –8 |    7 |
+|    2  |   –2 |    1 |
+|    1  |   –1 |    0 |
+
 ### Channel Data Formats
 
 #### HWC
