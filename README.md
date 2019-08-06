@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_8/5/2019_
+_8/6/2019_
 
 _Open this file in a markdown enabled viewer, for example Visual Studio Code
 (https://code.visualstudio.com). See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
@@ -51,6 +51,7 @@ This software consists of two related projects:
   - [Network Loader Configuration Language](#network-loader-configuration-language)
     - [Global Configuration](#global-configuration)
       - [`arch` (Mandatory)](#arch-mandatory)
+      - [`bias` (Optional, Test Only)](#bias-optional-test-only)
       - [`dataset` (Mandatory)](#dataset-mandatory)
       - [`output_map` (Optional)](#outputmap-optional)
       - [`layers` (Mandatory)](#layers-mandatory)
@@ -152,7 +153,7 @@ Next, close the Terminal and install Python 3.6.9:
 
 #### Windows Systems
 
-Please see `docs/Windows.md` for Windows installation notes.
+Windows is not supported. Please see `docs/Windows.md` for unofficial Windows installation notes.
 
 #### Creating the Virtual Environment
 
@@ -257,7 +258,7 @@ one layer is used as the input data for the next layer, for up to 32 layers.
 
 Data memory, weight memory, and processors are interrelated.
 
-In the AI84 accelerator, processors are organized as follows:
+In the AI8X accelerator, processors are organized as follows:
 
 * Each processor is connected to its own dedicated weight memory instance.
 * Four processors share one data memory instance.
@@ -295,25 +296,43 @@ data word consists of four packed channels).
 
 ### Accelerator Limits
 
-* The maximum number of layers is 32.
-* The maximum number of input or output channels in any layer is 64 each.
-* The weight memory supports up to 128 * 64 3x3 Q7 kernels (see [Number Format](#Number-Format)).
-  However, weights must be arranged according to specific rules detailed below.
-* There are 16 instances of 16 KB data memory. Any data channel (input, intermediate, or output)
-  must completely fit into one memory instance. This limits the first-layer input to 128x128 pixels
-  per channel in the CHW format. However, when using more than one input channel, the HWC format
-  may be preferred, and all layer output are in HWC format as well. In those cases, it is required
-  that four channels fit into a single memory instance -- or 64x64 pixels per channel. Note that
-  the first layer commonly creates a wide expansion (i.e., large number of output channels) that
-  needs to fit into data memory, so the input size limit is mostly theoretical.
+* AI84:
+  * The maximum number of layers is 32.
+  * The maximum number of input or output channels in any layer is 64 each.
+  * The weight memory supports up to 128 * 64 3x3 Q7 kernels (see [Number Format](#Number-Format)).
+    However, weights must be arranged according to specific rules detailed below.
+  * There are 16 instances of 16 KB data memory. Any data channel (input, intermediate, or output)
+    must completely fit into one memory instance. This limits the first-layer input to 128x128
+    pixels per channel in the CHW format. However, when using more than one input channel, the HWC
+    format may be preferred, and all layer output are in HWC format as well. In those cases, it is
+    required that four channels fit into a single memory instance -- or 64x64 pixels per channel.
+    Note that the first layer commonly creates a wide expansion (i.e., large number of output
+    channels) that needs to fit into data memory, so the input size limit is mostly theoretical.
+* AI85:
+  * The maximum number of layers is 32.
+  * The maximum number of input or output channels in any layer is 256 each.
+  * The weight memory supports up to 768 * 64 3x3 Q7 kernels (see [Number Format](#Number-Format)).
+    When using 1-, 2- or 4 bit weights, the capacity increases accordingly.
+    When using more than 64 input or output channels, weight memory is shared and effective
+    capacity decreases.
+    Weights must be arranged according to specific rules detailed below.
+  * There are 16 instances of 32 KB data memory. Any data channel (input, intermediate, or output)
+    must completely fit into one memory instance. This limits the first-layer input to 181x181
+    pixels per channel in the CHW format. However, when using more than one input channel, the HWC
+    format may be preferred, and all layer output are in HWC format as well. In those cases, it is
+    required that four channels fit into a single memory instance -- or 91x90 pixels per channel.
+    Note that the first layer commonly creates a wide expansion (i.e., large number of output
+    channels) that needs to fit into data memory, so the input size limit is mostly theoretical.
 
 ### Number Format
 
-All weights and data are stored and computed in Q7 format (signed two's complement 8-bit integers,
-[-128...+127]). See https://en.wikipedia.org/wiki/Q_%28number_format%29.
+All weights, bias values and data are stored and computed in Q7 format (signed two's complement
+8-bit integers, [-128...+127]). See https://en.wikipedia.org/wiki/Q_%28number_format%29.
 
-On AI85, _weights_ can be 1, 2, 4, or 8 bits wide (configurable per layer using the `quantization`
-key). Data is always 8 bits wide.
+On **AI85**, _weights_ can be 1, 2, 4, or 8 bits wide (configurable per layer using the
+`quantization` key). Bias values are always 8 bits wide. Data is 8 bits wide, except for the last
+layer that can optionally output 32 bits of unclipped data in Q25.7 format when not using
+activation.
 
 |wt bits| min  | max  |
 |:-----:|-----:|-----:|
@@ -321,6 +340,10 @@ key). Data is always 8 bits wide.
 |    4  |   –8 |    7 |
 |    2  |   –2 |    1 |
 |    1  |   –1 |    0 |
+
+Note that 1-bit weights (and, to a lesser degree, 2-bit weights) require the use of bias to
+produce useful results. Without bias, all sums of products of activated data from a prior layer
+would be negative, and activation of that data would always be zero.
 
 ### Channel Data Formats
 
@@ -398,32 +421,35 @@ network description. It will also flag cases where kernel or bias memories are e
 
 The AI84 hardware does not support arbitrary network parameters. Specifically,
 * Dilation, element-wise addition, and batch normalization are not supported.
-* `Conv2d` input data must be square (i.e., rows == columns).
-* `Conv2d` kernel sizes must be 3x3.
-* `Conv2d` padding can be 0, 1, or 2.
-* The `Conv2d` stride is fixed to 1.
-* `Conv1d` input data lengths must be a multiple of 3.
-* `Conv1d` kernel sizes must be 9.
-* `Conv1d` padding can be 0, 3, or 6.
-* The `Conv1d` stride is fixed to 3 in all cases.
+* `Conv2d`:
+  * Input data must be square (i.e., rows == columns).
+  * Kernel sizes must be 3x3.
+  * Padding can be 0, 1, or 2.
+  * Stride is fixed to 1.
+* `Conv1d`:
+  * Input data lengths must be a multiple of 3.
+  * Kernel size must be 9.
+  * Padding can be 0, 3, or 6.
+  * Stride is fixed to 3.
 * The only supported activation function is `ReLU`.
-* Pooling is only supported for `Conv2d`.
-* Pooling is always combined with a convolution. Both max pooling and average pooling are
-  available.
-* Pooling does not support padding.
-* Pooling strides can be 1, 2, or 4.
-* On AI84, three pooling sizes are supported:
-  - 2x2 with stride 1
-  - 2x2 with stride 2
-  - and, for the last layer, 4x4 stride 4 using a custom unload function.
-* Pooling must cleanly divide the input data width and height. For example, a 2x2 pool on
-  17x17 data is not supported.
-* Average pooling does not support more than 2048 bits in the accumulator. This translates to
-  a 4x4 pooling window if activation was used on the prior layer, 3x3 otherwise. Additionally,
-  average pooling is currently implemented as a `floor()` operation. Since there is also a
-  quantization step at the output of the average pooling, it may not perform as intended
-  (for example, a 2x2 `AvgPool2d` of `[[0, 0], [0, 3]]` will return `0`).
-* Pooling window sizes must be even numbers, and have equal H and W dimensions.
+* Pooling:
+  * Pooling is only supported for `Conv2d`.
+  * Pooling is always combined with a convolution. Both max pooling and average pooling are
+    available.
+  * Pooling does not support padding.
+  * Pooling strides can be 1, 2, or 4.
+  * On AI84, three pooling sizes are supported:
+    - 2x2 with stride 1
+    - 2x2 with stride 2
+    - and, for the last layer, 4x4 stride 4 using a custom unload function.
+  * Pooling must cleanly divide the input data width and height. For example, a 2x2 pool on
+    17x17 data is not supported.
+  * Average pooling does not support more than 2048 bits in the accumulator. This translates to
+    a 4x4 pooling window if activation was used on the prior layer, 3x3 otherwise. Additionally,
+    average pooling is currently implemented as a `floor()` operation. Since there is also a
+    quantization step at the output of the average pooling, it may not perform as intended
+    (for example, a 2x2 `AvgPool2d` of `[[0, 0], [0, 3]]` will return `0`).
+  * Pooling window sizes must be even numbers, and have equal H and W dimensions.
 * The number of input or output channels must not exceed 64.
 * The number of layers must not exceed 32.
 * The maximum dimension (number of rows or columns) for input or output data is 256.
@@ -594,12 +620,16 @@ sections in each file - global statements and a sequence of layer descriptions.
 `arch` specifies the network architecture, for example `ai84net5`. This key is matched against
 the architecture embedded in the checkpoint file.
 
+##### `bias` (Optional, Test Only)
+
+`bias` is only used for test data.
+
 ##### `dataset` (Mandatory)
 
 `dataset` configures the data set for the network. This determines the input data size and
 dimensions as well as the number of input channels.
 
-Supported data sets at this time are `mnist`, `fashionmnist`, and `cifar-10`.
+Data sets are for example `mnist`, `fashionmnist`, and `cifar-10`.
 
 ##### `output_map` (Optional)
 
@@ -671,7 +701,8 @@ The default is `hwc`. Note that the data format interacts with `processors`.
 
 ##### `convolution` (Optional)
 
-This selects between a 2D convolution (`Conv2d`) and a 1D convolution (`Conv1d`).
+This selects between a 2D convolution (`Conv2d`) and a 1D convolution (`Conv1d`). On AI85, the
+passthrough operation can be selected using `convolution: None`. The default is `Conv2d`.
 
 ##### `activate` (Optional)
 
@@ -687,44 +718,51 @@ On AI85, this key describes the width of the weight memory in bits and can be `1
 
 ##### `kernel_size` (Optional)
 
-This key must always be `3x3` (the default).
+2D convolutions:
+
+On AI84, this key must always be `3x3` (the default). On AI85, `1x1` is also permitted.
+
+1D convolutions:
+
+On AI84, this key must always be `9` (the default). On AI85, `1` through `9` are permitted.
 
 ##### `stride` (Optional)
 
 2D convolutions:
 
-This key must be `1`.
+This key must always be `1`.
 
 1D convolutions:
 
-This key must be set to `3`.
+On AI84, this key must be set to `3`. On AI85, this key must be `1`.
 
 ##### `pad` (Optional)
 
 `pad` sets the padding for the convolution. For `Conv2d`, this value can be `0`, `1` (the default),
-or `2`. For `Conv1d`, the value can be `0`, `3` (the default), or `6`.
+or `2`. For `Conv1d`, the value can be `0`, `3` (the default), or `6` on AI84 or `0`, `1`, `2` on
+AI85.
 
 ##### `max_pool` (Optional)
 
-When specified, performs a `MaxPool` before the convolution. `max_pool` is only supported for 2D
-convolutions. The pooling size can specified as an integer (when the value is identical for both
-dimensions), or as two values in order `[H, W]`.
+When specified, performs a `MaxPool` before the convolution. On AI84, `max_pool` is only supported
+for 2D convolutions. The pooling size can specified as an integer (when the value is identical for
+both dimensions, or for 1D convolutions), or as two values in order `[H, W]`.
 
 Example: `max_pool: 2`
 
 ##### `avg_pool` (Optional)
 
-When specified, performs an `AvgPool` before the convolution. `avg_pool` is only supported for 2D
-convolutions. The pooling size can specified as an integer (when the value is identical for both
-dimensions), or as two values in order `[H, W]`.
+When specified, performs an `AvgPool` before the convolution. On AI84, `avg_pool` is only supported
+for 2D convolutions. The pooling size can specified as an integer (when the value is identical for
+both dimensions, or for 1D convolutions), or as two values in order `[H, W]`.
 
 Example: `avg_pool: 2`
 
 ##### `pool_stride` (Optional)
 
 When performing a pooling operation, this key describes the pool stride. The pooling stride can be
-specified as an integer (when the value is identical for both dimensions), or as two values in
-order `[H, W]`. The default is `1` or `[1, 1]`.
+specified as an integer (when the value is identical for both dimensions, or for 1D convolutions),
+or as two values in order `[H, W]`. The default is `1` or `[1, 1]`.
 
 Example: `pool_stride: 2`
 
@@ -741,9 +779,9 @@ Examples: `in_dim: [64, 64]`; `in_dim: "flatten"`.
 
 Adding new datasets to the Network Loader is implemented as follows:
 1. Provide network model, its YAML description and quantized weights.
-2. Provide a sample input -- add `sample_dataset.npy` for the `dataset` to the `tests` directory.
-   This file is generated by saving a sample using `numpy.save()`. See `sampledata.py` for more
-   information.
+2. Provide a sample input -- add `sample_dset.npy` for the dataset named `dset` to the `tests`
+   directory. This file is generated by saving a sample using `numpy.save()`. See `sampledata.py`
+   for more information.
 
 
 ### CMSIS5 NN Emulation
