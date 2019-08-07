@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_8/6/2019_
+_8/7/2019_
 
 _Open this file in a markdown enabled viewer, for example Visual Studio Code
 (https://code.visualstudio.com). See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
@@ -28,13 +28,18 @@ This software consists of two related projects:
     - [Building TensorFlow (for old CPUs)](#building-tensorflow-for-old-cpus)
     - [Nervana Distiller](#nervana-distiller)
     - [Synthesis Project](#synthesis-project)
-- [AI84 Hardware and Resources](#ai84-hardware-and-resources)
+- [AI8X Hardware and Resources](#ai8x-hardware-and-resources)
   - [Overview](#overview-1)
   - [Data, Weights, and Processors](#data-weights-and-processors)
     - [Weight Memory](#weight-memory)
     - [Data Memory](#data-memory)
   - [Accelerator Limits](#accelerator-limits)
   - [Number Format](#number-format)
+    - [Rounding](#rounding)
+    - [Addition](#addition)
+    - [Saturation and Clipping](#saturation-and-clipping)
+    - [Multiplication](#multiplication)
+    - [Sign Bit](#sign-bit)
   - [Channel Data Formats](#channel-data-formats)
     - [HWC](#hwc)
     - [CHW](#chw)
@@ -43,6 +48,7 @@ This software consists of two related projects:
   - [Layers and Weight Memory](#layers-and-weight-memory)
   - [Weight Storage Example](#weight-storage-example)
   - [Limitations of AI84 Networks](#limitations-of-ai84-networks)
+  - [Limitations of AI85 Networks](#limitations-of-ai85-networks)
 - [Model Training and Quantization](#model-training-and-quantization)
   - [Quantization](#quantization)
   - [Alternative Quantization Approaches](#alternative-quantization-approaches)
@@ -237,14 +243,19 @@ Start by creating a second virtual environment:
 
 ---
 
-## AI84 Hardware and Resources
+## AI8X Hardware and Resources
 
-AI84 is an embedded accelerator. Unlike GPUs, it does not have gigabytes of memory, and cannot
+AI8X are embedded accelerators. Unlike GPUs, AI8X does not have gigabytes of memory, and cannot
 support arbitrary data (image) sizes.
+
+To minimize data movement, the accelerator is optimized for convolutions with in-flight pooling on
+a sequence of layers.
+
+![Example](docs/CNNOverview.png)
 
 ### Overview
 
-AI84's accelerator consists of 64 parallel processors. Each processor includes a pooling unit and
+The AI8X accelerator consists of 64 parallel processors. Each processor includes a pooling unit and
 a convolutional engine with dedicated weight memory:
 
 ![Overview](docs/Overview.png)
@@ -310,7 +321,7 @@ data word consists of four packed channels).
     channels) that needs to fit into data memory, so the input size limit is mostly theoretical.
 * AI85:
   * The maximum number of layers is 32.
-  * The maximum number of input or output channels in any layer is 256 each.
+  * The maximum number of input or output channels in any layer is 512 each.
   * The weight memory supports up to 768 * 64 3x3 Q7 kernels (see [Number Format](#Number-Format)).
     When using 1-, 2- or 4 bit weights, the capacity increases accordingly.
     When using more than 64 input or output channels, weight memory is shared and effective
@@ -329,6 +340,26 @@ data word consists of four packed channels).
 All weights, bias values and data are stored and computed in Q7 format (signed two's complement
 8-bit integers, [-128...+127]). See https://en.wikipedia.org/wiki/Q_%28number_format%29.
 
+The 8-bit value $w$ is defined as:
+
+$$ w = (-a_7 2^7+a_6 2^6+a_5 2^5+a_4 2^4+a_3 2^3+a_2 2^2+a_1 2^1+a_0)/128 $$
+
+![76543210](docs/Numbers.png)
+
+Examples:
+| Binary	| Value        |
+|:---------:|-------------:|
+| 0000 0000 | 0            |
+| 0000 0001 | 1/128        |
+| 0000 0010 | 2/128        |
+| 0111 1110 | 126/128      |
+| 0111 1111 | 127/128      |
+| 1000 0000 | −128/128 (–1)|
+| 1000 0001 | −127/128     |
+| 1000 0010 | −126/128     |
+| 1111 1110 | −2/128       |
+| 1111 1111 | −1/128       |
+
 On **AI85**, _weights_ can be 1, 2, 4, or 8 bits wide (configurable per layer using the
 `quantization` key). Bias values are always 8 bits wide. Data is 8 bits wide, except for the last
 layer that can optionally output 32 bits of unclipped data in Q25.7 format when not using
@@ -344,6 +375,119 @@ activation.
 Note that 1-bit weights (and, to a lesser degree, 2-bit weights) require the use of bias to
 produce useful results. Without bias, all sums of products of activated data from a prior layer
 would be negative, and activation of that data would always be zero.
+
+#### Rounding
+
+AI8X rounding (for the CNN sum of products) uses "round half towards positive infinity", i.e. $y=⌊0.5+x⌋$. This rounding method is not the default method in either Excel or Python/NumPy. The rounding method can be achieved in NumPy using `y = np.floor(0.5 + x)` and in Excel as `=FLOOR.PRECISE(0.5 + X)`.
+
+By way of example:
+
+| Input                    | Rounded |
+|:-------------------------|:-------:|
+| +3.5                     | +4      |
+| +3.25, +3.0, +2.75, +2.5 | +3      |
+| +2.25, +2.0, +1.75, +1.5 | +2      |
+| +1.25, +1.0, +0.75, +0.5 | +1      |
+| +0.25, 0, –0.25, –0.5    | 0       |
+| –0.75, –1.0, –1.25, –1.5 | –1      |
+| –1.75, –2.0, –2.25, –2.5 | –2      |
+| –2.75, –3.0, –3.25, –3.5 | –3      |
+
+#### Addition
+
+Addition works similarly to regular two's-complement arithmetic.
+
+Example:
+$$ w_0 = 1/64 → 00000010 $$
+$$ w_1 = 1/2 → 01000000 $$
+$$ w_0 + w_1 = 33/64 → 01000010 $$
+
+#### Saturation and Clipping
+
+Values smaller than $–128⁄128$ are saturated to $–128⁄128$ (1000 0000). Values larger than
+$+127⁄128$ are saturated to $+127⁄128$ (0111 1111).
+
+The AI8X CNN sum of products uses full resolution for both products and sums, so the saturation
+happens only at the very end of the computation.
+
+Example 1:
+
+$$ w_0 = 127/128 → 01111111 $$
+$$ w_1 = 127/128 → 01111111 $$
+$$ w_0 + w_1 = 254/128 → saturate → 01111111 (= 127/128) $$
+
+Example 2:
+
+$$ w_0 = -128/128 → 10000000 $$
+$$ w_1 = -128/128 → 10000000 $$
+$$ w_0 + w_1 = -256/128 → saturate → 10000000 (= -128/128) $$
+
+#### Multiplication
+
+Since operand values are implicitly divided by 128, the product of two values has to be shifted in
+order to maintain magnitude when using a standard multiplier (e.g., 8×8):
+
+$$ w_0 * w_1 = \frac{w'_0}{128} * \frac{w'_1}{128} = \frac{w'_0 * w'_1}{128} ≫ 7 $$
+
+In software,
+* Determine the sign bit: $s = sign(w_0) * sign(w_1)$
+* Convert operands to absolute values: $w'_0 = abs(w_0); w'_1 = abs(w_1)$
+* Multiply using standard multiplier: $w'_0 * w'_1 = w''_0/128 * w''_1/128; r' = w''_0 * w''_1$
+* Shift: $r'' = r' ≫ 7$
+* Round up/down depending on $r'[6]$
+* Apply sign: $r = s * r''$
+
+Example 1:
+
+$$ w_0 = 1/64 → 00000010 $$
+$$ w_1 = 1/2 → 01000000 $$
+$$ w_0 * w_1 = 1/128 → shift, truncate → 00000001 (= 1/128) $$
+
+A "standard" two's-complement multiplication would return 00000000 10000000. The AI8X data format
+discards the rightmost bits.
+
+Example 2:
+
+$$ w_0 = 1/64 → 00000010 $$
+$$ w_1 = 1/4 → 00100000 $$
+$$ w_0 * w_1 = 1/256 → shift, truncate → 00000000 (= 0) $$
+
+"Standard" two's-complement multiplication would return 00000000 01000000, the AI8X result is
+truncated to 0 after the shift operation.
+
+#### Sign Bit
+
+Operations preserve the sign bit.
+
+Example 1:
+
+$$ w_0 = -1/64 → 11111110 $$
+$$ w_1 = 1/4 → 00100000 $$
+$$ w_0 * w_1 = -1/256 → shift, truncate → 00000000 (= 0) $$
+
+* Determine the sign bit: $s = sign(-1/64) * sign(1/4) = -1 * 1 = -1$
+* Convert operands to absolute values: $w'_0 = abs(-1/64); w'_1 = abs(1/4)$
+* Multiply using standard multiplier: $r' = 1/64 ≪ 7 * 1/4 ≪ 7 = 2 * 32 = 64$
+* Shift: $r'' = r' ≫ 7 = 64 ≫ 7 = 0$
+* Apply sign: $r = s * r'' = -1 * 0 = 0$
+
+Example 2:
+
+$$ w_0 = -1/64 → 11111110 $$
+$$ w_1 = 1/2 → 01000000 $$
+$$ w_0 * w_1 = -1/128 → shift, truncate → 11111111 (= -1/128) $$
+
+* Determine the sign bit: $s = sign(-1/64) * sign(1/2) = -1 * 1 = -1$
+* Convert operands to absolute values: $w'_0 = abs(-1/64); w'_1 = abs(1/2)$
+* Multiply using standard multiplier: $r' = 1/64 ≪ 7 * 1/2 ≪ 7 = 2 * 64 = 128$
+* Shift: $r'' = r' ≫ 7 = 128 ≫ 7 = 1$
+* Apply sign: $r = s * r'' = -1 * 1 ≫ 7 = -1/128$
+
+Example 3:
+
+$$ w_0 = 127/128 → 01111111 $$
+$$ w_1 = 1/128 → 00000001 $$
+$$ w_0 * w_1 = 128/128 → saturation → 01111111 (= 127/128) $$
 
 ### Channel Data Formats
 
@@ -420,7 +564,7 @@ network description. It will also flag cases where kernel or bias memories are e
 ### Limitations of AI84 Networks
 
 The AI84 hardware does not support arbitrary network parameters. Specifically,
-* Dilation, element-wise addition, and batch normalization are not supported.
+* Dilation, groups, element-wise addition, and batch normalization are not supported.
 * `Conv2d`:
   * Input data must be square (i.e., rows == columns).
   * Kernel sizes must be 3x3.
@@ -469,6 +613,40 @@ The AI84 hardware does not support arbitrary network parameters. Specifically,
 
 With the exception of weight storage, and bias use, most of these limitations will be flagged when
 using the network primitives from `ai84.py`, see [Model Training and Quantization](#AI84-Model-Training-and-Quantization).
+
+### Limitations of AI85 Networks
+
+The AI85 hardware does not support arbitrary network parameters. Specifically,
+* Dilation, groups, and batch normalization are not supported.
+* `Conv2d`:
+  * Kernel sizes must be 1x1 or 3x3.
+  * Padding can be 0, 1, or 2.
+  * Stride is fixed to 1.
+* `Conv1d`:
+  * Kernel sizes must be 1 through 9.
+  * Padding can be 0, 1, or 2.
+  * Stride is fixed to 1.
+* A shift operator is available at the output of a convolution.
+* The only supported activation function is `ReLU`.
+* Pooling:
+  * Both max pooling and average pooling are available, with or without convolution.
+  * Pooling does not support padding.
+  * Pooling strides can be 1 through 16.
+  * Average pooling is implemented as a `floor()` operation. Since there is also a
+    quantization step at the output of the average pooling, it may not perform as intended
+    (for example, a 2x2 `AvgPool2d` of `[[0, 0], [0, 3]]` will return `0`).
+* The number of input or output channels must not exceed 512.
+* The number of layers must not exceed 32.
+* The maximum dimension (number of rows or columns) for input or output data is 256.
+* Overall weight storage is limited to 64*768 3x3 8-bit kernels (and proportionally more when
+  using smaller weights, or smaller kernels). However, weights must be arranged in a certain order,
+  see above.
+* The hardware supports 1D and 2D convolution layers, as well as a fully connected layer
+  (implemented using a `flatten` operator and 1x1 convolutions on 1x1 data). For convenience,
+  a `SoftMax` operator is supported in software.
+* Since the internal network format is HWC in groups of four channels, output concatenation only
+  works properly when all components of the concatenation other than the last have multiples
+  of four channels.
 
 ---
 
