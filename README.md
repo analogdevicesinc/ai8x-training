@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_8/7/2019_
+_8/8/2019_
 
 _Open this file in a markdown enabled viewer, for example Visual Studio Code
 (https://code.visualstudio.com). See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
@@ -1084,16 +1084,20 @@ Commit changes and create a description of the changes:
 
     $ git commit
 
-Check what the Maxim server is called:
+Check the address for the Maxim server:
 
     $ git remote -v
     origin	https://first.last@gerrit.maxim-ic.com:8443/ai8x-synthesis (fetch)
     origin	https://first.last@gerrit.maxim-ic.com:8443/ai8x-synthesis (push)
 
-And push the changes to Maxim's Gerrit server using the name ('origin' in this example;
-do not change 'master' to anything else even though the local branch is called 'my-new-feature'):
+Install a commit hook:
 
-    $ git push origin HEAD​:​refs​/f​or​/m​aster
+    gitdir=$(git rev-parse --git-dir); scp -p -P 29418 first.last@gerrit.maxim-ic.com:hooks/commit-msg ${gitdir}/hooks/
+
+And push the changes to Maxim's Gerrit server (do not change 'master' to anything else even
+though the local branch is called 'my-new-feature'):
+
+    $ git push https://first.last@gerrit.maxim-ic.com:8443/ai8x-synthesis HEAD​:​refs​/f​or​/m​aster
     ...
     remote​:
     To​ URL
