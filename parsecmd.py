@@ -67,6 +67,8 @@ def get_parser(model_names, dataset_names):
                         help='use bias in convolution operations')
 
     optimizer_args = parser.add_argument_group('Optimizer arguments')
+    optimizer_args.add_argument('--optimizer', default='SGD',
+                                help='optimizer for training (default: SGD)')
     optimizer_args.add_argument('--lr', '--learning-rate', default=0.1,
                                 type=float, metavar='LR', help='initial learning rate')
     optimizer_args.add_argument('--momentum', default=0.9, type=float,

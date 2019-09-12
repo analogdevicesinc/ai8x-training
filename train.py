@@ -89,6 +89,7 @@ from distiller.data_loggers.collector import SummaryActivationStatsCollector, \
 from distiller.quantization.range_linear import PostTrainLinearQuantizer
 from distiller.data_loggers.logger import TensorBoardLogger, PythonLogger
 import examples.automated_deep_compression as adc
+from speech_com import SpeechCom
 # from range_linear_ai84 import PostTrainLinearQuantizerAI84
 
 
@@ -111,6 +112,10 @@ def main():
          'min_input': 1,
          'dim': 2},
         {'name': 'ai84netextrasmall',
+         'module': 'ai84net',
+         'min_input': 1,
+         'dim': 2},
+        {'name': 'ai84net7',
          'module': 'ai84net',
          'min_input': 1,
          'dim': 2},
@@ -146,7 +151,12 @@ def main():
          'input': (3, 32, 32),
          'output': ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse',
                     'ship', 'truck'),
-         'loader': cifar10_get_datasets}
+         'loader': cifar10_get_datasets},
+        {'name': 'SpeechCom',
+         'input': (1, 64, 64),
+         'output': (0, 1, 2, 3, 4, 5, 6),
+         'weight': (1, 1, 1, 1, 1, 1, 0.06),
+         'loader': speechcom_get_datasets}
     ]
 
     model_names = [item['name'] for item in supported_models]
@@ -265,11 +275,23 @@ def main():
                            'resetting epoch count to 0')
 
     # Define loss function (criterion)
-    criterion = nn.CrossEntropyLoss().to(args.device)
+    if 'weight' in selected_source:
+        criterion = nn.CrossEntropyLoss(torch.Tensor(selected_source['weight'])).to(args.device)
+    else:
+        criterion = nn.CrossEntropyLoss().to(args.device)
 
     if optimizer is None:
-        optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum,
-                                    weight_decay=args.weight_decay)
+        if args.optimizer.lower() == 'sgd':
+            optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum,
+                                        weight_decay=args.weight_decay)
+        elif args.optimizer.lower() == 'adam':
+            optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+        else:
+            msglogger.info('Unknown optimizer type: %s. SGD is set as optimizer!!!',
+                           args.optimizer)
+            optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum,
+                                        weight_decay=args.weight_decay)
+
         msglogger.info('Optimizer Type: %s', type(optimizer))
         msglogger.info('Optimizer Args: %s', optimizer.defaults)
 
@@ -1081,6 +1103,41 @@ def fashionmnist_get_datasets(data):
 
     test_dataset = torchvision.datasets.FashionMNIST(root=data_dir, train=False, download=True,
                                                      transform=test_transform)
+
+    if args.truncate_testset:
+        test_dataset.data = test_dataset.data[:1]
+
+    return train_dataset, test_dataset
+
+
+def speechcom_get_datasets(data):
+    """Load the SpeechCom v0.02 dataset
+    (https://storage.cloud.google.com/download.tensorflow.org/data/speech_commands_v0.02.tar.gz).
+
+    The dataset originally includes 30 keywords. A dataset is formed with 7 classes which includes
+    6 of the original keywords ('up', 'down', 'left', 'right', 'stop', 'go') and the rest of the
+    dataset is used to form the last class, i.e class of the others.
+    The dataset is split into training, validation and test sets. 80:10:10 training:validation:test
+    split is used by default.
+
+    Data is augmented to 5x duplicate data by randomly stretch, shift and randomly add noise where
+    the stretching coefficient, shift amount and noise variance are randomly selected between
+    0.8 and 1.3, -0.1 and 0.1, 0 and 1, respectively.
+    """
+    (data_dir, args) = data
+
+    classes = ['up', 'down', 'left', 'right', 'stop', 'go']
+
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        normalize(args=args)
+    ])
+
+    train_dataset = SpeechCom(root=data_dir, classes=classes, d_type='train', n_augment=4,
+                              transform=transform, download=True)
+
+    test_dataset = SpeechCom(root=data_dir, classes=classes, d_type='val', n_augment=4,
+                             transform=transform, download=True)
 
     if args.truncate_testset:
         test_dataset.data = test_dataset.data[:1]
