@@ -32,7 +32,7 @@ import argparse
 import distiller
 import distiller.quantization
 from distiller.utils import float_range_argparse_checker as float_range
-import examples.automated_deep_compression as adc
+from examples.auto_compression.amc import amc_args as adc
 
 
 SUMMARY_CHOICES = ['sparsity', 'compute', 'model', 'modules', 'png', 'png_w_params', 'onnx']
@@ -178,5 +178,5 @@ def get_parser(model_names, dataset_names):
     distiller.knowledge_distillation.add_distillation_args(parser, model_names, True)
     distiller.quantization.add_post_train_quant_args(parser)
     distiller.pruning.greedy_filter_pruning.add_greedy_pruner_args(parser)
-    adc.automl_args.add_automl_args(parser)
+    adc.add_automl_args(parser)
     return parser

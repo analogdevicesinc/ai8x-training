@@ -88,7 +88,7 @@ from distiller.data_loggers.collector import SummaryActivationStatsCollector, \
     collectors_context
 from distiller.quantization.range_linear import PostTrainLinearQuantizer
 from distiller.data_loggers.logger import TensorBoardLogger, PythonLogger
-import examples.automated_deep_compression as adc
+import examples.auto_compression.amc as adc
 from speech_com import SpeechCom
 # from range_linear_ai84 import PostTrainLinearQuantizerAI84
 
@@ -132,6 +132,10 @@ def main():
          'min_input': 1,
          'dim': 2},
         {'name': 'ai85net6',
+         'module': 'ai85net-test',
+         'min_input': 1,
+         'dim': 2},
+        {'name': 'ai85squeezenet',
          'module': 'ai85net-test',
          'min_input': 1,
          'dim': 2}
@@ -267,6 +271,7 @@ def main():
     elif args.load_model_path:
         model = apputils.load_lean_checkpoint(model, args.load_model_path,
                                               model_device=args.device)
+
     if args.reset_optimizer:
         start_epoch = 0
         if optimizer is not None:
@@ -295,7 +300,7 @@ def main():
         msglogger.info('Optimizer Type: %s', type(optimizer))
         msglogger.info('Optimizer Args: %s', optimizer.defaults)
 
-    if args.AMC:
+    if args.amc_cfg_file:
         return automated_deep_compression(model, criterion, optimizer, pylogger, args)
     if args.greedy:
         return greedy(model, criterion, optimizer, pylogger, args)
