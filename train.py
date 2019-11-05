@@ -90,6 +90,7 @@ from distiller.quantization.range_linear import PostTrainLinearQuantizer
 from distiller.data_loggers.logger import TensorBoardLogger, PythonLogger
 import examples.auto_compression.amc as adc
 from speech_com import SpeechCom
+from speech_com_folded_audio import SpeechComFolded1D
 # from range_linear_ai84 import PostTrainLinearQuantizerAI84
 
 
@@ -138,7 +139,11 @@ def main():
         {'name': 'ai85squeezenet',
          'module': 'ai85net-test',
          'min_input': 1,
-         'dim': 2}
+         'dim': 2},
+        {'name': 'ai85audionet',
+         'module': 'ai85net-test',
+         'min_input': 1,
+         'dim': 1}
     ]
 
     supported_sources = [
@@ -160,7 +165,12 @@ def main():
          'input': (1, 64, 64),
          'output': (0, 1, 2, 3, 4, 5, 6),
          'weight': (1, 1, 1, 1, 1, 1, 0.06),
-         'loader': speechcom_get_datasets}
+         'loader': speechcom_get_datasets},
+        {'name': 'SpeechComFolded1D',
+         'input': (512, 64, 1),
+         'output': (0, 1, 2, 3, 4, 5, 6),
+         'weight': (1, 1, 1, 1, 1, 1, 0.06),
+         'loader': speechcomfolded1D_get_datasets}
     ]
 
     model_names = [item['name'] for item in supported_models]
@@ -1143,6 +1153,42 @@ def speechcom_get_datasets(data):
 
     test_dataset = SpeechCom(root=data_dir, classes=classes, d_type='val', n_augment=4,
                              transform=transform, download=True)
+
+    if args.truncate_testset:
+        test_dataset.data = test_dataset.data[:1]
+
+    return train_dataset, test_dataset
+
+
+def speechcomfolded1D_get_datasets(data):
+    """Load the folded 1D version of SpeechCom dataset
+
+    The dataset is loaded from the archive file, so the file is required for this version.
+
+    The dataset originally includes 30 keywords. A dataset is formed with 7 classes which includes
+    6 of the original keywords ('up', 'down', 'left', 'right', 'stop', 'go') and the rest of the
+    dataset is used to form the last class, i.e class of the others.
+    The dataset is split into training, validation and test sets. 80:10:10 training:validation:test
+    split is used by default.
+
+    Data is augmented to 3x duplicate data by randomly stretch, shift and randomly add noise where
+    the stretching coefficient, shift amount and noise variance are randomly selected between
+    0.8 and 1.3, -0.1 and 0.1, 0 and 1, respectively.
+    """
+    (data_dir, args) = data
+    print(data_dir+'_offset')
+
+    transform = transforms.Compose([
+        normalize(args=args)
+    ])
+
+    classes = ['up', 'down', 'left', 'right', 'stop', 'go']
+
+    train_dataset = SpeechComFolded1D(root=data_dir, classes=classes, d_type='train',
+                                      transform=transform, t_type='keyword')
+
+    test_dataset = SpeechComFolded1D(root=data_dir, classes=classes, d_type='val',
+                                     transform=transform, t_type='keyword')
 
     if args.truncate_testset:
         test_dataset.data = test_dataset.data[:1]

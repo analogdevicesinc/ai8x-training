@@ -283,12 +283,15 @@ class FusedConv1dReLU(nn.Module):
     AI84 - Fused 1D Convolution and ReLU
     """
     def __init__(self, in_channels, out_channels, kernel_size, stride=3, padding=0, bias=True,
-                 relu=True, simulate=False):
+                 relu=True, simulate=False, device=84):
         super(FusedConv1dReLU, self).__init__()
 
-        assert stride == 3
-        assert padding in [0, 3, 6]
-        assert kernel_size == 9
+        assert device != 84 or stride == 3
+        assert device == 84 or stride == 1
+        assert device != 84 or padding in [0, 3, 6]
+        assert device == 84 or padding in [0, 1, 2]
+        assert device != 84 or kernel_size == 9
+        assert device == 84 or kernel_size in [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
         self.conv1d = nn.Conv1d(in_channels, out_channels, kernel_size, stride=stride,
                                 padding=padding, bias=bias)
