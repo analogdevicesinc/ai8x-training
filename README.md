@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_11/04/2019_
+_11/20/2019_
 
 _Open this file in a markdown enabled viewer, for example Typora (http://typora.io) or Visual Studio Code 
 (https://code.visualstudio.com). See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown._
@@ -33,6 +33,9 @@ This software consists of two related projects:
     - [Weight Memory](#weight-memory)
     - [Data Memory](#data-memory)
   - [Streaming Mode](#streaming-mode)
+    - [FIFOs](#fifos)
+      - [Standard FIFOs](#standard-fifos)
+      - [Fast FIFO](#fast-fifo)
   - [Accelerator Limits](#accelerator-limits)
   - [Number Format](#number-format)
     - [Rounding](#rounding)
@@ -340,7 +343,19 @@ When the _yellow_ output pixel is produced, the first (_black_) pixel of the inp
 
 The number of discarded pixels is network specific and dependent on pooling strides and the types of convolution. In general, streaming mode is only useful for networks where the output data dimensions decrease from layer to layer (for example, by using a pooling stride).
 
-The AI85/AI86 accelerator has four dedicated FIFOs connected to processors 0, 16, 32, and 48. Since the data memory instances are single-port memories, software would otherwise have to temporarily disable the accelerator in order to feed it new data. Using the FIFOs, software can input available data while the accelerator is running. The accelerator will autonomously fetch data from the FIFOs when needed, and stall (pause) when no enough data is available.
+#### FIFOs
+
+Since the data memory instances are single-port memories, software would have to temporarily disable the accelerator in order to feed it new data. Using  FIFOs, software can input available data while the accelerator is running. The accelerator will autonomously fetch data from the FIFOs when needed, and stall (pause) when no enough data is available.
+
+The AI85/AI86 accelerator has two types of FIFO:
+
+##### Standard FIFOs
+
+There are four dedicated FIFOs connected to processors 0-3, 16-19, 32-35, and 48-51, supporting up to 16 input channels (in HWC format) or four channels (CHW format). These FIFOs work when used from the ARM Cortex-M4 core and from the RISC-V core.
+
+##### Fast FIFO
+
+The fast FIFO is only available from the RISC-V core, and runs synchronously with the RISC-V for increased throughput. It supports up to four input channels (HWC format) or a single channel (CHW format). The fast FIFO is connected to processors 0, 1, 2, 3 or 0, 16, 32, 48.
 
 ### Accelerator Limits
 
@@ -353,7 +368,7 @@ The AI85/AI86 accelerator has four dedicated FIFOs connected to processors 0, 16
 * AI85:
   * The maximum number of layers is 32 (pooling and element-wise layers do not count).
   * The maximum number of input channels in any layer is 1024 each.
-  * The maximum number of output channels in any layer is 512 each.
+  * The maximum number of output channels in any layer is 1024 each.
   * The weight memory supports up to 768 * 64 3×3 Q7 kernels (see [Number Format](#Number-Format)).
     When using 1-, 2- or 4 bit weights, the capacity increases accordingly.
     When using more than 64 input or output channels, weight memory is shared and effective capacity decreases.
@@ -639,7 +654,7 @@ The AI85 hardware does not support arbitrary network parameters. Specifically,
   
 * The number of input channels must not exceed 1024.
 
-* The number of output channels must not exceed 512.
+* The number of output channels must not exceed 1024.
 
 * The number of layers must not exceed 32 (where pooling and element-wise operations do not add to the count).
 
@@ -650,7 +665,7 @@ The AI85 hardware does not support arbitrary network parameters. Specifically,
 * Overall weight storage is limited to 64*768 3×3 8-bit kernels (and proportionally more when using smaller weights, or smaller kernels). However, weights must be arranged in a certain order, see above.
 
 * The hardware supports 1D and 2D convolution layers, 2D transposed convolution layers (upsampling), element-wise addition, subtraction, binary OR, binary XOR as well as fully connected layers (`Linear`) (implemented using 1×1 convolutions on 1×1 data):
-  * The maximum number of input neurons is 1024, and the maximum number of output neurons is 512 (8 each per processor used).
+  * The maximum number of input neurons is 1024, and the maximum number of output neurons is 1024 (16 each per processor used).
   *  `Flatten` functionality is available to convert 2D input data for use by fully connected layers.
   *  Element-wise operators support from 2 up to 16 inputs.
   *  Element-wise operators can be chained in-flight with pooling and 2D convolution (where the order of pooling and element-wise operations can be swapped).
