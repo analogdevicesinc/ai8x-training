@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_11/20/2019_
+_12/5/2019_
 
 _Open this file in a markdown enabled viewer, for example Typora (http://typora.io) or Visual Studio Code 
 (https://code.visualstudio.com). See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown._
@@ -89,6 +89,7 @@ This software consists of two related projects:
       - [`avg_pool` (Optional)](#avgpool-optional)
       - [`pool_stride` (Optional)](#poolstride-optional)
       - [`in_dim` (Optional)](#indim-optional)
+      - [`in_sequences` (Optional)](#insequences-optional)
       - [`streaming` (Optional)](#streaming-optional)
       - [`flatten` (Optional)](#flatten-optional)
   - [Adding Datasets to the Network Loader](#adding-datasets-to-the-network-loader)
@@ -147,9 +148,9 @@ The following software is optional, and can be replaced with other similar softw
 
 ### Project Installation
 
-*The software in this project requires Python 3.6.9 or a later 3.6.x version.*
+*The software in this project requires Python 3.6.9 or a later 3.6.x version. Version 3.7 has not been tested.*
 
-It is not necessary to install Python 3.6.9 system-wide, or to rely on the system-provided Python. To manage Python versions, use `pyenv` (https://github.com/pyenv/pyenv).
+It is not necessary to install Python 3.6.9 system-wide, or to rely on the sys tem-provided Python. To manage Python versions, use `pyenv` (https://github.com/pyenv/pyenv).
 
 On macOS (no CUDA support available):
 
@@ -327,7 +328,7 @@ The data memory instances inside the accelerator are single-port memories. This 
 
 ### Streaming Mode
 
-On AI85/AI86, the machine implements a streaming mode. Streaming allows input data dimensions that exceed the available per-channel data memory in the accelerator.
+On AI85/AI86, the machine also implements a streaming mode. Streaming allows input data dimensions that exceed the available per-channel data memory in the accelerator.
 
 The following illustration shows the basic principle: In order to produce the first output pixel of the second layer, not all data needs to be present at the input. In the example, a 5×5 input needs to be available.
 
@@ -375,7 +376,7 @@ The fast FIFO is only available from the RISC-V core, and runs synchronously wit
     Weights must be arranged according to specific rules detailed below.
   * There are 16 instances of 32 KB data memory. When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 181×181pixels per channel in the CHW format. However, when using more than one input channel, the HWC format may be preferred, and all layer output are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance -- or 91×90 pixels per channel.
     Note that the first layer commonly creates a wide expansion (i.e., large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical.
-  * When using streaming, the data sizes are limited to 1023×1023, subject to available TRAM. Streaming is limited to 8 layers or less, and to four FIFOs (up to 4 input channels in CHW and up to 16 channels in HWC format).
+  * When using streaming, the data sizes are limited to 1023×1023, subject to available TRAM. Streaming is limited to 8 layers or less, and to four FIFOs (up to 4 input channels in CHW and up to 16 channels in HWC format). When using streaming, the product of a layer’s input data width, input data height, and input data channels divided by 64 rounded up must not exceed 2^21: $rows * columns * ⌈\frac{channels}{64}⌉ < 2^{21}$.
 
 ### Number Format
 
@@ -616,9 +617,10 @@ With the exception of weight storage, and bias use, most of these limitations wi
 ### Limitations of AI85 Networks
 
 The AI85 hardware does not support arbitrary network parameters. Specifically,
-* Dilation, groups, and batch normalization are not supported.
+* Dilation, groups, depth-wise separable convolutions, and batch normalization are not supported.
 
 * `Conv2d`:
+  
   * Kernel sizes must be 1×1 or 3×3.
   * Padding can be 0, 1, or 2.
   * Stride is fixed to 1.
@@ -661,6 +663,7 @@ The AI85 hardware does not support arbitrary network parameters. Specifically,
 * The maximum dimension (number of rows or columns) for input or output data is 1023.
   
   * When using data greater than 90×91, `streaming` mode must be used.
+  * When using `streaming` mode, the product of any layer’s input width, input height, and input channels divided by 64 rounded up must not exceed 2^21: $width * height * ⌈\frac{channels}{64}⌉ < 2^{21}$.
   
 * Overall weight storage is limited to 64*768 3×3 8-bit kernels (and proportionally more when using smaller weights, or smaller kernels). However, weights must be arranged in a certain order, see above.
 
@@ -1030,6 +1033,13 @@ Example:
 Example:
   `in_dim: [64, 64]` 
 
+##### `in_sequences` (Optional)
+
+`in_sequences` can be used to concatenate input data by combining the outputs of several prior layers, for example when implementing a *fire* operator.
+
+Example:
+  `in_sequences: [2, 3]` 
+
 ##### `streaming` (Optional)
 
 `streaming` specifies that the layer is using streaming mode. this is necessary when the input data dimensions exceed the available data memory. When enabling `streaming`, all prior layers have to enable `streaming` as well. `streaming` can be enabled for up to 8 layers.
@@ -1121,7 +1131,7 @@ The `ai84ize.py` quantization tool and the `cnn-gen.py` network generator both h
 The `--ai85` option enables:
 * Bias shift << 7.
 * Per-layer support for 1, 2 and 4-bit weight sizes in addition to 8-bit weights (this is supported using the `quantization` keyword in the configuration file, and the configuration file can also be read by the quantization tool).
-* A programmable shift on the output of the convolution that allows for better use of the entire range of weight bits (`output_shift`).
+* A programmable shift left/shift right at the output of the convolution that allows for better use of the entire range of weight bits (`output_shift`).
 * Support for many more pooling sizes and pooling strides, and larger limits for average pooling.
 * Support for pooling without convolution (passthrough mode), and optional rounding for average pooling.
 * 1D convolutions.
