@@ -1,10 +1,10 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_12/5/2019_
+_1/13/2020_
 
-_Open this file in a markdown enabled viewer, for example Typora (http://typora.io) or Visual Studio Code 
-(https://code.visualstudio.com). See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown._
+_Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
+See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository._
 
 This software consists of two related projects:
 1. AI8X Model Training and Quantization
@@ -26,6 +26,7 @@ This software consists of two related projects:
     - [Creating the Virtual Environment](#creating-the-virtual-environment)
     - [Building TensorFlow (for old CPUs)](#building-tensorflow-for-old-cpus)
     - [Nervana Distiller](#nervana-distiller)
+    - [Uber Manifold](#uber-manifold)
     - [Synthesis Project](#synthesis-project)
 - [AI8X Hardware and Resources](#ai8x-hardware-and-resources)
   - [Overview](#overview-1)
@@ -50,53 +51,64 @@ This software consists of two related projects:
   - [Active Processors and Layers](#active-processors-and-layers)
   - [Layers and Weight Memory](#layers-and-weight-memory)
   - [Weight Storage Example](#weight-storage-example)
-  - [Example: `Conv2D`](#example-conv2d)
+  - [Example: Conv2D](#example-conv2d)
   - [Limitations of AI84 Networks](#limitations-of-ai84-networks)
   - [Limitations of AI85 Networks](#limitations-of-ai85-networks)
   - [Fully Connected (Linear) Layers](#fully-connected-linear-layers)
   - [Upsampling (Fractionally-Strided 2D Convolutions)](#upsampling-fractionally-strided-2d-convolutions)
 - [Model Training and Quantization](#model-training-and-quantization)
+  - [Model Comparison and Feature Attribution](#model-comparison-and-feature-attribution)
   - [Quantization](#quantization)
   - [Alternative Quantization Approaches](#alternative-quantization-approaches)
   - [Adding Datasets and New Networks to the Training Process](#adding-datasets-and-new-networks-to-the-training-process)
 - [Network Loader](#network-loader)
   - [Network Loader Configuration Language](#network-loader-configuration-language)
     - [Global Configuration](#global-configuration)
-      - [`arch` (Mandatory)](#arch-mandatory)
-      - [`bias` (Optional, Test Only)](#bias-optional-test-only)
-      - [`dataset` (Mandatory)](#dataset-mandatory)
-      - [`output_map` (Optional)](#outputmap-optional)
-      - [`layers` (Mandatory)](#layers-mandatory)
+      - [arch (Mandatory)](#arch-mandatory)
+      - [bias (Optional, Test Only)](#bias-optional-test-only)
+      - [dataset (Mandatory)](#dataset-mandatory)
+      - [output_map (Optional)](#outputmap-optional)
+      - [layers (Mandatory)](#layers-mandatory)
     - [Per-Layer Configuration](#per-layer-configuration)
-      - [`sequence` (Optional)](#sequence-optional)
-      - [`processors` (Mandatory)](#processors-mandatory)
-      - [`output_processors` (Optional)](#outputprocessors-optional)
-      - [`out_offset` (Optional)](#outoffset-optional)
-      - [`in_offset` (Optional)](#inoffset-optional)
-      - [`output_width` (Optional)](#outputwidth-optional)
-      - [`data_format` (Optional)](#dataformat-optional)
-      - [`operation` (Optional)](#operation-optional)
-      - [`eltwise` (Optional)](#eltwise-optional)
-      - [`pool_first` (Optional)](#poolfirst-optional)
-      - [`operands` (Optional)](#operands-optional)
-      - [`activate` (Optional)](#activate-optional)
-      - [`quantization` (Optional)](#quantization-optional)
-      - [`output_shift` (Optional)](#outputshift-optional)
-      - [`kernel_size` (Optional)](#kernelsize-optional)
-      - [`stride` (Optional)](#stride-optional)
-      - [`pad` (Optional)](#pad-optional)
-      - [`max_pool` (Optional)](#maxpool-optional)
-      - [`avg_pool` (Optional)](#avgpool-optional)
-      - [`pool_stride` (Optional)](#poolstride-optional)
-      - [`in_dim` (Optional)](#indim-optional)
-      - [`in_sequences` (Optional)](#insequences-optional)
-      - [`streaming` (Optional)](#streaming-optional)
-      - [`flatten` (Optional)](#flatten-optional)
+      - [sequence (Optional)](#sequence-optional)
+      - [processors (Mandatory)](#processors-mandatory)
+      - [output_processors (Optional)](#outputprocessors-optional)
+      - [out_offset (Optional)](#outoffset-optional)
+      - [in_offset (Optional)](#inoffset-optional)
+      - [output_width (Optional)](#outputwidth-optional)
+      - [data_format (Optional)](#dataformat-optional)
+      - [operation (Optional)](#operation-optional)
+      - [eltwise (Optional)](#eltwise-optional)
+      - [pool_first (Optional)](#poolfirst-optional)
+      - [operands (Optional)](#operands-optional)
+      - [activate (Optional)](#activate-optional)
+      - [quantization (Optional)](#quantization-optional)
+      - [output_shift (Optional)](#outputshift-optional)
+      - [kernel_size (Optional)](#kernelsize-optional)
+      - [stride (Optional)](#stride-optional)
+      - [pad (Optional)](#pad-optional)
+      - [max_pool (Optional)](#maxpool-optional)
+      - [avg_pool (Optional)](#avgpool-optional)
+      - [pool_stride (Optional)](#poolstride-optional)
+      - [in_channels (Optional)](#inchannels-optional)
+      - [in_dim (Optional)](#indim-optional)
+      - [in_sequences (Optional)](#insequences-optional)
+      - [out_channels (Optional)](#outchannels-optional)
+      - [streaming (Optional)](#streaming-optional)
+      - [flatten (Optional)](#flatten-optional)
+    - [Example](#example)
   - [Adding Datasets to the Network Loader](#adding-datasets-to-the-network-loader)
   - [Starting an Inference, Waiting for Completion, Multiple Inferences in Sequence](#starting-an-inference-waiting-for-completion-multiple-inferences-in-sequence)
   - [CMSIS5 NN Emulation](#cmsis5-nn-emulation)
-- [AI84 SDK](#ai84-sdk)
+- [Embedded Software Development Kits (SDKs)](#embedded-software-development-kits-sdks)
+  - [AI84 SDK](#ai84-sdk)
+  - [AI85 SDK](#ai85-sdk)
 - [AI85/AI86 Changes](#ai85ai86-changes)
+- [AHB Memory Addresses](#ahb-memory-addresses)
+  - [Data memory](#data-memory)
+  - [TRAM](#tram)
+  - [Kernel memory (“MRAM”)](#kernel-memory-mram)
+  - [Bias memory](#bias-memory)
 - [Updating the Project](#updating-the-project)
 - [Contributing Code](#contributing-code)
   - [Linting](#linting)
@@ -116,7 +128,11 @@ Including the SDK from SVN, the expected file system layout will be:
 
     ..../ai8x-training/
     ..../ai8x-synthesis/
+    ..../manifold/
     ..../AI84SDK/
+    ..../AI85SDK/
+
+where “….” is the project root.
 
 ### Upstream Code
 
@@ -131,7 +147,7 @@ $ git clone https://first.last@gerrit.maxim-ic.com:8443/ai8x-synthesis
 
 When going beyond simple tests, model training requires CUDA hardware acceleration (the network loader does not require CUDA).
 
-Install CUDA10 and CUDNN:
+Install CUDA 10.1 and CUDNN (PyTorch does not currently support CUDA 10.2):
 https://developer.nvidia.com/cuda-downloads
 https://developer.nvidia.com/cudnn
 
@@ -155,7 +171,7 @@ It is not necessary to install Python 3.6.9 system-wide, or to rely on the sys t
 On macOS (no CUDA support available):
 
 ```shell
-$ brew install pyenv pyenv-virtualenv libomp
+$ brew install pyenv pyenv-virtualenv libomp libsndfile
 ```
 
 On Ubuntu 18.04 LTS:
@@ -163,7 +179,8 @@ On Ubuntu 18.04 LTS:
 ```
 $ sudo apt-get install -y make build-essential libssl-dev zlib1g-dev \
   libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
-  libncurses5-dev libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev
+  libncurses5-dev libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev \
+  libsndfile-dev
 $ curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
 ```
 
@@ -246,7 +263,9 @@ The removal of `-mfpu=neon` does not seem to be necessary.
 
 #### Nervana Distiller
 
-To install Nervana’s distiller:
+Nirvana Distiller is package for neural network compression and quantization. Network compression can reduce the memory footprint of a neural network, increase its inference speed and save energy.
+
+To install Distiller:
 
 ```shell
 (ai8x-training) $ pip3 install -e distiller
@@ -256,6 +275,41 @@ On macOS, add to `~/.matplotlib/matplotrc`:
 
     backend: TkAgg
 
+#### Uber Manifold
+
+Manifold is a model-agnostic visual debugging tool for machine learning. Manifold can compare models, detects which subset of data a model is inaccurately predicting, and explains the potential cause of poor model performance by surfacing the feature distribution difference between better and worse-performing subsets of data.
+
+There is a hosted version of Manifold at http://manifold.mlvis.io/. To install it locally (for IP reasons and higher speed):
+
+On macOS,
+
+```shell
+brew install yarn npm
+```
+
+On Ubuntu 18.04 LTS,
+
+```shell
+$ cd PROJECT_ROOT
+$ curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+$ echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+$ curl -sL https://deb.nodesource.com/setup_13.x | sudo -E bash -
+$ sudo apt-get update
+$ sudo apt-get install nodejs yarn
+```
+
+On both Mac and Linux:
+
+```shell
+$ git clone https://github.com/uber/manifold.git
+$ cd manifold
+$ yarn
+# ignore warnings
+$ cd examples/manifold
+$ yarn
+# ignore warnings
+```
+
 #### Synthesis Project
 
 For `ai8x-synthesis`, some of the installation steps can be simplified. Specifically, CUDA is not necessary.
@@ -263,6 +317,7 @@ For `ai8x-synthesis`, some of the installation steps can be simplified. Specific
 Start by creating a second virtual environment:
 
 ```shell
+$ cd PROJECT_ROOT
 $ cd ai8x-synthesis
 $ git submodule update --init
 $ pyenv local 3.6.9
@@ -290,7 +345,7 @@ The AI8X accelerator consists of 64 parallel processors. Each processor includes
 
 ![Overview](docs/Overview.png)
 
-Data is read from data memory associated with the processor, and written out to any data memory located within the accelerator. To run a deep convolutional neural network, multiple layers are chained together, where each layer’s operation is individually configurable. The output data from one layer is used as the input data for the next layer, for up to 32 layers (where in-flight pooling operations do not count as layers).
+Data is read from data memory associated with the processor, and written out to any data memory located within the accelerator. To run a deep convolutional neural network, multiple layers are chained together, where each layer’s operation is individually configurable. The output data from one layer is used as the input data for the next layer, for up to 32 layers (where *in-flight* pooling and *in-flight* element-wise operations do not count as layers).
 
 The following picture shows an example view of a 2D convolution with pooling:
 ![Example](docs/CNNOverview.png)
@@ -361,20 +416,20 @@ The fast FIFO is only available from the RISC-V core, and runs synchronously wit
 ### Accelerator Limits
 
 * AI84:
-  * The maximum number of layers is 32 (pooling layers do not count).
+  * The maximum number of layers is 32 (pooling layers do not count when preceding a convolution).
   * The maximum number of input or output channels in any layer is 64 each.
   * The weight memory supports up to 128 * 64 3×3 Q7 kernels (see [Number Format](#Number-Format)).
     However, weights must be arranged according to specific rules detailed below.
-  * There are 16 instances of 16 KB data memory. Any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 128×128 pixels per channel in the CHW format. However, when using more than one input channel, the HWC format may be preferred, and all layer output are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance -- or 64×64 pixels per channel. Note that the first layer commonly creates a wide expansion (i.e., large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical.
+  * There are 16 instances of 16 KiB data memory. Any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 128×128 pixels per channel in the CHW format. However, when using more than one input channel, the HWC format may be preferred, and all layer output are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance -- or 64×64 pixels per channel. Note that the first layer commonly creates a wide expansion (i.e., large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical.
 * AI85:
-  * The maximum number of layers is 32 (pooling and element-wise layers do not count).
+  * The maximum number of layers is 32 (pooling and element-wise layers do not count when preceding a convolution).
   * The maximum number of input channels in any layer is 1024 each.
   * The maximum number of output channels in any layer is 1024 each.
   * The weight memory supports up to 768 * 64 3×3 Q7 kernels (see [Number Format](#Number-Format)).
     When using 1-, 2- or 4 bit weights, the capacity increases accordingly.
     When using more than 64 input or output channels, weight memory is shared and effective capacity decreases.
     Weights must be arranged according to specific rules detailed below.
-  * There are 16 instances of 32 KB data memory. When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 181×181pixels per channel in the CHW format. However, when using more than one input channel, the HWC format may be preferred, and all layer output are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance -- or 91×90 pixels per channel.
+  * There are 16 instances of 32 KiB data memory. When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 181×181pixels per channel in the CHW format. However, when using more than one input channel, the HWC format may be preferred, and all layer output are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance -- or 91×90 pixels per channel.
     Note that the first layer commonly creates a wide expansion (i.e., large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical.
   * When using streaming, the data sizes are limited to 1023×1023, subject to available TRAM. Streaming is limited to 8 layers or less, and to four FIFOs (up to 4 input channels in CHW and up to 16 channels in HWC format). When using streaming, the product of a layer’s input data width, input data height, and input data channels divided by 64 rounded up must not exceed 2^21: $rows * columns * ⌈\frac{channels}{64}⌉ < 2^{21}$.
 
@@ -585,7 +640,7 @@ The AI84 hardware does not support arbitrary network parameters. Specifically,
   * Input data must be square (i.e., rows == columns).
   * Kernel sizes must be 3×3.
   * Padding can be 0, 1, or 2.
-  * Stride is fixed to 1.
+  * Stride is fixed to 1. Pooling, including 1×1, can be used to achieve a stride other than 1.
 * `Conv1d`:
   * Input data lengths must be a multiple of 3.
   * Kernel size must be 9.
@@ -605,7 +660,7 @@ The AI84 hardware does not support arbitrary network parameters. Specifically,
   * Average pooling does not support more than 2048 bits in the accumulator. This translates to a 4×4 pooling window if activation was used on the prior layer, 3×3 otherwise. Additionally, average pooling is currently implemented as a `floor()` operation. Since there is also a quantization step at the output of the average pooling, it may not perform as intended (for example, a 2×2 `AvgPool2d` of `[[0, 0], [0, 3]]` will return `0`).
   * Pooling window sizes must be even numbers, and have equal H and W dimensions.
 * The number of input or output channels must not exceed 64.
-* The number of layers must not exceed 32 (where pooling does not add to the count).
+* The number of layers must not exceed 32 (where pooling does not add to the count when preceding a convolution).
 * The maximum dimension (number of rows or columns) for input or output data is 256.
 * Overall weight storage is limited to 64*128 3×3 kernels. However, weights must be arranged in a certain order, see above.
 * The hardware supports 1D and 2D convolution layers. For convenience, a single final fully connected layer with 8-bit inputs/weights/bias, and 16-bit output is supported in software, as well as a software `SoftMax` operator.
@@ -623,12 +678,13 @@ The AI85 hardware does not support arbitrary network parameters. Specifically,
   
   * Kernel sizes must be 1×1 or 3×3.
   * Padding can be 0, 1, or 2.
-  * Stride is fixed to 1.
+  * Stride is fixed to 1. Pooling, including 1×1, can be used to achieve a stride other than 1.
   
 * `Conv1d`:
+  
   * Kernel sizes must be 1 through 9.
   * Padding can be 0, 1, or 2.
-  * Stride is fixed to 1.
+  * Stride is fixed to 1. Pooling, including 1, can be used to achieve a stride other than 1.
   
 * `ConvTranspose2d`:
 
@@ -638,14 +694,16 @@ The AI85 hardware does not support arbitrary network parameters. Specifically,
 
 * A programmable layer-specific shift operator is available at the output of a convolution.
 
-* The only supported activation functions are `ReLU` and `Abs`.
+* The only supported activation functions are `ReLU` and `Abs`, and a limited subset of `Linear`.
 
 * Pooling:
   * Both max pooling and average pooling are available, with or without convolution.
   
   * Pooling does not support padding.
   
-  * Pooling strides can be 1 through 16.
+  * Pooling strides can be 1 through 16. For 2D pooling, the stride is the same for both dimensions.
+  
+  * For 2D pooling, supported pooling kernel sizes are 1×1 through 16×16, including non-square kernels. 1D pooling supports kernels from 1 through 16. *Note: 1×1 kernels can be used when a convolution stride other than 1 is desired.*
   
   * Average pooling is implemented both using `floor()`and using rounding (half towards positive infinity). Use the `—avg-pool-rounding` switch to turn on rounding in the Network Generator.
   
@@ -658,7 +716,7 @@ The AI85 hardware does not support arbitrary network parameters. Specifically,
 
 * The number of output channels must not exceed 1024.
 
-* The number of layers must not exceed 32 (where pooling and element-wise operations do not add to the count).
+* The number of layers must not exceed 32 (where pooling and element-wise operations do not add to the count when preceding a convolution).
 
 * The maximum dimension (number of rows or columns) for input or output data is 1023.
   
@@ -707,6 +765,28 @@ Training progress can be observed by starting TensorBoard and pointing a web bro
 TensorBoard 1.14.0 at http://127.0.0.1:6006/ (Press CTRL+C to quit)
 ```
 
+### Model Comparison and Feature Attribution
+
+Manifold can be used for model comparison and feature attribution. The quickest way to integrate manifold is by creating CSV files from the training software. *Note that performance will suffer when there are more than about 20,000 records in the CSV file. Subsampling the data is one way to avoid this problem.*
+
+The train.py program can create CSV files using the `--save-csv` command line argument in combination with `--evaluate`:
+
+```shell
+./train.py --model ai84net5 --dataset MNIST --confusion --evaluate --save-csv mnist --ai84 --exp-load-weights-from ../ai8x-synthesis/trained/ai84-mnist.pth.tar -8
+```
+
+To run the manifold example application:
+
+```shell
+$ cd manifold/examples/manifold
+$ npm run start
+```
+
+The code will run in JavaScript inside the browser (this may cause warnings that the web page is consuming lots of resources). To run a browser remotely on a development machine, forward X11 using the following command:
+
+```shell
+ssh -Yn targethost firefox http://localhost:8080/
+```
 
 ### Quantization
 
@@ -942,7 +1022,9 @@ This key describes whether to activate the layer output (the default is to not a
 
 Note that the output values are clipped (saturated) to $[0, +127]$. Because of this, `ReLU` behaves more similar to PyTorch’s `nn.Hardtanh(min_value=0, max_value=127)` than to PyTorch’s `nn.ReLU()`.
 
-<img src="docs/relu.png" alt="abs" style="zoom:33%;" />
+Note that `output_shift` can be used for (limited) linear activation.
+
+<img src="docs/relu.png" alt="relu" style="zoom:33%;" />
 <img src="docs/abs.png" alt="abs" style="zoom:33%;" />
 
 ##### `quantization` (Optional)
@@ -1026,19 +1108,35 @@ When performing a pooling operation, this key describes the pool stride. The poo
 Example:
 	 `pool_stride: 2`
 
+##### `in_channels` (Optional)
+
+`in_channels` specifies the number of channels of the input data. This is usually automatically computed based on the weights file and the layer sequence. This key allows overriding of the number of channels. See also: `in_dim`.
+
+Example:
+  `in_channels: 8` 
+
 ##### `in_dim` (Optional)
 
-`in_dim` specifies the dimensions of the input data. This is usually automatically computed; however, when merging layers or flattening data, this key allows overriding of the dimensions.
+`in_dim` specifies the dimensions of the input data. This is usually automatically computed based on the output of the previous layer or the layer(s) referenced by `in_sequences`. This key allows overriding of the automatically calculated dimensions. See also: `in_channels`.
 
 Example:
   `in_dim: [64, 64]` 
 
 ##### `in_sequences` (Optional)
 
-`in_sequences` can be used to concatenate input data by combining the outputs of several prior layers, for example when implementing a *fire* operator.
+By default, a layer’s input is the output of the previous layer. `in_sequences` can be used to point to the output of one or more arbitrary previous layers, for example when processing the same data using two different kernel sizes, or when combining the outputs of several prior layers. `in_sequences` can be specified as an integer (for a single input) or as a list (for multiple inputs). As a special case, `-1` is the input data. The `in_offset` and `out_offset` must be set to match the specified sequence.
 
 Example:
   `in_sequences: [2, 3]` 
+
+See the [Fire example](#example) for a network that uses `in_sequences`.
+
+##### `out_channels` (Optional)
+
+`out_channels` specifies the number of channels of the output data. This is usually automatically computed based on the weights and layer sequence. This key allows overriding the number of output channels.
+
+Example:
+  `out_channels: 8` 
 
 ##### `streaming` (Optional)
 
@@ -1054,6 +1152,69 @@ Example:
 Example:
 	`flatten: true`
 
+#### Example
+
+The following shows an example for a single “Fire” operation, the AI85/AI86 hardware layer numbers and its YAML description.
+
+<img src="docs/fireexample.png" alt="Fire example" style="zoom:35%;" />
+
+```yaml
+arch: ai85firetestnet
+dataset: CIFAR-10
+# Input dimensions are 3x32x32
+
+layers:
+### Fire
+# Squeeze
+- avg_pool: 2
+  pool_stride: 2
+  pad: 0
+  in_offset: 0x1000
+  processors: 0x0000000000000007
+  data_format: HWC
+  out_offset: 0x0000
+  operation: conv2d
+  kernel_size: 1x1
+  activate: ReLU
+# Expand 1x1
+- in_offset: 0x0000
+  out_offset: 0x1000
+  processors: 0x0000000000000030
+  output_processors: 0x0000000000000f00
+  operation: conv2d
+  kernel_size: 1x1
+  pad: 0
+  activate: ReLU
+# Expand 3x3
+- in_offset: 0x0000
+  out_offset: 0x1000
+  processors: 0x0000000000000030
+  output_processors: 0x000000000000f000
+  operation: conv2d
+  kernel_size: 3x3
+  activate: ReLU
+  in_sequences: 0
+# Concatenate
+- max_pool: 2
+  pool_stride: 2
+  in_offset: 0x1000
+  out_offset: 0x0000
+  processors: 0x000000000000ff00
+  operation: none
+  in_sequences: [1, 2]
+### Additional layers
+- max_pool: 2
+  pool_stride: 2
+  out_offset: 0x1000
+  processors: 0x000000000000ff00
+  operation: none
+- flatten: true
+  out_offset: 0x0000
+  op: mlp
+  processors: 0x000000000000ff00
+  output_width: 32
+```
+
 
 ### Adding Datasets to the Network Loader
 
@@ -1065,7 +1226,7 @@ Adding new datasets to the Network Loader is implemented as follows:
 
 An inference is started by loading registers and kernels, loading the input, and enabling processing.  This code is automatically generated—see the `cnn_load()`, `load_kernels()`, and `load_input()` functions. The sample data can be used as a self-checking feature on device power-up since the output for the sample data is known.
 
-The AI8X accelerator can generate an interrupt on completion, and it will set a status bit (see `cnn_wait()`). The resulting data can now be unloaded from the accelerator (code for this is also auto-generated in `unload()`).
+The AI85/AI86 accelerator can generate an interrupt on completion, and it will set a status bit (see `cnn_wait()`). The resulting data can now be unloaded from the accelerator (code for this is also auto-generated in `unload()`).
 
 To run another inference, ensure all groups are disabled (stopping the state machine, as shown in `cnn_load()`). Next, load the new input data and start processing.
 
@@ -1079,7 +1240,7 @@ The results of the generated code have been verified to match AI84 exactly and m
 Note there are minor rounding errors in the CMSIS average pooling code when enabling SIMD
 (`-DARM_MATH_DSP`). If there are hard faults on the device, try limiting compiler optimizations to `-O1`.
 
-The `Device/` folder contains a sample Makefile, and a custom fully connected layer in the file `arm_fully_connected_q7_q8p7_opt.c` that returns Q8.7 fixed-point outputs, and a custom `arm_softmax_q8p7_q15.c` which is aware of the fixed-point input (both of these files are also used for the software classification layer on AI84/AI85). Additionally, a number of files are provided that provide non-square pooling support, and activation support for more than 64 KB of data (these files are not needed for AI84/AI85 hardware).
+The `Device/` folder contains a sample Makefile, and a custom fully connected layer in the file `arm_fully_connected_q7_q8p7_opt.c` that returns Q8.7 fixed-point outputs, and a custom `arm_softmax_q8p7_q15.c` which is aware of the fixed-point input (both of these files are also used for the software classification layer on AI84/AI85). Additionally, a number of files are provided that provide non-square pooling support, and activation support for more than 64 KiB of data (these files are not needed for AI84/AI85 hardware).
 The `tornadocnn.h` header file is included which helps both embedded examples as well as CMSIS NN code.
 
 For example, the following command would generate code that performs a CIFAR-10 inference from the `trained/ai84-cifar10.pth.tar` checkpoint file and the `cifar10-hwc.yaml` network description file:
@@ -1094,12 +1255,14 @@ When compiling the CMSIS code, you may have to disable compiler optimizations.
 
 ---
 
-## AI84 SDK
+## Embedded Software Development Kits (SDKs)
 
-Use SVN to check out the AI84 SDK from https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/.
+### AI84 SDK
+
+Use SVN to check out the AI84 SDK from https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/Firmware/.
 
 ```shell
-$ svn co https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/ AI84SDK
+$ svn co https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/Firmware/ AI84SDK
 ```
 
 Additionally, the Arm embedded compiler is required, it is available from https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads.
@@ -1124,6 +1287,24 @@ https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/docs/trunk/AI84%20Test%2
 
 ---
 
+### AI85 SDK
+
+Use SVN to check out the AI85 SDK from https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI85/SDK/.
+
+```shell
+$ svn co https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI85/SDK/ AI85SDK
+```
+
+The Arm embedded compiler can be downloaded from https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads.
+
+The RISC-V embedded compiler can be downloaded from https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/.
+
+In order for the debugger to work, the OpenOCD `max32xxx` branch from https://github.com/MaximIntegratedMicros/openocd.git must be installed (see above for more instructions). Working configuration files are and a `run-openocd-ai85` script are contained in the `hardware` folder of the `ai8x-synthesis` project.
+
+`gen-demos-ai85.sh` will create code that is compatible with the SDK and copy it into the SDK directories (which must exist for each test before calling the generator script).
+
+---
+
 ## AI85/AI86 Changes
 
 The `ai84ize.py` quantization tool and the `cnn-gen.py` network generator both have an `--ai85` command line argument that enables code generation for the AI85 and AI86.
@@ -1144,6 +1325,192 @@ The `--ai85` option enables:
 * Support for 32-bit Q25.7 data output for last layer when not using activation.
 * Support for streaming mode with FIFOs to allow for larger data sizes.
 * Support for absolute value (`Abs`) activation.
+
+---
+
+## AHB Memory Addresses
+
+The following tables show the AHB memory addresses for the AI85 accelerator:
+
+### Data memory
+
+Total: 512 KiB (16 instances of 8192 × 32)
+
+| **Group** | **Instance** | **Address Range**       |
+| --------- | ------------ | ----------------------- |
+| 0         | 0            | 0x50400000 - 0x50407FFF |
+| 0         | 1            | 0x50408000 - 0x5040FFFF |
+| 0         | 2            | 0x50410000 - 0x50417FFF |
+| 0         | 3            | 0x50418000 - 0x5041FFFF |
+| 0         | 0            | 0x50800000 - 0x50807FFF |
+| 1         | 1            | 0x50808000 - 0x5080FFFF |
+| 1         | 2            | 0x50810000 - 0x50817FFF |
+| 1         | 3            | 0x50818000 - 0x5081FFFF |
+| 2         | 0            | 0x50C00000 - 0x50C07FFF |
+| 2         | 1            | 0x50C08000 - 0x50C0FFFF |
+| 2         | 2            | 0x50C10000 - 0x50C17FFF |
+| 2         | 3            | 0x50C18000 - 0x50C1FFFF |
+| 3         | 0            | 0x51000000 - 0x51007FFF |
+| 3         | 1            | 0x51008000 - 0x5100FFFF |
+| 3         | 2            | 0x51010000 - 0x51017FFF |
+| 3         | 3            | 0x51018000 - 0x5101FFFF |
+
+### TRAM
+
+Total: 384 KiB (64 instances of 3072 × 16)
+
+| **Group** | **Instance** | **Address Range\***     |
+| --------- | ------------ | ----------------------- |
+| 0         | 0            | 0x50110000 - 0x50112FFF |
+| 0         | 1            | 0x50114000 - 0x50116FFF |
+| 0         | 2            | 0x50118000 - 0x5011AFFF |
+| 0         | 3            | 0x5011C000 - 0x5011EFFF |
+| 0         | 4            | 0x50120000 - 0x50122FFF |
+| 0         | 5            | 0x50124000 - 0x50126FFF |
+| 0         | 6            | 0x50128000 - 0x5012AFFF |
+| 0         | 7            | 0x5012C000 - 0x5012EFFF |
+| 0         | 8            | 0x50130000 - 0x50132FFF |
+| 0         | 9            | 0x50134000 - 0x50136FFF |
+| 0         | 10           | 0x50138000 - 0x5013AFFF |
+| 0         | 11           | 0x5013C000 - 0x5013EFFF |
+| 0         | 12           | 0x50140000 - 0x50142FFF |
+| 0         | 13           | 0x50144000 - 0x50146FFF |
+| 0         | 14           | 0x50148000 - 0x5014AFFF |
+| 0         | 15           | 0x5014C000 - 0x5014EFFF |
+| 1         | 0            | 0x50510000 - 0x50512FFF |
+| 1         | 1            | 0x50514000 - 0x50516FFF |
+| 1         | 2            | 0x50518000 - 0x5051AFFF |
+| 1         | 3            | 0x5051C000 - 0x5051EFFF |
+| 1         | 4            | 0x50520000 - 0x50522FFF |
+| 1         | 5            | 0x50524000 - 0x50526FFF |
+| 1         | 6            | 0x50528000 - 0x5052AFFF |
+| 1         | 7            | 0x5052C000 - 0x5052EFFF |
+| 1         | 8            | 0x50530000 - 0x50532FFF |
+| 1         | 9            | 0x50534000 - 0x50536FFF |
+| 1         | 10           | 0x50538000 - 0x5053AFFF |
+| 1         | 11           | 0x5053C000 - 0x5053EFFF |
+| 1         | 12           | 0x50540000 - 0x50542FFF |
+| 1         | 13           | 0x50544000 - 0x50546FFF |
+| 1         | 14           | 0x50548000 - 0x5054AFFF |
+| 1         | 15           | 0x5054C000 - 0x5054EFFF |
+| 2         | 0            | 0x50910000 - 0x50912FFF |
+| 2         | 1            | 0x50914000 - 0x50916FFF |
+| 2         | 2            | 0x50918000 - 0x5091AFFF |
+| 2         | 3            | 0x5091C000 - 0x5091EFFF |
+| 2         | 4            | 0x50920000 - 0x50922FFF |
+| 2         | 5            | 0x50924000 - 0x50926FFF |
+| 2         | 6            | 0x50928000 - 0x5092AFFF |
+| 2         | 7            | 0x5092C000 - 0x5092EFFF |
+| 2         | 8            | 0x50930000 - 0x50932FFF |
+| 2         | 9            | 0x50934000 - 0x50936FFF |
+| 2         | 10           | 0x50938000 - 0x5093AFFF |
+| 2         | 11           | 0x5093C000 - 0x5093EFFF |
+| 2         | 12           | 0x50940000 - 0x50942FFF |
+| 2         | 13           | 0x50944000 - 0x50946FFF |
+| 2         | 14           | 0x50948000 - 0x5094AFFF |
+| 2         | 15           | 0x5094C000 - 0x5094EFFF |
+| 3         | 0            | 0x50D10000 - 0x50D12FFF |
+| 3         | 1            | 0x50D14000 - 0x50D16FFF |
+| 3         | 2            | 0x50D18000 - 0x50D1AFFF |
+| 3         | 3            | 0x50D1C000 - 0x50D1EFFF |
+| 3         | 4            | 0x50D20000 - 0x50D22FFF |
+| 3         | 5            | 0x50D24000 - 0x50D26FFF |
+| 3         | 6            | 0x50D28000 - 0x50D2AFFF |
+| 3         | 7            | 0x50D2C000 - 0x50D2EFFF |
+| 3         | 8            | 0x50D30000 - 0x50D32FFF |
+| 3         | 9            | 0x50D34000 - 0x50D36FFF |
+| 3         | 10           | 0x50D38000 - 0x50D3AFFF |
+| 3         | 11           | 0x50D3C000 - 0x50D3EFFF |
+| 3         | 12           | 0x50D40000 - 0x50D42FFF |
+| 3         | 13           | 0x50D44000 - 0x50D46FFF |
+| 3         | 14           | 0x50D48000 - 0x50D4AFFF |
+| 3         | 15           | 0x50D4C000 - 0x50D4EFFF |
+
+**using 32 bits of address space for each 16-bit memory*
+
+### Kernel memory (“MRAM”)
+
+Total: 432 KiB (64 instances of 768 × 72)
+
+| **Group** | **Instance** | **Address Range\***     |
+| --------- | ------------ | ----------------------- |
+| 0         | 0            | 0x50180000 - 0x50182FFF |
+| 0         | 1            | 0x50184000 - 0x50186FFF |
+| 0         | 2            | 0x50188000 - 0x5018AFFF |
+| 0         | 3            | 0x5018c000 - 0x5018DFFF |
+| 0         | 4            | 0x50190000 - 0x50191FFF |
+| 0         | 5            | 0x50194000 - 0x50196FFF |
+| 0         | 6            | 0x50198000 - 0x5019AFFF |
+| 0         | 7            | 0x5019C000 - 0x5019DFFF |
+| 0         | 8            | 0x501A0000 - 0x501A2FFF |
+| 0         | 9            | 0x501A4000 - 0x501A6FFF |
+| 0         | 10           | 0x501A8000 - 0x501AAFFF |
+| 0         | 11           | 0x501AC000 - 0x501ADFFF |
+| 0         | 12           | 0x501B0000 - 0x501B2FFF |
+| 0         | 13           | 0x501B4000 - 0x501B6FFF |
+| 0         | 14           | 0x501B8000 - 0x501BAFFF |
+| 0         | 15           | 0x501BC000 - 0x501BDFFF |
+| 1         | 0            | 0x50580000 - 0x50582FFF |
+| 1         | 1            | 0x50584000 - 0x50586FFF |
+| 1         | 2            | 0x50588000 - 0x5058AFFF |
+| 1         | 3            | 0x5058C000 - 0x5058DFFF |
+| 1         | 4            | 0x50590000 - 0x50591FFF |
+| 1         | 5            | 0x50594000 - 0x50596FFF |
+| 1         | 6            | 0x50598000 - 0x5059AFFF |
+| 1         | 7            | 0x5059C000 - 0x5059DFFF |
+| 1         | 8            | 0x505A0000 - 0x505A2FFF |
+| 1         | 9            | 0x505A4000 - 0x505A6FFF |
+| 1         | 10           | 0x505A8000 - 0x505AAFFF |
+| 1         | 11           | 0x505AC000 - 0x505ADFFF |
+| 1         | 12           | 0x505B0000 - 0x505B2FFF |
+| 1         | 13           | 0x505B4000 - 0x505B6FFF |
+| 1         | 14           | 0x505B8000 - 0x505BAFFF |
+| 1         | 15           | 0x505BC000 - 0x505BDFFF |
+| 2         | 0            | 0x50980000 - 0x50982FFF |
+| 2         | 1            | 0x50984000 - 0x50986FFF |
+| 2         | 2            | 0x50988000 - 0x5098AFFF |
+| 2         | 3            | 0x5098C000 - 0x5098DFFF |
+| 2         | 4            | 0x50990000 - 0x50991FFF |
+| 2         | 5            | 0x50994000 - 0x50996FFF |
+| 2         | 6            | 0x50998000 - 0x5099AFFF |
+| 2         | 7            | 0x5099C000 - 0x5099DFFF |
+| 2         | 8            | 0x509A0000 - 0x509A2FFF |
+| 2         | 9            | 0x509A4000 - 0x509A6FFF |
+| 2         | 10           | 0x509A8000 - 0x509AAFFF |
+| 2         | 11           | 0x509AC000 - 0x509ADFFF |
+| 2         | 12           | 0x509B0000 - 0x509B2FFF |
+| 2         | 13           | 0x509B4000 - 0x509B6FFF |
+| 2         | 14           | 0x509B8000 - 0x509BAFFF |
+| 2         | 15           | 0x509BC000 - 0x509BDFFF |
+| 3         | 0            | 0x50D80000 - 0x50D82FFF |
+| 3         | 1            | 0x50D84000 - 0x50D86FFF |
+| 3         | 2            | 0x50D88000 - 0x50D8AFFF |
+| 3         | 3            | 0x50D8C000 - 0x50D8DFFF |
+| 3         | 4            | 0x50D90000 - 0x50D91FFF |
+| 3         | 5            | 0x50D94000 - 0x50D96FFF |
+| 3         | 6            | 0x50D98000 - 0x50D9AFFF |
+| 3         | 7            | 0x50D9C000 - 0x50D9DFFF |
+| 3         | 8            | 0x50DA0000 - 0x50DA2FFF |
+| 3         | 9            | 0x50DA4000 - 0x50DA6FFF |
+| 3         | 10           | 0x50DA8000 - 0x50DAAFFF |
+| 3         | 11           | 0x50DAC000 - 0x50DADFFF |
+| 3         | 12           | 0x50DB0000 - 0x50DB2FFF |
+| 3         | 13           | 0x50DB4000 - 0x50DB6FFF |
+| 3         | 14           | 0x50DB8000 - 0x50DBAFFF |
+| 3         | 15           | 0x50DBC000 - 0x50DBDFFF |
+
+**using 128 bits of address space for each 72-bit memory*
+
+### Bias memory
+
+Total: 2 KiB (4 instances of 128 × 32) 
+
+| **Group** | **Address Range**       |
+| --------- | ----------------------- |
+| 0         | 0x50108000 - 0x50109FFF |
+| 1         | 0x50508000 - 0x50509FFF |
+| 2         | 0x50908000 - 0x50909FFF |
+| 3         | 0x50D08000 - 0x50D09FFF |
 
 ---
 

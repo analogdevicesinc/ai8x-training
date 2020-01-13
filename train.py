@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 ###################################################################################################
 #
-# Copyright (C) 2018-2019 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2018-2020 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -235,9 +235,10 @@ def main():
         args.exiterrors = []
 
     selected_source = next((item for item in supported_sources if item['name'] == args.dataset))
-    labels = selected_source['output']
-    args.num_classes = len(labels)
+    args.labels = selected_source['output']
+    args.num_classes = len(args.labels)
     dimensions = selected_source['input']
+    args.dimensions = dimensions
     args.datasets_fn = selected_source['loader']
 
     # Create the model
@@ -580,7 +581,7 @@ def test(test_loader, model, criterion, loggers, activations_collectors, args):
     if activations_collectors is None:
         activations_collectors = create_activation_stats_collectors(model, None)
     with collectors_context(activations_collectors["test"]) as collectors:
-        top1, top5, lossses = _validate(test_loader, model, criterion, loggers, args)
+        top1, top5, losses = _validate(test_loader, model, criterion, loggers, args)
         distiller.log_activation_statsitics(-1, "test", loggers, collector=collectors['sparsity'])
 
         if args.kernel_stats:
@@ -631,13 +632,37 @@ def test(test_loader, model, criterion, loggers, activations_collectors, args):
                       f"max: {weight_max}, stddev: {weight_stddev}")
 
         save_collectors_data(collectors, msglogger.logdir)
-    return top1, top5, lossses
+    return top1, top5, losses
 
 
 def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
     """Execute the validation/test loop."""
     losses = {'objective_loss': tnt.AverageValueMeter()}
     classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, 5))
+
+    def save_tensor(t, f, regression=True):
+        """ Save tensor `t` to file handle `f` in CSV format """
+        if t.dim() > 1:
+            if not regression:
+                t = torch.nn.functional.softmax(t, dim=1)
+            np.savetxt(f, t.reshape(t.shape[0], t.shape[1], -1).cpu().numpy().mean(axis=2),
+                       delimiter=",")
+        else:
+            if regression:
+                np.savetxt(f, t.cpu().numpy(), delimiter=",")
+            else:
+                for i in range(len(t)):
+                    f.write(f'{args.labels[t[i].int()]}\n')
+
+    if args.csv_prefix is not None:
+        f_ytrue = open(f'{args.csv_prefix}_ytrue.csv', 'w')
+        f_ytrue.write('truth\n')
+        f_ypred = open(f'{args.csv_prefix}_ypred.csv', 'w')
+        f_ypred.write(','.join(args.labels) + '\n')
+        f_x = open(f'{args.csv_prefix}_x.csv', 'w')
+        for i in range(args.dimensions[0]-1):
+            f_x.write(f'x_{i}_mean,')
+        f_x.write(f'x_{args.dimensions[0]-1}_mean\n')
 
     if args.earlyexit_thresholds:
         # for Early Exit, we have a list of errors and losses for each of the exits.
@@ -665,6 +690,11 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
             inputs, target = inputs.to(args.device), target.to(args.device)
             # compute output from model
             output = model(inputs)
+
+            if args.csv_prefix is not None:
+                save_tensor(inputs, f_x)
+                save_tensor(output, f_ypred, regression=False)
+                save_tensor(target, f_ytrue, regression=False)
 
             if not args.earlyexit_thresholds:
                 # compute loss
@@ -707,6 +737,12 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
 
                 distiller.log_training_progress(stats, None, epoch, steps_completed,
                                                 total_steps, args.print_freq, loggers)
+
+    if args.csv_prefix is not None:
+        f_ytrue.close()
+        f_ypred.close()
+        f_x.close()
+
     if not args.earlyexit_thresholds:
         msglogger.info('==> Top1: %.3f    Top5: %.3f    Loss: %.3f\n',
                        classerr.value()[0], classerr.value()[1], losses['objective_loss'].mean)
