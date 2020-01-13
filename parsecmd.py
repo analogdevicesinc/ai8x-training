@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2018-2019 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2018-2020 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -97,6 +97,8 @@ def get_parser(model_names, dataset_names):
 
     parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                         help='evaluate model on test set')
+    parser.add_argument('--save-csv', dest='csv_prefix', default=None, type=str,
+                        help='save as CSVs with the given prefix during evaluation')
     parser.add_argument('--activation-stats', '--act-stats', nargs='+', metavar='PHASE',
                         default=list(),
                         help='collect activation statistics on phases: train, valid, and/or test'
