@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_1/13/2020_
+_1/14/2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository._
@@ -51,51 +51,52 @@ This software consists of two related projects:
   - [Active Processors and Layers](#active-processors-and-layers)
   - [Layers and Weight Memory](#layers-and-weight-memory)
   - [Weight Storage Example](#weight-storage-example)
-  - [Example: Conv2D](#example-conv2d)
+  - [Example: `Conv2D`](#example-conv2d)
   - [Limitations of AI84 Networks](#limitations-of-ai84-networks)
   - [Limitations of AI85 Networks](#limitations-of-ai85-networks)
   - [Fully Connected (Linear) Layers](#fully-connected-linear-layers)
   - [Upsampling (Fractionally-Strided 2D Convolutions)](#upsampling-fractionally-strided-2d-convolutions)
 - [Model Training and Quantization](#model-training-and-quantization)
   - [Model Comparison and Feature Attribution](#model-comparison-and-feature-attribution)
+    - [SHAP — SHapely Additive exPlanations](#shap--shapely-additive-explanations)
   - [Quantization](#quantization)
   - [Alternative Quantization Approaches](#alternative-quantization-approaches)
   - [Adding Datasets and New Networks to the Training Process](#adding-datasets-and-new-networks-to-the-training-process)
 - [Network Loader](#network-loader)
   - [Network Loader Configuration Language](#network-loader-configuration-language)
     - [Global Configuration](#global-configuration)
-      - [arch (Mandatory)](#arch-mandatory)
-      - [bias (Optional, Test Only)](#bias-optional-test-only)
-      - [dataset (Mandatory)](#dataset-mandatory)
-      - [output_map (Optional)](#outputmap-optional)
-      - [layers (Mandatory)](#layers-mandatory)
+      - [`arch` (Mandatory)](#arch-mandatory)
+      - [`bias` (Optional, Test Only)](#bias-optional-test-only)
+      - [`dataset` (Mandatory)](#dataset-mandatory)
+      - [`output_map` (Optional)](#outputmap-optional)
+      - [`layers` (Mandatory)](#layers-mandatory)
     - [Per-Layer Configuration](#per-layer-configuration)
-      - [sequence (Optional)](#sequence-optional)
-      - [processors (Mandatory)](#processors-mandatory)
-      - [output_processors (Optional)](#outputprocessors-optional)
-      - [out_offset (Optional)](#outoffset-optional)
-      - [in_offset (Optional)](#inoffset-optional)
-      - [output_width (Optional)](#outputwidth-optional)
-      - [data_format (Optional)](#dataformat-optional)
-      - [operation (Optional)](#operation-optional)
-      - [eltwise (Optional)](#eltwise-optional)
-      - [pool_first (Optional)](#poolfirst-optional)
-      - [operands (Optional)](#operands-optional)
-      - [activate (Optional)](#activate-optional)
-      - [quantization (Optional)](#quantization-optional)
-      - [output_shift (Optional)](#outputshift-optional)
-      - [kernel_size (Optional)](#kernelsize-optional)
-      - [stride (Optional)](#stride-optional)
-      - [pad (Optional)](#pad-optional)
-      - [max_pool (Optional)](#maxpool-optional)
-      - [avg_pool (Optional)](#avgpool-optional)
-      - [pool_stride (Optional)](#poolstride-optional)
-      - [in_channels (Optional)](#inchannels-optional)
-      - [in_dim (Optional)](#indim-optional)
-      - [in_sequences (Optional)](#insequences-optional)
-      - [out_channels (Optional)](#outchannels-optional)
-      - [streaming (Optional)](#streaming-optional)
-      - [flatten (Optional)](#flatten-optional)
+      - [`sequence` (Optional)](#sequence-optional)
+      - [`processors` (Mandatory)](#processors-mandatory)
+      - [`output_processors` (Optional)](#outputprocessors-optional)
+      - [`out_offset` (Optional)](#outoffset-optional)
+      - [`in_offset` (Optional)](#inoffset-optional)
+      - [`output_width` (Optional)](#outputwidth-optional)
+      - [`data_format` (Optional)](#dataformat-optional)
+      - [`operation` (Optional)](#operation-optional)
+      - [`eltwise` (Optional)](#eltwise-optional)
+      - [`pool_first` (Optional)](#poolfirst-optional)
+      - [`operands` (Optional)](#operands-optional)
+      - [`activate` (Optional)](#activate-optional)
+      - [`quantization` (Optional)](#quantization-optional)
+      - [`output_shift` (Optional)](#outputshift-optional)
+      - [`kernel_size` (Optional)](#kernelsize-optional)
+      - [`stride` (Optional)](#stride-optional)
+      - [`pad` (Optional)](#pad-optional)
+      - [`max_pool` (Optional)](#maxpool-optional)
+      - [`avg_pool` (Optional)](#avgpool-optional)
+      - [`pool_stride` (Optional)](#poolstride-optional)
+      - [`in_channels` (Optional)](#inchannels-optional)
+      - [`in_dim` (Optional)](#indim-optional)
+      - [`in_sequences` (Optional)](#insequences-optional)
+      - [`out_channels` (Optional)](#outchannels-optional)
+      - [`streaming` (Optional)](#streaming-optional)
+      - [`flatten` (Optional)](#flatten-optional)
     - [Example](#example)
   - [Adding Datasets to the Network Loader](#adding-datasets-to-the-network-loader)
   - [Starting an Inference, Waiting for Completion, Multiple Inferences in Sequence](#starting-an-inference-waiting-for-completion-multiple-inferences-in-sequence)
@@ -105,7 +106,7 @@ This software consists of two related projects:
   - [AI85 SDK](#ai85-sdk)
 - [AI85/AI86 Changes](#ai85ai86-changes)
 - [AHB Memory Addresses](#ahb-memory-addresses)
-  - [Data memory](#data-memory)
+  - [Data memory](#data-memory-1)
   - [TRAM](#tram)
   - [Kernel memory (“MRAM”)](#kernel-memory-mram)
   - [Bias memory](#bias-memory)
@@ -787,6 +788,20 @@ The code will run in JavaScript inside the browser (this may cause warnings that
 ```shell
 ssh -Yn targethost firefox http://localhost:8080/
 ```
+
+#### SHAP — SHapely Additive exPlanations
+
+The training software integrates code to generate SHAP plots (see https://github.com/slundberg/shap). This  can help with feature attribution for input images.
+
+The train.py program can create plots using the `--shap` command line argument in combination with `--evaluate`:
+
+```shell
+./train.py --model ai84net5 --dataset CIFAR10 --confusion --evaluate --ai84 --exp-load-weights-from logs/CIFAR-new/best.pth.tar --shap 3
+```
+
+This will create a plot with a random selection of 3 test images. The plot shows ten outputs (the ten classes) for the three different input images on the left. Red pixels increase the model’s output while blue pixels decrease the output. The sum of the SHAP values equals the difference between the expected model output (averaged over the background dataset) and the current model output.
+
+<img src="docs/shap.png" alt="shap"  />
 
 ### Quantization
 
