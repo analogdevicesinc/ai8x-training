@@ -69,8 +69,9 @@ from collections import OrderedDict
 from functools import partial
 from pydoc import locate
 import operator
-import parsecmd
+import matplotlib
 import numpy as np
+import shap
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -89,6 +90,7 @@ from distiller.data_loggers.collector import SummaryActivationStatsCollector, \
 from distiller.quantization.range_linear import PostTrainLinearQuantizer
 from distiller.data_loggers.logger import TensorBoardLogger, PythonLogger
 import examples.auto_compression.amc as adc
+import parsecmd
 from speech_com import SpeechCom
 from speech_com_folded_audio import SpeechComFolded1D
 # from range_linear_ai84 import PostTrainLinearQuantizerAI84
@@ -182,6 +184,11 @@ def main():
 
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
+
+    if args.shap > 0:
+        matplotlib.use('TkAgg')
+        args.batch_size = 100 + args.shap
+
     msglogger = apputils.config_pylogger(os.path.join(script_dir, 'logging.conf'), args.name,
                                          args.output_dir)
 
@@ -194,7 +201,7 @@ def main():
     ending_epoch = args.epochs
     perf_scores_history = []
 
-    if args.evaluate:
+    if args.evaluate and args.shap == 0:
         args.deterministic = True
     if args.deterministic:
         distiller.set_deterministic(args.seed)  # For experiment reproducability
@@ -873,6 +880,18 @@ def evaluate_model(model, criterion, test_loader, loggers, activations_collector
         model.to(args.device)
 
     top1, _, _ = test(test_loader, model, criterion, loggers, activations_collectors, args=args)
+
+    if args.shap > 0:
+        images, _ = iter(test_loader).next()
+        background = images[:100]
+        test_images = images[100:100 + args.shap]
+
+        e = shap.DeepExplainer(model, background)
+        shap_values = e.shap_values(test_images)
+        shap_numpy = [np.swapaxes(np.swapaxes(s, 1, -1), 1, 2) for s in shap_values]
+        test_numpy = np.swapaxes(np.swapaxes(test_images.numpy(), 1, -1), 1, 2)
+        # Plot the feature attributions
+        shap.image_plot(shap_numpy, -test_numpy)
 
     if args.quantize_eval:
         checkpoint_name = 'quantized'
