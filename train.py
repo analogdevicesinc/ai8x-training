@@ -102,7 +102,6 @@ msglogger = None
 
 def main():
     script_dir = os.path.dirname(__file__)
-    module_path = os.path.abspath(os.path.join(script_dir, '..', '..'))
     global msglogger  # pylint: disable=global-statement
 
     supported_models = [
@@ -198,7 +197,7 @@ def main():
 
     # Log various details about the execution environment.  It is sometimes useful
     # to refer to past experiment executions and this information may be useful.
-    apputils.log_execution_env_state(args.compress, msglogger.logdir, gitroot=module_path)
+    apputils.log_execution_env_state(args.compress, msglogger.logdir)
     msglogger.debug("Distiller: %s", distiller.__version__)
 
     start_epoch = 0
@@ -424,7 +423,7 @@ def main():
             train(train_loader, model, criterion, optimizer, epoch, compression_scheduler,
                   loggers=[tflogger, pylogger], args=args)
             distiller.log_weights_sparsity(model, epoch, loggers=[tflogger, pylogger])
-            distiller.log_activation_statsitics(epoch, "train", loggers=[tflogger],
+            distiller.log_activation_statistics(epoch, "train", loggers=[tflogger],
                                                 collector=collectors["sparsity"])
             if args.masks_sparsity:
                 msglogger.info(distiller.masks_sparsity_tbl_summary(model, compression_scheduler))
@@ -432,7 +431,7 @@ def main():
         # evaluate on validation set
         with collectors_context(activations_collectors["valid"]) as collectors:
             top1, top5, vloss = validate(val_loader, model, criterion, [pylogger], args, epoch)
-            distiller.log_activation_statsitics(epoch, "valid", loggers=[tflogger],
+            distiller.log_activation_statistics(epoch, "valid", loggers=[tflogger],
                                                 collector=collectors["sparsity"])
             save_collectors_data(collectors, msglogger.logdir)
 
@@ -593,7 +592,7 @@ def test(test_loader, model, criterion, loggers, activations_collectors, args):
         activations_collectors = create_activation_stats_collectors(model, None)
     with collectors_context(activations_collectors["test"]) as collectors:
         top1, top5, losses = _validate(test_loader, model, criterion, loggers, args)
-        distiller.log_activation_statsitics(-1, "test", loggers, collector=collectors['sparsity'])
+        distiller.log_activation_statistics(-1, "test", loggers, collector=collectors['sparsity'])
 
         if args.kernel_stats:
             print("==> Kernel Stats")
@@ -1050,7 +1049,7 @@ class normalize(object):
         return img.sub(0.5)
 
 
-def cifar10_get_datasets(data):
+def cifar10_get_datasets(data, load_train=True, load_test=True):
     """Load the CIFAR10 dataset.
 
     The original training dataset is split into training and validation sets (code is
@@ -1070,33 +1069,39 @@ def cifar10_get_datasets(data):
     """
     (data_dir, args) = data
 
-    train_transform = transforms.Compose([
-        transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        normalize(args=args)
-    ])
+    if load_train:
+        train_transform = transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            normalize(args=args)
+        ])
 
-    train_dataset = torchvision.datasets.CIFAR10(root=os.path.join(data_dir, 'CIFAR10'),
-                                                 train=True, download=True,
-                                                 transform=train_transform)
+        train_dataset = torchvision.datasets.CIFAR10(root=os.path.join(data_dir, 'CIFAR10'),
+                                                     train=True, download=True,
+                                                     transform=train_transform)
+    else:
+        train_dataset = None
 
-    test_transform = transforms.Compose([
-        transforms.ToTensor(),
-        normalize(args=args)
-    ])
+    if load_test:
+        test_transform = transforms.Compose([
+            transforms.ToTensor(),
+            normalize(args=args)
+        ])
 
-    test_dataset = torchvision.datasets.CIFAR10(root=os.path.join(data_dir, 'CIFAR10'),
-                                                train=False, download=True,
-                                                transform=test_transform)
+        test_dataset = torchvision.datasets.CIFAR10(root=os.path.join(data_dir, 'CIFAR10'),
+                                                    train=False, download=True,
+                                                    transform=test_transform)
 
-    if args.truncate_testset:
-        test_dataset.data = test_dataset.data[:1]
+        if args.truncate_testset:
+            test_dataset.data = test_dataset.data[:1]
+    else:
+        test_dataset = None
 
     return train_dataset, test_dataset
 
 
-def imagenet_get_datasets(data, input_size=224):
+def imagenet_get_datasets(data, load_train=True, load_test=True, input_size=224):
     """Load the ImageNet 2012 Classification dataset.
 
     The original training dataset is split into training and validation sets.
@@ -1110,39 +1115,45 @@ def imagenet_get_datasets(data, input_size=224):
     """
     (data_dir, args) = data
 
-    train_transform = transforms.Compose([
-        transforms.RandomCrop(input_size, padding=4),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        normalize(args=args),
-    ])
+    if load_train:
+        train_transform = transforms.Compose([
+            transforms.RandomCrop(input_size, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            normalize(args=args),
+        ])
 
-    train_dataset = torchvision.datasets.ImageNet(
-        data_dir,
-        split='train',
-        transform=train_transform,
-    )
+        train_dataset = torchvision.datasets.ImageNet(
+            data_dir,
+            split='train',
+            transform=train_transform,
+        )
+    else:
+        train_dataset = None
 
-    test_transform = transforms.Compose([
-        transforms.Resize(int(input_size / 0.875)),
-        transforms.CenterCrop(input_size),
-        transforms.ToTensor(),
-        normalize(args=args),
-    ])
+    if load_test:
+        test_transform = transforms.Compose([
+            transforms.Resize(int(input_size / 0.875)),
+            transforms.CenterCrop(input_size),
+            transforms.ToTensor(),
+            normalize(args=args),
+        ])
 
-    test_dataset = torchvision.datasets.ImageNet(
-        data_dir,
-        split='val',
-        transform=test_transform,
-    )
+        test_dataset = torchvision.datasets.ImageNet(
+            data_dir,
+            split='val',
+            transform=test_transform,
+        )
 
-    if args.truncate_testset:
-        test_dataset.data = test_dataset.data[:1]
+        if args.truncate_testset:
+            test_dataset.data = test_dataset.data[:1]
+    else:
+        test_dataset = None
 
     return train_dataset, test_dataset
 
 
-def mnist_get_datasets(data):
+def mnist_get_datasets(data, load_train=True, load_test=True):
     """Load the MNIST dataset.
 
     The original training dataset is split into training and validation sets (code is
@@ -1162,31 +1173,37 @@ def mnist_get_datasets(data):
     """
     (data_dir, args) = data
 
-    train_transform = transforms.Compose([
-        transforms.RandomCrop(28, padding=4),
-        transforms.RandomAffine(degrees=20, translate=(0.1, 0.1), shear=5),
-        transforms.ToTensor(),
-        normalize(args=args)
-    ])
+    if load_train:
+        train_transform = transforms.Compose([
+            transforms.RandomCrop(28, padding=4),
+            transforms.RandomAffine(degrees=20, translate=(0.1, 0.1), shear=5),
+            transforms.ToTensor(),
+            normalize(args=args)
+        ])
 
-    train_dataset = torchvision.datasets.MNIST(root=data_dir, train=True, download=True,
-                                               transform=train_transform)
+        train_dataset = torchvision.datasets.MNIST(root=data_dir, train=True, download=True,
+                                                   transform=train_transform)
+    else:
+        train_dataset = None
 
-    test_transform = transforms.Compose([
-        transforms.ToTensor(),
-        normalize(args=args)
-    ])
+    if load_test:
+        test_transform = transforms.Compose([
+            transforms.ToTensor(),
+            normalize(args=args)
+        ])
 
-    test_dataset = torchvision.datasets.MNIST(root=data_dir, train=False, download=True,
-                                              transform=test_transform)
+        test_dataset = torchvision.datasets.MNIST(root=data_dir, train=False, download=True,
+                                                  transform=test_transform)
 
-    if args.truncate_testset:
-        test_dataset.data = test_dataset.data[:1]
+        if args.truncate_testset:
+            test_dataset.data = test_dataset.data[:1]
+    else:
+        test_dataset = None
 
     return train_dataset, test_dataset
 
 
-def fashionmnist_get_datasets(data):
+def fashionmnist_get_datasets(data, load_train=True, load_test=True):
     """Load the FashionMNIST dataset.
 
     The original training dataset is split into training and validation sets (code is
@@ -1206,31 +1223,37 @@ def fashionmnist_get_datasets(data):
     """
     (data_dir, args) = data
 
-    train_transform = transforms.Compose([
-        transforms.RandomCrop(28, padding=4),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        normalize(args=args)
-    ])
+    if load_train:
+        train_transform = transforms.Compose([
+            transforms.RandomCrop(28, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            normalize(args=args)
+        ])
 
-    train_dataset = torchvision.datasets.FashionMNIST(root=data_dir, train=True, download=True,
-                                                      transform=train_transform)
+        train_dataset = torchvision.datasets.FashionMNIST(root=data_dir, train=True, download=True,
+                                                          transform=train_transform)
+    else:
+        train_dataset = None
 
-    test_transform = transforms.Compose([
-        transforms.ToTensor(),
-        normalize(args=args)
-    ])
+    if load_test:
+        test_transform = transforms.Compose([
+            transforms.ToTensor(),
+            normalize(args=args)
+        ])
 
-    test_dataset = torchvision.datasets.FashionMNIST(root=data_dir, train=False, download=True,
-                                                     transform=test_transform)
+        test_dataset = torchvision.datasets.FashionMNIST(root=data_dir, train=False, download=True,
+                                                         transform=test_transform)
 
-    if args.truncate_testset:
-        test_dataset.data = test_dataset.data[:1]
+        if args.truncate_testset:
+            test_dataset.data = test_dataset.data[:1]
+    else:
+        test_dataset = None
 
     return train_dataset, test_dataset
 
 
-def speechcom_get_datasets(data):
+def speechcom_get_datasets(data, load_train=True, load_test=True):
     """Load the SpeechCom v0.02 dataset
     (https://storage.cloud.google.com/download.tensorflow.org/data/speech_commands_v0.02.tar.gz).
 
@@ -1253,19 +1276,25 @@ def speechcom_get_datasets(data):
         normalize(args=args)
     ])
 
-    train_dataset = SpeechCom(root=data_dir, classes=classes, d_type='train', n_augment=4,
-                              transform=transform, download=True)
+    if load_train:
+        train_dataset = SpeechCom(root=data_dir, classes=classes, d_type='train', n_augment=4,
+                                  transform=transform, download=True)
+    else:
+        train_dataset = None
 
-    test_dataset = SpeechCom(root=data_dir, classes=classes, d_type='val', n_augment=4,
-                             transform=transform, download=True)
+    if load_test:
+        test_dataset = SpeechCom(root=data_dir, classes=classes, d_type='val', n_augment=4,
+                                 transform=transform, download=True)
 
-    if args.truncate_testset:
-        test_dataset.data = test_dataset.data[:1]
+        if args.truncate_testset:
+            test_dataset.data = test_dataset.data[:1]
+    else:
+        test_dataset = None
 
     return train_dataset, test_dataset
 
 
-def speechcomfolded1D_get_datasets(data):
+def speechcomfolded1D_get_datasets(data, load_train=True, load_test=True):
     """Load the folded 1D version of SpeechCom dataset
 
     The dataset is loaded from the archive file, so the file is required for this version.
@@ -1281,7 +1310,6 @@ def speechcomfolded1D_get_datasets(data):
     0.8 and 1.3, -0.1 and 0.1, 0 and 1, respectively.
     """
     (data_dir, args) = data
-    print(data_dir+'_offset')
 
     transform = transforms.Compose([
         normalize(args=args)
@@ -1289,14 +1317,20 @@ def speechcomfolded1D_get_datasets(data):
 
     classes = ['up', 'down', 'left', 'right', 'stop', 'go']
 
-    train_dataset = SpeechComFolded1D(root=data_dir, classes=classes, d_type='train',
-                                      transform=transform, t_type='keyword')
+    if load_train:
+        train_dataset = SpeechComFolded1D(root=data_dir, classes=classes, d_type='train',
+                                          transform=transform, t_type='keyword')
+    else:
+        train_dataset = None
 
-    test_dataset = SpeechComFolded1D(root=data_dir, classes=classes, d_type='val',
-                                     transform=transform, t_type='keyword')
+    if load_test:
+        test_dataset = SpeechComFolded1D(root=data_dir, classes=classes, d_type='val',
+                                         transform=transform, t_type='keyword')
 
-    if args.truncate_testset:
-        test_dataset.data = test_dataset.data[:1]
+        if args.truncate_testset:
+            test_dataset.data = test_dataset.data[:1]
+    else:
+        test_dataset = None
 
     return train_dataset, test_dataset
 
