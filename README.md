@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_1/14/2020_
+_3/10/2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository._
@@ -133,11 +133,11 @@ Including the SDK from SVN, the expected file system layout will be:
     ..../AI84SDK/
     ..../AI85SDK/
 
-where “….” is the project root.
+where “....” is the project root.
 
 ### Upstream Code
 
-Change to the project root (denoted as `....` above).
+Change to the project root (denoted as `....` above) and run the following commands (substituting your single sign-on name for “first.last”):
 
 ```shell
 $ git clone https://first.last@gerrit.maxim-ic.com:8443/ai8x-training
@@ -156,7 +156,7 @@ https://developer.nvidia.com/cudnn
 
 The following software is optional, and can be replaced with other similar software of the user’s choosing.
 
-1. Visual Studio Code (Editor, Free), https://code.visualstudio.com
+1. Visual Studio Code (Editor, Free), https://code.visualstudio.com, with the “Remote - SSH” plugin
 2. Typora (Markdown Editor, Free during beta), http://typora.io
 3. CoolTerm (Serial Terminal, Free), http://freeware.the-meiers.org
    or Serial ($30), https://apps.apple.com/us/app/serial/id877615577?mt=12
@@ -165,9 +165,9 @@ The following software is optional, and can be replaced with other similar softw
 
 ### Project Installation
 
-*The software in this project requires Python 3.6.9 or a later 3.6.x version. Version 3.7 has not been tested.*
+*The software in this project requires Python 3.6.9 or a later 3.6.x version. Version 3.7 has not yet been tested.*
 
-It is not necessary to install Python 3.6.9 system-wide, or to rely on the sys tem-provided Python. To manage Python versions, use `pyenv` (https://github.com/pyenv/pyenv).
+It is not necessary to install Python 3.6.9 system-wide, or to rely on the system-provided Python. To manage Python versions, use `pyenv` (https://github.com/pyenv/pyenv).
 
 On macOS (no CUDA support available):
 
@@ -185,7 +185,7 @@ $ sudo apt-get install -y make build-essential libssl-dev zlib1g-dev \
 $ curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
 ```
 
-Then, add to ~/.bash_profile or ~/.profile (as shown by the previous step):
+Then, add to ~/.bash_profile or ~/.profile (as shown by the terminal output of the previous step):
 
 ```shell
 eval "$(pyenv init -)"
@@ -232,7 +232,7 @@ For CUDA 10 on Linux (see https://pytorch.org/get-started/locally/):
 Next, install TensorFlow. TensorFlow is needed for TensorBoard support.
 
 ```shell
-(ai8x-training) $ pip3 install "tensorflow>=1.14"
+(ai8x-training) $ pip3 install "tensorflow==1.14"
 ```
 
 *Note*: On x86 systems, the pre-built TensorFlow wheels require AVX (on macOS, run `sysctl -n machdep.cpu.features` to find out, on Linux use `cat /proc/cpuinfo | grep avx`).
@@ -244,7 +244,7 @@ If the CPU does not support AVX, or to enable support for AVX2, or CUDA, or AMD6
 _To repeat: Building TensorFlow is not needed when the binary wheels are functioning properly._
 
 The TensorFlow build requires Java 8 and Bazel, and takes over two hours. 
-Building TensorFlow requires Bazel 0.25.2 (newer or much older versions do not work). See
+Building TensorFlow 1.14.0 requires Bazel 0.25.2 (newer or much older versions do not work). See
 https://docs.bazel.build/versions/master/install-compile-source.html#build-bazel-using-bazel for build instructions.
 
 Once Bazel is installed, compile and install TensorFlow. On Jetson TX1, disable S3. See 
@@ -270,6 +270,7 @@ To install Distiller:
 
 ```shell
 (ai8x-training) $ pip3 install -e distiller
+(ai8x-training) $ pip3 install gitpython --upgrade
 ```
 
 On macOS, add to `~/.matplotlib/matplotrc`:
@@ -342,7 +343,9 @@ To minimize data movement, the accelerator is optimized for convolutions with in
 
 ![CNNInFlight](docs/CNNInFlight.png)
 
-The AI8X accelerator consists of 64 parallel processors. Each processor includes a pooling unit and a convolutional engine with dedicated weight memory:
+The AI8X accelerator consists of 64 parallel processors. There are four groups that contain 16 processors each.
+
+Each processor includes a pooling unit and a convolutional engine with dedicated weight memory:
 
 ![Overview](docs/Overview.png)
 
@@ -430,7 +433,7 @@ The fast FIFO is only available from the RISC-V core, and runs synchronously wit
     When using 1-, 2- or 4 bit weights, the capacity increases accordingly.
     When using more than 64 input or output channels, weight memory is shared and effective capacity decreases.
     Weights must be arranged according to specific rules detailed below.
-  * There are 16 instances of 32 KiB data memory. When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 181×181pixels per channel in the CHW format. However, when using more than one input channel, the HWC format may be preferred, and all layer output are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance -- or 91×90 pixels per channel.
+  * There are 16 instances of 32 KiB data memory. When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 181×181 pixels per channel in the CHW format. However, when using more than one input channel, the HWC format may be preferred, and all layer output are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance -- or 91×90 pixels per channel.
     Note that the first layer commonly creates a wide expansion (i.e., large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical.
   * When using streaming, the data sizes are limited to 1023×1023, subject to available TRAM. Streaming is limited to 8 layers or less, and to four FIFOs (up to 4 input channels in CHW and up to 16 channels in HWC format). When using streaming, the product of a layer’s input data width, input data height, and input data channels divided by 64 rounded up must not exceed 2^21: $rows * columns * ⌈\frac{channels}{64}⌉ < 2^{21}$.
 
@@ -673,7 +676,7 @@ With the exception of weight storage, and bias use, most of these limitations wi
 ### Limitations of AI85 Networks
 
 The AI85 hardware does not support arbitrary network parameters. Specifically,
-* Dilation, groups, depth-wise separable convolutions, and batch normalization are not supported.
+* Dilation, groups, depth-wise convolutions, and batch normalization are not supported. *Note: Batch normalization should be folded into the weights.*
 
 * `Conv2d`:
   
@@ -695,7 +698,7 @@ The AI85 hardware does not support arbitrary network parameters. Specifically,
 
 * A programmable layer-specific shift operator is available at the output of a convolution.
 
-* The only supported activation functions are `ReLU` and `Abs`, and a limited subset of `Linear`.
+* The supported activation functions are `ReLU` and `Abs`, and a limited subset of `Linear`.
 
 * Pooling:
   * Both max pooling and average pooling are available, with or without convolution.
