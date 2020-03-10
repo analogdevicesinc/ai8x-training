@@ -467,7 +467,7 @@ def train(train_loader, model, criterion, optimizer, epoch,
     losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                           (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
 
-    classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, 5))
+    classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, min(args.num_classes, 5)))
     batch_time = tnt.AverageValueMeter()
     data_time = tnt.AverageValueMeter()
 
@@ -505,7 +505,7 @@ def train(train_loader, model, criterion, optimizer, epoch,
             loss = criterion(output, target)
             # Measure accuracy
             classerr.add(output.data, target)
-            acc_stats.append([classerr.value(1), classerr.value(5)])
+            acc_stats.append([classerr.value(1), classerr.value(min(args.num_classes, 5))])
         else:
             # Measure accuracy and record loss
             loss = earlyexit_loss(output, target, criterion, args)
@@ -548,7 +548,7 @@ def train(train_loader, model, criterion, optimizer, epoch,
             errs = OrderedDict()
             if not args.earlyexit_lossweights:
                 errs['Top1'] = classerr.value(1)
-                errs['Top5'] = classerr.value(5)
+                errs['Top5'] = classerr.value(min(args.num_classes, 5))
             else:
                 # for Early Exit case, the Top1 and Top5 stats are computed for each exit.
                 for exitnum in range(args.num_exits):
@@ -645,7 +645,7 @@ def test(test_loader, model, criterion, loggers, activations_collectors, args):
 def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
     """Execute the validation/test loop."""
     losses = {'objective_loss': tnt.AverageValueMeter()}
-    classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, 5))
+    classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, min(args.num_classes, 5)))
 
     def save_tensor(t, f, regression=True):
         """ Save tensor `t` to file handle `f` in CSV format """
@@ -676,7 +676,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
         args.exiterrors = []
         args.losses_exits = []
         for exitnum in range(args.num_exits):
-            args.exiterrors.append(tnt.ClassErrorMeter(accuracy=True, topk=(1, 5)))
+            args.exiterrors.append(tnt.ClassErrorMeter(accuracy=True, topk=(1, min(args.num_classes, 5))))
             args.losses_exits.append(tnt.AverageValueMeter())
         args.exit_taken = [0] * args.num_exits
 
@@ -724,7 +724,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
                     stats = ('',
                              OrderedDict([('Loss', losses['objective_loss'].mean),
                                           ('Top1', classerr.value(1)),
-                                          ('Top5', classerr.value(5))]))
+                                          ('Top5', classerr.value(min(args.num_classes, 5)))]))
                 else:
                     stats_dict = OrderedDict()
                     stats_dict['Test'] = validation_step
@@ -756,7 +756,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
 
         if args.display_confusion:
             msglogger.info('==> Confusion:\n%s\n', str(confusion.value()))
-        return classerr.value(1), classerr.value(5), losses['objective_loss'].mean
+        return classerr.value(1), classerr.value(min(args.num_classes, 5)), losses['objective_loss'].mean
     else:
         total_top1, total_top5, losses_exits_stats = earlyexit_validate_stats(args)
         return total_top1, total_top5, losses_exits_stats[args.num_exits-1]
