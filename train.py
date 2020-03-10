@@ -163,6 +163,10 @@ def main():
          'output': ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse',
                     'ship', 'truck'),
          'loader': cifar10_get_datasets},
+        {'name': 'ImageNet',
+         'input': (3, 224, 224),
+         'output': list(map(str, range(100))),
+         'loader': imagenet_get_datasets},
         {'name': 'SpeechCom',
          'input': (1, 64, 64),
          'output': (0, 1, 2, 3, 4, 5, 6),
@@ -1085,6 +1089,52 @@ def cifar10_get_datasets(data):
     test_dataset = torchvision.datasets.CIFAR10(root=os.path.join(data_dir, 'CIFAR10'),
                                                 train=False, download=True,
                                                 transform=test_transform)
+
+    if args.truncate_testset:
+        test_dataset.data = test_dataset.data[:1]
+
+    return train_dataset, test_dataset
+
+
+def imagenet_get_datasets(data, input_size=224):
+    """Load the ImageNet 2012 Classification dataset.
+
+    The original training dataset is split into training and validation sets.
+    By default we use a 90:10 (45K:5K) training:validation split.
+
+    The output of torchvision datasets are PIL Image images of range [0, 1].
+    We transform them to Tensors of normalized range [-1, 1]
+
+    Data augmentation: 4 pixels are padded on each side, and a 224x224 crop is randomly sampled
+    from the padded image or its horizontal flip.
+    """
+    (data_dir, args) = data
+
+    train_transform = transforms.Compose([
+        transforms.RandomCrop(input_size, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        normalize(args=args),
+    ])
+
+    train_dataset = torchvision.datasets.ImageNet(
+        data_dir,
+        split='train',
+        transform=train_transform,
+    )
+
+    test_transform = transforms.Compose([
+        transforms.Resize(int(input_size / 0.875)),
+        transforms.CenterCrop(input_size),
+        transforms.ToTensor(),
+        normalize(args=args),
+    ])
+
+    test_dataset = torchvision.datasets.ImageNet(
+        data_dir,
+        split='val',
+        transform=test_transform,
+    )
 
     if args.truncate_testset:
         test_dataset.data = test_dataset.data[:1]
