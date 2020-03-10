@@ -148,7 +148,7 @@ $ git clone https://first.last@gerrit.maxim-ic.com:8443/ai8x-synthesis
 
 When going beyond simple tests, model training requires CUDA hardware acceleration (the network loader does not require CUDA).
 
-Install CUDA 10.1 and CUDNN (PyTorch does not currently support CUDA 10.2):
+Install CUDA 10.1 and CUDNN (PyTorch 1.3.1 does not support CUDA 10.2):
 https://developer.nvidia.com/cuda-downloads
 https://developer.nvidia.com/cudnn
 
@@ -218,21 +218,21 @@ $ source bin/activate
 
 For macOS and systems without CUDA:
 ```shell
-(ai8x-training) $ pip3 install torch==1.1.0
-(ai8x-training) $ pip3 install torchvision==0.3.0
+(ai8x-training) $ pip3 install torch==1.3.1
+(ai8x-training) $ pip3 install torchvision==0.4.2
 ```
 
 For CUDA 10 on Linux (see https://pytorch.org/get-started/locally/):
 
 ```shell
-(ai8x-training) $ pip3 install https://download.pytorch.org/whl/cu100/torch-1.1.0-cp36-cp36m-linux_x86_64.whl
-(ai8x-training) $ pip3 install https://download.pytorch.org/whl/cu100/torchvision-0.3.0-cp36-cp36m-linux_x86_64.whl
+(ai8x-training) $ pip3 install https://download.pytorch.org/whl/cu101/torch-1.3.1-cp36-cp36m-linux_x86_64.whl
+(ai8x-training) $ pip3 install https://download.pytorch.org/whl/cu101/torchvision-0.4.2-cp36-cp36m-linux_x86_64.whl
 ```
 
 Next, install TensorFlow. TensorFlow is needed for TensorBoard support.
 
 ```shell
-(ai8x-training) $ pip3 install "tensorflow==1.14"
+(ai8x-training) $ pip3 install tensorflow==1.14
 ```
 
 *Note*: On x86 systems, the pre-built TensorFlow wheels require AVX (on macOS, run `sysctl -n machdep.cpu.features` to find out, on Linux use `cat /proc/cpuinfo | grep avx`).
@@ -270,7 +270,6 @@ To install Distiller:
 
 ```shell
 (ai8x-training) $ pip3 install -e distiller
-(ai8x-training) $ pip3 install gitpython --upgrade
 ```
 
 On macOS, add to `~/.matplotlib/matplotrc`:
