@@ -84,11 +84,13 @@ from torchvision import transforms
 import distiller
 import distiller.apputils as apputils
 import distiller.model_summaries as model_summaries
+# pylint: disable=no-name-in-module
 from distiller.data_loggers.collector import SummaryActivationStatsCollector, \
     RecordsActivationStatsCollector, QuantCalibrationStatsCollector, \
     collectors_context
 from distiller.quantization.range_linear import PostTrainLinearQuantizer
 from distiller.data_loggers.logger import TensorBoardLogger, PythonLogger
+# pylint: enable=no-name-in-module
 import examples.auto_compression.amc as adc
 import parsecmd
 from speech_com import SpeechCom
@@ -99,8 +101,17 @@ from speech_com_folded_audio import SpeechComFolded1D
 # Logger handle
 msglogger = None
 
+# Globals
+weight_min = None
+weight_max = None
+weight_count = None
+weight_sum = None
+weight_stddev = None
+weight_mean = None
+
 
 def main():
+    """main"""
     script_dir = os.path.dirname(__file__)
     global msglogger  # pylint: disable=global-statement
 
@@ -407,8 +418,8 @@ def main():
         msglogger.info('\tStarting from Epoch: %s', args.kd_start_epoch)
 
     if start_epoch >= ending_epoch:
-        msglogger.error('epoch count is too low, starting epoch is {} but total epochs set '
-                        'to {}'.format(start_epoch, ending_epoch))
+        msglogger.error('epoch count is too low, starting epoch is %d but total epochs set '
+                        'to %d', start_epoch, ending_epoch)
         raise ValueError('Epochs parameter is too low. Nothing to do.')
 
     vloss = 10**6
@@ -597,18 +608,20 @@ def test(test_loader, model, criterion, loggers, activations_collectors, args):
         if args.kernel_stats:
             print("==> Kernel Stats")
             with torch.no_grad():
-                global weight_min, weight_max, weight_count, weight_sum, weight_stddev, weight_mean
-                weight_min = torch.tensor(float('inf'))
-                weight_max = torch.tensor(float('-inf'))
-                weight_count = torch.tensor(0, dtype=torch.int)
-                weight_sum = torch.tensor(0.0)
-                weight_stddev = torch.tensor(0.0)
+                global weight_min, weight_max, weight_count  # pylint: disable=global-statement
+                global weight_sum, weight_stddev, weight_mean  # pylint: disable=global-statement
+                weight_min = torch.tensor(float('inf'))  # pylint: disable=not-callable
+                weight_max = torch.tensor(float('-inf'))  # pylint: disable=not-callable
+                weight_count = torch.tensor(0, dtype=torch.int)  # pylint: disable=not-callable
+                weight_sum = torch.tensor(0.0)  # pylint: disable=not-callable
+                weight_stddev = torch.tensor(0.0)  # pylint: disable=not-callable
 
                 def traverse_pass1(m):
                     """
                     Traverse model to build weight stats
                     """
-                    global weight_min, weight_max, weight_count, weight_sum
+                    global weight_min, weight_max  # pylint: disable=global-statement
+                    global weight_count, weight_sum  # pylint: disable=global-statement
                     if isinstance(m, nn.Conv2d):
                         weight_min = torch.min(torch.min(m.weight), weight_min)
                         weight_max = torch.max(torch.max(m.weight), weight_max)
@@ -624,7 +637,7 @@ def test(test_loader, model, criterion, loggers, activations_collectors, args):
                     """
                     Traverse model to build weight stats
                     """
-                    global weight_stddev, weight_mean
+                    global weight_stddev, weight_mean  # pylint: disable=global-statement
                     if isinstance(m, nn.Conv2d):
                         weight_stddev += ((m.weight.flatten() - weight_mean) ** 2).sum()
                         if hasattr(m, 'bias') and m.bias is not None:
@@ -661,8 +674,8 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
             if regression:
                 np.savetxt(f, t.cpu().numpy(), delimiter=",")
             else:
-                for i in range(len(t)):
-                    f.write(f'{args.labels[t[i].int()]}\n')
+                for _, i in enumerate(t):
+                    f.write(f'{args.labels[i.int()]}\n')
 
     if args.csv_prefix is not None:
         f_ytrue = open(f'{args.csv_prefix}_ytrue.csv', 'w')
@@ -679,7 +692,8 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
         args.exiterrors = []
         args.losses_exits = []
         for exitnum in range(args.num_exits):
-            args.exiterrors.append(tnt.ClassErrorMeter(accuracy=True, topk=(1, min(args.num_classes, 5))))
+            args.exiterrors.append(tnt.ClassErrorMeter(accuracy=True,
+                                                       topk=(1, min(args.num_classes, 5))))
             args.losses_exits.append(tnt.AverageValueMeter())
         args.exit_taken = [0] * args.num_exits
 
@@ -759,7 +773,8 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
 
         if args.display_confusion:
             msglogger.info('==> Confusion:\n%s\n', str(confusion.value()))
-        return classerr.value(1), classerr.value(min(args.num_classes, 5)), losses['objective_loss'].mean
+        return classerr.value(1), classerr.value(min(args.num_classes, 5)), \
+            losses['objective_loss'].mean
     else:
         total_top1, total_top5, losses_exits_stats = earlyexit_validate_stats(args)
         return total_top1, total_top5, losses_exits_stats[args.num_exits-1]
@@ -784,6 +799,7 @@ def update_training_scores_history(perf_scores_history, model, top1, top5, epoch
 
 
 def earlyexit_loss(output, target, criterion, args):
+    """earlyexit_loss"""
     loss = 0
     sum_lossweights = 0
     for exitnum in range(args.num_exits-1):
@@ -797,10 +813,12 @@ def earlyexit_loss(output, target, criterion, args):
 
 
 def earlyexit_validate_loss(output, target, _criterion, args):
-    # We need to go through each sample in the batch itself - in other words, we are
-    # not doing batch processing for exit criteria - we do this as though it were batchsize of 1
-    # but with a grouping of samples equal to the batch size.
-    # Note that final group might not be a full batch - so determine actual size.
+    """
+    We need to go through each sample in the batch itself - in other words, we are
+    not doing batch processing for exit criteria - we do this as though it were batchsize of 1
+    but with a grouping of samples equal to the batch size.
+    Note that final group might not be a full batch - so determine actual size.
+    """
     this_batch_size = target.size()[0]
     earlyexit_validate_criterion = nn.CrossEntropyLoss(reduce=False).to(args.device)
 
@@ -816,24 +834,27 @@ def earlyexit_validate_loss(output, target, _criterion, args):
         for exitnum in range(args.num_exits - 1):
             if args.loss_exits[exitnum][batch_index] < args.earlyexit_thresholds[exitnum]:
                 # take the results from early exit since lower than threshold
-                args.exiterrors[exitnum].add(torch.tensor(np.array(output[exitnum].
-                                             data[batch_index].cpu(), ndmin=2)),
-                                             torch.full([1], target[batch_index],
-                                             dtype=torch.long))
+                args.exiterrors[exitnum].add(
+                    torch.tensor(  # pylint: disable=not-callable
+                        np.array(output[exitnum].data[batch_index].cpu(), ndmin=2)
+                    ),
+                    torch.full([1], target[batch_index], dtype=torch.long))
                 args.exit_taken[exitnum] += 1
                 earlyexit_taken = True
                 break  # since exit was taken, do not affect the stats of subsequent exits
         # this sample does not exit early and therefore continues until final exit
         if not earlyexit_taken:
             exitnum = args.num_exits - 1
-            args.exiterrors[exitnum].add(torch.tensor(np.array(output[exitnum].
-                                         data[batch_index].cpu(), ndmin=2)),
-                                         torch.full([1], target[batch_index], dtype=torch.long))
+            args.exiterrors[exitnum].add(
+                torch.tensor(  # pylint: disable=not-callable
+                    np.array(output[exitnum].data[batch_index].cpu(), ndmin=2)
+                ),
+                torch.full([1], target[batch_index], dtype=torch.long))
             args.exit_taken[exitnum] += 1
 
 
 def earlyexit_validate_stats(args):
-    # Print some interesting summary stats for number of data points that could exit early
+    """Print some interesting summary stats for number of data points that could exit early"""
     top1k_stats = [0] * args.num_exits
     top5k_stats = [0] * args.num_exits
     losses_exits_stats = [0] * args.num_exits
@@ -863,22 +884,24 @@ def earlyexit_validate_stats(args):
 
 def evaluate_model(model, criterion, test_loader, loggers, activations_collectors, args,
                    scheduler=None):
-    # This sample application can be invoked to evaluate the accuracy of your model on
-    # the test dataset.
-    # You can optionally quantize the model to 8-bit integer before evaluation.
-    # For example:
-    # python3 compress_classifier.py --arch resnet20_cifar \
-    #          ../data.cifar10 -p=50 --resume-from=checkpoint.pth.tar --evaluate
+    """
+    This sample application can be invoked to evaluate the accuracy of your model on
+    the test dataset.
+    You can optionally quantize the model to 8-bit integer before evaluation.
+    For example:
+    python3 compress_classifier.py --arch resnet20_cifar \
+             ../data.cifar10 -p=50 --resume-from=checkpoint.pth.tar --evaluate
+    """
 
     if not isinstance(loggers, list):
         loggers = [loggers]
 
     if args.quantize_eval:
         model.cpu()
-        if False and args.ai84:
-            quantizer = PostTrainLinearQuantizerAI84.from_args(model, args)
-        else:
-            quantizer = PostTrainLinearQuantizer.from_args(model, args)
+        # if args.ai84:
+        #     quantizer = PostTrainLinearQuantizerAI84.from_args(model, args)
+        # else:
+        quantizer = PostTrainLinearQuantizer.from_args(model, args)
         quantizer.prepare_model()
         model.to(args.device)
 
@@ -905,6 +928,7 @@ def evaluate_model(model, criterion, test_loader, loggers, activations_collector
 
 
 def summarize_model(model, dataset, which_summary):
+    """summarize_model"""
     if which_summary.startswith('png'):
         model_summaries.draw_img_classifier_to_file(model, 'model.png', dataset,
                                                     which_summary == 'png_w_params')
@@ -915,8 +939,10 @@ def summarize_model(model, dataset, which_summary):
 
 
 def sensitivity_analysis(model, criterion, data_loader, loggers, args, sparsities):
-    # This sample application can be invoked to execute Sensitivity Analysis on your
-    # model.  The ouptut is saved to CSV and PNG.
+    """
+    This sample application can be invoked to execute Sensitivity Analysis on your
+    model.  The ouptut is saved to CSV and PNG.
+    """
     msglogger.info("Running sensitivity tests")
     if not isinstance(loggers, list):
         loggers = [loggers]
@@ -934,6 +960,7 @@ def sensitivity_analysis(model, criterion, data_loader, loggers, args, sparsitie
 
 
 def automated_deep_compression(model, criterion, _optimizer, loggers, args):
+    """automated_deep_compression"""
     train_loader, _val_loader, test_loader, _ = apputils.get_data_loaders(
         args.datasets_fn, (os.path.expanduser(args.data), args), args.batch_size,
         args.workers, args.validation_split, args.deterministic,
@@ -947,10 +974,12 @@ def automated_deep_compression(model, criterion, _optimizer, loggers, args):
 
     save_checkpoint_fn = partial(apputils.save_checkpoint, arch=args.cnn, dir=msglogger.logdir)
     optimizer_data = {'lr': args.lr, 'momentum': args.momentum, 'weight_decay': args.weight_decay}
-    adc.do_adc(model, args, optimizer_data, validate_fn, save_checkpoint_fn, train_fn)
+    adc.amc.train_auto_compressor(model, args, optimizer_data,
+                                  validate_fn, save_checkpoint_fn, train_fn)
 
 
 def greedy(model, criterion, _optimizer, loggers, args):
+    """greedy"""
     train_loader, _val_loader, test_loader, _ = apputils.get_data_loaders(
         args.datasets_fn, (os.path.expanduser(args.data), args), args.batch_size,
         args.workers, args.validation_split, args.deterministic,
@@ -1006,6 +1035,7 @@ def create_activation_stats_collectors(model, *phases):
 
 
 def create_quantization_stats_collector(model):
+    """create_quantization_stats_collector"""
     distiller.utils.assign_layer_fq_names(model)
     return {'test': missingdict({
         'quantization_stats': QuantCalibrationStatsCollector(model, classes=None,
@@ -1018,11 +1048,12 @@ def save_collectors_data(collectors, directory):
     """
     for name, collector in collectors.items():
         workbook = os.path.join(directory, name)
-        msglogger.info("Generating {}".format(workbook))
+        msglogger.info("Generating %s", workbook)
         collector.save(workbook)
 
 
 def check_pytorch_version():
+    """Ensure PyTorch >= 1.0.1"""
     from pkg_resources import parse_version
     if parse_version(torch.__version__) < parse_version('1.0.1'):
         print("\nNOTICE:")
@@ -1361,11 +1392,11 @@ if __name__ == '__main__':
             # So we remove the stdout logging handler before logging the exception
             handlers_bak = msglogger.handlers
             msglogger.handlers = [h for h in msglogger.handlers
-                                  if type(h) != logging.StreamHandler]
+                                  if not isinstance(h, logging.StreamHandler)]
             msglogger.error(traceback.format_exc())
             msglogger.handlers = handlers_bak
         raise
     finally:
         if msglogger is not None:
             msglogger.info('')
-            msglogger.info('Log file for this run: ' + os.path.realpath(msglogger.log_filename))
+            msglogger.info('Log file for this run: %s', os.path.realpath(msglogger.log_filename))
