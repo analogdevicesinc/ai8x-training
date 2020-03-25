@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2018-2019 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2018-2020 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Confidential
 #
@@ -306,7 +306,7 @@ def audio2image(audio, sr, n_mels, f_max, hop_length, n_fft):
     S = librosa.feature.melspectrogram(y=audio, sr=sr, n_mels=n_mels, fmax=f_max,
                                        hop_length=hop_length, n_fft=n_fft)
     try:
-        S = np.maximum(10*np.log10(S / np.max(S)), -64)
+        S = np.maximum(10*np.log10(10e-13 + S / np.max(S)), -64)
     except (ZeroDivisionError, ValueError):
         return None
 
