@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_3/10/2020_
+_3/25/2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository._
@@ -165,7 +165,7 @@ The following software is optional, and can be replaced with other similar softw
 
 ### Project Installation
 
-*The software in this project requires Python 3.6.9 or a later 3.6.x version. Version 3.7 has not yet been tested.*
+*The software in this project requires Python 3.6.9 or a later 3.6.x version. Versions 3.7/3.8 are not yet supported.*
 
 It is not necessary to install Python 3.6.9 system-wide, or to rely on the system-provided Python. To manage Python versions, use `pyenv` (https://github.com/pyenv/pyenv).
 
@@ -200,7 +200,7 @@ $ pyenv install 3.6.9
 
 #### Windows Systems
 
-Windows is not supported. Please see `docs/Windows.md` for unofficial Windows installation notes.
+Windows is not supported at this time.
 
 #### Creating the Virtual Environment
 
@@ -213,26 +213,20 @@ $ pyenv local 3.6.9
 $ python3 -m venv .
 $ source bin/activate
 (ai8x-training) $ pip3 install -U pip setuptools
-(ai8x-training) $ pip3 install -r requirements.txt
 ```
 
-For macOS and systems without CUDA:
+The next step differs depending on whether the system is Linux with CUDA, or not.
+
+For CUDA 10.1 on Linux:
+
 ```shell
-(ai8x-training) $ pip3 install torch==1.3.1
-(ai8x-training) $ pip3 install torchvision==0.4.2
+(ai8x-training) $ pip3 install -r requirements-cuda.txt
 ```
 
-For CUDA 10 on Linux (see https://pytorch.org/get-started/locally/):
+For all other systems:
 
 ```shell
-(ai8x-training) $ pip3 install https://download.pytorch.org/whl/cu101/torch-1.3.1-cp36-cp36m-linux_x86_64.whl
-(ai8x-training) $ pip3 install https://download.pytorch.org/whl/cu101/torchvision-0.4.2-cp36-cp36m-linux_x86_64.whl
-```
-
-Next, install TensorFlow. TensorFlow is needed for TensorBoard support.
-
-```shell
-(ai8x-training) $ pip3 install tensorflow==1.14
+(ai8x-training) $ pip3 install -r requirements-cpu.txt
 ```
 
 *Note*: On x86 systems, the pre-built TensorFlow wheels require AVX (on macOS, run `sysctl -n machdep.cpu.features` to find out, on Linux use `cat /proc/cpuinfo | grep avx`).
@@ -244,7 +238,7 @@ If the CPU does not support AVX, or to enable support for AVX2, or CUDA, or AMD6
 _To repeat: Building TensorFlow is not needed when the binary wheels are functioning properly._
 
 The TensorFlow build requires Java 8 and Bazel, and takes over two hours. 
-Building TensorFlow 1.14.0 requires Bazel 0.25.2 (newer or much older versions do not work). See
+Building TensorFlow 1.14 requires Bazel 0.25.2 (newer or much older versions do not work). See
 https://docs.bazel.build/versions/master/install-compile-source.html#build-bazel-using-bazel for build instructions.
 
 Once Bazel is installed, compile and install TensorFlow. On Jetson TX1, disable S3. See 
@@ -264,15 +258,9 @@ The removal of `-mfpu=neon` does not seem to be necessary.
 
 #### Nervana Distiller
 
-Nirvana Distiller is package for neural network compression and quantization. Network compression can reduce the memory footprint of a neural network, increase its inference speed and save energy.
+Nirvana Distiller is package for neural network compression and quantization. Network compression can reduce the memory footprint of a neural network, increase its inference speed and save energy. Distiller is automatically installed with the other packages.
 
-To install Distiller:
-
-```shell
-(ai8x-training) $ pip3 install -e distiller
-```
-
-On macOS, add to `~/.matplotlib/matplotrc`:
+On macOS, add the following to `~/.matplotlib/matplotrc`:
 
     backend: TkAgg
 
@@ -924,7 +912,7 @@ Network descriptions are written in YAML (see https://en.wikipedia.org/wiki/YAML
 
 ##### `bias` (Optional, Test Only)
 
-`bias` is only used for test data.
+The `bias` configuration is only used for test data. *To use bias with trained networks, use the `bias` parameter in PyTorch’s `nn.Module.Conv2d()` function. The converter tool will then automatically add bias parameters as needed.*
 
 ##### `dataset` (Mandatory)
 
