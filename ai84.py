@@ -25,6 +25,19 @@ WEIGHT_DEPTH = 128
 MAX_AVG_POOL = 4
 
 
+class normalize(object):
+    """
+    Normalize input to either [-0.5, +0.5] or [-128, +127]
+    """
+    def __init__(self, args):
+        self.args = args
+
+    def __call__(self, img):
+        if self.args.act_mode_8bit:
+            return img.sub(0.5).mul(256.).round().clamp(min=-128, max=127)
+        return img.sub(0.5)
+
+
 class QuantizationFunction(Function):
     """
     Custom AI84 autograd function
