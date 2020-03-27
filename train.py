@@ -157,7 +157,11 @@ def main():
         {'name': 'ai85audionet',
          'module': 'ai85net-test',
          'min_input': 1,
-         'dim': 1}
+         'dim': 1},
+        {'name': 'ai85faceidnet',
+         'module': 'ai85net-faceid',
+         'min_input': 1,
+         'dim': 3},
     ]
 
     supported_sources = [
