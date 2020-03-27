@@ -155,7 +155,7 @@ def main():
          'min_input': 1,
          'dim': 2},
         {'name': 'ai85audionet',
-         'module': 'ai85net-test',
+         'module': 'ai85net-audio',
          'min_input': 1,
          'dim': 1},
         {'name': 'ai85faceidnet',
