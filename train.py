@@ -265,9 +265,15 @@ def main():
     selected_source = next((item for item in supported_sources if item['name'] == args.dataset))
     args.labels = selected_source['output']
     args.num_classes = len(args.labels)
+    if args.num_classes == 1 \
+       or ('regression' in selected_source and selected_source['regression']):
+        args.regression = True
     dimensions = selected_source['input']
     args.dimensions = dimensions
     args.datasets_fn = selected_source['loader']
+
+    if args.regression and args.display_confusion:
+        raise ValueError('ERROR: Argument --confusion cannot be used with regression')
 
     # Create the model
     module = next(item for item in supported_models if item['name'] == args.cnn)
@@ -319,10 +325,15 @@ def main():
                            'resetting epoch count to 0')
 
     # Define loss function (criterion)
-    if 'weight' in selected_source:
-        criterion = nn.CrossEntropyLoss(torch.Tensor(selected_source['weight'])).to(args.device)
+    if not args.regression:
+        if 'weight' in selected_source:
+            criterion = nn.CrossEntropyLoss(
+                torch.Tensor(selected_source['weight'])
+            ).to(args.device)
+        else:
+            criterion = nn.CrossEntropyLoss().to(args.device)
     else:
-        criterion = nn.CrossEntropyLoss().to(args.device)
+        criterion = nn.MSELoss().to(args.device)
 
     if optimizer is None:
         if args.optimizer.lower() == 'sgd':
@@ -453,10 +464,15 @@ def main():
                                                 collector=collectors["sparsity"])
             save_collectors_data(collectors, msglogger.logdir)
 
-        stats = ('Performance/Validation/',
-                 OrderedDict([('Loss', vloss),
-                              ('Top1', top1),
-                              ('Top5', top5)]))
+        if not args.regression:
+            stats = ('Performance/Validation/',
+                     OrderedDict([('Loss', vloss),
+                                  ('Top1', top1),
+                                  ('Top5', top5)]))
+        else:
+            stats = ('Performance/Validation/',
+                     OrderedDict([('Loss', vloss),
+                                  ('MSE', top1)]))
         distiller.log_training_progress(stats, None, epoch, steps_completed=0, total_steps=1,
                                         log_freq=1, loggers=[tflogger])
 
@@ -465,7 +481,7 @@ def main():
 
         # Update the list of top scores achieved so far, and save the checkpoint
         update_training_scores_history(perf_scores_history, model, top1, top5, epoch,
-                                       args.num_best_scores)
+                                       args.num_best_scores, args.regression)
         is_best = epoch == perf_scores_history[0].epoch
         checkpoint_extras = {'current_top1': top1,
                              'best_top1': perf_scores_history[0].top1,
@@ -488,7 +504,10 @@ def train(train_loader, model, criterion, optimizer, epoch,
     losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                           (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
 
-    classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, min(args.num_classes, 5)))
+    if not args.regression:
+        classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, min(args.num_classes, 5)))
+    else:
+        classerr = tnt.MSEMeter()
     batch_time = tnt.AverageValueMeter()
     data_time = tnt.AverageValueMeter()
 
@@ -497,7 +516,10 @@ def train(train_loader, model, criterion, optimizer, epoch,
     if args.earlyexit_lossweights:
         args.exiterrors = []
         for exitnum in range(args.num_exits):
-            args.exiterrors.append(tnt.ClassErrorMeter(accuracy=True, topk=(1, 5)))
+            if not args.regression:
+                args.exiterrors.append(tnt.ClassErrorMeter(accuracy=True, topk=(1, 5)))
+            else:
+                args.exiterrors.append(tnt.MSEMeter())
 
     total_samples = len(train_loader.sampler)
     batch_size = train_loader.batch_size
@@ -526,7 +548,10 @@ def train(train_loader, model, criterion, optimizer, epoch,
             loss = criterion(output, target)
             # Measure accuracy
             classerr.add(output.data, target)
-            acc_stats.append([classerr.value(1), classerr.value(min(args.num_classes, 5))])
+            if not args.regression:
+                acc_stats.append([classerr.value(1), classerr.value(min(args.num_classes, 5))])
+            else:
+                acc_stats.append([classerr.value()])
         else:
             # Measure accuracy and record loss
             loss = earlyexit_loss(output, target, criterion, args)
@@ -568,13 +593,19 @@ def train(train_loader, model, criterion, optimizer, epoch,
             # Log some statistics
             errs = OrderedDict()
             if not args.earlyexit_lossweights:
-                errs['Top1'] = classerr.value(1)
-                errs['Top5'] = classerr.value(min(args.num_classes, 5))
+                if not args.regression:
+                    errs['Top1'] = classerr.value(1)
+                    errs['Top5'] = classerr.value(min(args.num_classes, 5))
+                else:
+                    errs['MSE'] = classerr.value()
             else:
                 # for Early Exit case, the Top1 and Top5 stats are computed for each exit.
                 for exitnum in range(args.num_exits):
-                    errs['Top1_exit' + str(exitnum)] = args.exiterrors[exitnum].value(1)
-                    errs['Top5_exit' + str(exitnum)] = args.exiterrors[exitnum].value(5)
+                    if not args.regression:
+                        errs['Top1_exit' + str(exitnum)] = args.exiterrors[exitnum].value(1)
+                        errs['Top5_exit' + str(exitnum)] = args.exiterrors[exitnum].value(5)
+                    else:
+                        errs['MSE_exit' + str(exitnum)] = args.exiterrors[exitnum].value()
 
             stats_dict = OrderedDict()
             for loss_name, meter in losses.items():
@@ -668,7 +699,10 @@ def test(test_loader, model, criterion, loggers, activations_collectors, args):
 def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
     """Execute the validation/test loop."""
     losses = {'objective_loss': tnt.AverageValueMeter()}
-    classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, min(args.num_classes, 5)))
+    if not args.regression:
+        classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, min(args.num_classes, 5)))
+    else:
+        classerr = tnt.MSEMeter()
 
     def save_tensor(t, f, regression=True):
         """ Save tensor `t` to file handle `f` in CSV format """
@@ -699,8 +733,11 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
         args.exiterrors = []
         args.losses_exits = []
         for exitnum in range(args.num_exits):
-            args.exiterrors.append(tnt.ClassErrorMeter(accuracy=True,
-                                                       topk=(1, min(args.num_classes, 5))))
+            if not args.regression:
+                args.exiterrors.append(tnt.ClassErrorMeter(accuracy=True,
+                                                           topk=(1, min(args.num_classes, 5))))
+            else:
+                args.exiterrors.append(tnt.MSEMeter())
             args.losses_exits.append(tnt.AverageValueMeter())
         args.exit_taken = [0] * args.num_exits
 
@@ -724,8 +761,8 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
 
             if args.csv_prefix is not None:
                 save_tensor(inputs, f_x)
-                save_tensor(output, f_ypred, regression=False)
-                save_tensor(target, f_ytrue, regression=False)
+                save_tensor(output, f_ypred, regression=args.regression)
+                save_tensor(target, f_ytrue, regression=args.regression)
 
             if not args.earlyexit_thresholds:
                 # compute loss
@@ -745,10 +782,19 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
             steps_completed = (validation_step+1)
             if steps_completed % args.print_freq == 0 or steps_completed == total_steps:
                 if not args.earlyexit_thresholds:
-                    stats = ('',
-                             OrderedDict([('Loss', losses['objective_loss'].mean),
-                                          ('Top1', classerr.value(1)),
-                                          ('Top5', classerr.value(min(args.num_classes, 5)))]))
+                    if not args.regression:
+                        stats = (
+                            '',
+                            OrderedDict([('Loss', losses['objective_loss'].mean),
+                                         ('Top1', classerr.value(1)),
+                                         ('Top5', classerr.value(min(args.num_classes, 5)))])
+                        )
+                    else:
+                        stats = (
+                            '',
+                            OrderedDict([('Loss', losses['objective_loss'].mean),
+                                         ('MSE', classerr.value())])
+                        )
                 else:
                     stats_dict = OrderedDict()
                     stats_dict['Test'] = validation_step
@@ -760,10 +806,14 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
                         # zero. So we'll build the OrderedDict accordingly and we will not print
                         # for an exit error when that exit is never taken.
                         if args.exit_taken[exitnum]:
-                            t1 = 'Top1_exit' + str(exitnum)
-                            t5 = 'Top5_exit' + str(exitnum)
-                            stats_dict[t1] = args.exiterrors[exitnum].value(1)
-                            stats_dict[t5] = args.exiterrors[exitnum].value(5)
+                            if not args.regression:
+                                t1 = 'Top1_exit' + str(exitnum)
+                                t5 = 'Top5_exit' + str(exitnum)
+                                stats_dict[t1] = args.exiterrors[exitnum].value(1)
+                                stats_dict[t5] = args.exiterrors[exitnum].value(5)
+                            else:
+                                t1 = 'MSE_exit' + str(exitnum)
+                                stats_dict[t1] = args.exiterrors[exitnum].value()
                     stats = ('Performance/Validation/', stats_dict)
 
                 distiller.log_training_progress(stats, None, epoch, steps_completed,
@@ -775,34 +825,61 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
         f_x.close()
 
     if not args.earlyexit_thresholds:
-        msglogger.info('==> Top1: %.3f    Top5: %.3f    Loss: %.3f\n',
-                       classerr.value()[0], classerr.value()[1], losses['objective_loss'].mean)
+        if not args.regression:
+            msglogger.info('==> Top1: %.3f    Top5: %.3f    Loss: %.3f\n',
+                           classerr.value()[0], classerr.value()[1], losses['objective_loss'].mean)
+        else:
+            msglogger.info('==> MSE: %.5f    Loss: %.3f\n',
+                           classerr.value(), losses['objective_loss'].mean)
 
         if args.display_confusion:
             msglogger.info('==> Confusion:\n%s\n', str(confusion.value()))
-        return classerr.value(1), classerr.value(min(args.num_classes, 5)), \
-            losses['objective_loss'].mean
+        if not args.regression:
+            return classerr.value(1), classerr.value(min(args.num_classes, 5)), \
+                losses['objective_loss'].mean
+        else:
+            return classerr.value(), .0, \
+                losses['objective_loss'].mean
     else:
         total_top1, total_top5, losses_exits_stats = earlyexit_validate_stats(args)
         return total_top1, total_top5, losses_exits_stats[args.num_exits-1]
 
 
-def update_training_scores_history(perf_scores_history, model, top1, top5, epoch, num_best_scores):
+def update_training_scores_history(perf_scores_history, model, top1, top5, epoch, num_best_scores,
+                                   regression):
     """ Update the list of top training scores achieved so far, and log the best scores so far"""
 
     model_sparsity, _, params_nnz_cnt = distiller.model_params_stats(model)
-    perf_scores_history.append(distiller.MutableNamedTuple({'params_nnz_cnt': -params_nnz_cnt,
-                                                            'sparsity': model_sparsity,
-                                                            'top1': top1, 'top5': top5,
-                                                            'epoch': epoch}))
-    # Keep perf_scores_history sorted from best to worst
-    # Sort by sparsity as main sort key, then sort by top1, top5 and epoch
-    perf_scores_history.sort(key=operator.attrgetter('params_nnz_cnt', 'top1', 'top5', 'epoch'),
-                             reverse=True)
-    for score in perf_scores_history[:num_best_scores]:
-        msglogger.info('==> Best [Top1: %.3f   Top5: %.3f   Sparsity:%.2f   '
-                       'Params: %d on epoch: %d]',
-                       score.top1, score.top5, score.sparsity, -score.params_nnz_cnt, score.epoch)
+
+    if not regression:
+        perf_scores_history.append(distiller.MutableNamedTuple({'params_nnz_cnt': -params_nnz_cnt,
+                                                                'sparsity': model_sparsity,
+                                                                'top1': top1, 'top5': top5,
+                                                                'epoch': epoch}))
+        # Keep perf_scores_history sorted from best to worst
+        # Sort by sparsity as main sort key, then sort by top1, top5 and epoch
+        perf_scores_history.sort(key=operator.attrgetter('params_nnz_cnt', 'top1',
+                                                         'top5', 'epoch'),
+                                 reverse=True)
+        for score in perf_scores_history[:num_best_scores]:
+            msglogger.info('==> Best [Top1: %.3f   Top5: %.3f   Sparsity:%.2f   '
+                           'Params: %d on epoch: %d]',
+                           score.top1, score.top5, score.sparsity, -score.params_nnz_cnt,
+                           score.epoch)
+    else:
+        perf_scores_history.append(distiller.MutableNamedTuple({'params_nnz_cnt': -params_nnz_cnt,
+                                                                'sparsity': model_sparsity,
+                                                                'top1': 1. - top1,
+                                                                'epoch': epoch}))
+        # Keep perf_scores_history sorted from best to worst
+        # Sort by sparsity as main sort key, then sort by mse, and epoch
+        perf_scores_history.sort(key=operator.attrgetter('params_nnz_cnt', 'top1', 'epoch'),
+                                 reverse=True)
+        for score in perf_scores_history[:num_best_scores]:
+            msglogger.info('==> Best [MSE: %.5f   Sparsity:%.2f   '
+                           'Params: %d on epoch: %d]',
+                           1. - score.top1, score.sparsity, -score.params_nnz_cnt,
+                           score.epoch)
 
 
 def earlyexit_loss(output, target, criterion, args):
@@ -870,8 +947,11 @@ def earlyexit_validate_stats(args):
         if args.exit_taken[exitnum]:
             sum_exit_stats += args.exit_taken[exitnum]
             msglogger.info("Exit %d: %d", exitnum, args.exit_taken[exitnum])
-            top1k_stats[exitnum] += args.exiterrors[exitnum].value(1)
-            top5k_stats[exitnum] += args.exiterrors[exitnum].value(5)
+            if not args.regression:
+                top1k_stats[exitnum] += args.exiterrors[exitnum].value(1)
+                top5k_stats[exitnum] += args.exiterrors[exitnum].value(5)
+            else:
+                top1k_stats[exitnum] += args.exiterrors[exitnum].value()
             losses_exits_stats[exitnum] += args.losses_exits[exitnum].mean
     for exitnum in range(args.num_exits):
         if args.exit_taken[exitnum]:
@@ -881,9 +961,13 @@ def earlyexit_validate_stats(args):
     total_top5 = 0
     for exitnum in range(args.num_exits):
         total_top1 += (top1k_stats[exitnum] * (args.exit_taken[exitnum] / sum_exit_stats))
-        total_top5 += (top5k_stats[exitnum] * (args.exit_taken[exitnum] / sum_exit_stats))
-        msglogger.info("Accuracy Stats for exit %d: top1 = %.3f, top5 = %.3f", exitnum,
-                       top1k_stats[exitnum], top5k_stats[exitnum])
+        if not args.regression:
+            total_top5 += (top5k_stats[exitnum] * (args.exit_taken[exitnum] / sum_exit_stats))
+            msglogger.info("Accuracy Stats for exit %d: top1 = %.3f, top5 = %.3f", exitnum,
+                           top1k_stats[exitnum], top5k_stats[exitnum])
+        else:
+            msglogger.info("Accuracy Stats for exit %d: top1 = %.3f", exitnum,
+                           top1k_stats[exitnum])
     msglogger.info("Totals for entire network with early exits: top1 = %.3f, top5 = %.3f",
                    total_top1, total_top5)
     return total_top1, total_top5, losses_exits_stats

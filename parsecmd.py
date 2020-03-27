@@ -39,6 +39,9 @@ SUMMARY_CHOICES = ['sparsity', 'compute', 'model', 'modules', 'png', 'png_w_para
 
 
 def get_parser(model_names, dataset_names):
+    """
+    Return the argument parser
+    """
     parser = argparse.ArgumentParser(description='Image classification model')
     parser.add_argument('--ai84', '--ai85', '--ai86', '--ai8x', action='store_true', default=False,
                         help='AI84/AI85/AI86 mode (not currently very useful)')
@@ -164,6 +167,9 @@ def get_parser(model_names, dataset_names):
     parser.add_argument('--confusion', dest='display_confusion', default=False,
                         action='store_true',
                         help='Display the confusion matrix')
+    parser.add_argument('--regression', dest='regression', default=False,
+                        action='store_true',
+                        help='Force regression output')
     parser.add_argument('--earlyexit_lossweights', type=float, nargs='*',
                         dest='earlyexit_lossweights', default=None,
                         help='List of loss weights for early exits '
