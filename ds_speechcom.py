@@ -8,22 +8,24 @@
 """
 Classes and functions used to utilize Speech Commands dataset.
 """
-
-import os
 import errno
 import hashlib
+import os
 import tarfile
 import warnings
+
 import librosa
 import librosa.display
 import numpy as np
 import torch
-from torch.utils import data
-from torch.utils.model_zoo import tqdm
 from PIL import Image
+from torch.utils.model_zoo import tqdm
+from torchvision import transforms
+
+import ai84
 
 
-class SpeechCom(data.Dataset):
+class SpeechCom(torch.utils.data.Dataset):
     """`SpeechCom v0.02 <http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz>`
     Dataset.
 
@@ -384,3 +386,45 @@ def augment_multiple(audio, fs, n_augment, verbose=False):
     aug_audio = [augment(audio, fs, verbose) for i in range(n_augment)]
     aug_audio.insert(0, audio)
     return aug_audio
+
+
+def speechcom_get_datasets(data, load_train=True, load_test=True):
+    """
+    Load the SpeechCom v0.02 dataset
+    (https://storage.cloud.google.com/download.tensorflow.org/data/speech_commands_v0.02.tar.gz).
+
+    The dataset originally includes 30 keywords. A dataset is formed with 7 classes which includes
+    6 of the original keywords ('up', 'down', 'left', 'right', 'stop', 'go') and the rest of the
+    dataset is used to form the last class, i.e class of the others.
+    The dataset is split into training, validation and test sets. 80:10:10 training:validation:test
+    split is used by default.
+
+    Data is augmented to 5x duplicate data by randomly stretch, shift and randomly add noise where
+    the stretching coefficient, shift amount and noise variance are randomly selected between
+    0.8 and 1.3, -0.1 and 0.1, 0 and 1, respectively.
+    """
+    (data_dir, args) = data
+
+    classes = ['up', 'down', 'left', 'right', 'stop', 'go']
+
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        ai84.normalize(args=args)
+    ])
+
+    if load_train:
+        train_dataset = SpeechCom(root=data_dir, classes=classes, d_type='train', n_augment=4,
+                                  transform=transform, download=True)
+    else:
+        train_dataset = None
+
+    if load_test:
+        test_dataset = SpeechCom(root=data_dir, classes=classes, d_type='val', n_augment=4,
+                                 transform=transform, download=True)
+
+        if args.truncate_testset:
+            test_dataset.data = test_dataset.data[:1]
+    else:
+        test_dataset = None
+
+    return train_dataset, test_dataset

@@ -9,12 +9,19 @@
 Classes and functions used to utilize Folded 1D Speech Commands dataset.
 """
 import os
-import torch
-from torch.utils import data
+
 import numpy as np
+import torch
+from torchvision import transforms
+
+import ai84
 
 
-class SpeechComFolded1D(data.Dataset):
+class SpeechComFolded1D(torch.utils.data.Dataset):
+    """
+    `SpeechCom v0.02 <http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz>`
+    Dataset, 1D folded.
+    """
     class_dict = {'backward': 0, 'bed': 1, 'bird': 2, 'cat': 3, 'dog': 4, 'down': 5,
                   'eight': 6, 'five': 7, 'follow': 8, 'forward': 9, 'four': 10, 'go': 11,
                   'happy': 12, 'house': 13, 'learn': 14, 'left': 15, 'marvin': 16, 'nine': 17,
@@ -91,3 +98,45 @@ class SpeechComFolded1D(data.Dataset):
             inp = self.transform(inp)
 
         return inp, target
+
+
+def speechcomfolded1D_get_datasets(data, load_train=True, load_test=True):
+    """
+    Load the folded 1D version of SpeechCom dataset
+
+    The dataset is loaded from the archive file, so the file is required for this version.
+
+    The dataset originally includes 30 keywords. A dataset is formed with 7 classes which includes
+    6 of the original keywords ('up', 'down', 'left', 'right', 'stop', 'go') and the rest of the
+    dataset is used to form the last class, i.e class of the others.
+    The dataset is split into training, validation and test sets. 80:10:10 training:validation:test
+    split is used by default.
+
+    Data is augmented to 3x duplicate data by randomly stretch, shift and randomly add noise where
+    the stretching coefficient, shift amount and noise variance are randomly selected between
+    0.8 and 1.3, -0.1 and 0.1, 0 and 1, respectively.
+    """
+    (data_dir, args) = data
+
+    transform = transforms.Compose([
+        ai84.normalize(args=args)
+    ])
+
+    classes = ['up', 'down', 'left', 'right', 'stop', 'go']
+
+    if load_train:
+        train_dataset = SpeechComFolded1D(root=data_dir, classes=classes, d_type='train',
+                                          transform=transform, t_type='keyword')
+    else:
+        train_dataset = None
+
+    if load_test:
+        test_dataset = SpeechComFolded1D(root=data_dir, classes=classes, d_type='val',
+                                         transform=transform, t_type='keyword')
+
+        if args.truncate_testset:
+            test_dataset.data = test_dataset.data[:1]
+    else:
+        test_dataset = None
+
+    return train_dataset, test_dataset
