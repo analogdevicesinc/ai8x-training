@@ -190,8 +190,10 @@ def main():
          'loader': speechcom_get_datasets},
         {'name': 'SpeechComFolded1D',
          'input': (512, 64, 1),
-         'output': (0, 1, 2, 3, 4, 5, 6),
-         'weight': (1, 1, 1, 1, 1, 1, 0.06),
+#         'output': (0, 1, 2, 3, 4, 5, 6), # 6 keywords
+         'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20), # 20 keywords
+#         'weight': (1, 1, 1, 1, 1, 1, 0.06),
+         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.14),
          'loader': speechcomfolded1D_get_datasets},
         {'name': 'FaceID',
          'input': (3, 160, 120),
