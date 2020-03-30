@@ -92,10 +92,10 @@ from distiller.quantization.range_linear import PostTrainLinearQuantizer
 from distiller.data_loggers.logger import TensorBoardLogger, PythonLogger
 # pylint: enable=no-name-in-module
 import examples.auto_compression.amc as adc
-import ai84
+import ai8x
 import parsecmd
 from ds_speechcom import speechcom_get_datasets
-from ds_speechcomfolded1D import speechcomfolded1D_get_datasets
+from ds_speechcomfolded1D import speechcomfolded1D_get_datasets, speechcomfolded1D_20_get_datasets
 from ds_faceid import faceid_get_datasets
 # from range_linear_ai84 import PostTrainLinearQuantizerAI84
 
@@ -190,11 +190,14 @@ def main():
          'loader': speechcom_get_datasets},
         {'name': 'SpeechComFolded1D',
          'input': (512, 64, 1),
-#         'output': (0, 1, 2, 3, 4, 5, 6), # 6 keywords
-         'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20), # 20 keywords
-#         'weight': (1, 1, 1, 1, 1, 1, 0.06),
-         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.14),
+         'output': (0, 1, 2, 3, 4, 5, 6),  # 6 keywords
+         'weight': (1, 1, 1, 1, 1, 1, 0.06),
          'loader': speechcomfolded1D_get_datasets},
+        {'name': 'SpeechComFolded1D_20',
+         'input': (512, 64, 1),
+         'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20),
+         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.14),
+         'loader': speechcomfolded1D_20_get_datasets},
         {'name': 'FaceID',
          'input': (3, 160, 120),
          'output': ('id'),
@@ -206,6 +209,10 @@ def main():
     dataset_names = [item['name'] for item in supported_sources]
     # Parse arguments
     args = parsecmd.get_parser(model_names, dataset_names).parse_args()
+
+    # Set hardware device
+    ai8x.set_device(args.device, args.act_mode_8bit)
+
     if args.epochs is None:
         args.epochs = 90
 
@@ -291,13 +298,11 @@ def main():
                       num_channels=dimensions[0],
                       dimensions=(dimensions[1], dimensions[2]),
                       padding=(module['min_input'] - dimensions[2] + 1) // 2,
-                      simulate=args.act_mode_8bit,
                       bias=args.use_bias).to(args.device)
     else:
         model = Model(pretrained=False, num_classes=args.num_classes,
                       num_channels=dimensions[0],
                       dimensions=(dimensions[1], dimensions[2]),
-                      simulate=args.act_mode_8bit,
                       bias=args.use_bias).to(args.device)
     # if args.add_logsoftmax:
     #     model = nn.Sequential(model, nn.LogSoftmax(dim=1))
@@ -1190,7 +1195,7 @@ def cifar10_get_datasets(data, load_train=True, load_test=True):
             transforms.RandomCrop(32, padding=4),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            ai84.normalize(args=args)
+            ai8x.normalize(args=args)
         ])
 
         train_dataset = torchvision.datasets.CIFAR10(root=os.path.join(data_dir, 'CIFAR10'),
@@ -1202,7 +1207,7 @@ def cifar10_get_datasets(data, load_train=True, load_test=True):
     if load_test:
         test_transform = transforms.Compose([
             transforms.ToTensor(),
-            ai84.normalize(args=args)
+            ai8x.normalize(args=args)
         ])
 
         test_dataset = torchvision.datasets.CIFAR10(root=os.path.join(data_dir, 'CIFAR10'),
@@ -1237,7 +1242,7 @@ def imagenet_get_datasets(data, load_train=True, load_test=True, input_size=224)
             transforms.RandomCrop(input_size, padding=4),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            ai84.normalize(args=args),
+            ai8x.normalize(args=args),
         ])
 
         train_dataset = torchvision.datasets.ImageNet(
@@ -1253,7 +1258,7 @@ def imagenet_get_datasets(data, load_train=True, load_test=True, input_size=224)
             transforms.Resize(int(input_size / 0.875)),
             transforms.CenterCrop(input_size),
             transforms.ToTensor(),
-            ai84.normalize(args=args),
+            ai8x.normalize(args=args),
         ])
 
         test_dataset = torchvision.datasets.ImageNet(
@@ -1296,7 +1301,7 @@ def mnist_get_datasets(data, load_train=True, load_test=True):
             transforms.RandomCrop(28, padding=4),
             transforms.RandomAffine(degrees=20, translate=(0.1, 0.1), shear=5),
             transforms.ToTensor(),
-            ai84.normalize(args=args)
+            ai8x.normalize(args=args)
         ])
 
         train_dataset = torchvision.datasets.MNIST(root=data_dir, train=True, download=True,
@@ -1307,7 +1312,7 @@ def mnist_get_datasets(data, load_train=True, load_test=True):
     if load_test:
         test_transform = transforms.Compose([
             transforms.ToTensor(),
-            ai84.normalize(args=args)
+            ai8x.normalize(args=args)
         ])
 
         test_dataset = torchvision.datasets.MNIST(root=data_dir, train=False, download=True,
@@ -1347,7 +1352,7 @@ def fashionmnist_get_datasets(data, load_train=True, load_test=True):
             transforms.RandomCrop(28, padding=4),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            ai84.normalize(args=args)
+            ai8x.normalize(args=args)
         ])
 
         train_dataset = torchvision.datasets.FashionMNIST(root=data_dir, train=True, download=True,
@@ -1358,7 +1363,7 @@ def fashionmnist_get_datasets(data, load_train=True, load_test=True):
     if load_test:
         test_transform = transforms.Compose([
             transforms.ToTensor(),
-            ai84.normalize(args=args)
+            ai8x.normalize(args=args)
         ])
 
         test_dataset = torchvision.datasets.FashionMNIST(root=data_dir, train=False, download=True,
