@@ -122,7 +122,8 @@ def speechcomfolded1D_get_datasets(data, load_train=True, load_test=True):
         ai84.normalize(args=args)
     ])
 
-    classes = ['up', 'down', 'left', 'right', 'stop', 'go']
+#    classes = ['up', 'down', 'left', 'right', 'stop', 'go']  # 6 keywords
+    classes = ['up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero']  # 20 keywords
 
     if load_train:
         train_dataset = SpeechComFolded1D(root=data_dir, classes=classes, d_type='train',

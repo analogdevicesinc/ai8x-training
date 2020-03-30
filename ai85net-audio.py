@@ -19,7 +19,10 @@ class AI85AudioNet(nn.Module):
     """
     Compound Audio Net, starting with Conv1Ds with kernel_size=1 and then switching to Conv2Ds
     """
-    def __init__(self, num_classes=7, num_channels=512, dimensions=(64, 1),
+# 6 keywords + 1 unknown model
+#    def __init__(self, num_classes=7, num_channels=512, dimensions=(64, 1),
+# 20 keywords + 1 unknown model
+    def __init__(self, num_classes=21, num_channels=512, dimensions=(64, 1),
                  simulate=False, fc_inputs=10, bias=False):
         super(AI85AudioNet, self).__init__()
 
