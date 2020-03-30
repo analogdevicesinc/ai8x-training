@@ -12,7 +12,7 @@ import os
 
 from torchvision import transforms
 
-import ai84
+import ai8x
 from ds_vggface2 import VGGFace2Dataset
 from ds_youtube_faces import YouTubeFacesDataset
 
@@ -40,7 +40,7 @@ def faceid_get_datasets(data, load_train=True, load_test=True):
     test_data_dir = os.path.join(data_dir, 'YouTubeFaces')
 
     transform = transforms.Compose([
-        ai84.normalize(args=args)
+        ai8x.normalize(args=args)
     ])
 
     if load_train:

@@ -18,11 +18,11 @@ import librosa
 import librosa.display
 import numpy as np
 import torch
-from PIL import Image
 from torch.utils.model_zoo import tqdm
 from torchvision import transforms
+from PIL import Image
 
-import ai84
+import ai8x
 
 
 class SpeechCom(torch.utils.data.Dataset):
@@ -301,8 +301,8 @@ total_counter = 0
 def audio2image(audio, sr, n_mels, f_max, hop_length, n_fft):
     """Converts audio to an image form by taking mel spectrogram.
     """
-    global silence_counter
-    global total_counter
+    global silence_counter  # pylint: disable=global-statement
+    global total_counter  # pylint: disable=global-statement
 
     total_counter += 1
     S = librosa.feature.melspectrogram(y=audio, sr=sr, n_mels=n_mels, fmax=f_max,
@@ -409,7 +409,7 @@ def speechcom_get_datasets(data, load_train=True, load_test=True):
 
     transform = transforms.Compose([
         transforms.ToTensor(),
-        ai84.normalize(args=args)
+        ai8x.normalize(args=args)
     ])
 
     if load_train:

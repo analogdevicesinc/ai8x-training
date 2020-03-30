@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2019 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2019-2020 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -12,7 +12,7 @@ Networks that fit into AI84
 Optionally quantize/clamp activations
 """
 import torch.nn as nn
-import ai84
+import ai8x
 
 
 class AI84Net5(nn.Module):
@@ -20,42 +20,43 @@ class AI84Net5(nn.Module):
     5-Layer CNN that uses max parameters in AI84
     """
     def __init__(self, num_classes=10, num_channels=3, dimensions=(28, 28),
-                 simulate=False, planes=60, pool=2, fc_inputs=12, bias=False):
+                 planes=60, pool=2, fc_inputs=12, bias=False):
         super(AI84Net5, self).__init__()
 
         # AI84 Limits
-        assert planes + num_channels <= ai84.WEIGHT_INPUTS
-        assert planes + fc_inputs <= ai84.WEIGHT_DEPTH-1
+        assert planes + num_channels <= ai8x.dev.WEIGHT_INPUTS
+        assert planes + fc_inputs <= ai8x.dev.WEIGHT_DEPTH-1
         assert pool == 2
         assert dimensions[0] == dimensions[1]  # Only square supported
 
         # Keep track of image dimensions so one constructor works for all image sizes
         dim = dimensions[0]
 
-        self.conv1 = ai84.FusedConv2dReLU(num_channels, planes, 3,
-                                          padding=1, bias=bias, simulate=simulate)
+        self.conv1 = ai8x.FusedConv2dReLU(num_channels, planes, 3,
+                                          padding=1, bias=bias)
         # padding 1 -> no change in dimensions -> MNIST: 28x28 | CIFAR: 32x32
 
         pad = 2 if dim == 28 else 1
-        self.conv2 = ai84.FusedMaxPoolConv2dReLU(planes, planes, 3, pool_size=2, pool_stride=2,
-                                                 padding=pad, bias=bias, simulate=simulate)
+        self.conv2 = ai8x.FusedMaxPoolConv2dReLU(planes, planes, 3, pool_size=2, pool_stride=2,
+                                                 padding=pad, bias=bias)
         dim //= 2  # pooling, padding 0 -> MNIST: 14x14 | CIFAR: 16x16
         if pad == 2:
             dim += 2  # MNIST: padding 2 -> 16x16 | CIFAR: padding 1 -> 16x16
 
-        self.conv3 = ai84.FusedMaxPoolConv2dReLU(planes, ai84.WEIGHT_DEPTH-planes-fc_inputs, 3,
+        self.conv3 = ai8x.FusedMaxPoolConv2dReLU(planes, ai8x.dev.WEIGHT_DEPTH-planes-fc_inputs, 3,
                                                  pool_size=2, pool_stride=2, padding=1,
-                                                 bias=bias, simulate=simulate)
+                                                 bias=bias)
         dim //= 2  # pooling, padding 0 -> 8x8
         # padding 1 -> no change in dimensions
 
-        self.conv4 = ai84.FusedAvgPoolConv2dReLU(ai84.WEIGHT_DEPTH-planes-fc_inputs, fc_inputs, 3,
+        self.conv4 = ai8x.FusedAvgPoolConv2dReLU(ai8x.dev.WEIGHT_DEPTH-planes-fc_inputs,
+                                                 fc_inputs, 3,
                                                  pool_size=pool, pool_stride=2, padding=1,
-                                                 bias=bias, simulate=simulate)
+                                                 bias=bias)
         dim //= pool  # pooling, padding 0 -> 4x4
         # padding 1 -> no change in dimensions
 
-        self.fc = ai84.SoftwareLinear(fc_inputs*dim*dim, num_classes, bias=True, simulate=simulate)
+        self.fc = ai8x.SoftwareLinear(fc_inputs*dim*dim, num_classes, bias=True)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -85,7 +86,7 @@ class AI84NetExtraSmall(nn.Module):
     Minimal CNN that tries to achieve 1uJ per inference for MNIST
     """
     def __init__(self, num_classes=10, num_channels=3, dimensions=(28, 28),
-                 simulate=False, fc_inputs=8, bias=False):
+                 fc_inputs=8, bias=False):
         super(AI84NetExtraSmall, self).__init__()
 
         # AI84 Limits
@@ -94,24 +95,24 @@ class AI84NetExtraSmall(nn.Module):
         # Keep track of image dimensions so one constructor works for all image sizes
         dim = dimensions[0]
 
-        self.conv1 = ai84.FusedConv2dReLU(num_channels, 8, 3,
-                                          padding=1, bias=bias, simulate=simulate)
+        self.conv1 = ai8x.FusedConv2dReLU(num_channels, 8, 3,
+                                          padding=1, bias=bias)
         # padding 1 -> no change in dimensions -> 8x28x28
 
         pad = 2 if dim == 28 else 1
-        self.conv2 = ai84.FusedMaxPoolConv2dReLU(8, 8, 3, pool_size=2, pool_stride=2,
-                                                 padding=pad, bias=bias, simulate=simulate)
+        self.conv2 = ai8x.FusedMaxPoolConv2dReLU(8, 8, 3, pool_size=2, pool_stride=2,
+                                                 padding=pad, bias=bias)
         dim //= 2  # pooling, padding 0 -> 8x14x14
         if pad == 2:
             dim += 2  # padding 2 -> 8x16x16
 
-        self.conv3 = ai84.FusedMaxPoolConv2dReLU(8, fc_inputs, 3,
+        self.conv3 = ai8x.FusedMaxPoolConv2dReLU(8, fc_inputs, 3,
                                                  pool_size=4, pool_stride=4, padding=1,
-                                                 bias=bias, simulate=simulate)
+                                                 bias=bias)
         dim //= 4  # pooling, padding 0 -> 8x4x4
         # padding 1 -> 8x4x4
 
-        self.fc = ai84.SoftwareLinear(fc_inputs*dim*dim, num_classes, bias=True, simulate=simulate)
+        self.fc = ai8x.SoftwareLinear(fc_inputs*dim*dim, num_classes, bias=True)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -140,7 +141,7 @@ class AI84NetSmall(nn.Module):
     Minimal CNN that tries to achieve 1uJ per inference for MNIST
     """
     def __init__(self, num_classes=10, num_channels=3, dimensions=(28, 28),
-                 simulate=False, fc_inputs=12, bias=False):
+                 fc_inputs=12, bias=False):
         super(AI84NetSmall, self).__init__()
 
         # AI84 Limits
@@ -149,24 +150,24 @@ class AI84NetSmall(nn.Module):
         # Keep track of image dimensions so one constructor works for all image sizes
         dim = dimensions[0]
 
-        self.conv1 = ai84.FusedConv2dReLU(num_channels, 16, 3,
-                                          padding=1, bias=bias, simulate=simulate)
+        self.conv1 = ai8x.FusedConv2dReLU(num_channels, 16, 3,
+                                          padding=1, bias=bias)
         # padding 1 -> no change in dimensions -> 16x28x28
 
         pad = 2 if dim == 28 else 1
-        self.conv2 = ai84.FusedMaxPoolConv2dReLU(16, 16, 3, pool_size=2, pool_stride=2,
-                                                 padding=pad, bias=bias, simulate=simulate)
+        self.conv2 = ai8x.FusedMaxPoolConv2dReLU(16, 16, 3, pool_size=2, pool_stride=2,
+                                                 padding=pad, bias=bias)
         dim //= 2  # pooling, padding 0 -> 16x14x14
         if pad == 2:
             dim += 2  # padding 2 -> 16x16x16
 
-        self.conv3 = ai84.FusedMaxPoolConv2dReLU(16, fc_inputs, 3,
+        self.conv3 = ai8x.FusedMaxPoolConv2dReLU(16, fc_inputs, 3,
                                                  pool_size=4, pool_stride=4, padding=1,
-                                                 bias=bias, simulate=simulate)
+                                                 bias=bias)
         dim //= 4  # pooling, padding 0 -> 16x4x4
         # padding 1 -> 12x4x4
 
-        self.fc = ai84.SoftwareLinear(fc_inputs*dim*dim, num_classes, bias=True, simulate=simulate)
+        self.fc = ai8x.SoftwareLinear(fc_inputs*dim*dim, num_classes, bias=True)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -195,7 +196,7 @@ class AI84Net7(nn.Module):
     CNN that tries to achieve accuracy > %90 for kws.
     """
     def __init__(self, num_classes=7, num_channels=1, dimensions=(64, 64),
-                 simulate=False, fc_inputs=30, bias=False):
+                 fc_inputs=30, bias=False):
         super(AI84Net7, self).__init__()
 
         # AI84 Limits
@@ -204,33 +205,32 @@ class AI84Net7(nn.Module):
         # Keep track of image dimensions so one constructor works for all image sizes
         dim = dimensions[0]
 
-        self.conv1 = ai84.FusedConv2dReLU(num_channels, 15, 3,
-                                          padding=1, bias=bias, simulate=simulate)
+        self.conv1 = ai8x.FusedConv2dReLU(num_channels, 15, 3,
+                                          padding=1, bias=bias)
         # padding 1 -> no change in dimensions -> 15x28x28
 
         pad = 2 if dim == 28 else 1
-        self.conv2 = ai84.FusedMaxPoolConv2dReLU(15, 30, 3, pool_size=2, pool_stride=2,
-                                                 padding=pad, bias=bias, simulate=simulate)
+        self.conv2 = ai8x.FusedMaxPoolConv2dReLU(15, 30, 3, pool_size=2, pool_stride=2,
+                                                 padding=pad, bias=bias)
         dim //= 2  # pooling, padding 0 -> 30x14x14
         if pad == 2:
             dim += 2  # padding 2 -> 30x16x16
 
-        self.conv3 = ai84.FusedMaxPoolConv2dReLU(30, 60, 3, pool_size=2, pool_stride=2, padding=1,
-                                                 bias=bias, simulate=simulate)
+        self.conv3 = ai8x.FusedMaxPoolConv2dReLU(30, 60, 3, pool_size=2, pool_stride=2, padding=1,
+                                                 bias=bias)
         dim //= 2  # pooling, padding 0 -> 60x8x8
 
-        self.conv4 = ai84.FusedMaxPoolConv2dReLU(60, 30, 3, pool_size=2, pool_stride=2, padding=1,
-                                                 bias=bias, simulate=simulate)
+        self.conv4 = ai8x.FusedMaxPoolConv2dReLU(60, 30, 3, pool_size=2, pool_stride=2, padding=1,
+                                                 bias=bias)
         dim //= 2  # pooling, padding 0 -> 30x4x4
 
-        self.conv5 = ai84.FusedMaxPoolConv2dReLU(30, 30, 3, pool_size=2, pool_stride=2, padding=1,
-                                                 bias=bias, simulate=simulate)
+        self.conv5 = ai8x.FusedMaxPoolConv2dReLU(30, 30, 3, pool_size=2, pool_stride=2, padding=1,
+                                                 bias=bias)
         dim //= 2  # pooling, padding 0 -> 30x2x2
 
-        self.conv6 = ai84.FusedConv2dReLU(30, fc_inputs, 3, padding=1, bias=bias,
-                                          simulate=simulate)
+        self.conv6 = ai8x.FusedConv2dReLU(30, fc_inputs, 3, padding=1, bias=bias)
 
-        self.fc = ai84.SoftwareLinear(fc_inputs*dim*dim, num_classes, bias=True, simulate=simulate)
+        self.fc = ai8x.SoftwareLinear(fc_inputs*dim*dim, num_classes, bias=True)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):

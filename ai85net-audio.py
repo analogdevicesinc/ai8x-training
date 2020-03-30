@@ -12,66 +12,62 @@ Test networks for AI85/AI86
 Optionally quantize/clamp activations
 """
 import torch.nn as nn
-import ai84
+import ai8x
 
 
 class AI85AudioNet(nn.Module):
     """
     Compound Audio Net, starting with Conv1Ds with kernel_size=1 and then switching to Conv2Ds
     """
-# 6 keywords + 1 unknown model
-#    def __init__(self, num_classes=7, num_channels=512, dimensions=(64, 1),
-# 20 keywords + 1 unknown model
-    def __init__(self, num_classes=21, num_channels=512, dimensions=(64, 1),
-                 simulate=False, fc_inputs=10, bias=False):
+    # num_classes = n keywords + 1 unknown
+    def __init__(self, num_classes=7, num_channels=512, dimensions=(64, 1),
+                 fc_inputs=10, bias=False):
         super(AI85AudioNet, self).__init__()
 
         dim1 = dimensions[0]
-        self.mfcc_conv1 = ai84.FusedConv1dReLU(num_channels, 200, 1, stride=1, padding=0,
-                                               bias=bias, simulate=simulate, device=85)
+        self.mfcc_conv1 = ai8x.FusedConv1dReLU(num_channels, 200, 1, stride=1, padding=0,
+                                               bias=bias)
 
-        self.mfcc_conv2 = ai84.FusedConv1dReLU(200, 50, 1, stride=1, padding=0,
-                                               bias=bias, simulate=simulate, device=85)
+        self.mfcc_conv2 = ai8x.FusedConv1dReLU(200, 50, 1, stride=1, padding=0,
+                                               bias=bias)
 
-        self.mfcc_conv3 = ai84.FusedConv1dReLU(50, 50, 1, stride=1, padding=0,
-                                               bias=bias, simulate=simulate, device=85)
+        self.mfcc_conv3 = ai8x.FusedConv1dReLU(50, 50, 1, stride=1, padding=0,
+                                               bias=bias)
 
-        self.mfcc_conv4 = ai84.FusedConv1dReLU(50, 50, 1, stride=1, padding=0,
-                                               bias=bias, simulate=simulate, device=85)
+        self.mfcc_conv4 = ai8x.FusedConv1dReLU(50, 50, 1, stride=1, padding=0,
+                                               bias=bias)
 
-        self.mfcc_conv5 = ai84.FusedConv1dReLU(50, 50, 1, stride=1, padding=0,
-                                               bias=bias, simulate=simulate, device=85)
+        self.mfcc_conv5 = ai8x.FusedConv1dReLU(50, 50, 1, stride=1, padding=0,
+                                               bias=bias)
 
-        self.mfcc_conv6 = ai84.FusedConv1dReLU(50, 16, 1, stride=1, padding=0,
-                                               bias=bias, simulate=simulate, device=85)
+        self.mfcc_conv6 = ai8x.FusedConv1dReLU(50, 16, 1, stride=1, padding=0,
+                                               bias=bias)
 
         dim2 = 16
-        self.kws_conv1 = ai84.FusedConv2dReLU(1, 15, 3, stride=1, padding=1,
-                                              bias=bias, simulate=simulate)
+        self.kws_conv1 = ai8x.FusedConv2dReLU(1, 15, 3, stride=1, padding=1,
+                                              bias=bias)
 
-        self.kws_conv2 = ai84.FusedConv2dReLU(15, 30, 3, padding=1,
-                                              bias=bias, simulate=simulate)
+        self.kws_conv2 = ai8x.FusedConv2dReLU(15, 30, 3, padding=1,
+                                              bias=bias)
 
-        self.kws_conv3 = ai84.FusedMaxPoolConv2dReLU(30, 60, 3, pool_size=2, pool_stride=2,
-                                                     padding=1, bias=bias, simulate=simulate)
+        self.kws_conv3 = ai8x.FusedMaxPoolConv2dReLU(30, 60, 3, pool_size=2, pool_stride=2,
+                                                     padding=1, bias=bias)
         dim1 //= 2
         dim2 //= 2
 
-        self.kws_conv4 = ai84.FusedMaxPoolConv2dReLU(60, 30, 3, pool_size=2, pool_stride=2,
-                                                     padding=1, bias=bias, simulate=simulate)
+        self.kws_conv4 = ai8x.FusedMaxPoolConv2dReLU(60, 30, 3, pool_size=2, pool_stride=2,
+                                                     padding=1, bias=bias)
         dim1 //= 2
         dim2 //= 2
 
-        self.kws_conv5 = ai84.FusedConv2dReLU(30, 30, 3, padding=1,
-                                              bias=bias, simulate=simulate)
+        self.kws_conv5 = ai8x.FusedConv2dReLU(30, 30, 3, padding=1, bias=bias)
 
-        self.kws_conv6 = ai84.FusedMaxPoolConv2dReLU(30, fc_inputs, 3, pool_size=2, pool_stride=2,
-                                                     padding=1, bias=bias, simulate=simulate)
+        self.kws_conv6 = ai8x.FusedMaxPoolConv2dReLU(30, fc_inputs, 3, pool_size=2, pool_stride=2,
+                                                     padding=1, bias=bias)
         dim1 //= 2
         dim2 //= 2
 
-        self.fc = ai84.SoftwareLinear(fc_inputs*dim1*dim2, num_classes, bias=bias,
-                                      simulate=simulate)
+        self.fc = ai8x.SoftwareLinear(fc_inputs*dim1*dim2, num_classes, bias=bias)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):

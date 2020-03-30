@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2018-2019 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2018-2020 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Confidential
 #
@@ -14,7 +14,7 @@ import numpy as np
 import torch
 from torchvision import transforms
 
-import ai84
+import ai8x
 
 
 class SpeechComFolded1D(torch.utils.data.Dataset):
@@ -100,7 +100,14 @@ class SpeechComFolded1D(torch.utils.data.Dataset):
         return inp, target
 
 
-def speechcomfolded1D_get_datasets(data, load_train=True, load_test=True):
+class SpeechComFolded1D_20(SpeechComFolded1D):
+    """
+    `SpeechCom v0.02 <http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz>`
+    Dataset, 1D folded.
+    """
+
+
+def speechcomfolded1D_get_datasets(data, load_train=True, load_test=True, num_classes=6):
     """
     Load the folded 1D version of SpeechCom dataset
 
@@ -119,11 +126,16 @@ def speechcomfolded1D_get_datasets(data, load_train=True, load_test=True):
     (data_dir, args) = data
 
     transform = transforms.Compose([
-        ai84.normalize(args=args)
+        ai8x.normalize(args=args)
     ])
 
-#    classes = ['up', 'down', 'left', 'right', 'stop', 'go']  # 6 keywords
-    classes = ['up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero']  # 20 keywords
+    if num_classes == 6:
+        classes = ['up', 'down', 'left', 'right', 'stop', 'go']  # 6 keywords
+    elif num_classes == 20:
+        classes = ['up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
+                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero']
+    else:
+        raise ValueError(f'Unsupported num_classes {num_classes}')
 
     if load_train:
         train_dataset = SpeechComFolded1D(root=data_dir, classes=classes, d_type='train',
@@ -141,3 +153,22 @@ def speechcomfolded1D_get_datasets(data, load_train=True, load_test=True):
         test_dataset = None
 
     return train_dataset, test_dataset
+
+
+def speechcomfolded1D_20_get_datasets(data, load_train=True, load_test=True):
+    """
+    Load the folded 1D version of SpeechCom dataset for 20 classes
+
+    The dataset is loaded from the archive file, so the file is required for this version.
+
+    The dataset originally includes 30 keywords. A dataset is formed with 21 classes which includes
+    20 of the original keywords and the rest of the dataset is used to form the last class, i.e.,
+    class of the others.
+    The dataset is split into training, validation and test sets. 80:10:10 training:validation:test
+    split is used by default.
+
+    Data is augmented to 3x duplicate data by randomly stretch, shift and randomly add noise where
+    the stretching coefficient, shift amount and noise variance are randomly selected between
+    0.8 and 1.3, -0.1 and 0.1, 0 and 1, respectively.
+    """
+    return speechcomfolded1D_get_datasets(data, load_train, load_test, num_classes=20)
