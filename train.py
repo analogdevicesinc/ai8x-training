@@ -94,7 +94,7 @@ from distiller.data_loggers.logger import TensorBoardLogger, PythonLogger
 import examples.auto_compression.amc as adc
 import ai8x
 import parsecmd
-from ds_speechcom import speechcom_get_datasets
+from ds_speechcom import speechcom_get_datasets, speechcom_20_get_datasets
 from ds_speechcomfolded1D import speechcomfolded1D_get_datasets, speechcomfolded1D_20_get_datasets
 from ds_faceid import faceid_get_datasets
 # from range_linear_ai84 import PostTrainLinearQuantizerAI84
@@ -131,6 +131,10 @@ def main():
          'min_input': 1,
          'dim': 2},
         {'name': 'ai84net7',
+         'module': 'ai84net',
+         'min_input': 1,
+         'dim': 2},
+         {'name': 'ai84net20',
          'module': 'ai84net',
          'min_input': 1,
          'dim': 2},
@@ -183,17 +187,22 @@ def main():
          'input': (3, 224, 224),
          'output': list(map(str, range(100))),
          'loader': imagenet_get_datasets},
-        {'name': 'SpeechCom',
+        {'name': 'SpeechCom',  # 6 keywords
          'input': (1, 64, 64),
          'output': (0, 1, 2, 3, 4, 5, 6),
          'weight': (1, 1, 1, 1, 1, 1, 0.06),
          'loader': speechcom_get_datasets},
-        {'name': 'SpeechComFolded1D',
+         {'name': 'SpeechCom_20',  # 20 keywords
+         'input': (1, 64, 64),
+         'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20),
+         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.14),
+         'loader': speechcom_20_get_datasets},
+        {'name': 'SpeechComFolded1D',  # 6 keywords
          'input': (512, 64, 1),
-         'output': (0, 1, 2, 3, 4, 5, 6),  # 6 keywords
+         'output': (0, 1, 2, 3, 4, 5, 6),
          'weight': (1, 1, 1, 1, 1, 1, 0.06),
          'loader': speechcomfolded1D_get_datasets},
-        {'name': 'SpeechComFolded1D_20',
+        {'name': 'SpeechComFolded1D_20',  # 20 keywords
          'input': (512, 64, 1),
          'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20),
          'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.14),

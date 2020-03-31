@@ -291,7 +291,13 @@ class SpeechCom(torch.utils.data.Dataset):
             img = self.transform(img)
 
         return img, target
-
+		
+		
+class SpeechCom_20(SpeechCom):
+    """
+    `SpeechCom v0.02 <http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz>`
+    Dataset, 1D folded.
+    """
 
 # functions to convert audio data to image by mel spectrogram technique and augment data.
 silence_counter = 0
@@ -388,7 +394,7 @@ def augment_multiple(audio, fs, n_augment, verbose=False):
     return aug_audio
 
 
-def speechcom_get_datasets(data, load_train=True, load_test=True):
+def speechcom_get_datasets(data, load_train=True, load_test=True, num_classes=6):
     """
     Load the SpeechCom v0.02 dataset
     (https://storage.cloud.google.com/download.tensorflow.org/data/speech_commands_v0.02.tar.gz).
@@ -405,7 +411,13 @@ def speechcom_get_datasets(data, load_train=True, load_test=True):
     """
     (data_dir, args) = data
 
-    classes = ['up', 'down', 'left', 'right', 'stop', 'go']
+    if num_classes == 6:
+        classes = ['up', 'down', 'left', 'right', 'stop', 'go']  # 6 keywords
+    elif num_classes == 20:
+        classes = ['up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
+                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero']
+    else:
+        raise ValueError(f'Unsupported num_classes {num_classes}')
 
     transform = transforms.Compose([
         transforms.ToTensor(),
@@ -428,3 +440,22 @@ def speechcom_get_datasets(data, load_train=True, load_test=True):
         test_dataset = None
 
     return train_dataset, test_dataset
+
+
+def speechcom_20_get_datasets(data, load_train=True, load_test=True):
+    """
+    Load the SpeechCom v0.02 dataset
+
+    The dataset is loaded from the archive file, so the file is required for this version.
+
+    The dataset originally includes 30 keywords. A dataset is formed with 21 classes which includes
+    20 of the original keywords and the rest of the dataset is used to form the last class, i.e.,
+    class of the others.
+    The dataset is split into training, validation and test sets. 80:10:10 training:validation:test
+    split is used by default.
+
+    Data is augmented to 3x duplicate data by randomly stretch, shift and randomly add noise where
+    the stretching coefficient, shift amount and noise variance are randomly selected between
+    0.8 and 1.3, -0.1 and 0.1, 0 and 1, respectively.
+    """
+    return speechcom_get_datasets(data, load_train, load_test, num_classes=20)
