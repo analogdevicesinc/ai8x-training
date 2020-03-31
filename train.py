@@ -53,7 +53,7 @@ train():
         compression_scheduler.on_minibatch_end(epoch)
 
 
-This exmple application can be used with torchvision's ImageNet image classification
+This example application can be used with torchvision's ImageNet image classification
 models, or with the provided sample models:
 
 - ResNet for CIFAR: https://github.com/junyuseu/pytorch-cifar-models
@@ -68,6 +68,7 @@ import logging
 from collections import OrderedDict
 from functools import partial
 from pydoc import locate
+import fnmatch
 import operator
 import matplotlib
 import numpy as np
@@ -79,8 +80,6 @@ import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
 import torchnet.meter as tnt
-import torchvision
-from torchvision import transforms
 import distiller
 import distiller.apputils as apputils
 import distiller.model_summaries as model_summaries
@@ -94,9 +93,6 @@ from distiller.data_loggers.logger import TensorBoardLogger, PythonLogger
 import examples.auto_compression.amc as adc
 import ai8x
 import parsecmd
-from ds_speechcom import speechcom_get_datasets, speechcom_20_get_datasets
-from ds_speechcomfolded1D import speechcomfolded1D_get_datasets, speechcomfolded1D_20_get_datasets
-from ds_faceid import faceid_get_datasets
 # from range_linear_ai84 import PostTrainLinearQuantizerAI84
 
 
@@ -117,105 +113,38 @@ def main():
     script_dir = os.path.dirname(__file__)
     global msglogger  # pylint: disable=global-statement
 
-    supported_models = [
-        {'name': 'ai84net5',
-         'module': 'ai84net',
-         'min_input': 1,
-         'dim': 2},
-        {'name': 'ai84netsmall',
-         'module': 'ai84net',
-         'min_input': 1,
-         'dim': 2},
-        {'name': 'ai84netextrasmall',
-         'module': 'ai84net',
-         'min_input': 1,
-         'dim': 2},
-        {'name': 'ai84net7',
-         'module': 'ai84net',
-         'min_input': 1,
-         'dim': 2},
-        {'name': 'ai85net20',
-         'module': 'ai85net-kws',
-         'min_input': 1,
-         'dim': 2},
-        {'name': 'ai85netwide',
-         'module': 'ai85net-test',
-         'min_input': 1,
-         'dim': 2},
-        {'name': 'ai85net80wide',
-         'module': 'ai85net-test',
-         'min_input': 1,
-         'dim': 2},
-        {'name': 'ai85net80expansion',
-         'module': 'ai85net-test',
-         'min_input': 1,
-         'dim': 2},
-        {'name': 'ai85net6',
-         'module': 'ai85net-test',
-         'min_input': 1,
-         'dim': 2},
-        {'name': 'ai85squeezenet',
-         'module': 'ai85net-test',
-         'min_input': 1,
-         'dim': 2},
-        {'name': 'ai85audionet',
-         'module': 'ai85net-audio',
-         'min_input': 1,
-         'dim': 1},
-        {'name': 'ai85faceidnet',
-         'module': 'ai85net-faceid',
-         'min_input': 1,
-         'dim': 3},
-    ]
+    supported_models = []
+    supported_sources = []
+    model_names = []
+    dataset_names = []
 
-    supported_sources = [
-        {'name': 'MNIST',
-         'input': (1, 28, 28),
-         'output': list(map(str, range(10))),
-         'loader': mnist_get_datasets},
-        {'name': 'FashionMNIST',
-         'input': (1, 28, 28),
-         'output': ('top', 'trouser', 'pullover', 'dress', 'coat', 'sandal',
-                    'shirt', 'sneaker', 'bag', 'boot'),
-         'loader': fashionmnist_get_datasets},
-        {'name': 'CIFAR10',
-         'input': (3, 32, 32),
-         'output': ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse',
-                    'ship', 'truck'),
-         'loader': cifar10_get_datasets},
-        {'name': 'ImageNet',
-         'input': (3, 224, 224),
-         'output': list(map(str, range(100))),
-         'loader': imagenet_get_datasets},
-        {'name': 'SpeechCom',  # 6 keywords
-         'input': (1, 64, 64),
-         'output': (0, 1, 2, 3, 4, 5, 6),
-         'weight': (1, 1, 1, 1, 1, 1, 0.06),
-         'loader': speechcom_get_datasets},
-        {'name': 'SpeechCom_20',  # 20 keywords
-         'input': (1, 64, 64),
-         'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20),
-         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.14),
-         'loader': speechcom_20_get_datasets},
-        {'name': 'SpeechComFolded1D',  # 6 keywords
-         'input': (512, 64, 1),
-         'output': (0, 1, 2, 3, 4, 5, 6),
-         'weight': (1, 1, 1, 1, 1, 1, 0.06),
-         'loader': speechcomfolded1D_get_datasets},
-        {'name': 'SpeechComFolded1D_20',  # 20 keywords
-         'input': (512, 64, 1),
-         'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20),
-         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.14),
-         'loader': speechcomfolded1D_20_get_datasets},
-        {'name': 'FaceID',
-         'input': (3, 160, 120),
-         'output': ('id'),
-         'regression': True,
-         'loader': faceid_get_datasets},
-    ]
+    # Dynamically load models
+    for _, _, files in sorted(os.walk('models')):
+        for name in sorted(files):
+            if fnmatch.fnmatch(name, '*.py'):
+                fn = 'models.' + name[:-3]
+                m = locate(fn)
+                try:
+                    for i in m.models:
+                        i['module'] = fn
+                    supported_models += m.models
+                    model_names += [item['name'] for item in m.models]
+                except AttributeError:
+                    # Skip files that don't have 'models' or 'models.name'
+                    pass
 
-    model_names = [item['name'] for item in supported_models]
-    dataset_names = [item['name'] for item in supported_sources]
+    # Dynamically load datasets
+    for _, _, files in sorted(os.walk('datasets')):
+        for name in sorted(files):
+            if fnmatch.fnmatch(name, '*.py'):
+                ds = locate('datasets.' + name[:-3])
+                try:
+                    supported_sources += ds.datasets
+                    dataset_names += [item['name'] for item in ds.datasets]
+                except AttributeError:
+                    # Skip files that don't have 'datasets' or 'datasets.name'
+                    pass
+
     # Parse arguments
     args = parsecmd.get_parser(model_names, dataset_names).parse_args()
 
@@ -1176,214 +1105,6 @@ def check_pytorch_version():
               "  2. Install the new environment\n"
               "  3. Activate the new environment")
         exit(1)
-
-
-def cifar10_get_datasets(data, load_train=True, load_test=True):
-    """
-    Load the CIFAR10 dataset.
-
-    The original training dataset is split into training and validation sets (code is
-    inspired by https://gist.github.com/kevinzakka/d33bf8d6c7f06a9d8c76d97a7879f5cb).
-    By default we use a 90:10 (45K:5K) training:validation split.
-
-    The output of torchvision datasets are PIL Image images of range [0, 1].
-    We transform them to Tensors of normalized range [-1, 1]
-    https://github.com/pytorch/tutorials/blob/master/beginner_source/blitz/cifar10_tutorial.py
-
-    Data augmentation: 4 pixels are padded on each side, and a 32x32 crop is randomly sampled
-    from the padded image or its horizontal flip.
-    This is similar to [1] and some other work that use CIFAR10.
-
-    [1] C.-Y. Lee, S. Xie, P. Gallagher, Z. Zhang, and Z. Tu. Deeply Supervised Nets.
-    arXiv:1409.5185, 2014
-    """
-    (data_dir, args) = data
-
-    if load_train:
-        train_transform = transforms.Compose([
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            ai8x.normalize(args=args)
-        ])
-
-        train_dataset = torchvision.datasets.CIFAR10(root=os.path.join(data_dir, 'CIFAR10'),
-                                                     train=True, download=True,
-                                                     transform=train_transform)
-    else:
-        train_dataset = None
-
-    if load_test:
-        test_transform = transforms.Compose([
-            transforms.ToTensor(),
-            ai8x.normalize(args=args)
-        ])
-
-        test_dataset = torchvision.datasets.CIFAR10(root=os.path.join(data_dir, 'CIFAR10'),
-                                                    train=False, download=True,
-                                                    transform=test_transform)
-
-        if args.truncate_testset:
-            test_dataset.data = test_dataset.data[:1]
-    else:
-        test_dataset = None
-
-    return train_dataset, test_dataset
-
-
-def imagenet_get_datasets(data, load_train=True, load_test=True, input_size=224):
-    """
-    Load the ImageNet 2012 Classification dataset.
-
-    The original training dataset is split into training and validation sets.
-    By default we use a 90:10 (45K:5K) training:validation split.
-
-    The output of torchvision datasets are PIL Image images of range [0, 1].
-    We transform them to Tensors of normalized range [-1, 1]
-
-    Data augmentation: 4 pixels are padded on each side, and a 224x224 crop is randomly sampled
-    from the padded image or its horizontal flip.
-    """
-    (data_dir, args) = data
-
-    if load_train:
-        train_transform = transforms.Compose([
-            transforms.RandomCrop(input_size, padding=4),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            ai8x.normalize(args=args),
-        ])
-
-        train_dataset = torchvision.datasets.ImageNet(
-            data_dir,
-            split='train',
-            transform=train_transform,
-        )
-    else:
-        train_dataset = None
-
-    if load_test:
-        test_transform = transforms.Compose([
-            transforms.Resize(int(input_size / 0.875)),
-            transforms.CenterCrop(input_size),
-            transforms.ToTensor(),
-            ai8x.normalize(args=args),
-        ])
-
-        test_dataset = torchvision.datasets.ImageNet(
-            data_dir,
-            split='val',
-            transform=test_transform,
-        )
-
-        if args.truncate_testset:
-            test_dataset.data = test_dataset.data[:1]
-    else:
-        test_dataset = None
-
-    return train_dataset, test_dataset
-
-
-def mnist_get_datasets(data, load_train=True, load_test=True):
-    """
-    Load the MNIST dataset.
-
-    The original training dataset is split into training and validation sets (code is
-    inspired by https://gist.github.com/kevinzakka/d33bf8d6c7f06a9d8c76d97a7879f5cb).
-    By default we use a 90:10 (45K:5K) training:validation split.
-
-    The output of torchvision datasets are PIL Image images of range [0, 1].
-    We transform them to Tensors of normalized range [-1, 1]
-    https://github.com/pytorch/tutorials/blob/master/beginner_source/blitz/cifar10_tutorial.py
-
-    Data augmentation: 4 pixels are padded on each side, and a 32x32 crop is randomly sampled
-    from the padded image or its horizontal flip.
-    This is similar to [1] and some other work that use CIFAR10.
-
-    [1] C.-Y. Lee, S. Xie, P. Gallagher, Z. Zhang, and Z. Tu. Deeply Supervised Nets.
-    arXiv:1409.5185, 2014
-    """
-    (data_dir, args) = data
-
-    if load_train:
-        train_transform = transforms.Compose([
-            transforms.RandomCrop(28, padding=4),
-            transforms.RandomAffine(degrees=20, translate=(0.1, 0.1), shear=5),
-            transforms.ToTensor(),
-            ai8x.normalize(args=args)
-        ])
-
-        train_dataset = torchvision.datasets.MNIST(root=data_dir, train=True, download=True,
-                                                   transform=train_transform)
-    else:
-        train_dataset = None
-
-    if load_test:
-        test_transform = transforms.Compose([
-            transforms.ToTensor(),
-            ai8x.normalize(args=args)
-        ])
-
-        test_dataset = torchvision.datasets.MNIST(root=data_dir, train=False, download=True,
-                                                  transform=test_transform)
-
-        if args.truncate_testset:
-            test_dataset.data = test_dataset.data[:1]
-    else:
-        test_dataset = None
-
-    return train_dataset, test_dataset
-
-
-def fashionmnist_get_datasets(data, load_train=True, load_test=True):
-    """
-    Load the FashionMNIST dataset.
-
-    The original training dataset is split into training and validation sets (code is
-    inspired by https://gist.github.com/kevinzakka/d33bf8d6c7f06a9d8c76d97a7879f5cb).
-    By default we use a 90:10 (45K:5K) training:validation split.
-
-    The output of torchvision datasets are PIL Image images of range [0, 1].
-    We transform them to Tensors of normalized range [-1, 1]
-    https://github.com/pytorch/tutorials/blob/master/beginner_source/blitz/cifar10_tutorial.py
-
-    Data augmentation: 4 pixels are padded on each side, and a 32x32 crop is randomly sampled
-    from the padded image or its horizontal flip.
-    This is similar to [1] and some other work that use CIFAR10.
-
-    [1] C.-Y. Lee, S. Xie, P. Gallagher, Z. Zhang, and Z. Tu. Deeply Supervised Nets.
-    arXiv:1409.5185, 2014
-    """
-    (data_dir, args) = data
-
-    if load_train:
-        train_transform = transforms.Compose([
-            transforms.RandomCrop(28, padding=4),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            ai8x.normalize(args=args)
-        ])
-
-        train_dataset = torchvision.datasets.FashionMNIST(root=data_dir, train=True, download=True,
-                                                          transform=train_transform)
-    else:
-        train_dataset = None
-
-    if load_test:
-        test_transform = transforms.Compose([
-            transforms.ToTensor(),
-            ai8x.normalize(args=args)
-        ])
-
-        test_dataset = torchvision.datasets.FashionMNIST(root=data_dir, train=False, download=True,
-                                                         transform=test_transform)
-
-        if args.truncate_testset:
-            test_dataset.data = test_dataset.data[:1]
-    else:
-        test_dataset = None
-
-    return train_dataset, test_dataset
 
 
 if __name__ == '__main__':

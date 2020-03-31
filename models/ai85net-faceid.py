@@ -63,3 +63,12 @@ def ai85faceidnet(pretrained=False, **kwargs):
     """
     assert not pretrained
     return AI85FaceIDNet(**kwargs)
+
+
+models = [
+    {
+        'name': 'ai85faceidnet',
+        'min_input': 1,
+        'dim': 3,
+    },
+]

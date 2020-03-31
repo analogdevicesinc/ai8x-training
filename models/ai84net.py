@@ -255,3 +255,27 @@ def ai84net7(pretrained=False, **kwargs):
     """
     assert not pretrained
     return AI84Net7(**kwargs)
+
+
+models = [
+    {
+        'name': 'ai84net5',
+        'min_input': 1,
+        'dim': 2,
+    },
+    {
+        'name': 'ai84netsmall',
+        'min_input': 1,
+        'dim': 2,
+    },
+    {
+        'name': 'ai84netextrasmall',
+        'min_input': 1,
+        'dim': 2,
+    },
+    {
+        'name': 'ai84net7',
+        'min_input': 1,
+        'dim': 2,
+    },
+]
