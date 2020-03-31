@@ -134,7 +134,7 @@ def main():
          'module': 'ai84net',
          'min_input': 1,
          'dim': 2},
-         {'name': 'ai84net20',
+        {'name': 'ai84net20',
          'module': 'ai84net',
          'min_input': 1,
          'dim': 2},
@@ -192,7 +192,7 @@ def main():
          'output': (0, 1, 2, 3, 4, 5, 6),
          'weight': (1, 1, 1, 1, 1, 1, 0.06),
          'loader': speechcom_get_datasets},
-         {'name': 'SpeechCom_20',  # 20 keywords
+        {'name': 'SpeechCom_20',  # 20 keywords
          'input': (1, 64, 64),
          'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20),
          'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.14),

@@ -255,8 +255,8 @@ def ai84net7(pretrained=False, **kwargs):
     """
     assert not pretrained
     return AI84Net7(**kwargs)
-    
-    
+
+
 class AI84Net20(nn.Module):
     """
     CNN that tries to achieve accuracy > %90 for kws.
@@ -321,4 +321,3 @@ def ai84net20(pretrained=False, **kwargs):
     """
     assert not pretrained
     return AI84Net20(**kwargs)
-
