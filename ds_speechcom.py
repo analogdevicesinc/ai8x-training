@@ -291,13 +291,14 @@ class SpeechCom(torch.utils.data.Dataset):
             img = self.transform(img)
 
         return img, target
-		
-		
+
+
 class SpeechCom_20(SpeechCom):
     """
     `SpeechCom v0.02 <http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz>`
     Dataset, 1D folded.
     """
+
 
 # functions to convert audio data to image by mel spectrogram technique and augment data.
 silence_counter = 0

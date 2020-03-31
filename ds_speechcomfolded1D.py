@@ -113,8 +113,8 @@ def speechcomfolded1D_get_datasets(data, load_train=True, load_test=True, num_cl
 
     The dataset is loaded from the archive file, so the file is required for this version.
 
-    The dataset originally includes 30 keywords. A dataset is formed with 7 (or 21) classes which includes
-    6 (or 20) of the original keywords and the rest of the
+    The dataset originally includes 30 keywords. A dataset is formed with 7 (or 21) classes which
+    includes 6 (or 20) of the original keywords and the rest of the
     dataset is used to form the last class, i.e class of the others.
     The dataset is split into training, validation and test sets. 80:10:10 training:validation:test
     split is used by default.
