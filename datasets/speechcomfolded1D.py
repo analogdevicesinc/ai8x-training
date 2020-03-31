@@ -172,3 +172,21 @@ def speechcomfolded1D_20_get_datasets(data, load_train=True, load_test=True):
     0.8 and 1.3, -0.1 and 0.1, 0 and 1, respectively.
     """
     return speechcomfolded1D_get_datasets(data, load_train, load_test, num_classes=20)
+
+
+datasets = [
+    {
+        'name': 'SpeechComFolded1D',  # 6 keywords
+        'input': (512, 64, 1),
+        'output': (0, 1, 2, 3, 4, 5, 6),
+        'weight': (1, 1, 1, 1, 1, 1, 0.06),
+        'loader': speechcomfolded1D_get_datasets,
+    },
+    {
+        'name': 'SpeechComFolded1D_20',  # 20 keywords
+        'input': (512, 64, 1),
+        'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20),
+        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.14),
+        'loader': speechcomfolded1D_20_get_datasets,
+    },
+]

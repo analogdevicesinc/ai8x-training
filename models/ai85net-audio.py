@@ -99,3 +99,12 @@ def ai85audionet(pretrained=False, **kwargs):
     """
     assert not pretrained
     return AI85AudioNet(**kwargs)
+
+
+models = [
+    {
+        'name': 'ai85audionet',
+        'min_input': 1,
+        'dim': 1,
+    },
+]

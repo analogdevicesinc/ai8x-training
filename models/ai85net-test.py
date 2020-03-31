@@ -292,3 +292,32 @@ def ai85squeezenet(pretrained=False, **kwargs):
     """
     assert not pretrained
     return AI85SqueezeNet(**kwargs)
+
+
+models = [
+    {
+        'name': 'ai85netwide',
+        'min_input': 1,
+        'dim': 2,
+    },
+    {
+        'name': 'ai85net80wide',
+        'min_input': 1,
+        'dim': 2,
+    },
+    {
+        'name': 'ai85net80expansion',
+        'min_input': 1,
+        'dim': 2,
+    },
+    {
+        'name': 'ai85net6',
+        'min_input': 1,
+        'dim': 2,
+    },
+    {
+        'name': 'ai85squeezenet',
+        'min_input': 1,
+        'dim': 2,
+    },
+]

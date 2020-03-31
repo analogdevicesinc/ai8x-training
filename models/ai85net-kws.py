@@ -79,3 +79,12 @@ def ai85net20(pretrained=False, **kwargs):
     """
     assert not pretrained
     return AI85Net20(**kwargs)
+
+
+models = [
+    {
+        'name': 'ai85net20',
+        'min_input': 1,
+        'dim': 2,
+    },
+]

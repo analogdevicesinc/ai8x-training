@@ -63,3 +63,14 @@ def faceid_get_datasets(data, load_train=True, load_test=True):
         test_dataset = None
 
     return train_dataset, test_dataset
+
+
+datasets = [
+    {
+        'name': 'FaceID',
+        'input': (3, 160, 120),
+        'output': ('id'),
+        'regression': True,
+        'loader': faceid_get_datasets,
+    },
+]
