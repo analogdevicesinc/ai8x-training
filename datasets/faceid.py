@@ -13,8 +13,8 @@ import os
 from torchvision import transforms
 
 import ai8x
-from ds_vggface2 import VGGFace2Dataset
-from ds_youtube_faces import YouTubeFacesDataset
+from datasets.vggface2 import VGGFace2Dataset
+from datasets.youtube_faces import YouTubeFacesDataset
 
 
 def faceid_get_datasets(data, load_train=True, load_test=True):
