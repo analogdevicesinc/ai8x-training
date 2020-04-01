@@ -17,7 +17,7 @@ import torch.nn as nn
 dev = None
 
 
-class normalize(object):
+class normalize():
     """
     Normalize input to either [-0.5, +0.5] or [-128, +127]
     """
@@ -470,6 +470,9 @@ class Device():
         self.device = device
         self.simulate = simulate
 
+    def __str__(self):
+        return self.__class__.__name__
+
 
 class DevAI84(Device):
     """
@@ -488,6 +491,9 @@ class DevAI84(Device):
 
         self.MAX_AVG_POOL = 4
 
+    def __str__(self):
+        return self.__class__.__name__
+
 
 class DevAI85(Device):
     """
@@ -505,6 +511,9 @@ class DevAI85(Device):
         self.WEIGHT_DEPTH = 768
 
         self.MAX_AVG_POOL = 16
+
+    def __str__(self):
+        return self.__class__.__name__
 
 
 def set_device(

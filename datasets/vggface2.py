@@ -65,7 +65,7 @@ class VGGFace2Dataset(data.Dataset):
         t_end = time.time()
         print('%d of data samples loaded in %.4f sec.' % (n_elems, t_end-t_start))
 
-    def __normalize_data(self, data_item):
+    def __normalize_data(self, data_item):  # pylint: disable=no-self-use
         data_item = data_item.astype(np.float32)
         data_item /= 255
         return data_item

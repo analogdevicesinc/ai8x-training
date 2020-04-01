@@ -168,7 +168,7 @@ class SpeechCom(torch.utils.data.Dataset):
                 os.path.exists(os.path.join(self.processed_folder, self.test_file)) |
                 os.path.exists(os.path.join(self.processed_folder, self.validation_file)))
 
-    def __makedir_exist_ok(self, dirpath):
+    def __makedir_exist_ok(self, dirpath):  # pylint: disable=no-self-use
         try:
             os.makedirs(dirpath)
         except OSError as e:
@@ -177,7 +177,7 @@ class SpeechCom(torch.utils.data.Dataset):
             else:
                 raise
 
-    def __gen_bar_updater(self):
+    def __gen_bar_updater(self):  # pylint: disable=no-self-use
         pbar = tqdm(total=None)
 
         def bar_update(count, block_size, total_size):
@@ -214,7 +214,7 @@ class SpeechCom(torch.utils.data.Dataset):
                 else:
                     raise e
 
-    def __calculate_md5(self, fpath, chunk_size=1024 * 1024):
+    def __calculate_md5(self, fpath, chunk_size=1024 * 1024):  # pylint: disable=no-self-use
         md5 = hashlib.md5()
         with open(fpath, 'rb') as f:
             for chunk in iter(lambda: f.read(chunk_size), b''):
@@ -231,7 +231,8 @@ class SpeechCom(torch.utils.data.Dataset):
             return True
         return self.__check_md5(fpath, md5)
 
-    def __extract_archive(self, from_path, to_path=None, remove_finished=False):
+    def __extract_archive(self, from_path,  # pylint: disable=no-self-use
+                          to_path=None, remove_finished=False):
         if to_path is None:
             to_path = os.path.dirname(from_path)
 
@@ -265,12 +266,12 @@ class SpeechCom(torch.utils.data.Dataset):
             if c not in self.class_dict.keys():
                 print('Class is not in the data: %s' % c)
                 return
-            else:
-                print('Class %s, %d' % (c, self.class_dict[c]))
-                num_elems = (self.targets == self.class_dict[c]).cpu().sum()
-                print('Number of elements in class %s: %d' % (c, num_elems))
-                self.targets[(self.targets == self.class_dict[c])] = new_class_label
-                new_class_label += 1
+            # else:
+            print('Class %s, %d' % (c, self.class_dict[c]))
+            num_elems = (self.targets == self.class_dict[c]).cpu().sum()
+            print('Number of elements in class %s: %d' % (c, num_elems))
+            self.targets[(self.targets == self.class_dict[c])] = new_class_label
+            new_class_label += 1
 
         num_elems = (self.targets < initial_new_class_label).cpu().sum()
         print('Number of elements in class unknown: %d' % (num_elems))

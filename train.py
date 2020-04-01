@@ -364,7 +364,7 @@ def main():
                                  dir=msglogger.logdir)
         print("Note: your model may have collapsed to random inference, "
               "so you may want to fine-tune")
-        return
+        return None
 
     args.kd_policy = None
     if args.kd_teacher:
@@ -441,6 +441,7 @@ def main():
 
     # Finally run results on the test set
     test(test_loader, model, criterion, [pylogger], activations_collectors, args=args)
+    return None
 
 
 OVERALL_LOSS_KEY = 'Overall Loss'
@@ -786,12 +787,12 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
         if not args.regression:
             return classerr.value(1), classerr.value(min(args.num_classes, 5)), \
                 losses['objective_loss'].mean
-        else:
-            return classerr.value(), .0, \
-                losses['objective_loss'].mean
-    else:
-        total_top1, total_top5, losses_exits_stats = earlyexit_validate_stats(args)
-        return total_top1, total_top5, losses_exits_stats[args.num_exits-1]
+        # else:
+        return classerr.value(), .0, \
+            losses['objective_loss'].mean
+    # else:
+    total_top1, total_top5, losses_exits_stats = earlyexit_validate_stats(args)
+    return total_top1, total_top5, losses_exits_stats[args.num_exits-1]
 
 
 def update_training_scores_history(perf_scores_history, model, top1, top5, epoch, num_best_scores,
