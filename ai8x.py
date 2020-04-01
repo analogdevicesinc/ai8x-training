@@ -409,7 +409,7 @@ class FusedLinearReLU(nn.Module):
         return x
 
 
-class Linear(FusedSoftwareLinearReLU):
+class Linear(FusedLinearReLU):
     """
     AI85+ - Linear
     """
