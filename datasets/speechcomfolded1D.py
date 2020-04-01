@@ -72,12 +72,12 @@ class SpeechComFolded1D(torch.utils.data.Dataset):
             if c not in self.class_dict.keys():
                 print('Class is not in the data: %s' % c)
                 return
-            else:
-                print('Class %s, %d' % (c, self.class_dict[c]))
-                num_elems = (self.targets == self.class_dict[c]).cpu().sum()
-                print('Number of elements in class %s: %d' % (c, num_elems))
-                self.targets[(self.targets == self.class_dict[c])] = new_class_label
-                new_class_label += 1
+            # else:
+            print('Class %s, %d' % (c, self.class_dict[c]))
+            num_elems = (self.targets == self.class_dict[c]).cpu().sum()
+            print('Number of elements in class %s: %d' % (c, num_elems))
+            self.targets[(self.targets == self.class_dict[c])] = new_class_label
+            new_class_label += 1
 
         num_elems = (self.targets < initial_new_class_label).cpu().sum()
         print('Number of elements in class unknown: %d' % (num_elems))
@@ -105,6 +105,8 @@ class SpeechComFolded1D_20(SpeechComFolded1D):
     `SpeechCom v0.02 <http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz>`
     Dataset, 1D folded.
     """
+    def __str__(self):
+        return self.__class__.__name__
 
 
 def speechcomfolded1D_get_datasets(data, load_train=True, load_test=True, num_classes=6):
