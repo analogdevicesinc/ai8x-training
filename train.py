@@ -80,6 +80,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
 import torchnet.meter as tnt
+from tblogger import TensorBoardLogger
 import distiller
 import distiller.apputils as apputils
 import distiller.model_summaries as model_summaries
@@ -88,10 +89,11 @@ from distiller.data_loggers.collector import SummaryActivationStatsCollector, \
     RecordsActivationStatsCollector, QuantCalibrationStatsCollector, \
     collectors_context
 from distiller.quantization.range_linear import PostTrainLinearQuantizer
-from distiller.data_loggers.logger import TensorBoardLogger, PythonLogger
+from distiller.data_loggers.logger import PythonLogger
 # pylint: enable=no-name-in-module
 import examples.auto_compression.amc as adc
 import ai8x
+import nnplot
 import parsecmd
 # from range_linear_ai84 import PostTrainLinearQuantizerAI84
 
@@ -250,8 +252,16 @@ def main():
     compression_scheduler = None
     # Create a couple of logging backends.  TensorBoardLogger writes log files in a format
     # that can be read by Google's Tensor Board.  PythonLogger writes to the Python logger.
-    tflogger = TensorBoardLogger(msglogger.logdir)
+    tflogger = TensorBoardLogger(msglogger.logdir, comment='_'+args.dataset)
     pylogger = PythonLogger(msglogger)
+
+    tflogger.writer.add_text('Command line', str(args))
+
+    if dimensions[2] > 1:
+        dummy_input = torch.autograd.Variable(torch.randn((1, ) + dimensions))
+    else:  # 1D input
+        dummy_input = torch.autograd.Variable(torch.randn((1, ) + dimensions[:-1]))
+    tflogger.writer.add_graph(model.to('cpu'), (dummy_input, ), False)
 
     # capture thresholds for early-exit training
     if args.earlyexit_thresholds:
@@ -408,7 +418,8 @@ def main():
 
         # evaluate on validation set
         with collectors_context(activations_collectors["valid"]) as collectors:
-            top1, top5, vloss = validate(val_loader, model, criterion, [pylogger], args, epoch)
+            top1, top5, vloss = validate(val_loader, model, criterion, [pylogger], args, epoch,
+                                         tflogger)
             distiller.log_activation_statistics(epoch, "valid", loggers=[tflogger],
                                                 collector=collectors["sparsity"])
             save_collectors_data(collectors, msglogger.logdir)
@@ -575,13 +586,13 @@ def train(train_loader, model, criterion, optimizer, epoch,
     return acc_stats
 
 
-def validate(val_loader, model, criterion, loggers, args, epoch=-1):
+def validate(val_loader, model, criterion, loggers, args, epoch=-1, tflogger=None):
     """Model validation"""
     if epoch > -1:
         msglogger.info('--- validate (epoch=%d)-----------', epoch)
     else:
         msglogger.info('--- validate ---------------------')
-    return _validate(val_loader, model, criterion, loggers, args, epoch)
+    return _validate(val_loader, model, criterion, loggers, args, epoch, tflogger)
 
 
 def test(test_loader, model, criterion, loggers, activations_collectors, args):
@@ -646,7 +657,7 @@ def test(test_loader, model, criterion, loggers, activations_collectors, args):
     return top1, top5, losses
 
 
-def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
+def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=None):
     """Execute the validation/test loop."""
     losses = {'objective_loss': tnt.AverageValueMeter()}
     if not args.regression:
@@ -784,6 +795,10 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
 
         if args.display_confusion:
             msglogger.info('==> Confusion:\n%s\n', str(confusion.value()))
+            if tflogger is not None:
+                cf = nnplot.confusion_matrix(confusion.value(), args.labels)
+                tflogger.writer.add_image('Validation/ConfusionMatrix', cf, epoch,
+                                          dataformats='HWC')
         if not args.regression:
             return classerr.value(1), classerr.value(min(args.num_classes, 5)), \
                 losses['objective_loss'].mean
