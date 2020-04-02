@@ -22,15 +22,17 @@
 # limitations under the License.
 #
 """
-ImageNet Dataset
+ImageNet Dataset (using PyTorch's ImageNet and ImageFolder classes)
 """
+import os
+
 import torchvision
 from torchvision import transforms
 
 import ai8x
 
 
-def imagenet_get_datasets(data, load_train=True, load_test=True, input_size=224):
+def imagenet_get_datasets(data, load_train=True, load_test=True, input_size=224, folder=False):
     """
     Load the ImageNet 2012 Classification dataset.
 
@@ -47,17 +49,24 @@ def imagenet_get_datasets(data, load_train=True, load_test=True, input_size=224)
 
     if load_train:
         train_transform = transforms.Compose([
-            transforms.RandomCrop(input_size, padding=4),
+            transforms.RandomResizedCrop(input_size),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
             ai8x.normalize(args=args),
         ])
 
-        train_dataset = torchvision.datasets.ImageNet(
-            data_dir,
-            split='train',
-            transform=train_transform,
-        )
+        if not folder:
+            train_dataset = torchvision.datasets.ImageNet(
+                data_dir,
+                split='train',
+                transform=train_transform,
+            )
+        else:
+            train_dataset = torchvision.datasets.ImageFolder(
+                os.path.join(data_dir, 'train'),
+                transform=train_transform,
+            )
     else:
         train_dataset = None
 
@@ -66,14 +75,21 @@ def imagenet_get_datasets(data, load_train=True, load_test=True, input_size=224)
             transforms.Resize(int(input_size / 0.875)),
             transforms.CenterCrop(input_size),
             transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
             ai8x.normalize(args=args),
         ])
 
-        test_dataset = torchvision.datasets.ImageNet(
-            data_dir,
-            split='val',
-            transform=test_transform,
-        )
+        if not folder:
+            test_dataset = torchvision.datasets.ImageNet(
+                data_dir,
+                split='val',
+                transform=test_transform,
+            )
+        else:
+            test_dataset = torchvision.datasets.ImageFolder(
+                os.path.join(data_dir, 'val'),
+                transform=test_transform,
+            )
 
         if args.truncate_testset:
             test_dataset.data = test_dataset.data[:1]
@@ -83,11 +99,26 @@ def imagenet_get_datasets(data, load_train=True, load_test=True, input_size=224)
     return train_dataset, test_dataset
 
 
+def imagenetfolder_get_datasets(data, load_train=True, load_test=True, input_size=224):
+    """
+    Load the ImageNet 2012 Classification dataset using ImageFolder.
+    _This function is used when the number of output classes is less than the default and
+    it depends on a custom installation._
+    """
+    return imagenet_get_datasets(data, load_train, load_test, input_size, folder=True)
+
+
 datasets = [
     {
         'name': 'ImageNet',
         'input': (3, 224, 224),
         'output': list(map(str, range(1000))),
         'loader': imagenet_get_datasets,
+    },
+    {
+        'name': 'ImageNet50',
+        'input': (3, 224, 224),
+        'output': list(map(str, range(50))),
+        'loader': imagenetfolder_get_datasets,
     },
 ]
