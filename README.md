@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_3/25/2020_
+_April 2, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository._
@@ -61,7 +61,7 @@ This software consists of two related projects:
     - [SHAP — SHapely Additive exPlanations](#shap--shapely-additive-explanations)
   - [Quantization](#quantization)
   - [Alternative Quantization Approaches](#alternative-quantization-approaches)
-  - [Adding Datasets and New Networks to the Training Process](#adding-datasets-and-new-networks-to-the-training-process)
+  - [Adding New Network Models and New Datasets to the Training Process](#adding-new-network-models-and-new-datasets-to-the-training-process)
 - [Network Loader](#network-loader)
   - [Network Loader Configuration Language](#network-loader-configuration-language)
     - [Global Configuration](#global-configuration)
@@ -801,7 +801,7 @@ Since performance for 8-bit weights is decent enough, _naive post-training quant
 
 The software quantizes an existing PyTorch checkpoint file and writes out a new PyTorch checkpoint file that can then be used to evaluate the quality of the quantized network, using the same PyTorch framework used for training. The same new checkpoint file will also be used to feed the [Network Loader](#Network-Loader).
 
-Copy the weight files into the `trained/` folder of the `ai8x-synthesis` project.
+Copy the working and tested weight files into the `trained/` folder of the `ai8x-synthesis` project.
 
 Example:
 
@@ -831,13 +831,18 @@ Note that AI84 does not have a configurable per-layer output shift. The addition
 
 In all cases, ensure that the quantizer writes out a checkpoint file that the Network Loader can read.
 
-### Adding Datasets and New Networks to the Training Process
+### Adding New Network Models and New Datasets to the Training Process
 
-The following steps are needed to add new data formats and networks:
-1. Develop a data loader in PyTorch, see https://pytorch.org/tutorials/beginner/data_loading_tutorial.html.
-2. Implement a new network model (see `ai84net.py` for an example).
-3. Add data loader and network model to `train.py`.
-4. Train the new network with the new data. See `go_cifar.sh` for a command line example.
+The following step is needed to add new network models:
+
+1. Implement a new network model (see `models/ai84net.py` for an example). The file must include the `models` data structure that describes the model (name, inputs, and dimensions). `models` can list multiple models in the same file.
+
+The following steps are needed for new data formats and datasets:
+
+1. Develop a data loader in PyTorch, see https://pytorch.org/tutorials/beginner/data_loading_tutorial.html. See `datasets/mnist.py` for an example.
+3. Add the new data loader to a new file in the `datasets`  directory (for example `datasets/mnist.py`). The file must include the `datasets` data structure that describes the dataset and points to the new loader. `datasets` can list multiple datasets in the same file.
+
+Train the new network/new dataset. See `go_mnist.sh` for a command line example.
 
 ---
 
@@ -1294,7 +1299,7 @@ https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/docs/trunk/AI84%20Test%2
 
 ### AI85 SDK
 
-Use SVN to check out the AI85 SDK from https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI85/SDK/.
+Use SVN to check out the preliminary AI85 SDK from https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI85/SDK/.
 
 ```shell
 $ svn co https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI85/SDK/ AI85SDK
@@ -1532,10 +1537,10 @@ $ git submodule update --init
 
 ### Linting
 
-Both projects are set up for `flake8`, `pylint`, and `mypy`. The line width is related to 100 (instead of the default of 80), and the number of lines per module was increased.
+Both projects are set up for `flake8`, `pylint`, and `mypy`. The line width is related to 100 (instead of the default of 80), and the number of lines per module was increased; configuration files are included in the projects.
 Code should not generate any warnings in any of the tools (some of the components in the `ai8x-training` project will create warnings as they are based on third-party code).
 
-`flake8`, `pylint` and `mypy` need to be installed into the virtual environment:
+`flake8`, `pylint` and `mypy` need to be installed into both virtual environments:
 
 ```shell
 (ai8x-synthesis) $ pip3 install flake8 pylint mypy
