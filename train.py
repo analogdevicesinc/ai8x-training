@@ -227,6 +227,8 @@ def main():
 
     if args.regression and args.display_confusion:
         raise ValueError('ERROR: Argument --confusion cannot be used with regression')
+    if args.regression and args.display_prcurves:
+        raise ValueError('ERROR: Argument --pr-curves cannot be used with regression')
 
     # Create the model
     module = next(item for item in supported_models if item['name'] == args.cnn)
@@ -724,6 +726,8 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
     model.eval()
 
     end = time.time()
+    class_probs = []
+    class_preds = []
     for validation_step, (inputs, target) in enumerate(data_loader):
         with torch.no_grad():
             inputs, target = inputs.to(args.device), target.to(args.device)
@@ -752,6 +756,12 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
 
             steps_completed = (validation_step+1)
             if steps_completed % args.print_freq == 0 or steps_completed == total_steps:
+                if args.display_prcurves and tflogger is not None:
+                    class_probs_batch = [torch.nn.functional.softmax(el, dim=0) for el in output]
+                    _, class_preds_batch = torch.max(output, 1)
+                    class_probs.append(class_probs_batch)
+                    class_preds.append(class_preds_batch)
+
                 if not args.earlyexit_thresholds:
                     if not args.regression:
                         stats = (
@@ -791,6 +801,15 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
 
                 distiller.log_training_progress(stats, None, epoch, steps_completed,
                                                 total_steps, args.print_freq, loggers)
+
+                if args.display_prcurves and tflogger is not None:
+                    test_probs = torch.cat([torch.stack(batch) for batch in class_probs])
+                    test_preds = torch.cat(class_preds)
+                    for i in range(args.num_classes):
+                        tb_preds = test_preds == i
+                        tb_probs = test_probs[:, i]
+                        tflogger.writer.add_pr_curve(str(args.labels[i]),
+                                                     tb_preds, tb_probs, global_step=epoch)
 
     if args.csv_prefix is not None:
         f_ytrue.close()

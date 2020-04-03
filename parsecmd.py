@@ -167,6 +167,9 @@ def get_parser(model_names, dataset_names):
     parser.add_argument('--confusion', dest='display_confusion', default=False,
                         action='store_true',
                         help='Display the confusion matrix')
+    parser.add_argument('--pr-curves', dest='display_prcurves', default=False,
+                        action='store_true',
+                        help='Display the precision-recall curves')
     parser.add_argument('--no-tensorboard', dest='tblog', default=True,
                         action='store_false',
                         help='Disable TensorBoard')
