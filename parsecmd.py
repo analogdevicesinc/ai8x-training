@@ -167,6 +167,9 @@ def get_parser(model_names, dataset_names):
     parser.add_argument('--confusion', dest='display_confusion', default=False,
                         action='store_true',
                         help='Display the confusion matrix')
+    parser.add_argument('--no-tensorboard', dest='tblog', default=True,
+                        action='store_false',
+                        help='Disable TensorBoard')
     parser.add_argument('--regression', dest='regression', default=False,
                         action='store_true',
                         help='Force regression output')

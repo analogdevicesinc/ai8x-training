@@ -252,16 +252,24 @@ def main():
     compression_scheduler = None
     # Create a couple of logging backends.  TensorBoardLogger writes log files in a format
     # that can be read by Google's Tensor Board.  PythonLogger writes to the Python logger.
-    tflogger = TensorBoardLogger(msglogger.logdir, comment='_'+args.dataset)
     pylogger = PythonLogger(msglogger)
+    all_loggers = [pylogger]
+    if args.tblog:
+        tflogger = TensorBoardLogger(msglogger.logdir, comment='_'+args.dataset)
 
-    tflogger.writer.add_text('Command line', str(args))
+        tflogger.writer.add_text('Command line', str(args))
 
-    if dimensions[2] > 1:
-        dummy_input = torch.autograd.Variable(torch.randn((1, ) + dimensions))
-    else:  # 1D input
-        dummy_input = torch.autograd.Variable(torch.randn((1, ) + dimensions[:-1]))
-    tflogger.writer.add_graph(model.to('cpu'), (dummy_input, ), False)
+        if dimensions[2] > 1:
+            dummy_input = torch.autograd.Variable(torch.randn((1, ) + dimensions))
+        else:  # 1D input
+            dummy_input = torch.autograd.Variable(torch.randn((1, ) + dimensions[:-1]))
+        tflogger.writer.add_graph(model.to('cpu'), (dummy_input, ), False)
+
+        all_loggers.append(tflogger)
+        all_tbloggers = [tflogger]
+    else:
+        tflogger = None
+        all_tbloggers = []
 
     # capture thresholds for early-exit training
     if args.earlyexit_thresholds:
@@ -409,9 +417,9 @@ def main():
         # Train for one epoch
         with collectors_context(activations_collectors["train"]) as collectors:
             train(train_loader, model, criterion, optimizer, epoch, compression_scheduler,
-                  loggers=[tflogger, pylogger], args=args)
-            distiller.log_weights_sparsity(model, epoch, loggers=[tflogger, pylogger])
-            distiller.log_activation_statistics(epoch, "train", loggers=[tflogger],
+                  loggers=all_loggers, args=args)
+            distiller.log_weights_sparsity(model, epoch, loggers=all_loggers)
+            distiller.log_activation_statistics(epoch, "train", loggers=all_tbloggers,
                                                 collector=collectors["sparsity"])
             if args.masks_sparsity:
                 msglogger.info(distiller.masks_sparsity_tbl_summary(model, compression_scheduler))
@@ -420,7 +428,7 @@ def main():
         with collectors_context(activations_collectors["valid"]) as collectors:
             top1, top5, vloss = validate(val_loader, model, criterion, [pylogger], args, epoch,
                                          tflogger)
-            distiller.log_activation_statistics(epoch, "valid", loggers=[tflogger],
+            distiller.log_activation_statistics(epoch, "valid", loggers=all_tbloggers,
                                                 collector=collectors["sparsity"])
             save_collectors_data(collectors, msglogger.logdir)
 
@@ -434,7 +442,7 @@ def main():
                      OrderedDict([('Loss', vloss),
                                   ('MSE', top1)]))
         distiller.log_training_progress(stats, None, epoch, steps_completed=0, total_steps=1,
-                                        log_freq=1, loggers=[tflogger])
+                                        log_freq=1, loggers=all_tbloggers)
 
         if compression_scheduler:
             compression_scheduler.on_epoch_end(epoch, optimizer)
