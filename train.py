@@ -435,8 +435,9 @@ def main():
         if not args.regression:
             stats = ('Performance/Validation/',
                      OrderedDict([('Loss', vloss),
-                                  ('Top1', top1),
-                                  ('Top5', top5)]))
+                                  ('Top1', top1)]))
+            if args.num_classes > 5:
+                stats[1]['Top5'] = top5
         else:
             stats = ('Performance/Validation/',
                      OrderedDict([('Loss', vloss),
@@ -448,8 +449,7 @@ def main():
             compression_scheduler.on_epoch_end(epoch, optimizer)
 
         # Update the list of top scores achieved so far, and save the checkpoint
-        update_training_scores_history(perf_scores_history, model, top1, top5, epoch,
-                                       args.num_best_scores, args.regression)
+        update_training_scores_history(perf_scores_history, model, top1, top5, epoch, args)
         is_best = epoch == perf_scores_history[0].epoch
         checkpoint_extras = {'current_top1': top1,
                              'best_top1': perf_scores_history[0].top1,
@@ -564,7 +564,8 @@ def train(train_loader, model, criterion, optimizer, epoch,
             if not args.earlyexit_lossweights:
                 if not args.regression:
                     errs['Top1'] = classerr.value(1)
-                    errs['Top5'] = classerr.value(min(args.num_classes, 5))
+                    if args.num_classes > 5:
+                        errs['Top5'] = classerr.value(5)
                 else:
                     errs['MSE'] = classerr.value()
             else:
@@ -572,7 +573,8 @@ def train(train_loader, model, criterion, optimizer, epoch,
                 for exitnum in range(args.num_exits):
                     if not args.regression:
                         errs['Top1_exit' + str(exitnum)] = args.exiterrors[exitnum].value(1)
-                        errs['Top5_exit' + str(exitnum)] = args.exiterrors[exitnum].value(5)
+                        if args.num_classes > 5:
+                            errs['Top5_exit' + str(exitnum)] = args.exiterrors[exitnum].value(5)
                     else:
                         errs['MSE_exit' + str(exitnum)] = args.exiterrors[exitnum].value()
 
@@ -755,9 +757,10 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                         stats = (
                             '',
                             OrderedDict([('Loss', losses['objective_loss'].mean),
-                                         ('Top1', classerr.value(1)),
-                                         ('Top5', classerr.value(min(args.num_classes, 5)))])
+                                         ('Top1', classerr.value(1))])
                         )
+                        if args.num_classes > 5:
+                            stats[1]['Top5'] = classerr.value(5)
                     else:
                         stats = (
                             '',
@@ -777,9 +780,10 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                         if args.exit_taken[exitnum]:
                             if not args.regression:
                                 t1 = 'Top1_exit' + str(exitnum)
-                                t5 = 'Top5_exit' + str(exitnum)
                                 stats_dict[t1] = args.exiterrors[exitnum].value(1)
-                                stats_dict[t5] = args.exiterrors[exitnum].value(5)
+                                if args.num_classes > 5:
+                                    t5 = 'Top5_exit' + str(exitnum)
+                                    stats_dict[t5] = args.exiterrors[exitnum].value(5)
                             else:
                                 t1 = 'MSE_exit' + str(exitnum)
                                 stats_dict[t1] = args.exiterrors[exitnum].value()
@@ -795,8 +799,13 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
 
     if not args.earlyexit_thresholds:
         if not args.regression:
-            msglogger.info('==> Top1: %.3f    Top5: %.3f    Loss: %.3f\n',
-                           classerr.value()[0], classerr.value()[1], losses['objective_loss'].mean)
+            if args.num_classes > 5:
+                msglogger.info('==> Top1: %.3f    Top5: %.3f    Loss: %.3f\n',
+                               classerr.value()[0], classerr.value()[1],
+                               losses['objective_loss'].mean)
+            else:
+                msglogger.info('==> Top1: %.3f    Loss: %.3f\n',
+                               classerr.value()[0], losses['objective_loss'].mean)
         else:
             msglogger.info('==> MSE: %.5f    Loss: %.3f\n',
                            classerr.value(), losses['objective_loss'].mean)
@@ -818,13 +827,12 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
     return total_top1, total_top5, losses_exits_stats[args.num_exits-1]
 
 
-def update_training_scores_history(perf_scores_history, model, top1, top5, epoch, num_best_scores,
-                                   regression):
+def update_training_scores_history(perf_scores_history, model, top1, top5, epoch, args):
     """ Update the list of top training scores achieved so far, and log the best scores so far"""
 
     model_sparsity, _, params_nnz_cnt = distiller.model_params_stats(model)
 
-    if not regression:
+    if not args.regression:
         perf_scores_history.append(distiller.MutableNamedTuple({'params_nnz_cnt': -params_nnz_cnt,
                                                                 'sparsity': model_sparsity,
                                                                 'top1': top1, 'top5': top5,
@@ -834,11 +842,17 @@ def update_training_scores_history(perf_scores_history, model, top1, top5, epoch
         perf_scores_history.sort(key=operator.attrgetter('params_nnz_cnt', 'top1',
                                                          'top5', 'epoch'),
                                  reverse=True)
-        for score in perf_scores_history[:num_best_scores]:
-            msglogger.info('==> Best [Top1: %.3f   Top5: %.3f   Sparsity:%.2f   '
-                           'Params: %d on epoch: %d]',
-                           score.top1, score.top5, score.sparsity, -score.params_nnz_cnt,
-                           score.epoch)
+        for score in perf_scores_history[:args.num_best_scores]:
+            if args.num_classes > 5:
+                msglogger.info('==> Best [Top1: %.3f   Top5: %.3f   Sparsity:%.2f   '
+                               'Params: %d on epoch: %d]',
+                               score.top1, score.top5, score.sparsity, -score.params_nnz_cnt,
+                               score.epoch)
+            else:
+                msglogger.info('==> Best [Top1: %.3f   Sparsity:%.2f   '
+                               'Params: %d on epoch: %d]',
+                               score.top1, score.sparsity, -score.params_nnz_cnt,
+                               score.epoch)
     else:
         perf_scores_history.append(distiller.MutableNamedTuple({'params_nnz_cnt': -params_nnz_cnt,
                                                                 'sparsity': model_sparsity,
@@ -848,7 +862,7 @@ def update_training_scores_history(perf_scores_history, model, top1, top5, epoch
         # Sort by sparsity as main sort key, then sort by mse, and epoch
         perf_scores_history.sort(key=operator.attrgetter('params_nnz_cnt', 'top1', 'epoch'),
                                  reverse=True)
-        for score in perf_scores_history[:num_best_scores]:
+        for score in perf_scores_history[:args.num_best_scores]:
             msglogger.info('==> Best [MSE: %.5f   Sparsity:%.2f   '
                            'Params: %d on epoch: %d]',
                            1. - score.top1, score.sparsity, -score.params_nnz_cnt,
@@ -922,7 +936,9 @@ def earlyexit_validate_stats(args):
             msglogger.info("Exit %d: %d", exitnum, args.exit_taken[exitnum])
             if not args.regression:
                 top1k_stats[exitnum] += args.exiterrors[exitnum].value(1)
-                top5k_stats[exitnum] += args.exiterrors[exitnum].value(5)
+                top5k_stats[exitnum] += args.exiterrors[exitnum].value(
+                    min(args.num_classes, 5)
+                )
             else:
                 top1k_stats[exitnum] += args.exiterrors[exitnum].value()
             losses_exits_stats[exitnum] += args.losses_exits[exitnum].mean
