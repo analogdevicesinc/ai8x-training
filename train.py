@@ -229,6 +229,8 @@ def main():
         raise ValueError('ERROR: Argument --confusion cannot be used with regression')
     if args.regression and args.display_prcurves:
         raise ValueError('ERROR: Argument --pr-curves cannot be used with regression')
+    if args.regression and args.display_embedding:
+        raise ValueError('ERROR: Argument --embedding cannot be used with regression')
 
     # Create the model
     module = next(item for item in supported_models if item['name'] == args.cnn)
@@ -810,6 +812,33 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                         tb_probs = test_probs[:, i]
                         tflogger.writer.add_pr_curve(str(args.labels[i]),
                                                      tb_preds, tb_probs, global_step=epoch)
+
+                if args.display_embedding and tflogger is not None \
+                   and steps_completed == total_steps:
+                    def select_n_random(data, labels, features, n=100):
+                        """Selects n random datapoints, their corresponding labels and features"""
+                        assert len(data) == len(labels) == len(features)
+
+                        perm = torch.randperm(len(data))
+                        return data[perm][:n], labels[perm][:n], features[perm][:n]
+
+                    # Select up to 100 random images and their target indices
+                    images, labels, features = select_n_random(inputs, target, output,
+                                                               n=min(100, len(inputs)))
+
+                    # Get the class labels for each image
+                    class_labels = [args.labels[lab] for lab in labels]
+
+                    # Log embeddings
+                    if images.shape[1] in [1, 3] and images.shape[2] == images.shape[3]:
+                        # width must be same as height
+                        if args.act_mode_8bit:
+                            images /= 255.0  # scale for display
+                    else:
+                        images = None  # don't display images
+                    tflogger.writer.add_embedding(features, metadata=class_labels,
+                                                  label_img=images, global_step=epoch,
+                                                  tag='verification/embedding')
 
     if args.csv_prefix is not None:
         f_ytrue.close()
