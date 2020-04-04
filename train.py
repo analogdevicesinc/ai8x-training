@@ -60,7 +60,6 @@ models, or with the provided sample models:
 - MobileNet for ImageNet: https://github.com/marvis/pytorch-mobilenet
 """
 
-import math
 import time
 import os
 import traceback
@@ -492,7 +491,7 @@ def train(train_loader, model, criterion, optimizer, epoch,
 
     total_samples = len(train_loader.sampler)
     batch_size = train_loader.batch_size
-    steps_per_epoch = math.ceil(total_samples / batch_size)
+    steps_per_epoch = (total_samples + batch_size - 1) // batch_size
     msglogger.info('Training epoch: %d samples (%d per mini-batch)', total_samples, batch_size)
 
     # Switch to train mode
@@ -717,7 +716,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
     batch_size = data_loader.batch_size
     if args.display_confusion:
         confusion = tnt.ConfusionMeter(args.num_classes)
-    total_steps = total_samples / batch_size
+    total_steps = (total_samples + batch_size - 1) // batch_size
     msglogger.info('%d samples (%d per mini-batch)', total_samples, batch_size)
 
     # Switch to evaluation mode
