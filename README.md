@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_April 2, 2020_
+_April 6, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository._
@@ -20,6 +20,7 @@ This software consists of two related projects:
   - [File System Layout](#file-system-layout)
   - [Upstream Code](#upstream-code)
   - [Prerequisites](#prerequisites)
+    - [Shared (Multi-User) and Remote Systems](#shared-multi-user-and-remote-systems)
     - [Recommended Software](#recommended-software)
   - [Project Installation](#project-installation)
     - [Windows Systems](#windows-systems)
@@ -57,7 +58,10 @@ This software consists of two related projects:
   - [Fully Connected (Linear) Layers](#fully-connected-linear-layers)
   - [Upsampling (Fractionally-Strided 2D Convolutions)](#upsampling-fractionally-strided-2d-convolutions)
 - [Model Training and Quantization](#model-training-and-quantization)
+    - [Custom nn.Modules](#custom-nnmodules)
   - [Model Comparison and Feature Attribution](#model-comparison-and-feature-attribution)
+    - [TensorBoard](#tensorboard)
+    - [Manifold](#manifold)
     - [SHAP — SHapely Additive exPlanations](#shap--shapely-additive-explanations)
   - [Quantization](#quantization)
   - [Alternative Quantization Approaches](#alternative-quantization-approaches)
@@ -144,6 +148,13 @@ $ git clone https://first.last@gerrit.maxim-ic.com:8443/ai8x-training
 $ git clone https://first.last@gerrit.maxim-ic.com:8443/ai8x-synthesis
 ```
 
+If the local git environment has not been previously configured, add the following commands:
+
+```sh
+$ git config --global user.email "first.last@maximintegrated.com"
+$ git config --global user.name "First Last"
+```
+
 ### Prerequisites
 
 When going beyond simple tests, model training requires CUDA hardware acceleration (the network loader does not require CUDA).
@@ -151,6 +162,25 @@ When going beyond simple tests, model training requires CUDA hardware accelerati
 Install CUDA 10.1 and CUDNN (PyTorch 1.3.1 does not support CUDA 10.2):
 https://developer.nvidia.com/cuda-downloads
 https://developer.nvidia.com/cudnn
+
+*Note: When using multiple GPUs, the software will automatically use all available GPUs and distribute the workload. To prevent this, either use the `--gpus` command line argument, or set the `CUDA_VISIBLE_DEVICES` environment variable.*
+
+#### Shared (Multi-User) and Remote Systems
+
+On a shared (multi-user) system that has previously been set up , only local installation is needed. CUDA and any `apt-get` or `brew` tasks are not necessary.
+
+The `screen` command can be used inside a remote terminal to disconnect a session from the controlling terminal, so that a long running training session doesn’t abort due to network issues, or local power saving.
+
+Example:
+
+```shell
+$ ssh targethost
+targethost$ screen # or screen -r to resume, screen -list to list
+targethost$
+Ctrl+A,D to disconnect
+```
+
+`man screen` has more information.
 
 #### Recommended Software
 
@@ -177,11 +207,11 @@ $ brew install pyenv pyenv-virtualenv libomp libsndfile
 
 On Ubuntu 18.04 LTS:
 
-```
+```shell
 $ sudo apt-get install -y make build-essential libssl-dev zlib1g-dev \
   libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
   libncurses5-dev libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev \
-  libsndfile-dev
+  libsndfile-dev portaudio19-dev
 $ curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
 ```
 
@@ -745,20 +775,46 @@ The example shows a fractionally-strided convolution with a stride of 2, pad of 
 
 ## Model Training and Quantization
 
-The `ai84net.py` file contains models that fit into AI84’s weight memory. These models rely on the AI84 hardware operators that are defined in `ai84.py`.
+The `ai84net.py` file contains models that fit into AI84’s weight memory. These models rely on the AI84 hardware operators that are defined in `ai8x.py`.
 
-To train the FP32 model for FashionMIST, run `go_fashionmnist.sh` in the `ai8x-training` project. This script will place checkpoint files into the log directory. Training makes use of the Distiller framework, but the `train.py` software has been modified slightly to improve it and add some AI84 specifics.
+To train the FP32 model for FashionMIST, run `go_fashionmnist.sh` in the `ai8x-training` project. This script will place checkpoint files into the log directory. Training makes use of the Distiller framework, but the `train.py` software has been modified slightly to improve it and add some AI8X specifics.
 
-Training progress can be observed by starting TensorBoard and pointing a web browser to its local server.
+#### Custom nn.Modules
+
+The `ai8x.py` file contains customized PyTorch classes (subclasses of `torch.nn.Module`). Any model that is designed to run on AI8X should use these classes. There are three main changes over the default classes in `torch.nn.Module`:
+
+1. Additional “Fused” operators that model in-flight pooling and activation.
+2. Rounding and clipping that matches the hardware.
+3. Support for quantized operation (when using the `-8` command line argument).
+
+Note that `torch.nn.Dropout` is not used during inference, and can therefore be used for training without problems.
+
+### Model Comparison and Feature Attribution
+
+Both TensorBoard and Manifold can be used for model comparison and feature attribution.
+
+#### TensorBoard
+
+TensorBoard is built into `train.py`. It consists of a local web server that can be started before, during, or after training and it picks up all data that is written to the `logs/` directory. To start the TensorBoard server, use a second terminal window:
 
 ```shell
 (ai8x-training) $ tensorboard --logdir='./logs'
 TensorBoard 1.14.0 at http://127.0.0.1:6006/ (Press CTRL+C to quit)
 ```
 
-### Model Comparison and Feature Attribution
+On a shared system, add the `--port 0` command line option.
 
-Manifold can be used for model comparison and feature attribution. The quickest way to integrate manifold is by creating CSV files from the training software. *Note that performance will suffer when there are more than about 20,000 records in the CSV file. Subsampling the data is one way to avoid this problem.*
+Training progress can be observed by starting TensorBoard and pointing a web browser to the port indicated. When using a remote system, use `ssh` in another terminal window to forward the remote port to the local machine:
+
+```shell
+$ ssh -L 6006:127.0.0.1:6006 targethost
+```
+
+For classification models, TensorBoard supports the optional `--param-hist` and `--embedding` command line arguments. `--embedding` randomly selects up to 100 data points from the last batch of each verification epoch. These can be viewed in the “projector” tab in TensorBoard.
+
+#### Manifold
+
+The quickest way to integrate manifold is by creating CSV files from the training software. *Note that performance will suffer when there are more than about 20,000 records in the CSV file. Subsampling the data is one way to avoid this problem.*
 
 The train.py program can create CSV files using the `--save-csv` command line argument in combination with `--evaluate`:
 
@@ -776,7 +832,13 @@ $ npm run start
 The code will run in JavaScript inside the browser (this may cause warnings that the web page is consuming lots of resources). To run a browser remotely on a development machine, forward X11 using the following command:
 
 ```shell
-ssh -Yn targethost firefox http://localhost:8080/
+$ ssh -Yn targethost firefox http://localhost:8080/
+```
+
+To forward only the remote web port, use `ssh`:
+
+```shell
+$ ssh -L 8080:127.0.0.1:8080 targethost
 ```
 
 #### SHAP — SHapely Additive exPlanations
@@ -840,7 +902,8 @@ The following step is needed to add new network models:
 The following steps are needed for new data formats and datasets:
 
 1. Develop a data loader in PyTorch, see https://pytorch.org/tutorials/beginner/data_loading_tutorial.html. See `datasets/mnist.py` for an example.
-3. Add the new data loader to a new file in the `datasets`  directory (for example `datasets/mnist.py`). The file must include the `datasets` data structure that describes the dataset and points to the new loader. `datasets` can list multiple datasets in the same file.
+3. Add the new data loader to a new file in the `datasets`  directory (for example `datasets/mnist.py`). The file must include the `datasets` data structure that describes the dataset and points to the new loader. `datasets` can list multiple datasets in the same file. The `regression` key in the structure can be set to `True` to automatically select the `--regression` command line argument.
+3. The training/verification data is located (by default) in `data/DataSetName`, for example `data/CIFAR10`. The location can be overridden with the `--data target_directory` command line argument. The data loader is expected to download and preprocess the datasets as needed and install everything in the specified location.
 
 Train the new network/new dataset. See `go_mnist.sh` for a command line example.
 
@@ -1250,7 +1313,7 @@ The results of the generated code have been verified to match AI84 exactly and m
 Note there are minor rounding errors in the CMSIS average pooling code when enabling SIMD
 (`-DARM_MATH_DSP`). If there are hard faults on the device, try limiting compiler optimizations to `-O1`.
 
-The `Device/` folder contains a sample Makefile, and a custom fully connected layer in the file `arm_fully_connected_q7_q8p7_opt.c` that returns Q8.7 fixed-point outputs, and a custom `arm_softmax_q8p7_q15.c` which is aware of the fixed-point input (both of these files are also used for the software classification layer on AI84/AI85). Additionally, a number of files are provided that provide non-square pooling support, and activation support for more than 64 KiB of data (these files are not needed for AI84/AI85 hardware).
+The `Device/` folder contains a sample Makefile, and a custom fully connected layer in the file `arm_fully_connected_q7_q8p7_opt.c` that returns Q8.7 fixed-point outputs, and a custom `arm_softmax_q8p7_q15.c` which is aware of the fixed-point input (both of these files are also used for the software classification layer on AI84). Additionally, a number of files are provided that provide non-square pooling support, and activation support for more than 64 KiB of data (these files are not needed for AI8X hardware).
 The `tornadocnn.h` header file is included which helps both embedded examples as well as CMSIS NN code.
 
 For example, the following command would generate code that performs a CIFAR-10 inference from the `trained/ai84-cifar10.pth.tar` checkpoint file and the `cifar10-hwc.yaml` network description file:
@@ -1531,6 +1594,7 @@ To pull the latest code, in either project use:
 ```shell
 $ git pull
 $ git submodule update --init
+$ pip3 install -U -r requirements.txt # or requirements-[cpu,cuda].txt
 ```
 
 ## Contributing Code
