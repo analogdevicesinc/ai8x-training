@@ -830,8 +830,9 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                     class_labels = [args.labels[lab] for lab in labels]
 
                     # Log embeddings
-                    if images.shape[1] in [1, 3] and images.shape[2] == images.shape[3]:
-                        # width must be same as height
+                    if len(images.shape) == 4 \
+                       and images.shape[1] in [1, 3] and images.shape[2] == images.shape[3]:
+                        # Only add images for 2D, RGB or monochrome data when width == height
                         if args.act_mode_8bit:
                             images /= 255.0  # scale for display
                     else:
