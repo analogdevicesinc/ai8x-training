@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_April 6, 2020_
+_April 7, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository._
@@ -82,7 +82,7 @@ This software consists of two related projects:
       - [`in_offset` (Optional)](#inoffset-optional)
       - [`output_width` (Optional)](#outputwidth-optional)
       - [`data_format` (Optional)](#dataformat-optional)
-      - [`operation` (Optional)](#operation-optional)
+      - [`operation`](#operation)
       - [`eltwise` (Optional)](#eltwise-optional)
       - [`pool_first` (Optional)](#poolfirst-optional)
       - [`operands` (Optional)](#operands-optional)
@@ -105,6 +105,7 @@ This software consists of two related projects:
   - [Adding Datasets to the Network Loader](#adding-datasets-to-the-network-loader)
     - [Generating a Sample Input](#generating-a-sample-input)
     - [Saving a Sample Input from Training Data](#saving-a-sample-input-from-training-data)
+    - [Generating C Code](#generating-c-code)
   - [Starting an Inference, Waiting for Completion, Multiple Inferences in Sequence](#starting-an-inference-waiting-for-completion-multiple-inferences-in-sequence)
   - [CMSIS5 NN Emulation](#cmsis5-nn-emulation)
 - [Embedded Software Development Kits (SDKs)](#embedded-software-development-kits-sdks)
@@ -687,10 +688,10 @@ The AI84 hardware does not support arbitrary network parameters. Specifically,
 * The maximum dimension (number of rows or columns) for input or output data is 256.
 * Overall weight storage is limited to 64*128 3×3 kernels. However, weights must be arranged in a certain order, see above.
 * The hardware supports 1D and 2D convolution layers. For convenience, a single final fully connected layer with 8-bit inputs/weights/bias, and 16-bit output is supported in software, as well as a software `SoftMax` operator.
-* Since the internal network format is HWC in groups of four channels, output concatenation only works properly when all components of the concatenation other than the last have multiples of four channels. _Output concatenation is not yet supported in the `ai84.py` primitives._
+* Since the internal network format is HWC in groups of four channels, output concatenation only works properly when all components of the concatenation other than the last have multiples of four channels. _Output concatenation is not yet supported in the `ai8x.py` primitives._
 * It is recommended to not use bias on the AI84 convolutions when using post-training quantization as described in this document. The reason is that the bias is not shifted by the same amount as the weights. This could be mitigated using a more involved training procedure, but since bias values do not significantly improve performance in the example networks, and since this will be corrected for AI85, the recommendation is to not use bias values for now.
 
-With the exception of weight storage, and bias use, most of these limitations will be flagged when using the network primitives from `ai84.py`, see [Model Training and Quantization](#AI84-Model-Training-and-Quantization).
+With the exception of weight storage, and bias use, most of these limitations will be flagged when using the network primitives from `ai8x.py`, see [Model Training and Quantization](#AI84-Model-Training-and-Quantization).
 
 ### Limitations of AI85 Networks
 
@@ -864,7 +865,7 @@ This will create a plot with a random selection of 3 test images. The plot shows
 
 There are two main approaches to quantization — quantization-aware training and post-training quantization.
 
-Since performance for 8-bit weights is decent enough, _naive post-training quantization_ is used in the `ai84ize.py` software. While several approaches are implemented, a simple fixed scale factor is used based on experimental results. The approach requires the clamping operators implemented in `ai84.py`.
+Since performance for 8-bit weights is decent enough, _naive post-training quantization_ is used in the `ai84ize.py` software. While several approaches are implemented, a simple fixed scale factor is used based on experimental results. The approach requires the clamping operators implemented in `ai8x.py`.
 
 The software quantizes an existing PyTorch checkpoint file and writes out a new PyTorch checkpoint file that can then be used to evaluate the quality of the quantized network, using the same PyTorch framework used for training. The same new checkpoint file will also be used to feed the [Network Loader](#Network-Loader).
 
@@ -1052,15 +1053,15 @@ Example:
 
 When specified for the first layer only, `data_format` can be either `chw`/`big` or `hwc`/`little`. The default is `hwc`. Note that the data format interacts with `processors`. 
 
-##### `operation` (Optional)
+##### `operation`
 
 This key (which can also be specified using `op`, `operator`, or `convolution`) selects a layer’s main operation after the optional input pooling.
-The default is `Conv2d`. AI84 only supports `Conv1d` and `Conv2d`.
+When this key is not specified, a warning is displayed and `Conv2d` is selected. AI84 only supports `Conv1d` and `Conv2d`.
 
 | Operation                 | Description                                                  |
 | :------------------------ | :----------------------------------------------------------- |
 | `Conv1d`                  | 1D convolution over an input composed of several input planes |
-| `Conv2d` (default)        | 2D convolution over an input composed of several input planes |
+| `Conv2d`                  | 2D convolution over an input composed of several input planes |
 | `ConvTranspose2d`         | 2D transposed convolution (upsampling) over an input composed of several input planes |
 | `None` or `Passthrough`   | No operation                                                 |
 | `Linear` or `FC` or `MLP` | Linear transformation to the incoming data                   |
@@ -1297,7 +1298,7 @@ layers:
 ### Adding Datasets to the Network Loader
 
 Adding new datasets to the Network Loader is implemented as follows:
-1. Provide network model, its YAML description and quantized weights.
+1. Provide network model, its YAML description and quantized weights. Place the YAML file in the `networks` directory, and the quantized weights in the `trained` directory.
 2. Provide a sample input. The sample input is used to generate a known-answer test (self test). The sample input is provided as a NumPy “pickle” — add `sample_dset.npy` for the dataset named `dset` to the `tests` directory. This file can be generated by saving a sample in CHW format (no batch dimension) using `numpy.save()`. 
 
 For example, the CIFAR-10 3×32×32 image sample would be stored in `tests/sample_cifar-10.npy` in an `np.array` with shape `[3, 32, 32]` and datatype `<i8`. The file can be random, or can be obtained from the dataloader in the `forward()` function of the model.
@@ -1365,6 +1366,10 @@ It is a good idea to pick a sample where the quantized model computes the correc
 
 4. Run `evaluate_cifar10.sh` again and copy the saved `sample_cifar-10.npy` file.
 
+#### Generating C Code
+
+Run `cnn-gen.py` with the new network and the new sample data. See `gen-demos-ai85.sh` for examples.
+
 ### Starting an Inference, Waiting for Completion, Multiple Inferences in Sequence
 
 An inference is started by loading registers and kernels, loading the input, and enabling processing.  This code is automatically generated—see the `cnn_load()`, `load_kernels()`, and `load_input()` functions. The sample data can be used as a self-checking feature on device power-up since the output for the sample data is known.
@@ -1392,7 +1397,7 @@ For example, the following command would generate code that performs a CIFAR-10 
 (ai8x-synthesis) $ ./cnn-gen.py --top-level cnn --test-dir demos --prefix CIFAR-10-Arm --checkpoint-file trained/ai84-cifar10.pth.tar --config-file networks/cifar10-hwc.yaml --fc-layer --embedded-code --cmsis-software-nn
 ```
 
-When compiling the CMSIS code, you may have to disable compiler optimizations.
+When compiling the CMSIS code, it may be necessary to disable compiler optimizations.
 
 *Note*: The CMSIS code generator does not currently support the extended features of AI85 and AI86.
 
