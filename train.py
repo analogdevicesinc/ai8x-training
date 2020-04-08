@@ -151,7 +151,7 @@ def main():
     args = parsecmd.get_parser(model_names, dataset_names).parse_args()
 
     # Set hardware device
-    ai8x.set_device(args.device, args.act_mode_8bit)
+    ai8x.set_device(args.device, args.act_mode_8bit, args.avg_pool_rounding)
 
     if args.epochs is None:
         args.epochs = 90

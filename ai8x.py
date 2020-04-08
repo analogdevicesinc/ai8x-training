@@ -17,7 +17,7 @@ import torch.nn as nn
 dev = None
 
 
-class normalize():
+class normalize:
     """
     Normalize input to either [-0.5, +0.5] or [-128, +127]
     """
@@ -84,6 +84,32 @@ class Floor(nn.Module):
     """
     def forward(self, x):  # pylint: disable=arguments-differ
         return FloorFunction.apply(x)
+
+
+class RoundFunction(Function):
+    """
+    Custom AI8X autograd function
+    The forward pass returns the integer rounded.
+    The backward pass is straight through.
+    """
+    @staticmethod
+    def forward(ctx, x):  # pylint: disable=arguments-differ
+        return x.round()
+
+    @staticmethod
+    def backward(ctx, x):  # pylint: disable=arguments-differ
+        # Straight through - return as many input gradients as there were arguments;
+        # gradients of non-Tensor arguments to forward must be None.
+        return x
+
+
+class Round(nn.Module):
+    """
+    Post-pooling integer quantization module
+    Apply the custom autograd function
+    """
+    def forward(self, x):  # pylint: disable=arguments-differ
+        return RoundFunction.apply(x)
 
 
 class Clamp(nn.Module):
@@ -254,7 +280,10 @@ class FusedAvgPoolConv2dReLU(nn.Module):
         if dev.simulate:
             bits = dev.ACTIVATION_BITS
             self.quantize = Quantize(num_bits=bits)
-            self.quantize_pool = Floor()
+            if dev.round_avg:
+                self.quantize_pool = Round()
+            else:
+                self.quantize_pool = Floor()
             self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
         else:
             self.quantize = Empty()
@@ -462,13 +491,14 @@ class Conv1d(FusedConv2dReLU):
         super(Conv1d, self).__init__(in_channels, out_channels, kernel_size, relu=False, **kwargs)
 
 
-class Device():
+class Device:
     """
     Device base class
     """
-    def __init__(self, device, simulate):
+    def __init__(self, device, simulate, round_avg):
         self.device = device
         self.simulate = simulate
+        self.round_avg = round_avg
 
     def __str__(self):
         return self.__class__.__name__
@@ -478,8 +508,9 @@ class DevAI84(Device):
     """
     Implementation limits for AI84
     """
-    def __init__(self, simulate):
-        super(DevAI84, self).__init__(84, simulate)
+    def __init__(self, simulate, round_avg):
+        assert not round_avg
+        super(DevAI84, self).__init__(84, simulate, round_avg)
 
         self.WEIGHT_BITS = 8
         self.DATA_BITS = 8
@@ -499,8 +530,8 @@ class DevAI85(Device):
     """
     Implementation limits for AI85
     """
-    def __init__(self, simulate):
-        super(DevAI85, self).__init__(85, simulate)
+    def __init__(self, simulate, round_avg):
+        super(DevAI85, self).__init__(85, simulate, round_avg)
 
         self.WEIGHT_BITS = 8
         self.DATA_BITS = 8
@@ -519,20 +550,22 @@ class DevAI85(Device):
 def set_device(
         device,
         simulate,
+        round_avg,
 ):
     """
     Change implementation configuration to match the AI84 or AI85, depending on the `device`
-    integer input value and `simulate` bool.
+    integer input value and `simulate` bool. `round_avg` (AI85+) controls the average pooling
+    rounding.
     """
     global dev  # pylint: disable=global-statement
 
     print(f'Configuring device: AI{device}, simulate={simulate}.')
 
     if device == 84:
-        dev = DevAI84(simulate)
+        dev = DevAI84(simulate, round_avg)
     elif device == 85:
-        dev = DevAI85(simulate)
+        dev = DevAI85(simulate, round_avg)
     elif device == 86:
-        dev = DevAI85(simulate)  # For now, no differences from AI85
+        dev = DevAI85(simulate, round_avg)  # For now, no differences from AI85
     else:
         raise ValueError(f'Unkown device {device}.')
