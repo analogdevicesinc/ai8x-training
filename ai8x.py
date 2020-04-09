@@ -33,12 +33,18 @@ class normalize:
 class QuantizationFunction(Function):
     """
     Custom AI8X autograd function
-    The forward pass quantizes to [-(2**(num_bits-1)), 2**(num_bits-1)-1].
+    The forward pass divides by 2**(bits-1) (typically, 128) and rounds the result to the
+    nearest integer.
     The backward pass is straight through.
     """
     @staticmethod
     def forward(ctx, x, bits=None):  # pylint: disable=arguments-differ
-        return x.add(.5).div(2**(bits-1)).add(.5).floor()
+        if bits > 1:
+            return x.add(.5).div(2**(bits-1)).add(.5).floor()
+        elif bits < 1:
+            return x.mul(2**(1-bits)).add(.5).floor()
+        else:
+            return x.add(.5).floor()
 
     @staticmethod
     def backward(ctx, x):  # pylint: disable=arguments-differ
@@ -115,7 +121,7 @@ class Round(nn.Module):
 class Clamp(nn.Module):
     """
     Post-Activation Clamping Module
-    Clamp the output to the given range
+    Clamp the output to the given range (typically, [-128, +127])
     """
     def __init__(self, min_val=None, max_val=None):
         super(Clamp, self).__init__()
@@ -139,7 +145,7 @@ class FusedMaxPoolConv2dReLU(nn.Module):
     AI8X - Fused 2D Max Pool, 2D Convolution and ReLU
     """
     def __init__(self, in_channels, out_channels, kernel_size, pool_size=2, pool_stride=2,
-                 stride=1, padding=0, bias=True, relu=True):
+                 stride=1, padding=0, bias=True, relu=True, output_shift=0, wide=False):
         super(FusedMaxPoolConv2dReLU, self).__init__()
 
         if pool_stride is None:
@@ -186,8 +192,8 @@ class FusedMaxPoolConv2dReLU(nn.Module):
             self.conv2d = None
 
         if dev.simulate:
-            bits = dev.ACTIVATION_BITS
-            self.quantize = Quantize(num_bits=bits)
+            self.quantize = Quantize(num_bits=dev.DATA_BITS + output_shift if not wide else 1)
+            bits = dev.ACTIVATION_BITS if not wide else dev.FULL_ACC_BITS
             self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
         else:
             self.quantize = Empty()
@@ -230,7 +236,7 @@ class FusedAvgPoolConv2dReLU(nn.Module):
     AI8X - Fused 2D Avg Pool, 2D Convolution and ReLU
     """
     def __init__(self, in_channels, out_channels, kernel_size, pool_size=2, pool_stride=2,
-                 stride=1, padding=0, bias=True, relu=True):
+                 stride=1, padding=0, bias=True, relu=True, output_shift=0, wide=False):
         super(FusedAvgPoolConv2dReLU, self).__init__()
 
         if pool_stride is None:
@@ -278,12 +284,12 @@ class FusedAvgPoolConv2dReLU(nn.Module):
             self.conv2d = None
 
         if dev.simulate:
-            bits = dev.ACTIVATION_BITS
-            self.quantize = Quantize(num_bits=bits)
+            self.quantize = Quantize(num_bits=dev.DATA_BITS + output_shift if not wide else 1)
             if dev.round_avg:
                 self.quantize_pool = Round()
             else:
                 self.quantize_pool = Floor()
+            bits = dev.ACTIVATION_BITS if not wide else dev.FULL_ACC_BITS
             self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
         else:
             self.quantize = Empty()
@@ -327,7 +333,7 @@ class FusedConv2dReLU(nn.Module):
     AI8X - Fused 2D Convolution and ReLU
     """
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, bias=True,
-                 relu=True):
+                 relu=True, output_shift=0, wide=False):
         super(FusedConv2dReLU, self).__init__()
 
         if isinstance(kernel_size, tuple):
@@ -342,8 +348,8 @@ class FusedConv2dReLU(nn.Module):
                                 padding=padding, bias=bias)
 
         if dev.simulate:
-            self.quantize = Quantize(num_bits=dev.DATA_BITS)
-            bits = dev.ACTIVATION_BITS
+            self.quantize = Quantize(num_bits=dev.DATA_BITS + output_shift if not wide else 1)
+            bits = dev.ACTIVATION_BITS if not wide else dev.FULL_ACC_BITS
             self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
         else:
             self.quantize = Empty()
@@ -370,7 +376,7 @@ class Conv2d(FusedConv2dReLU):
 
 class FusedSoftwareLinearReLU(nn.Module):
     """
-    AI8X - Fused Linear and ReLU using Software
+    AI84 - Fused Linear and ReLU using Software
     """
     def __init__(self, in_features, out_features, bias=None, relu=True):
         super(FusedSoftwareLinearReLU, self).__init__()
@@ -401,7 +407,7 @@ class FusedSoftwareLinearReLU(nn.Module):
 
 class SoftwareLinear(FusedSoftwareLinearReLU):
     """
-    AI8X - Linear using Software
+    AI84 - Linear using Software
     """
     def __init__(self, in_features, out_features, **kwargs):
         super(SoftwareLinear, self).__init__(in_features, out_features, relu=False, **kwargs)
@@ -411,7 +417,8 @@ class FusedLinearReLU(nn.Module):
     """
     AI85+ - Fused Linear and ReLU
     """
-    def __init__(self, in_features, out_features, bias=None, relu=True):
+    def __init__(self, in_features, out_features, bias=None, relu=True,
+                 output_shift=0, wide=False):
         super(FusedLinearReLU, self).__init__()
 
         assert dev.device != 84
@@ -420,8 +427,8 @@ class FusedLinearReLU(nn.Module):
         self.linear = nn.Linear(in_features, out_features, bias)
 
         if dev.simulate:
-            self.quantize = Quantize(num_bits=dev.DATA_BITS)
-            bits = dev.ACTIVATION_BITS
+            self.quantize = Quantize(num_bits=dev.DATA_BITS + output_shift if not wide else 1)
+            bits = dev.ACTIVATION_BITS if not wide else dev.FULL_ACC_BITS
             self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
         else:
             self.quantize = Empty()
@@ -451,7 +458,7 @@ class FusedConv1dReLU(nn.Module):
     AI8X - Fused 1D Convolution and ReLU
     """
     def __init__(self, in_channels, out_channels, kernel_size, stride=3, padding=0, bias=True,
-                 relu=True):
+                 relu=True, output_shift=0, wide=False):
         super(FusedConv1dReLU, self).__init__()
 
         assert dev.device != 84 or stride == 3
@@ -465,8 +472,8 @@ class FusedConv1dReLU(nn.Module):
                                 padding=padding, bias=bias)
 
         if dev.simulate:
-            self.quantize = Quantize(num_bits=dev.DATA_BITS)
-            bits = dev.ACTIVATION_BITS
+            self.quantize = Quantize(num_bits=dev.DATA_BITS + output_shift if not wide else 1)
+            bits = dev.ACTIVATION_BITS if not wide else dev.FULL_ACC_BITS
             self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
         else:
             self.quantize = Empty()
@@ -515,6 +522,7 @@ class DevAI84(Device):
         self.WEIGHT_BITS = 8
         self.DATA_BITS = 8
         self.ACTIVATION_BITS = 8
+        self.FULL_ACC_BITS = 8
         self.FC_ACTIVATION_BITS = 16
 
         self.WEIGHT_INPUTS = 64
@@ -536,6 +544,7 @@ class DevAI85(Device):
         self.WEIGHT_BITS = 8
         self.DATA_BITS = 8
         self.ACTIVATION_BITS = 8
+        self.FULL_ACC_BITS = 32
         self.FC_ACTIVATION_BITS = 16
 
         self.WEIGHT_INPUTS = 256
