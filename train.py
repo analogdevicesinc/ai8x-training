@@ -80,7 +80,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
 import torchnet.meter as tnt
-from tblogger import TensorBoardLogger
+from tblogger import PythonLogger, TensorBoardLogger
 import distiller
 import distiller.apputils as apputils
 import distiller.model_summaries as model_summaries
@@ -89,7 +89,6 @@ from distiller.data_loggers.collector import SummaryActivationStatsCollector, \
     RecordsActivationStatsCollector, QuantCalibrationStatsCollector, \
     collectors_context
 from distiller.quantization.range_linear import PostTrainLinearQuantizer
-from distiller.data_loggers.logger import PythonLogger
 # pylint: enable=no-name-in-module
 import examples.auto_compression.amc as adc
 import ai8x
