@@ -1,5 +1,13 @@
+###################################################################################################
 #
-# Copyright (c) 2018 Intel Corporation
+# Copyright (C) 2018-2020 Maxim Integrated Products, Inc. All Rights Reserved.
+#
+# Maxim Integrated Products, Inc. Default Copyright Notice:
+# https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
+#
+###################################################################################################
+#
+# Portions Copyright (c) 2018 Intel Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,21 +25,23 @@
 """Loggers frontends and backends.
 
 - TensorBoardLogger logs to files that can be read by Google's TensorBoard.
+- PythonLogger and CsvLogger enhance Distiller's logger to include 1D weights.
 
 Note that not all loggers implement all logging methods.
 """
 
+import csv
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
 import distiller
 # pylint: disable=no-name-in-module
-from distiller.data_loggers.logger import DataLogger
+from distiller.data_loggers import logger as distiller_logger
 # pylint: enable=no-name-in-module
-from distiller.utils import density, norm_filters, sparsity, sparsity_2D, to_np
+from distiller.utils import density, norm_filters, size_to_str, sparsity, sparsity_2D, to_np
 
 
-class TensorBoardLogger(DataLogger):
+class TensorBoardLogger(distiller_logger.DataLogger):
     """
     TensorBoardLogger
     """
@@ -47,7 +57,15 @@ class TensorBoardLogger(DataLogger):
         self.log_gradients = False  # True
         self.logged_params = ['weight']  # ['weight', 'bias']
 
-    def log_training_progress(self, stats_dict, epoch, completed, total, freq):
+    def log_training_progress(
+            self,
+            stats_dict,
+            epoch,
+            completed,
+            total,
+            freq,  # pylint: disable=unused-argument
+    ):
+        """log_training_progress"""
         def total_steps(total, epoch, completed):
             return total*epoch + completed
 
@@ -59,16 +77,18 @@ class TensorBoardLogger(DataLogger):
                                    total_steps(total, epoch, completed))
 
     def log_activation_statistic(self, phase, stat_name, activation_stats, epoch):
+        """log_activation_statistic"""
         group = stat_name + '/activations/' + phase + "/"
         for tag, value in activation_stats.items():
             self.writer.add_scalar(group+tag, value, epoch)
 
     def log_weights_sparsity(self, model, epoch):
+        """log_weights_sparsity"""
         params_size = 0
         sparse_params_size = 0
 
         for name, param in model.state_dict().items():
-            if param.dim() in [2, 4]:
+            if param.dim() in [2, 3, 4]:
                 _density = density(param)
                 params_size += torch.numel(param)
                 sparse_params_size += param.numel() * _density
@@ -94,6 +114,7 @@ class TensorBoardLogger(DataLogger):
                                         list(to_np(norm_filters(param))), epoch)
 
     def log_weights_distribution(self, named_params, steps_completed):
+        """log_weights_distribution"""
         if named_params is None:
             return
         for tag, value in named_params:
@@ -103,7 +124,16 @@ class TensorBoardLogger(DataLogger):
             if self.log_gradients:
                 self.writer.add_histogram(tag+'/grad', to_np(value.grad), steps_completed)
 
-    def log_model_buffers(self, model, buffer_names, tag_prefix, epoch, completed, total, freq):
+    def log_model_buffers(
+            self,
+            model,
+            buffer_names,
+            tag_prefix,
+            epoch,
+            completed,
+            total,
+            freq,  # pylint: disable=unused-argument
+    ):
         """Logs values of model buffers.
 
         Notes:
@@ -136,3 +166,49 @@ class TensorBoardLogger(DataLogger):
             if values:
                 tag = '/'.join([tag_prefix, module_name])
                 self.writer.add_scalars(tag, values, total * epoch + completed)
+
+
+class PythonLogger(distiller_logger.PythonLogger):
+    """
+    Log using Python's facilities. Enhances Distiller's class to also log 1D weights.
+    """
+    def log_weights_sparsity(
+            self,
+            model,
+            epoch,  # pylint: disable=unused-argument
+    ):
+        """log_weights_sparsity"""
+        t, total = distiller.weights_sparsity_tbl_summary(model, return_total_sparsity=True,
+                                                          param_dims=[2, 3, 4])
+        self.pylogger.info("\nParameters:\n" + str(t))
+        self.pylogger.info('Total sparsity: {:0.2f}\n'.format(total))
+
+
+class CsvLogger(distiller_logger.CsvLogger):
+    """
+    Log as CSV. Enhances Distiller's class to also log 1D weights.
+    """
+    def log_weights_sparsity(
+            self,
+            model,
+            epoch,  # pylint: disable=unused-argument
+    ):
+        """log_weights_sparsity"""
+        fname = self.get_fname('weights_sparsity')
+        with open(fname, 'w') as csv_file:
+            params_size = 0
+            sparse_params_size = 0
+
+            writer = csv.writer(csv_file)
+            # write the header
+            writer.writerow(['parameter', 'shape', 'volume', 'sparse volume', 'sparsity level'])
+
+            for name, param in model.state_dict().items():
+                if param.dim() in [2, 3, 4]:
+                    _density = density(param)
+                    params_size += torch.numel(param)
+                    sparse_params_size += param.numel() * _density
+                    writer.writerow([name, size_to_str(param.size()),
+                                     torch.numel(param),
+                                     int(_density * param.numel()),
+                                     (1-_density)*100])
