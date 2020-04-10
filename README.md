@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_April 8, 2020_
+_April 9, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository._
@@ -423,6 +423,8 @@ When the _yellow_ output pixel is produced, the first (_black_) pixel of the inp
 
 The number of discarded pixels is network specific and dependent on pooling strides and the types of convolution. In general, streaming mode is only useful for networks where the output data dimensions decrease from layer to layer (for example, by using a pooling stride).
 
+*Note: Streaming mode requires the use of FIFOs.*
+
 #### FIFOs
 
 Since the data memory instances are single-port memories, software would have to temporarily disable the accelerator in order to feed it new data. Using  FIFOs, software can input available data while the accelerator is running. The accelerator will autonomously fetch data from the FIFOs when needed, and stall (pause) when no enough data is available.
@@ -433,9 +435,13 @@ The AI85/AI86 accelerator has two types of FIFO:
 
 There are four dedicated FIFOs connected to processors 0-3, 16-19, 32-35, and 48-51, supporting up to 16 input channels (in HWC format) or four channels (CHW format). These FIFOs work when used from the ARM Cortex-M4 core and from the RISC-V core.
 
+The standard FIFOs are selected using the `--fifo` argument for `cnn-gen.py`.
+
 ##### Fast FIFO
 
 The fast FIFO is only available from the RISC-V core, and runs synchronously with the RISC-V for increased throughput. It supports up to four input channels (HWC format) or a single channel (CHW format). The fast FIFO is connected to processors 0, 1, 2, 3 or 0, 16, 32, 48.
+
+The fast FIFO is selected using the `--fast-fifo` argument for `cnn-gen.py`.
 
 ### Accelerator Limits
 
@@ -903,12 +909,13 @@ In all cases, ensure that the quantizer writes out a checkpoint file that the Ne
 
 The following step is needed to add new network models:
 
-1. Implement a new network model (see `models/ai84net.py` for an example). The file must include the `models` data structure that describes the model (name, inputs, and dimensions). `models` can list multiple models in the same file.
+1. Implement a new network model (see `models/ai84net.py` for an example). The file must include the `models` data structure that describes the model (name, minimum number of inputs, and whether it can handle 1D or 2D inputs). `models` can list multiple models in the same file.
 
 The following steps are needed for new data formats and datasets:
 
 1. Develop a data loader in PyTorch, see https://pytorch.org/tutorials/beginner/data_loading_tutorial.html. See `datasets/mnist.py` for an example.
-3. Add the new data loader to a new file in the `datasets`  directory (for example `datasets/mnist.py`). The file must include the `datasets` data structure that describes the dataset and points to the new loader. `datasets` can list multiple datasets in the same file. The `regression` key in the structure can be set to `True` to automatically select the `--regression` command line argument.
+2. Add the new data loader to a new file in the `datasets`  directory (for example `datasets/mnist.py`). The file must include the `datasets` data structure that describes the dataset and points to the new loader. `datasets` can list multiple datasets in the same file. The `regression` key in the structure can be set to `True` to automatically select the `--regression` command line argument.
+   The `input` key describes the dimensionality of the data, and the first dimension is passed as `num_channels` to the model, whereas the remaining dimensions are passed as `dimension`. For example, `'input': (1, 28, 28)` will be passed to the model as `num_channels=1` and `dimensions=(28,28)`.
 3. The training/verification data is located (by default) in `data/DataSetName`, for example `data/CIFAR10`. The location can be overridden with the `--data target_directory` command line argument. The data loader is expected to download and preprocess the datasets as needed and install everything in the specified location.
 
 Train the new network/new dataset. See `go_mnist.sh` for a command line example.
@@ -1196,7 +1203,9 @@ Example:
 
 ##### `in_dim` (Optional)
 
-`in_dim` specifies the dimensions of the input data. This is usually automatically computed based on the output of the previous layer or the layer(s) referenced by `in_sequences`. This key allows overriding of the automatically calculated dimensions. See also: `in_channels`.
+`in_dim` specifies the dimensions of the input data. This is usually automatically computed based on the output of the previous layer or the layer(s) referenced by `in_sequences`. This key allows overriding of the automatically calculated dimensions. `in_dim` must be used when changing from 1D to 2D data or vice versa.
+
+See also: `in_channels`.
 
 Example:
   `in_dim: [64, 64]` 
