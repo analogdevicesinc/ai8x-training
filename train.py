@@ -92,6 +92,7 @@ from distiller.quantization.range_linear import PostTrainLinearQuantizer
 # pylint: enable=no-name-in-module
 import examples.auto_compression.amc as adc
 import ai8x
+import datasets
 import nnplot
 import parsecmd
 # from range_linear_ai84 import PostTrainLinearQuantizerAI84
@@ -223,6 +224,8 @@ def main():
     dimensions = selected_source['input']
     args.dimensions = dimensions
     args.datasets_fn = selected_source['loader']
+    args.visualize_fn = selected_source['visualize'] \
+        if 'visualize' in selected_source else datasets.visualize_data
 
     if args.regression and args.display_confusion:
         raise ValueError('ERROR: Argument --confusion cannot be used with regression')
@@ -828,16 +831,9 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                     # Get the class labels for each image
                     class_labels = [args.labels[lab] for lab in labels]
 
-                    # Log embeddings
-                    if len(images.shape) == 4 \
-                       and images.shape[1] in [1, 3] and images.shape[2] == images.shape[3]:
-                        # Only add images for 2D, RGB or monochrome data when width == height
-                        if args.act_mode_8bit:
-                            images /= 255.0  # scale for display
-                    else:
-                        images = None  # don't display images
                     tflogger.writer.add_embedding(features, metadata=class_labels,
-                                                  label_img=images, global_step=epoch,
+                                                  label_img=args.visualize_fn(images, args),
+                                                  global_step=epoch,
                                                   tag='verification/embedding')
 
     if args.csv_prefix is not None:
