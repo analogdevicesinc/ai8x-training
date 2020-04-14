@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_April 9, 2020_
+_April 14, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository._
@@ -58,6 +58,7 @@ This software consists of two related projects:
   - [Fully Connected (Linear) Layers](#fully-connected-linear-layers)
   - [Upsampling (Fractionally-Strided 2D Convolutions)](#upsampling-fractionally-strided-2d-convolutions)
 - [Model Training and Quantization](#model-training-and-quantization)
+    - [Observing GPU Resources](#observing-gpu-resources)
     - [Custom nn.Modules](#custom-nnmodules)
   - [Model Comparison and Feature Attribution](#model-comparison-and-feature-attribution)
     - [TensorBoard](#tensorboard)
@@ -66,6 +67,10 @@ This software consists of two related projects:
   - [Quantization](#quantization)
   - [Alternative Quantization Approaches](#alternative-quantization-approaches)
   - [Adding New Network Models and New Datasets to the Training Process](#adding-new-network-models-and-new-datasets-to-the-training-process)
+    - [Data Loader](#data-loader)
+    - [`datasets` Data Structure](#datasets-data-structure)
+    - [Training and Verification Data](#training-and-verification-data)
+    - [Training Process](#training-process)
 - [Network Loader](#network-loader)
   - [Network Loader Configuration Language](#network-loader-configuration-language)
     - [Global Configuration](#global-configuration)
@@ -160,11 +165,12 @@ $ git config --global user.name "First Last"
 
 ### Prerequisites
 
+This software supports only Ubuntu 18.04 LTS (Ubuntu 20.04 LTS is not yet supported by CUDA). The server version is sufficient, see https://ubuntu.com/download/server.
+
 When going beyond simple tests, model training requires CUDA hardware acceleration (the network loader does not require CUDA).
 
-Install CUDA 10.1 and CUDNN (PyTorch 1.3.1 does not support CUDA 10.2):
-https://developer.nvidia.com/cuda-downloads
-https://developer.nvidia.com/cudnn
+Install CUDA 10.1 (PyTorch 1.3.1 does not support CUDA 10.2):
+https://developer.nvidia.com/cuda-10.1-download-archive-update2
 
 *Note: When using multiple GPUs, the software will automatically use all available GPUs and distribute the workload. To prevent this, either use the `--gpus` command line argument, or set the `CUDA_VISIBLE_DEVICES` environment variable.*
 
@@ -172,13 +178,13 @@ https://developer.nvidia.com/cudnn
 
 On a shared (multi-user) system that has previously been set up , only local installation is needed. CUDA and any `apt-get` or `brew` tasks are not necessary.
 
-The `screen` command can be used inside a remote terminal to disconnect a session from the controlling terminal, so that a long running training session doesn’t abort due to network issues, or local power saving.
+The `screen` command can be used inside a remote terminal to disconnect a session from the controlling terminal, so that a long running training session doesn’t abort due to network issues, or local power saving. In addition, screen can log all console output to a text file.
 
 Example:
 
 ```shell
 $ ssh targethost
-targethost$ screen # or screen -r to resume, screen -list to list
+targethost$ screen -L # or screen -r to resume, screen -list to list
 targethost$
 Ctrl+A,D to disconnect
 ```
@@ -193,7 +199,7 @@ The following software is optional, and can be replaced with other similar softw
 2. Typora (Markdown Editor, Free during beta), http://typora.io
 3. CoolTerm (Serial Terminal, Free), http://freeware.the-meiers.org
    or Serial ($30), https://apps.apple.com/us/app/serial/id877615577?mt=12
-4. Git Fork (Graphical Git Client, Free), https://git-fork.com
+4. Git Fork (Graphical Git Client, $50), https://git-fork.com
 5. Beyond Compare (Diff and Merge Tool, $60), https://scootersoftware.com
 
 ### Project Installation
@@ -317,7 +323,7 @@ $ curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
 $ echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
 $ curl -sL https://deb.nodesource.com/setup_13.x | sudo -E bash -
 $ sudo apt-get update
-$ sudo apt-get install nodejs yarn
+$ sudo apt-get install -y nodejs yarn
 ```
 
 On both Mac and Linux:
@@ -789,7 +795,24 @@ The main training software is `train.py`. It drives the training aspects includi
 The `ai84net.py` file contains models that fit into AI84’s weight memory. These models rely on the AI84 hardware operators that are defined in `ai8x.py`.
 
 To train the FP32 model for FashionMIST, run `go_fashionmnist.sh` in the `ai8x-training` project. This script will place checkpoint files into the log directory. Training makes use of the Distiller framework, but the `train.py` software has been modified slightly to improve it and add some AI8X specifics.
-*Note: `nvidia-smi` can be used in a different terminal during training to examine the GPU resource usage of the training process.*
+
+#### Observing GPU Resources
+
+`nvidia-smi` can be used in a different terminal during training to examine the GPU resource usage of the training process. In the following example, the GPU is using 100% of its compute capabilities, but not all of the available memory. In this particular case, the batch size could be increased to use more memory.
+
+```
+$ nvidia-smi
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 430.50       Driver Version: 430.50       CUDA Version: 10.1     |
+|-------------------------------+----------------------+----------------------+
+| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+|===============================+======================+======================|
+|   0  GeForce RTX 208...  Off  | 00000000:01:00.0  On |                  N/A |
+| 39%   65C    P2   152W / 250W |   3555MiB / 11016MiB |    100%      Default |
++-------------------------------+----------------------+----------------------+
+...
+```
 
 #### Custom nn.Modules
 
@@ -800,6 +823,8 @@ The `ai8x.py` file contains customized PyTorch classes (subclasses of `torch.nn.
 3. Support for quantized operation (when using the `-8` command line argument).
 
 Note that `torch.nn.Dropout` is not used during inference, and can therefore be used for training without problems.
+
+When using `reshape()` or `view()`, both the batch dimension (first dimension) and the channel dimension (second dimension) must stay constant. Modifying the with/height dimensions or converting between 1D data and 2D data is supported (where H×W=L). Example: `x = x.view(x.size(0), -1)` changes from 2D to 1D data (“flattens” the data).
 
 ### Model Comparison and Feature Attribution
 
@@ -909,14 +934,35 @@ In all cases, ensure that the quantizer writes out a checkpoint file that the Ne
 
 The following step is needed to add new network models:
 
-1. Implement a new network model (see `models/ai84net.py` for an example). The file must include the `models` data structure that describes the model (name, minimum number of inputs, and whether it can handle 1D or 2D inputs). `models` can list multiple models in the same file.
+* Implement a new network model based on the constraints described earlier, see [Custom nn.Modules](#custom-nnmodules) (and `models/ai84net.py` for an example). The file must include the `models` data structure that describes the model (name, minimum number of inputs, and whether it can handle 1D or 2D inputs). `models` can list multiple models in the same file.
 
 The following steps are needed for new data formats and datasets:
 
-1. Develop a data loader in PyTorch, see https://pytorch.org/tutorials/beginner/data_loading_tutorial.html. See `datasets/mnist.py` for an example.
-2. Add the new data loader to a new file in the `datasets`  directory (for example `datasets/mnist.py`). The file must include the `datasets` data structure that describes the dataset and points to the new loader. `datasets` can list multiple datasets in the same file. The `regression` key in the structure can be set to `True` to automatically select the `--regression` command line argument.
-   The `input` key describes the dimensionality of the data, and the first dimension is passed as `num_channels` to the model, whereas the remaining dimensions are passed as `dimension`. For example, `'input': (1, 28, 28)` will be passed to the model as `num_channels=1` and `dimensions=(28,28)`.
-3. The training/verification data is located (by default) in `data/DataSetName`, for example `data/CIFAR10`. The location can be overridden with the `--data target_directory` command line argument. The data loader is expected to download and preprocess the datasets as needed and install everything in the specified location.
+#### Data Loader
+
+Develop a data loader in PyTorch, see https://pytorch.org/tutorials/beginner/data_loading_tutorial.html. See `datasets/mnist.py` for an example.
+
+The data loader must include a loader function, for example `mnist_get_datasets(data, load_train=True, load_test=True)`. `data` is a tuple of the specified data directory and the program arguments, and the two bools specify whether training and/or test data should be loaded.
+
+The data loader is expected to download and preprocess the datasets as needed and install everything in the specified location.
+
+The loader returns a tuple of two PyTorch Datasets for training and test data.
+
+#### `datasets` Data Structure
+
+Add the new data loader to a new file in the `datasets`  directory (for example `datasets/mnist.py`). The file must include the `datasets` data structure that describes the dataset and points to the new loader. `datasets` can list multiple datasets in the same file.
+
+The `input` key describes the dimensionality of the data, and the first dimension is passed as `num_channels` to the model, whereas the remaining dimensions are passed as `dimension`. For example, `'input': (1, 28, 28)` will be passed to the model as `num_channels=1` and `dimensions=(28,28)`.
+
+The optional `regression` key in the structure can be set to `True` to automatically select the `--regression` command line argument. `regression` defaults to `False`.
+
+The optional `visualize` key can point to a custom visualization function used when creating `--embedding`. The input to the function (format NCHW for 2D data, or NCL for 1D data) is a batch of data (with N ≤ 100). The default handles square RGB or monochrome images. For any other data, a custom function must be supplied.
+
+#### Training and Verification Data
+
+The training/verification data is located (by default) in `data/DataSetName`, for example `data/CIFAR10`. The location can be overridden with the `--data target_directory` command line argument. 
+
+#### Training Process
 
 Train the new network/new dataset. See `go_mnist.sh` for a command line example.
 
@@ -1025,6 +1071,8 @@ This key allows overriding of the processing sequence. The default is `0` for th
 ##### `processors` (Mandatory)
 
 `processors` specifies which processors will handle the input data. The processor map must match the number of input channels, and the input data format. For example, in CHW format, processors must be attached to different data memory instances.
+
+*Note: When using multi-pass (i.e., using more than 64 channels), the number processors is an integer division of the channel count, rounded up. For example, 60 processors are specified for 120 channels.*
 
 Example:
 	 `processors: 0x0000000000000111`
@@ -1678,6 +1726,7 @@ To pull the latest code, in either project use:
 ```shell
 $ git pull
 $ git submodule update --init
+$ pip3 install -U pip setuptools
 $ pip3 install -U -r requirements.txt # or requirements-[cpu,cuda].txt
 ```
 
