@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_April 14, 2020_
+_April 15, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository._
@@ -60,6 +60,8 @@ This software consists of two related projects:
 - [Model Training and Quantization](#model-training-and-quantization)
     - [Observing GPU Resources](#observing-gpu-resources)
     - [Custom nn.Modules](#custom-nnmodules)
+      - [Dropout](#dropout)
+      - [view and reshape](#view-and-reshape)
   - [Model Comparison and Feature Attribution](#model-comparison-and-feature-attribution)
     - [TensorBoard](#tensorboard)
     - [Manifold](#manifold)
@@ -156,7 +158,7 @@ $ git clone https://first.last@gerrit.maxim-ic.com:8443/ai8x-training
 $ git clone https://first.last@gerrit.maxim-ic.com:8443/ai8x-synthesis
 ```
 
-If the local git environment has not been previously configured, add the following commands:
+If the local git environment has not been previously configured, add the following commands to configure e-mail and name. The e-mail must match Gerrit (including upper/lower case):
 
 ```shell
 $ git config --global user.email "first.last@maximintegrated.com"
@@ -822,9 +824,21 @@ The `ai8x.py` file contains customized PyTorch classes (subclasses of `torch.nn.
 2. Rounding and clipping that matches the hardware.
 3. Support for quantized operation (when using the `-8` command line argument).
 
-Note that `torch.nn.Dropout` is not used during inference, and can therefore be used for training without problems.
+##### Dropout
 
-When using `reshape()` or `view()`, both the batch dimension (first dimension) and the channel dimension (second dimension) must stay constant. Modifying the with/height dimensions or converting between 1D data and 2D data is supported (where H×W=L). Example: `x = x.view(x.size(0), -1)` changes from 2D to 1D data (“flattens” the data).
+`torch.nn.Dropout` is not used during inference, and can therefore be used for training without problems.
+
+##### view and reshape
+
+There are two supported cases for  `view()` or `reshape()`.
+
+1. Conversion between 1D data and 2D data: Both the batch dimension (first dimension) and the channel dimension (second dimension) must stay the same. The height/width of the 2D data must match the length of the 1D data (i.e., H×W = L).
+   Example:
+       `x = x.view(x.size(0), x.size(1), -1)  # 2D to 1D`
+   *Note: `x.size()` and `x.shape[]` are equivalent.*
+2. Conversion from 1D and 2D to Fully Connected (“flattening”): The batch dimension (first dimension) must stay the same, and the other dimensions are combined (i.e., M = C×H×W or M = C×L).
+   Example: 
+       `x = x.view(x.size(0), -1)  # Flatten`
 
 ### Model Comparison and Feature Attribution
 
