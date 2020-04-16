@@ -93,7 +93,6 @@ from distiller.quantization.range_linear import PostTrainLinearQuantizer
 import examples.auto_compression.amc as adc
 import ai8x
 import datasets
-import input_shape
 import nnplot
 import parsecmd
 # from range_linear_ai84 import PostTrainLinearQuantizerAI84
@@ -113,10 +112,6 @@ weight_mean = None
 
 def main():
     """main"""
-    # Override distiller's input shape detection. This is not a very clean way to do it since
-    # we're replacing a protected member.
-    distiller.utils._validate_input_shape = input_shape.get  # pylint: disable=protected-access
-
     script_dir = os.path.dirname(__file__)
     global msglogger  # pylint: disable=global-statement
 
@@ -228,7 +223,12 @@ def main():
         args.regression = True
     dimensions = selected_source['input']
     args.dimensions = dimensions
-    input_shape.dimensions = dimensions
+    # Override distiller's input shape detection. This is not a very clean way to do it since
+    # we're replacing a protected member.
+    distiller.utils._validate_input_shape = (  # pylint: disable=protected-access
+        lambda _a, _b: (1, ) + dimensions
+    )
+
     args.datasets_fn = selected_source['loader']
     args.visualize_fn = selected_source['visualize'] \
         if 'visualize' in selected_source else datasets.visualize_data
