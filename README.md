@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_April 15, 2020_
+_April 16, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository._
@@ -833,9 +833,11 @@ The `ai8x.py` file contains customized PyTorch classes (subclasses of `torch.nn.
 There are two supported cases for  `view()` or `reshape()`.
 
 1. Conversion between 1D data and 2D data: Both the batch dimension (first dimension) and the channel dimension (second dimension) must stay the same. The height/width of the 2D data must match the length of the 1D data (i.e., H×W = L).
-   Example:
+   Examples:
        `x = x.view(x.size(0), x.size(1), -1)  # 2D to 1D`
+       `x = x.view(x.shape[0], x.shape[1], 16, -1)  # 1D to 2D`
    *Note: `x.size()` and `x.shape[]` are equivalent.*
+When reshaping data, `in_dim:` must be specified in the model description file.
 2. Conversion from 1D and 2D to Fully Connected (“flattening”): The batch dimension (first dimension) must stay the same, and the other dimensions are combined (i.e., M = C×H×W or M = C×L).
    Example: 
        `x = x.view(x.size(0), -1)  # Flatten`
