@@ -7,7 +7,7 @@
 #
 ###################################################################################################
 """
-Contains the limits of the AI84/AI85/AI86 implementations and custom PyTorch modules that take
+Contains the limits of the AI84/AI85/AI87 implementations and custom PyTorch modules that take
 the limits into account.
 """
 from torch.autograd import Function
@@ -41,10 +41,9 @@ class QuantizationFunction(Function):
     def forward(ctx, x, bits=None):  # pylint: disable=arguments-differ
         if bits > 1:
             return x.add(.5).div(2**(bits-1)).add(.5).floor()
-        elif bits < 1:
+        if bits < 1:
             return x.mul(2**(1-bits)).add(.5).floor()
-        else:
-            return x.add(.5).floor()
+        return x.add(.5).floor()
 
     @staticmethod
     def backward(ctx, x):  # pylint: disable=arguments-differ
@@ -556,6 +555,14 @@ class DevAI85(Device):
         return self.__class__.__name__
 
 
+class DevAI87(DevAI85):
+    """
+    Implementation limits for AI87. For now, the same as AI85.
+    """
+    def __str__(self):
+        return self.__class__.__name__
+
+
 def set_device(
         device,
         simulate,
@@ -574,7 +581,7 @@ def set_device(
         dev = DevAI84(simulate, round_avg)
     elif device == 85:
         dev = DevAI85(simulate, round_avg)
-    elif device == 86:
-        dev = DevAI85(simulate, round_avg)  # For now, no differences from AI85
+    elif device == 87:
+        dev = DevAI87(simulate, round_avg)
     else:
         raise ValueError(f'Unkown device {device}.')
