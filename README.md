@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_April 16, 2020_
+_April 20, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository._
@@ -118,7 +118,7 @@ This software consists of two related projects:
 - [Embedded Software Development Kits (SDKs)](#embedded-software-development-kits-sdks)
   - [AI84 SDK](#ai84-sdk)
   - [AI85 SDK](#ai85-sdk)
-- [AI85/AI86 Changes](#ai85ai86-changes)
+- [AI85/AI87 Changes](#ai85ai87-changes)
 - [AHB Memory Addresses](#ahb-memory-addresses)
   - [Data memory](#data-memory-1)
   - [TRAM](#tram)
@@ -270,7 +270,7 @@ For all other systems:
 (ai8x-training) $ pip3 install -r requirements-cpu.txt
 ```
 
-*Note*: On x86 systems, the pre-built TensorFlow wheels require AVX (on macOS, run `sysctl -n machdep.cpu.features` to find out, on Linux use `cat /proc/cpuinfo | grep avx`).
+*Note*: On x86_64 systems, the pre-built TensorFlow wheels require AVX (on macOS, run `sysctl -n machdep.cpu.features` to find out, on Linux use `cat /proc/cpuinfo | grep avx`).
 Running a TensorFlow wheel that requires AVX instructions on unsupported CPUs results in `Illegal instruction: 4` on startup.
 
 #### Building TensorFlow (for old CPUs)
@@ -367,7 +367,7 @@ AI8X are embedded accelerators. Unlike GPUs, AI8X do not have gigabytes of memor
 
 A typical CNN operation consists of pooling followed by a convolution. While these are traditionally expressed as separate layers, pooling can be done “in-flight” on AI8X for greater efficiency.
 
-To minimize data movement, the accelerator is optimized for convolutions with in-flight pooling on a sequence of layers. AI85 and AI86 also support in-flight element-wise operations, pass-through layers and 1D convolutions (without element-wise operations):
+To minimize data movement, the accelerator is optimized for convolutions with in-flight pooling on a sequence of layers. AI85 and AI87 also support in-flight element-wise operations, pass-through layers and 1D convolutions (without element-wise operations):
 
 ![CNNInFlight](docs/CNNInFlight.png)
 
@@ -415,7 +415,7 @@ The data memory instances inside the accelerator are single-port memories. This 
 
 ### Streaming Mode
 
-On AI85/AI86, the machine also implements a streaming mode. Streaming allows input data dimensions that exceed the available per-channel data memory in the accelerator.
+On AI85/AI87, the machine also implements a streaming mode. Streaming allows input data dimensions that exceed the available per-channel data memory in the accelerator.
 
 The following illustration shows the basic principle: In order to produce the first output pixel of the second layer, not all data needs to be present at the input. In the example, a 5×5 input needs to be available.
 
@@ -437,19 +437,19 @@ The number of discarded pixels is network specific and dependent on pooling stri
 
 Since the data memory instances are single-port memories, software would have to temporarily disable the accelerator in order to feed it new data. Using  FIFOs, software can input available data while the accelerator is running. The accelerator will autonomously fetch data from the FIFOs when needed, and stall (pause) when no enough data is available.
 
-The AI85/AI86 accelerator has two types of FIFO:
+The AI85/AI87 accelerator has two types of FIFO:
 
 ##### Standard FIFOs
 
 There are four dedicated FIFOs connected to processors 0-3, 16-19, 32-35, and 48-51, supporting up to 16 input channels (in HWC format) or four channels (CHW format). These FIFOs work when used from the ARM Cortex-M4 core and from the RISC-V core.
 
-The standard FIFOs are selected using the `--fifo` argument for `cnn-gen.py`.
+The standard FIFOs are selected using the `--fifo` argument for `ai8xize.py`.
 
 ##### Fast FIFO
 
 The fast FIFO is only available from the RISC-V core, and runs synchronously with the RISC-V for increased throughput. It supports up to four input channels (HWC format) or a single channel (CHW format). The fast FIFO is connected to processors 0, 1, 2, 3 or 0, 16, 32, 48.
 
-The fast FIFO is selected using the `--fast-fifo` argument for `cnn-gen.py`.
+The fast FIFO is selected using the `--fast-fifo` argument for `ai8xize.py`.
 
 ### Accelerator Limits
 
@@ -658,7 +658,7 @@ The following example shows the weight memory layout for two layers. The first l
 
 ### Weight Storage Example
 
-The file `ai84net.xlsx` contains an example for a single-channel CHW input using the `AI85Net5` network (this example also supports up to four channels in HWC).
+The file `ai84net.xlsx` contains an example for a single-channel CHW input using the `AI84Net5` network (this example also supports up to four channels in HWC).
 
 *Note*: As described above, multiple CHW channels must be loaded into separate memory instances. When using a large number of channels, this can cause “holes” in the processor map, which in turn can cause subsequent layers’ kernels to require padding.
 
@@ -774,7 +774,7 @@ The AI85 hardware does not support arbitrary network parameters. Specifically,
 
 ### Fully Connected (Linear) Layers
 
-On AI85/AI86, m×n fully connected layers can be realized in hardware by “flattening” 2D input data into m channels of 1×1 input data. The hardware will produce n channels of 1×1 output data. When chaining multiple fully connected layers, the flattening step is omitted. The following picture shows 2D data, the equivalent flattened 1D data, and the output.
+On AI85/AI87, m×n fully connected layers can be realized in hardware by “flattening” 2D input data into m channels of 1×1 input data. The hardware will produce n channels of 1×1 output data. When chaining multiple fully connected layers, the flattening step is omitted. The following picture shows 2D data, the equivalent flattened 1D data, and the output.
 
 For AI85, both m and n must not be larger than 16.
 
@@ -782,7 +782,7 @@ For AI85, both m and n must not be larger than 16.
 
 ### Upsampling (Fractionally-Strided 2D Convolutions)
 
-On AI85/AI86, the hardware supports 2D upsampling (“fractionally-strided convolutions”, sometimes called “deconvolution” even though this is not strictly mathematically correct). The PyTorch equivalent is `ConvTranspose2D` with a stride of 2.
+On AI85/AI87, the hardware supports 2D upsampling (“fractionally-strided convolutions”, sometimes called “deconvolution” even though this is not strictly mathematically correct). The PyTorch equivalent is `ConvTranspose2D` with a stride of 2.
 
 The example shows a fractionally-strided convolution with a stride of 2, pad of 1, and a 3×3 kernel. This “upsamples” the input dimensions from 3×3 to output dimensions of 6×6.
 
@@ -912,7 +912,7 @@ This will create a plot with a random selection of 3 test images. The plot shows
 
 There are two main approaches to quantization — quantization-aware training and post-training quantization.
 
-Since performance for 8-bit weights is decent enough, _naive post-training quantization_ is used in the `ai8xize.py` software. While several approaches are implemented, a simple fixed scale factor is used based on experimental results. The approach requires the clamping operators implemented in `ai8x.py`.
+Since performance for 8-bit weights is decent enough, _naive post-training quantization_ is used in the `quantize.py` software. While several approaches are implemented, a simple fixed scale factor is used based on experimental results. The approach requires the clamping operators implemented in `ai8x.py`.
 
 The software quantizes an existing PyTorch checkpoint file and writes out a new PyTorch checkpoint file that can then be used to evaluate the quality of the quantized network, using the same PyTorch framework used for training. The same new checkpoint file will also be used to feed the [Network Loader](#Network-Loader).
 
@@ -921,7 +921,7 @@ Copy the working and tested weight files into the `trained/` folder of the `ai8x
 Example:
 
 ```shell
-(ai8x-synthesis) $ ./ai8xize.py ../ai8x-training/logs/path-to-checkpoint/checkpoint.pth.tar trained/ai84-fashionmnist.pth.tar -v
+(ai8x-synthesis) $ ./quantize.py ../ai8x-training/logs/path-to-checkpoint/checkpoint.pth.tar trained/ai84-fashionmnist.pth.tar -v
 ```
 
 To evaluate the quantized network:
@@ -990,8 +990,8 @@ _The network loader currently depends on PyTorch and Nervana’s Distiller. This
 
 The network loader creates C code that programs the AI8X (for embedded execution, or RTL simulation, or CMSIS NN comparison). Additionally, the generated code contains sample input data and the expected output for the sample, as well as code that verifies the expected output.
 
-The `cnn-gen.py` program needs two inputs:
-1. A quantized checkpoint file, generated by the AI84 model quantization program `ai8xize.py`.
+The `ai8xize.py` program needs two inputs:
+1. A quantized checkpoint file, generated by the AI84 model quantization program `quantize.py`.
 2. A YAML description of the network.
 
 An example network description for the ai84net5 architecture and FashionMNIST is shown below:
@@ -1032,7 +1032,7 @@ layers:
 To generate an embedded AI84 demo in the `demos/FashionMNIST/` folder, use the following command line:
 
 ```shell
-$ ./cnn-gen.py --verbose -L --top-level cnn --test-dir demos --prefix FashionMNIST --checkpoint-file trained/ai84-mnist.pth.tar --config-file networks/fashionmnist-chw.yaml --fc-layer --embedded-code
+$ ./ai8xize.py --verbose -L --top-level cnn --test-dir demos --prefix FashionMNIST --checkpoint-file trained/ai84-mnist.pth.tar --config-file networks/fashionmnist-chw.yaml --fc-layer --embedded-code
 ```
 
 Running this command will combine the network described above with a fully connected software classification layer. The generated code will include all loading, unloading, and configuration steps.
@@ -1040,7 +1040,7 @@ Running this command will combine the network described above with a fully conne
 To generate an RTL simulation for the same network and sample data in the directory `tests/fmnist-....` (where .... is an autogenerated string based on the network topology), use:
 
 ```shell
-$ ./cnn-gen.py --verbose --autogen rtlsim --top-level cnn -L --test-dir rtlsim --prefix fmnist --checkpoint-file trained/ai84-fashionmnist.pth.tar --config-file networks/fashionmnist-chw.yaml
+$ ./ai8xize.py --verbose --autogen rtlsim --top-level cnn -L --test-dir rtlsim --prefix fmnist --checkpoint-file trained/ai84-fashionmnist.pth.tar --config-file networks/fashionmnist-chw.yaml
 ```
 
 ### Network Loader Configuration Language
@@ -1306,7 +1306,7 @@ Example:
 
 #### Example
 
-The following shows an example for a single “Fire” operation, the AI85/AI86 hardware layer numbers and its YAML description.
+The following shows an example for a single “Fire” operation, the AI85/AI87 hardware layer numbers and its YAML description.
 
 <img src="docs/fireexample.png" alt="Fire example" style="zoom:35%;" />
 
@@ -1441,13 +1441,13 @@ It is a good idea to pick a sample where the quantized model computes the correc
 
 #### Generating C Code
 
-Run `cnn-gen.py` with the new network and the new sample data. See `gen-demos-ai85.sh` for examples.
+Run `ai8xize.py` with the new network and the new sample data. See `gen-demos-ai85.sh` for examples.
 
 ### Starting an Inference, Waiting for Completion, Multiple Inferences in Sequence
 
 An inference is started by loading registers and kernels, loading the input, and enabling processing.  This code is automatically generated—see the `cnn_load()`, `load_kernels()`, and `load_input()` functions. The sample data can be used as a self-checking feature on device power-up since the output for the sample data is known.
 
-The AI85/AI86 accelerator can generate an interrupt on completion, and it will set a status bit (see `cnn_wait()`). The resulting data can now be unloaded from the accelerator (code for this is also auto-generated in `unload()`).
+The AI85/AI87 accelerator can generate an interrupt on completion, and it will set a status bit (see `cnn_wait()`). The resulting data can now be unloaded from the accelerator (code for this is also auto-generated in `unload()`).
 
 To run another inference, ensure all groups are disabled (stopping the state machine, as shown in `cnn_load()`). Next, load the new input data and start processing.
 
@@ -1467,12 +1467,12 @@ The `tornadocnn.h` header file is included which helps both embedded examples as
 For example, the following command would generate code that performs a CIFAR-10 inference from the `trained/ai84-cifar10.pth.tar` checkpoint file and the `cifar10-hwc.yaml` network description file:
 
 ```shell
-(ai8x-synthesis) $ ./cnn-gen.py --top-level cnn --test-dir demos --prefix CIFAR-10-Arm --checkpoint-file trained/ai84-cifar10.pth.tar --config-file networks/cifar10-hwc.yaml --fc-layer --embedded-code --cmsis-software-nn
+(ai8x-synthesis) $ ./ai8xize.py --top-level cnn --test-dir demos --prefix CIFAR-10-Arm --checkpoint-file trained/ai84-cifar10.pth.tar --config-file networks/cifar10-hwc.yaml --fc-layer --embedded-code --cmsis-software-nn
 ```
 
 When compiling the CMSIS code, it may be necessary to disable compiler optimizations.
 
-*Note*: The CMSIS code generator does not currently support the extended features of AI85 and AI86.
+*Note*: The CMSIS code generator does not currently support the extended features of AI85 and AI87.
 
 ---
 
@@ -1526,11 +1526,11 @@ In order for the debugger to work, the OpenOCD `max32xxx` branch from https://gi
 
 ---
 
-## AI85/AI86 Changes
+## AI85/AI87 Changes
 
-The `ai8xize.py` quantization tool and the `cnn-gen.py` network generator both have an `--ai85` command line argument that enables code generation for the AI85 and AI86.
+The `quantize.py` quantization tool and the `ai8xize.py` network generator both have a `--device` command line argument that selects the target device.
 
-The `--ai85` option enables:
+The `--device 85` option enables:
 * Bias shift << 7.
 * Per-layer support for 1, 2 and 4-bit weight sizes in addition to 8-bit weights (this is supported using the `quantization` keyword in the configuration file, and the configuration file can also be read by the quantization tool).
 * A programmable shift left/shift right at the output of the convolution that allows for better use of the entire range of weight bits (`output_shift`).
