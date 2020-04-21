@@ -12,122 +12,7 @@ This software consists of two related projects:
 
 ---
 
-## Contents
-
-- [Contents](#contents)
-- [Overview](#overview)
-- [Installation](#installation)
-  - [File System Layout](#file-system-layout)
-  - [Upstream Code](#upstream-code)
-  - [Prerequisites](#prerequisites)
-    - [Shared (Multi-User) and Remote Systems](#shared-multi-user-and-remote-systems)
-    - [Recommended Software](#recommended-software)
-  - [Project Installation](#project-installation)
-    - [Windows Systems](#windows-systems)
-    - [Creating the Virtual Environment](#creating-the-virtual-environment)
-    - [Building TensorFlow (for old CPUs)](#building-tensorflow-for-old-cpus)
-    - [Nervana Distiller](#nervana-distiller)
-    - [Uber Manifold](#uber-manifold)
-    - [Synthesis Project](#synthesis-project)
-- [AI8X Hardware and Resources](#ai8x-hardware-and-resources)
-  - [Overview](#overview-1)
-  - [Data, Weights, and Processors](#data-weights-and-processors)
-    - [Weight Memory](#weight-memory)
-    - [Data Memory](#data-memory)
-  - [Streaming Mode](#streaming-mode)
-    - [FIFOs](#fifos)
-      - [Standard FIFOs](#standard-fifos)
-      - [Fast FIFO](#fast-fifo)
-  - [Accelerator Limits](#accelerator-limits)
-  - [Number Format](#number-format)
-    - [Rounding](#rounding)
-    - [Addition](#addition)
-    - [Saturation and Clipping](#saturation-and-clipping)
-    - [Multiplication](#multiplication)
-    - [Sign Bit](#sign-bit)
-  - [Channel Data Formats](#channel-data-formats)
-    - [HWC](#hwc)
-    - [CHW](#chw)
-  - [CHW Data Format and Consequences for Weight Memory Layout](#chw-data-format-and-consequences-for-weight-memory-layout)
-  - [Active Processors and Layers](#active-processors-and-layers)
-  - [Layers and Weight Memory](#layers-and-weight-memory)
-  - [Weight Storage Example](#weight-storage-example)
-  - [Example: `Conv2D`](#example-conv2d)
-  - [Limitations of AI84 Networks](#limitations-of-ai84-networks)
-  - [Limitations of AI85 Networks](#limitations-of-ai85-networks)
-  - [Fully Connected (Linear) Layers](#fully-connected-linear-layers)
-  - [Upsampling (Fractionally-Strided 2D Convolutions)](#upsampling-fractionally-strided-2d-convolutions)
-- [Model Training and Quantization](#model-training-and-quantization)
-    - [Observing GPU Resources](#observing-gpu-resources)
-    - [Custom nn.Modules](#custom-nnmodules)
-      - [Dropout](#dropout)
-      - [view and reshape](#view-and-reshape)
-  - [Model Comparison and Feature Attribution](#model-comparison-and-feature-attribution)
-    - [TensorBoard](#tensorboard)
-    - [Manifold](#manifold)
-    - [SHAP — SHapely Additive exPlanations](#shap--shapely-additive-explanations)
-  - [Quantization](#quantization)
-  - [Alternative Quantization Approaches](#alternative-quantization-approaches)
-  - [Adding New Network Models and New Datasets to the Training Process](#adding-new-network-models-and-new-datasets-to-the-training-process)
-    - [Data Loader](#data-loader)
-    - [`datasets` Data Structure](#datasets-data-structure)
-    - [Training and Verification Data](#training-and-verification-data)
-    - [Training Process](#training-process)
-- [Network Loader](#network-loader)
-  - [Network Loader Configuration Language](#network-loader-configuration-language)
-    - [Global Configuration](#global-configuration)
-      - [`arch` (Mandatory)](#arch-mandatory)
-      - [`bias` (Optional, Test Only)](#bias-optional-test-only)
-      - [`dataset` (Mandatory)](#dataset-mandatory)
-      - [`output_map` (Optional)](#outputmap-optional)
-      - [`layers` (Mandatory)](#layers-mandatory)
-    - [Per-Layer Configuration](#per-layer-configuration)
-      - [`sequence` (Optional)](#sequence-optional)
-      - [`processors` (Mandatory)](#processors-mandatory)
-      - [`output_processors` (Optional)](#outputprocessors-optional)
-      - [`out_offset` (Optional)](#outoffset-optional)
-      - [`in_offset` (Optional)](#inoffset-optional)
-      - [`output_width` (Optional)](#outputwidth-optional)
-      - [`data_format` (Optional)](#dataformat-optional)
-      - [`operation`](#operation)
-      - [`eltwise` (Optional)](#eltwise-optional)
-      - [`pool_first` (Optional)](#poolfirst-optional)
-      - [`operands` (Optional)](#operands-optional)
-      - [`activate` (Optional)](#activate-optional)
-      - [`quantization` (Optional)](#quantization-optional)
-      - [`output_shift` (Optional)](#outputshift-optional)
-      - [`kernel_size` (Optional)](#kernelsize-optional)
-      - [`stride` (Optional)](#stride-optional)
-      - [`pad` (Optional)](#pad-optional)
-      - [`max_pool` (Optional)](#maxpool-optional)
-      - [`avg_pool` (Optional)](#avgpool-optional)
-      - [`pool_stride` (Optional)](#poolstride-optional)
-      - [`in_channels` (Optional)](#inchannels-optional)
-      - [`in_dim` (Optional)](#indim-optional)
-      - [`in_sequences` (Optional)](#insequences-optional)
-      - [`out_channels` (Optional)](#outchannels-optional)
-      - [`streaming` (Optional)](#streaming-optional)
-      - [`flatten` (Optional)](#flatten-optional)
-    - [Example](#example)
-  - [Adding Datasets to the Network Loader](#adding-datasets-to-the-network-loader)
-    - [Generating a Sample Input](#generating-a-sample-input)
-    - [Saving a Sample Input from Training Data](#saving-a-sample-input-from-training-data)
-    - [Generating C Code](#generating-c-code)
-  - [Starting an Inference, Waiting for Completion, Multiple Inferences in Sequence](#starting-an-inference-waiting-for-completion-multiple-inferences-in-sequence)
-  - [CMSIS5 NN Emulation](#cmsis5-nn-emulation)
-- [Embedded Software Development Kits (SDKs)](#embedded-software-development-kits-sdks)
-  - [AI84 SDK](#ai84-sdk)
-  - [AI85 SDK](#ai85-sdk)
-- [AI85/AI87 Changes](#ai85ai87-changes)
-- [AHB Memory Addresses](#ahb-memory-addresses)
-  - [Data memory](#data-memory-1)
-  - [TRAM](#tram)
-  - [Kernel memory (“MRAM”)](#kernel-memory-mram)
-  - [Bias memory](#bias-memory)
-- [Updating the Project](#updating-the-project)
-- [Contributing Code](#contributing-code)
-  - [Linting](#linting)
-  - [Submitting Changes](#submitting-changes)
+[TOC]
 
 ## Overview
 
@@ -495,7 +380,7 @@ Examples:
 | 1111 1110 | −2/128       |
 | 1111 1111 | −1/128       |
 
-On **AI85**, _weights_ can be 1, 2, 4, or 8 bits wide (configurable per layer using the `quantization` key). Bias values are always 8 bits wide. Data is 8 bits wide, except for the last layer that can optionally output 32 bits of unclipped data in Q25.7 format when not using activation.
+On **AI85**, _weights_ can be 1, 2, 4, or 8 bits wide (configurable per layer using the `quantization` key). Bias values are always 8 bits wide. Data is 8 bits wide, except for the last layer that can optionally output 32 bits of unclipped data in Q18.14 format when not using activation.
 
 |wt bits| min  | max  |
 |:-----:|-----:|-----:|
@@ -798,7 +683,42 @@ The `ai84net.py` file contains models that fit into AI84’s weight memory. Thes
 
 To train the FP32 model for FashionMIST, run `go_fashionmnist.sh` in the `ai8x-training` project. This script will place checkpoint files into the log directory. Training makes use of the Distiller framework, but the `train.py` software has been modified slightly to improve it and add some AI8X specifics.
 
-#### Observing GPU Resources
+### Command Line Arguments
+
+The following table describes the most important command line arguments for `train.py`. Use `--help` for a complete list.
+
+| Argument                  | Description                                                   | Example                         |
+| ------------------------- | ------------------------------------------------------------- | ------------------------------- |
+| `--help`                  | Complete list of arguments                                    |                                 |
+| *Device selection*        |                                                               |                                 |
+| `--device`                | Set device (default: 84)                                      | `--device 85`                   |
+| *Model and dataset*       |                                                               |                                 |
+| `-a`, `--arch`            | Set model (collected from models folder)                      | `--model ai84net5`              |
+| `--dataset`               | Set dataset (collected from datasets folder)                  | `--dataset FashionMNIST`        |
+| `--data`                  | Path to dataset (default: data)                               | `--data /data/ml`               |
+| *Training*                |                                                               |                                 |
+| `--epochs`                | Number of epochs to train (default: 90)                       | `--epochs 100`                  |
+| `-b`, `--batch-size`      | Mini-batch size (default: 256)                                | `--batch-size 512`              |
+| `--compress`              | Set compression and learning rate schedule                    | `--compress schedule.yaml`      |
+| `--lr`, `--learning-rate` | Set initial learning rate                                     | `--lr 0.001`                    |
+| `--deterministic`         | Seed random number generators with fixed values               |                                 |
+| `--resume-from`           | Resume from previous checkpoint                               | `--resume-from chk.pth.tar`     |
+| *Display and statistics*  |                                                               |                                 |
+| `--confusion`             | Display the confusion matrix                                  |                                 |
+| `--param-hist`            | Collect parameter statistics                                  |                                 |
+| `--pr-curves`             | Generate precision-recall curves                              |                                 |
+| `--embedding`             | Display embedding (using projector)                           |                                 |
+| *Hardware*                |                                                               |                                 |
+| `--use-bias`              | Use bias in convolution operations                            |                                 |
+| `--avg-pool-rounding`     | On AI85 and up, use rounding for AvgPool                      |                                 |
+| *Evaluation*              |                                                               |                                 |
+| `-e`, `--evaluate`        | Evaluate previously trained model                             |                                 |
+| `--8-bit-mode`, `-8`      | Simluate quantized operation for hardware device (8-bit data) |                                 |
+| `--exp-load-weights-from` | Load weights from file                                        |                                 |
+| *Export*                  |                                                               |                                 |
+| `--summary onnx`          | Export trained model to model.onnx                            |                                 |
+
+### Observing GPU Resources
 
 `nvidia-smi` can be used in a different terminal during training to examine the GPU resource usage of the training process. In the following example, the GPU is using 100% of its compute capabilities, but not all of the available memory. In this particular case, the batch size could be increased to use more memory.
 
@@ -816,7 +736,7 @@ $ nvidia-smi
 ...
 ```
 
-#### Custom nn.Modules
+### Custom nn.Modules
 
 The `ai8x.py` file contains customized PyTorch classes (subclasses of `torch.nn.Module`). Any model that is designed to run on AI8X should use these classes. There are three main changes over the default classes in `torch.nn.Module`:
 
@@ -824,11 +744,11 @@ The `ai8x.py` file contains customized PyTorch classes (subclasses of `torch.nn.
 2. Rounding and clipping that matches the hardware.
 3. Support for quantized operation (when using the `-8` command line argument).
 
-##### Dropout
+#### Dropout
 
 `torch.nn.Dropout` is not used during inference, and can therefore be used for training without problems.
 
-##### view and reshape
+#### view and reshape
 
 There are two supported cases for  `view()` or `reshape()`.
 
@@ -869,7 +789,7 @@ For classification models, TensorBoard supports the optional `--param-hist` and 
 
 The quickest way to integrate manifold is by creating CSV files from the training software. *Note that performance will suffer when there are more than about 20,000 records in the CSV file. Subsampling the data is one way to avoid this problem.*
 
-The train.py program can create CSV files using the `--save-csv` command line argument in combination with `--evaluate`:
+The `train.py` program can create CSV files using the `--save-csv` command line argument in combination with `--evaluate`:
 
 ```shell
 ./train.py --model ai84net5 --dataset MNIST --confusion --evaluate --save-csv mnist --ai84 --exp-load-weights-from ../ai8x-synthesis/trained/ai84-mnist.pth.tar -8
@@ -930,7 +850,7 @@ To evaluate the quantized network:
 (ai8x-training) $ ./evaluate_fashionmnist.sh
 ```
 
-### Alternative Quantization Approaches
+#### Alternative Quantization Approaches
 
 Post-training quantization can be improved using more sophisticated methods. For example, see
 https://github.com/pytorch/glow/blob/master/docs/Quantization.md,
@@ -984,15 +904,89 @@ Train the new network/new dataset. See `go_mnist.sh` for a command line example.
 
 ---
 
-## Network Loader
+## Network Loader (AI8Xize)
 
-_The network loader currently depends on PyTorch and Nervana’s Distiller. This requirement will be removed in the long term._
+_The `ai8xize` network loader currently depends on PyTorch and Nervana’s Distiller. This requirement will be removed in the long term._
 
 The network loader creates C code that programs the AI8X (for embedded execution, or RTL simulation, or CMSIS NN comparison). Additionally, the generated code contains sample input data and the expected output for the sample, as well as code that verifies the expected output.
 
 The `ai8xize.py` program needs two inputs:
 1. A quantized checkpoint file, generated by the AI84 model quantization program `quantize.py`.
 2. A YAML description of the network.
+
+### Command Line Arguments
+
+The following table describes the most important command line arguments for `ai8xize.py`. Use `--help` for a complete list.
+
+| Argument                 | Description                                                      | Example                         |
+| ------------------------ | ---------------------------------------------------------------- | ------------------------------- |
+| `--help`                 | Complete list of arguments                                       |                                 |
+| *Device selection*       |                                                                  |                                 |
+| `--device`               | Set device (default: 84)                                         | `--device 85`                   |
+| *Hardware features*      |                                                                  |                                 |
+| `--avg-pool-rounding`    | Round average pooling results on (AI85 and up)                   |                                 |
+| `--simple1b`             | Use simple XOR instead of 1-bit multiplication                   |                                 |
+| *Embedded code*          |                                                                  |                                 |
+| `-e`, `--embedded-code`  | Generate embedded code for device                                |                                 |
+| `--config-file`          | YAML configuration file containing layer configuration           | `--config-file cfg.yaml`        |
+| `--checkpoint-file`      | Checkpoint file containing quantized weights                     | `--checkpoint-file chk.pth.tar` |
+| `--display-checkpoint`   | Show parsed checkpoint data                                      |                                 |
+| `--prefix`               | Set test name prefix                                             | `--prefix mnist`                |
+| *Code generation*        |                                                                  |                                 |
+| `--compact-data`         | Use *memcpy* to load input data in order to save code space      |                                 |
+| `--compact-weights`      | Use *memcpy* to load weights in order to save code space         |                                 |
+| `--mexpress`             | Use faster kernel loading                                        |                                 |
+| `--mlator`               | Use hardware to swap output bytes                                |                                 |
+| `--softmax`              | Add software SoftMax function to generated code                  |                                 |
+| *File names*             |                                                                  |                                 |
+| `--c-filename`           | C file name base (default: main.c)                               | `--c-filename cnn.c`            |
+| `--weight-filename`      | Weight header file name (default: weights.h)                     | `--weight-filename wt.h`        |
+| `--sample-filename`      | Sample data header file name (default: sampledata.h)             | `--sample-filename kat.h`       |
+| `--sample-input`         | Sample data source file name (default: tests/sample_dataset.npy) | `--sample-input kat.npy`        |
+| *Streaming and FIFOs*    |                                                                  |                                 |
+| `--fifo`                 | Use FIFOs to load streaming data                                 |                                 |
+| `--fast-fifo`            | Use fast FIFO to load streaming data                             |                                 |
+| `--fast-fifo-quad`       | Use fast FIFO in quad fanout mode (implies --fast-fifo)          |                                 |
+| *RISC-V*                 |                                                                  |                                 |
+| `--riscv`                | Use RISC-V processor                                             |                                 |
+| `--riscv-flash`          | Move kernel/input to Flash (implies --riscv)                     |                                 |
+| `--riscv-cache`          | Enable RISC-V cache (implies --riscv and --riscv-flash)          |                                 |
+| `--riscv-exclusive`      | Use exclusive SRAM access for RISC-V (implies --riscv)           |                                 |
+| *Debug and logging*      |                                                                  |                                 |
+| `-v`, `--verbose`        | Verbose output                                                   |                                 |
+| `-L`, `--log`            | Redirect stdout to log file                                      |                                 |
+| `--log-intermediate`     | Log data between layers                                          |                                 |
+| `--log-pooling`          | Log unpooled and pooled data between layers in CSV format        |                                 |
+| `--log-filename`         | Log file name (default: log.txt)                                 | `--log-filename run.log`        |
+| `-D`, `--debug`          | Debug mode                                                       |                                 |
+| `--debug-computation`    | Debug computation (SLOW)                                         |                                 |
+| `--stop-after`           | Stop after layer                                                 | `--stop-after 2`                |
+| `--one-shot`             | Use layer-by-layer one-shot mechanism                            |                                 |
+| *Streaming tweaks*       |                                                                  |                                 |
+| `--overlap-data`         | Allow output to overwrite input                                  |                                 |
+| `--override-start`       | Override auto-computed streaming start value (x8 hex)            |                                 |
+| `--increase-start`       | Add integer to streaming start value (default: 2)                |                                 |
+| `--override-rollover`    | Override auto-computed streaming rollover value (x8 hex)         |                                 |
+| `--override-delta1`      | Override auto-computed streaming delta1 value (x8 hex)           |                                 |
+| `--increase-delta1`      | Add integer to streaming delta1 value (default: 0)               |                                 |
+| `--override-delta2`      | Override auto-computed streaming delta2 value (x8 hex)           |                                 |
+| `--increase-delta2`      | Add integer to streaming delta2 value (default: 0)               |                                 |
+| `--ignore-streaming`     | Ignore all 'streaming' layer directives                          |                                 |
+| *Power saving*           |                                                                  |                                 |
+| `--powerdown`            | Power down unused MRAM instances                                 |                                 |
+| `--deepsleep`            | Put ARM core into deep sleep                                     |                                 |
+| *Hardware settings*      |                                                                  |                                 |
+| `--input-offset`         | First layer input offset (x8 hex, defaults to 0x0000)            | `--input-offset 2000`           |
+| `--mlator-noverify`      | Do not check both mlator and non-mlator output                   |                                 |
+| `--write-zero-registers` | Write registers even if the value is zero                        |                                 |
+| `--init-tram`            | Initialize TRAM to 0                                             |                                 |
+| `--zero-sram`            | Zero memories                                                    |                                 |
+| `--zero-unused`          | Zero unused registers                                            |                                 |
+| `--ready-sel`            | Specify memory waitstates                                        |                                 |
+| `--ready-sel-fifo`       | Specify FIFO waitstates                                          |                                 |
+| `--ready-sel-aon`        | Specify AON waitstates                                           |                                 |
+
+### YAML Network Description
 
 An example network description for the ai84net5 architecture and FashionMNIST is shown below:
 
@@ -1115,7 +1109,7 @@ Example:
 
 On AI84, this value (if specified) has to be `8`.
 
-On AI85, when __not__ using an `activation`, the last layer can output `32` bits of unclipped data in Q25.7 format. The default is `8` bits.
+On AI85, when __not__ using an `activation`, the last layer can output `32` bits of unclipped data in Q18.14 format. The default is `8` bits.
 
 Example:
 	`output_width: 32`
@@ -1543,7 +1537,7 @@ The `--device 85` option enables:
 * In-flight element-wise addition, subtraction, and binary or/xor.
 * Support for more weight memory, and more input and output channels.
 * Support for non-square data and non-square pooling kernels.
-* Support for 32-bit Q25.7 data output for last layer when not using activation.
+* Support for 32-bit Q18.14 data output for last layer when not using activation.
 * Support for streaming mode with FIFOs to allow for larger data sizes.
 * Support for absolute value (`Abs`) activation.
 
