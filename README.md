@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_April 21, 2020_
+_April 22, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository._
@@ -586,7 +586,7 @@ The AI84 hardware does not support arbitrary network parameters. Specifically,
 * The number of layers must not exceed 32 (where pooling does not add to the count when preceding a convolution).
 * The maximum dimension (number of rows or columns) for input or output data is 256.
 * Overall weight storage is limited to 64*128 3×3 kernels. However, weights must be arranged in a certain order, see above.
-* The hardware supports 1D and 2D convolution layers. For convenience, a single final fully connected layer with 8-bit inputs/weights/bias, and 16-bit output is supported in software, as well as a software `SoftMax` operator.
+* The hardware supports 1D and 2D convolution layers. For convenience, a single final fully connected layer with 8-bit inputs/weights/bias, and 16-bit output is supported in software, as well as a software `Softmax` operator.
 * Since the internal network format is HWC in groups of four channels, output concatenation only works properly when all components of the concatenation other than the last have multiples of four channels. _Output concatenation is not yet supported in the `ai8x.py` primitives._
 * It is recommended to not use bias on the AI84 convolutions when using post-training quantization as described in this document. The reason is that the bias is not shifted by the same amount as the weights. This could be mitigated using a more involved training procedure, but since bias values do not significantly improve performance in the example networks, and since this will be corrected for AI85, the recommendation is to not use bias values for now.
 
@@ -653,7 +653,7 @@ The AI85 hardware does not support arbitrary network parameters. Specifically,
   *  `Flatten` functionality is available to convert 2D input data for use by fully connected layers.
   *  Element-wise operators support from 2 up to 16 inputs.
   *  Element-wise operators can be chained in-flight with pooling and 2D convolution (where the order of pooling and element-wise operations can be swapped).
-  * For convenience, a `SoftMax` operator is supported in software.
+  * For convenience, a `Softmax` operator is supported in software.
   
 * Since the internal network format is HWC in groups of four channels, output concatenation only works properly when all components of the concatenation other than the last have multiples of four channels.
 
@@ -744,6 +744,30 @@ The `ai8x.py` file contains customized PyTorch classes (subclasses of `torch.nn.
 2. Rounding and clipping that matches the hardware.
 3. Support for quantized operation (when using the `-8` command line argument).
 
+#### List of Predefined Modules
+
+The following modules are predefined:
+
+| Name                   | Description / PyTorch equivalent        |
+| ---------------------- | --------------------------------------- |
+| MaxPool2d              | MaxPool2d                               |
+| FusedMaxPoolConv2d     | MaxPool2d, followed by Conv2d           |
+| FusedMaxPoolConv2dReLU | MaxPool2d, followed by Conv2d, and ReLU |
+| FusedMaxPoolConv2dAbs  | MaxPool2d, followed by Conv2d, and Abs  |
+| AvgPool2d              | AvgPool2d                               |
+| FusedAvgPoolConv2d     | AvgPool2d, followed by Conv2d           |
+| FusedAvgPoolConv2dReLU | AvgPool2d, followed by Conv2d, and ReLU |
+| FusedAvgPoolConv2dAbs  | AvgPool2d, followed by Conv2d, and Abs  |
+| Conv2d                 | Conv2d                                  |
+| FusedConv2dReLU        | Conv2d, followed by ReLU                |
+| FusedConv2dAbs         | Conv2d, followed by Abs                 |
+| Linear                 | Linear                                  |
+| FusedLinearReLU        | Linear, followed by ReLU                |
+| FusedLinearAbs         | Linear, followed by Abs                 |
+| Conv1d                 | Conv1d                                  |
+| FusedConv1dReLU        | Conv1d, followed by ReLU                |
+| FusedConv1dAbs         | Conv1d, followed by Abs                 |
+
 #### Dropout
 
 `torch.nn.Dropout` is not used during inference, and can therefore be used for training without problems.
@@ -761,6 +785,10 @@ When reshaping data, `in_dim:` must be specified in the model description file.
 2. Conversion from 1D and 2D to Fully Connected (“flattening”): The batch dimension (first dimension) must stay the same, and the other dimensions are combined (i.e., M = C×H×W or M = C×L).
    Example: 
        `x = x.view(x.size(0), -1)  # Flatten`
+
+#### Support for Quantization
+
+When using the `-8` command line switch, all module outputs are quantized to 8-bit in the range  [-128...+127] to simulate hardware behavior. The last layer can optionally use 32-bit output for increased precision. This is simulated by adding the parameter `wide=True` to the module function call.
 
 ### Model Comparison and Feature Attribution
 
@@ -836,6 +864,24 @@ Since performance for 8-bit weights is decent enough, _naive post-training quant
 
 The software quantizes an existing PyTorch checkpoint file and writes out a new PyTorch checkpoint file that can then be used to evaluate the quality of the quantized network, using the same PyTorch framework used for training. The same new checkpoint file will also be used to feed the [Network Loader](#Network-Loader).
 
+#### Command Line Arguments
+
+The `quantize.py` software has the following important command line arguments:
+
+| Argument              | Description                                                  | Example         |
+| --------------------- | ------------------------------------------------------------ | --------------- |
+| `--help`              | Complete list of options                                     |                 |
+| *Device selection*    |                                                              |                 |
+| `--device`            | Set device (default: 84)                                     | `--device 85`   |
+| *Debug*               |                                                              |                 |
+| `-v`                  | Verbose output                                               |                 |
+| *Weight quantization* |                                                              |                 |
+| `-c`, `--config-file` | YAML file with weight quantization information<br />(default: 8-bit for all layers) | `-c mnist.yaml` |
+
+*Note: The syntax for the optional YAML file is described below. The same file can be used for both `quantize.py` and `ai8xize.py`.*
+
+#### Example and Evaluation
+
 Copy the working and tested weight files into the `trained/` folder of the `ai8x-synthesis` project.
 
 Example:
@@ -862,7 +908,7 @@ Further, a quantized network can be refined using post-quantization training (se
 
 The software also includes an `AI84RangeLinear.py` training quantizer that plugs into the Distiller framework for quantization-aware training. However, it needs work as its performance is not good enough yet and the Distiller source needs to be patched to enable it (add `from range_linear_ai84 import QuantAwareTrainRangeLinearQuantizerAI84` to `distiller/config.py` and remove `False and` from `if False and args.ai84` in `train.py`).
 
-Note that AI84 does not have a configurable per-layer output shift. The addition of this shift value will allow easier quantization on AI85, since fractional bits can be used if weights do not span the full 8-bit range (most read-made quantization approaches require a weight scale or output shift).
+Note that AI84 does not have a configurable per-layer output shift. The addition of this shift value allows easier quantization on AI85, since fractional bits can be used if weights do not span the full 8-bit range (many quantization approaches require a weight scale or output shift).
 
 In all cases, ensure that the quantizer writes out a checkpoint file that the Network Loader can read.
 
@@ -911,7 +957,7 @@ _The `ai8xize` network loader currently depends on PyTorch and Nervana’s Disti
 The network loader creates C code that programs the AI8X (for embedded execution, or RTL simulation, or CMSIS NN comparison). Additionally, the generated code contains sample input data and the expected output for the sample, as well as code that verifies the expected output.
 
 The `ai8xize.py` program needs two inputs:
-1. A quantized checkpoint file, generated by the AI84 model quantization program `quantize.py`.
+1. A quantized checkpoint file, generated by the AI8X model quantization program `quantize.py`.
 2. A YAML description of the network.
 
 ### Command Line Arguments
@@ -938,7 +984,7 @@ The following table describes the most important command line arguments for `ai8
 | `--mexpress`             | Use faster kernel loading                                    |                                 |
 | `--mlator`               | Use hardware to swap output bytes (useful for large multi-channel outputs) |                                 |
 | `--unload`               | Add cnn_unload() function to generated code                  |                                 |
-| `--softmax`              | Add cnn_unload() and SoftMax functions to generated code     |                                 |
+| `--softmax`              | Add cnn_unload() and Softmax functions to generated code     |                                 |
 | *File names*             |                                                              |                                 |
 | `--c-filename`           | C file name base (default: main.c)                           | `--c-filename cnn.c`            |
 | `--weight-filename`      | Weight header file name (default: weights.h)                 | `--weight-filename wt.h`        |
@@ -1443,30 +1489,39 @@ It is a good idea to pick a sample where the quantized model computes the correc
 
 4. Run `evaluate_cifar10.sh` again and copy the saved `sample_cifar-10.npy` file.
 
-#### Generating C Code
+### Generating C Code
 
-Run `ai8xize.py` with the new network and the new sample data. See `gen-demos-ai85.sh` for examples.
+Run `ai8xize.py` with the new network and the new sample data to generate embedded C code that can be compiled with the Arm and RISC-V compilers. See `gen-demos-ai85.sh` for examples.
 
-### Starting an Inference, Waiting for Completion, Multiple Inferences in Sequence
+#### Starting an Inference, Waiting for Completion, Multiple Inferences in Sequence
 
 An inference is started by loading registers and kernels, loading the input, and enabling processing.  This code is automatically generated—see the `cnn_load()`, `load_kernels()`, and `load_input()` functions. The sample data can be used as a self-checking feature on device power-up since the output for the sample data is known.
 
-The AI85/AI87 accelerator can generate an interrupt on completion, and it will set a status bit (see `cnn_wait()`). The resulting data can now be unloaded from the accelerator (code for this is also auto-generated in `unload()`).
+The AI85/AI87 accelerator can generate an interrupt on completion, and it will set a status bit (see `cnn_wait()`). The resulting data can now be unloaded from the accelerator (code for this is also auto-generated in `cnn_unload()`).
 
 To run another inference, ensure all groups are disabled (stopping the state machine, as shown in `cnn_load()`). Next, load the new input data and start processing.
 
+#### Softmax, and Data unload in C
+
+`ai8xize.py` can generate a custom `cnn_unload()` function using the command line switch `--unload`. The `--softmax` switch additionally inserts a call to a software Softmax function that is provided in the `Device` folder.
+
+#### Contents of the Device Folder
+
+* A sample Makefile is provided.
+* For AI84, there are both a custom software fully connected layer in the file `arm_fully_connected_q7_q8p7_opt.c` that returns Q8.7 fixed-point outputs, and a custom `arm_softmax_q8p7_q15.c` which is aware of the fixed-point input (the `_frac` version delivers greater precision) .
+* For AI85, the software Softmax files are `arm_softmax_q7_q15.c` and `arm_softmax_q18p14_q15.c`.
+* A number of files are provided that provide non-square pooling support, and activation support for more than 64 KiB of data (these files are not needed for AI8X hardware).
+* The `tornadocnn.h` header file is included which helps both embedded examples as well as CMSIS NN code.
+
 ---
 
-### CMSIS5 NN Emulation
+### CMSIS5 NN Emulation (Unsupported)
 
-The Network Loader tool can also create code that executes the same exact network using Arm’s CMSISv5 Neural Networking library, optimized for Arm’s Microcontroller DSP (reportedly 4.6× faster than executing on the CPU), see https://developer.arm.com/solutions/machine-learning-on-arm/developer-material/how-to-guides/converting-a-neural-network-for-arm-cortex-m-with-cmsis-nn and https://github.com/ARM-software/CMSIS_5 for the source code. A version of this repository is automatically checked out as part of the `ai8x-synthesis` project.
+The `ai8xize.py` tool also has an unsupported mode to create code that executes the same exact network using Arm’s CMSISv5 Neural Networking library, optimized for Arm’s Microcontroller DSP (reportedly 4.6× faster than executing on the CPU), see https://developer.arm.com/solutions/machine-learning-on-arm/developer-material/how-to-guides/converting-a-neural-network-for-arm-cortex-m-with-cmsis-nn and https://github.com/ARM-software/CMSIS_5 for the source code. A version of this repository is automatically checked out as part of the `ai8x-synthesis` project.
 
-The results of the generated code have been verified to match AI84 exactly and may be used to demonstrate the efficacy of the custom CNN accelerator.
-Note there are minor rounding errors in the CMSIS average pooling code when enabling SIMD
-(`-DARM_MATH_DSP`). If there are hard faults on the device, try limiting compiler optimizations to `-O1`.
+*Note: The CMSIS5 NN emulation is not supported because it does not support the enhanced features of AI85 and AI87.*
 
-The `Device/` folder contains a sample Makefile, and a custom fully connected layer in the file `arm_fully_connected_q7_q8p7_opt.c` that returns Q8.7 fixed-point outputs, and a custom `arm_softmax_q8p7_q15.c` which is aware of the fixed-point input (both of these files are also used for the software classification layer on AI84). Additionally, a number of files are provided that provide non-square pooling support, and activation support for more than 64 KiB of data (these files are not needed for AI8X hardware).
-The `tornadocnn.h` header file is included which helps both embedded examples as well as CMSIS NN code.
+The results of the generated code have been verified to match AI84 exactly and may be used to demonstrate the efficacy of the custom CNN accelerator. Note there are minor rounding errors in the CMSIS average pooling code when enabling SIMD (`-DARM_MATH_DSP`). If there are hard faults on the device, try limiting compiler optimizations to `-O1`.
 
 For example, the following command would generate code that performs a CIFAR-10 inference from the `trained/ai84-cifar10.pth.tar` checkpoint file and the `cifar10-hwc.yaml` network description file:
 
@@ -1475,8 +1530,6 @@ For example, the following command would generate code that performs a CIFAR-10 
 ```
 
 When compiling the CMSIS code, it may be necessary to disable compiler optimizations.
-
-*Note*: The CMSIS code generator does not currently support the extended features of AI85 and AI87.
 
 ---
 
@@ -1532,10 +1585,10 @@ In order for the debugger to work, the OpenOCD `max32xxx` branch from https://gi
 
 ## AI85/AI87 Changes
 
-The `quantize.py` quantization tool and the `ai8xize.py` network generator both have a `--device` command line argument that selects the target device.
+The `train.py` training tool, the `quantize.py` quantization tool and the `ai8xize.py` network generator all have a `--device` command line argument that selects the target device.
 
 The `--device 85` option enables:
-* Bias shift << 7.
+* Bias shift ≪7.
 * Per-layer support for 1, 2 and 4-bit weight sizes in addition to 8-bit weights (this is supported using the `quantization` keyword in the configuration file, and the configuration file can also be read by the quantization tool).
 * A programmable shift left/shift right at the output of the convolution that allows for better use of the entire range of weight bits (`output_shift`).
 * Support for many more pooling sizes and pooling strides, and larger limits for average pooling.
