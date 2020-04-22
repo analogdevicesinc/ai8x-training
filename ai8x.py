@@ -10,8 +10,9 @@
 Contains the limits of the AI84/AI85/AI87 implementations and custom PyTorch modules that take
 the limits into account.
 """
-from torch.autograd import Function
+import torch
 import torch.nn as nn
+from torch.autograd import Function
 
 
 dev = None
@@ -131,6 +132,14 @@ class Clamp(nn.Module):
         return x.clamp(min=self.min_val, max=self.max_val)
 
 
+class Abs(nn.Module):
+    """
+    Return abs(x)
+    """
+    def forward(self, x):  # pylint: disable=arguments-differ
+        return torch.abs_(x)  # abs_() is the in-place version
+
+
 class Empty(nn.Module):
     """
     Do nothing
@@ -139,13 +148,37 @@ class Empty(nn.Module):
         return x
 
 
-class FusedMaxPoolConv2dReLU(nn.Module):
+def get_activation(activation=None):
     """
-    AI8X - Fused 2D Max Pool, 2D Convolution and ReLU
+    Return the selected `activation` class ('ReLU', 'Abs', None)
     """
-    def __init__(self, in_channels, out_channels, kernel_size, pool_size=2, pool_stride=2,
-                 stride=1, padding=0, bias=True, relu=True, output_shift=0, wide=False):
-        super(FusedMaxPoolConv2dReLU, self).__init__()
+    if activation == 'ReLU':
+        return nn.ReLU(inplace=True)
+    if activation == 'Abs':
+        assert dev.device != 84
+        return Abs()
+    return Empty()
+
+
+class FusedMaxPoolConv2d(nn.Module):
+    """
+    AI8X - Fused 2D Pool ('Max', 'Avg', None), 2D Convolution and Activation ('ReLU', 'Abs', None)
+    """
+    def __init__(
+            self,
+            in_channels,
+            out_channels,
+            kernel_size,
+            pool_size=2,
+            pool_stride=2,
+            stride=1,
+            padding=0,
+            bias=True,
+            activation=None,
+            output_shift=0,
+            wide=False,
+    ):
+        super(FusedMaxPoolConv2d, self).__init__()
 
         if pool_stride is None:
             pool_stride = pool_size
@@ -198,10 +231,7 @@ class FusedMaxPoolConv2dReLU(nn.Module):
             self.quantize = Empty()
             self.clamp = Clamp(min_val=-1., max_val=1.)  # Do not combine with ReLU
 
-        if relu:
-            self.activate = nn.ReLU(inplace=True)
-        else:
-            self.activate = Empty()
+        self.activate = get_activation(activation)
 
     def forward(self, x):  # pylint: disable=arguments-differ
         x = self.pool(x)
@@ -211,32 +241,39 @@ class FusedMaxPoolConv2dReLU(nn.Module):
         return x
 
 
-class MaxPool2d(FusedMaxPoolConv2dReLU):
+class FusedMaxPoolConv2dReLU(FusedMaxPoolConv2d):
+    """
+    AI8X - Fused 2D Max Pool, 2D Convolution and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedMaxPoolConv2dReLU, self).__init__(*args, activation='ReLU', **kwargs)
+
+
+class FusedMaxPoolConv2dAbs(FusedMaxPoolConv2d):
+    """
+    AI8X - Fused 2D Max Pool, 2D Convolution and Abs
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedMaxPoolConv2dAbs, self).__init__(*args, activation='Abs', **kwargs)
+
+
+class MaxPool2d(FusedMaxPoolConv2d):
     """
     AI8X - 2D Max Pool
     """
     def __init__(self, kernel_size, stride=None, **kwargs):
         super(MaxPool2d, self).__init__(0, 0, None,
                                         pool_size=kernel_size, pool_stride=stride,
-                                        relu=False, **kwargs)
+                                        activation=None, **kwargs)
 
 
-class FusedMaxPoolConv2d(FusedMaxPoolConv2dReLU):
+class FusedAvgPoolConv2d(nn.Module):
     """
-    AI8X - Fused 2D Max Pool and 2D Convolution without activation
-    """
-    def __init__(self, in_channels, out_channels, kernel_size, **kwargs):
-        super(FusedMaxPoolConv2d, self).__init__(in_channels, out_channels, kernel_size,
-                                                 relu=False, **kwargs)
-
-
-class FusedAvgPoolConv2dReLU(nn.Module):
-    """
-    AI8X - Fused 2D Avg Pool, 2D Convolution and ReLU
+    AI8X - Fused 2D Avg Pool, 2D Convolution and activation ('ReLU', 'Abs', None)
     """
     def __init__(self, in_channels, out_channels, kernel_size, pool_size=2, pool_stride=2,
-                 stride=1, padding=0, bias=True, relu=True, output_shift=0, wide=False):
-        super(FusedAvgPoolConv2dReLU, self).__init__()
+                 stride=1, padding=0, bias=True, activation=None, output_shift=0, wide=False):
+        super(FusedAvgPoolConv2d, self).__init__()
 
         if pool_stride is None:
             pool_stride = pool_size
@@ -277,8 +314,7 @@ class FusedAvgPoolConv2dReLU(nn.Module):
             assert kernel_size == 3 or dev.device != 84 and kernel_size == 1
 
             self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size,
-                                    stride=stride,
-                                    padding=padding, bias=bias)
+                                    stride=stride, padding=padding, bias=bias)
         else:
             self.conv2d = None
 
@@ -295,10 +331,7 @@ class FusedAvgPoolConv2dReLU(nn.Module):
             self.quantize_pool = Empty()
             self.clamp = Clamp(min_val=-1., max_val=1.)  # Do not combine with ReLU
 
-        if relu:
-            self.activate = nn.ReLU(inplace=True)
-        else:
-            self.activate = Empty()
+        self.activate = get_activation(activation)
 
     def forward(self, x):  # pylint: disable=arguments-differ
         x = self.clamp(self.quantize_pool(self.pool(x)))
@@ -308,32 +341,39 @@ class FusedAvgPoolConv2dReLU(nn.Module):
         return x
 
 
-class AvgPool2d(FusedAvgPoolConv2dReLU):
+class FusedAvgPoolConv2dReLU(FusedAvgPoolConv2d):
+    """
+    AI8X - Fused 2D Avg Pool, 2D Convolution and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedAvgPoolConv2dReLU, self).__init__(*args, activation='ReLU', **kwargs)
+
+
+class FusedAvgPoolConv2dAbs(FusedAvgPoolConv2d):
+    """
+    AI8X - Fused 2D Avg Pool, 2D Convolution and Abs
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedAvgPoolConv2dAbs, self).__init__(*args, activation='Abs', **kwargs)
+
+
+class AvgPool2d(FusedAvgPoolConv2d):
     """
     AI8X - 2D Avg Pool
     """
     def __init__(self, kernel_size, stride=None, **kwargs):
         super(AvgPool2d, self).__init__(0, 0, None,
                                         pool_size=kernel_size, pool_stride=stride,
-                                        relu=False, **kwargs)
+                                        activation=None, **kwargs)
 
 
-class FusedAvgPoolConv2d(FusedAvgPoolConv2dReLU):
+class Conv2d(nn.Module):
     """
-    AI8X - Fused 2D Avg Pool and 2D Convolution without activation
-    """
-    def __init__(self, in_channels, out_channels, kernel_size, **kwargs):
-        super(FusedAvgPoolConv2d, self).__init__(in_channels, out_channels, kernel_size,
-                                                 relu=False, **kwargs)
-
-
-class FusedConv2dReLU(nn.Module):
-    """
-    AI8X - Fused 2D Convolution and ReLU
+    AI8X - Fused 2D Convolution and activation ('ReLU', 'Abs', None)
     """
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, bias=True,
-                 relu=True, output_shift=0, wide=False):
-        super(FusedConv2dReLU, self).__init__()
+                 activation=None, output_shift=0, wide=False):
+        super(Conv2d, self).__init__()
 
         if isinstance(kernel_size, tuple):
             assert len(kernel_size) == 2
@@ -354,10 +394,7 @@ class FusedConv2dReLU(nn.Module):
             self.quantize = Empty()
             self.clamp = Clamp(min_val=-1., max_val=1.)  # Do not combine with ReLU
 
-        if relu:
-            self.activate = nn.ReLU(inplace=True)
-        else:
-            self.activate = Empty()
+        self.activate = get_activation(activation)
 
     def forward(self, x):  # pylint: disable=arguments-differ
         x = self.conv2d(x)
@@ -365,12 +402,20 @@ class FusedConv2dReLU(nn.Module):
         return x
 
 
-class Conv2d(FusedConv2dReLU):
+class FusedConv2dReLU(Conv2d):
     """
-    AI8X - 2D Convolution without activation
+    AI8X - Fused 2D Convolution and ReLU
     """
-    def __init__(self, in_channels, out_channels, kernel_size, **kwargs):
-        super(Conv2d, self).__init__(in_channels, out_channels, kernel_size, relu=False, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super(FusedConv2dReLU, self).__init__(*args, activation='ReLU', **kwargs)
+
+
+class FusedConv2dAbs(Conv2d):
+    """
+    AI8X - Fused 2D Convolution and Abs
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedConv2dAbs, self).__init__(*args, activation='Abs', **kwargs)
 
 
 class FusedSoftwareLinearReLU(nn.Module):
@@ -412,13 +457,13 @@ class SoftwareLinear(FusedSoftwareLinearReLU):
         super(SoftwareLinear, self).__init__(in_features, out_features, relu=False, **kwargs)
 
 
-class FusedLinearReLU(nn.Module):
+class Linear(nn.Module):
     """
-    AI85+ - Fused Linear and ReLU
+    AI85+ - Fused Linear and activation ('ReLU', 'Abs', None)
     """
-    def __init__(self, in_features, out_features, bias=None, relu=True,
-                 output_shift=0, wide=False):
-        super(FusedLinearReLU, self).__init__()
+    def __init__(self, in_features, out_features, bias=None,
+                 activation=None, output_shift=0, wide=False):
+        super(Linear, self).__init__()
 
         assert dev.device != 84
         assert in_features <= 1024
@@ -433,10 +478,7 @@ class FusedLinearReLU(nn.Module):
             self.quantize = Empty()
             self.clamp = Clamp(min_val=-1., max_val=1.)  # Do not combine with ReLU
 
-        if relu:
-            self.activate = nn.ReLU(inplace=True)
-        else:
-            self.activate = Empty()
+        self.activate = get_activation(activation)
 
     def forward(self, x):  # pylint: disable=arguments-differ
         x = self.linear(x)
@@ -444,21 +486,29 @@ class FusedLinearReLU(nn.Module):
         return x
 
 
-class Linear(FusedLinearReLU):
+class FusedLinearReLU(Linear):
     """
-    AI85+ - Linear
+    AI85+ - Fused Linear and ReLU
     """
-    def __init__(self, in_features, out_features, **kwargs):
-        super(Linear, self).__init__(in_features, out_features, relu=False, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super(FusedLinearReLU, self).__init__(*args, activation='ReLU', **kwargs)
 
 
-class FusedConv1dReLU(nn.Module):
+class FusedLinearAbs(Linear):
     """
-    AI8X - Fused 1D Convolution and ReLU
+    AI85+ - Fused Linear and Abs
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedLinearAbs, self).__init__(*args, activation='Abs', **kwargs)
+
+
+class Conv1d(nn.Module):
+    """
+    AI8X - Fused 1D Convolution and activation ('ReLU', 'Abs', None)
     """
     def __init__(self, in_channels, out_channels, kernel_size, stride=3, padding=0, bias=True,
-                 relu=True, output_shift=0, wide=False):
-        super(FusedConv1dReLU, self).__init__()
+                 activation=None, output_shift=0, wide=False):
+        super(Conv1d, self).__init__()
 
         assert dev.device != 84 or stride == 3
         assert dev.device == 84 or stride == 1
@@ -478,10 +528,7 @@ class FusedConv1dReLU(nn.Module):
             self.quantize = Empty()
             self.clamp = Clamp(min_val=-1., max_val=1.)  # Do not combine with ReLU
 
-        if relu:
-            self.activate = nn.ReLU(inplace=True)
-        else:
-            self.activate = Empty()
+        self.activate = get_activation(activation)
 
     def forward(self, x):  # pylint: disable=arguments-differ
         x = self.conv1d(x)
@@ -489,12 +536,20 @@ class FusedConv1dReLU(nn.Module):
         return x
 
 
-class Conv1d(FusedConv2dReLU):
+class FusedConv1dReLU(Conv1d):
     """
-    AI8X - 1D Convolution without activation
+    AI8X - Fused 1D Convolution and ReLU
     """
-    def __init__(self, in_channels, out_channels, kernel_size, **kwargs):
-        super(Conv1d, self).__init__(in_channels, out_channels, kernel_size, relu=False, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super(FusedConv1dReLU, self).__init__(*args, activation='ReLU', **kwargs)
+
+
+class FusedConv1dAbs(Conv1d):
+    """
+    AI8X - Fused 1D Convolution and Abs
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedConv1dAbs, self).__init__(*args, activation='Abs', **kwargs)
 
 
 class Device:
