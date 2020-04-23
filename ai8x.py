@@ -160,15 +160,18 @@ def get_activation(activation=None):
     return Empty()
 
 
-class FusedMaxPoolConv2d(nn.Module):
+class Conv2d(nn.Module):
     """
-    AI8X - Fused 2D Pool ('Max', 'Avg', None), 2D Convolution and Activation ('ReLU', 'Abs', None)
+    AI8X - 2D pooling ('Avg', 'Max' or None) optionally followed by
+    2D convolution/transposed 2D convolution and activation ('ReLU', 'Abs', None)
     """
     def __init__(
             self,
             in_channels,
             out_channels,
             kernel_size,
+            op='Conv2d',
+            pooling=None,
             pool_size=2,
             pool_stride=2,
             stride=1,
@@ -178,48 +181,69 @@ class FusedMaxPoolConv2d(nn.Module):
             output_shift=0,
             wide=False,
     ):
-        super(FusedMaxPoolConv2d, self).__init__()
+        super(Conv2d, self).__init__()
 
-        if pool_stride is None:
-            pool_stride = pool_size
-        if isinstance(kernel_size, tuple):
-            assert len(kernel_size) == 2
-            kernel_size = kernel_size[0]
+        if pooling is not None:
+            if pool_stride is None:
+                pool_stride = pool_size
 
-        if isinstance(pool_size, int):
-            assert dev.device != 84 or pool_size & 1 == 0
-            assert pool_size <= 16
-        elif isinstance(pool_size, tuple):
-            assert len(pool_size) == 2
-            assert dev.device != 84 or pool_size[0] & 1 == 0
-            assert pool_size[0] <= 16
-            assert dev.device != 84 or pool_size[1] & 1 == 0
-            assert pool_size[1] <= 16
+            if isinstance(pool_size, int):
+                assert dev.device != 84 or pool_size & 1 == 0
+                assert pool_size <= 16 \
+                    and (dev.device != 84 or pool_size <= 4 or pooling == 'Max')
+            elif isinstance(pool_size, tuple):
+                assert len(pool_size) == 2
+                assert dev.device != 84 or pool_size[0] & 1 == 0
+                assert pool_size[0] <= 16 \
+                    and (dev.device != 84 or pool_size[0] <= 4 or pooling == 'Max')
+                assert dev.device != 84 or pool_size[1] & 1 == 0
+                assert pool_size[1] <= 16 \
+                    and (dev.device != 84 or pool_size[1] <= 4 or pooling == 'Max')
+            else:
+                raise ValueError('pool_size must be int or tuple')
+
+            if isinstance(pool_stride, int):
+                assert pool_stride > 0
+                assert pool_stride <= 16 \
+                    and (dev.device != 84 or pool_stride <= 4 or pooling == 'Max')
+            elif isinstance(pool_stride, tuple):
+                assert len(pool_stride) == 2
+                assert dev.device != 84 or pool_stride[0] == pool_stride[1]
+                assert 0 < pool_stride[0] <= 16 \
+                    and (dev.device != 84 or pool_stride[0] <= 4 or pooling == 'Max')
+                assert 0 < pool_stride[1] <= 16 \
+                    and (dev.device != 84 or pool_stride[1] <= 4 or pooling == 'Max')
+            else:
+                raise ValueError('pool_stride must be int or tuple')
+
+            assert stride == 1
         else:
-            raise ValueError('pool_size must be int or tuple')
-
-        if isinstance(pool_stride, int):
-            assert pool_stride > 0
-            assert 0 < pool_stride <= 16
-        elif isinstance(pool_stride, tuple):
-            assert len(pool_stride) == 2
-            assert dev.device != 84 or pool_stride[0] == pool_stride[1]
-            assert pool_stride[0] > 0
-            assert pool_stride[0] <= 16
-            assert pool_stride[1] > 0
-            assert pool_stride[1] <= 16
-        else:
-            raise ValueError('pool_stride must be int or tuple')
+            assert 0 < stride <= 3
 
         assert 0 <= padding <= 2
-        assert stride == 1
 
-        self.pool = nn.MaxPool2d(kernel_size=pool_size, stride=pool_stride, padding=0)
+        if pooling == 'Max':
+            self.pool = nn.MaxPool2d(kernel_size=pool_size, stride=pool_stride, padding=0)
+        elif pooling == 'Avg':
+            self.pool = nn.AvgPool2d(kernel_size=pool_size, stride=pool_stride, padding=0)
+        else:
+            self.pool = None
+
         if kernel_size is not None:
+            if isinstance(kernel_size, tuple):
+                assert len(kernel_size) == 2 and kernel_size[0] == kernel_size[1]
+                kernel_size = kernel_size[0]
+
             assert kernel_size == 3 or dev.device != 84 and kernel_size == 1
 
-            self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size,
-                                    stride=stride, padding=padding, bias=bias)
+            if op == 'Conv2d':
+                self.conv2d = nn.Conv2d(in_channels, out_channels,
+                                        kernel_size=kernel_size, stride=stride,
+                                        padding=padding, bias=bias)
+            else:
+                self.conv2d = nn.ConvTranspose2d(in_channels, out_channels,
+                                                 kernel_size=kernel_size, stride=stride,
+                                                 padding=padding, bias=bias)
         else:
             self.conv2d = None
 
@@ -227,18 +251,37 @@ class FusedMaxPoolConv2d(nn.Module):
             self.quantize = Quantize(num_bits=dev.DATA_BITS + output_shift if not wide else 1)
             bits = dev.ACTIVATION_BITS if not wide else dev.FULL_ACC_BITS
             self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
+            if pooling == 'Avg':
+                self.quantize_pool = Round() if dev.round_avg else Floor()
+            else:  # Max, None
+                self.quantize_pool = Empty()
         else:
             self.quantize = Empty()
+            self.quantize_pool = Empty()
             self.clamp = Clamp(min_val=-1., max_val=1.)  # Do not combine with ReLU
+
+        if pooling == 'Avg':
+            self.clamp_pool = self.clamp
+        else:  # Max, None
+            self.clamp_pool = Empty()
 
         self.activate = get_activation(activation)
 
     def forward(self, x):  # pylint: disable=arguments-differ
-        x = self.pool(x)
+        if self.pool is not None:
+            x = self.clamp_pool(self.quantize_pool(self.pool(x)))
         if self.conv2d is not None:
             x = self.conv2d(x)
             x = self.clamp(self.quantize(self.activate(x)))
         return x
+
+
+class FusedMaxPoolConv2d(Conv2d):
+    """
+    AI8X - Fused 2D Max Pool, 2D Convolution and Activation ('ReLU', 'Abs', None)
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedMaxPoolConv2d, self).__init__(*args, pooling='Max', **kwargs)
 
 
 class FusedMaxPoolConv2dReLU(FusedMaxPoolConv2d):
@@ -267,78 +310,12 @@ class MaxPool2d(FusedMaxPoolConv2d):
                                         activation=None, **kwargs)
 
 
-class FusedAvgPoolConv2d(nn.Module):
+class FusedAvgPoolConv2d(Conv2d):
     """
     AI8X - Fused 2D Avg Pool, 2D Convolution and activation ('ReLU', 'Abs', None)
     """
-    def __init__(self, in_channels, out_channels, kernel_size, pool_size=2, pool_stride=2,
-                 stride=1, padding=0, bias=True, activation=None, output_shift=0, wide=False):
-        super(FusedAvgPoolConv2d, self).__init__()
-
-        if pool_stride is None:
-            pool_stride = pool_size
-        if isinstance(kernel_size, tuple):
-            assert len(kernel_size) == 2
-            kernel_size = kernel_size[0]
-
-        if isinstance(pool_size, int):
-            assert dev.device != 84 or pool_size & 1 == 0
-            assert pool_size <= 16 and (dev.device != 84 or pool_size <= 4)
-        elif isinstance(pool_size, tuple):
-            assert len(pool_size) == 2
-            assert dev.device != 84 or pool_size[0] & 1 == 0
-            assert pool_size[0] <= 16 and (dev.device != 84 or pool_size[0] <= 4)
-            assert dev.device != 84 or pool_size[1] & 1 == 0
-            assert pool_size[1] <= 16 and (dev.device != 84 or pool_size[0] <= 4)
-        else:
-            raise ValueError('pool_size must be int or tuple')
-
-        if isinstance(pool_stride, int):
-            assert pool_stride > 0
-            assert pool_stride <= 16 and (dev.device != 84 or pool_stride <= 4)
-        elif isinstance(pool_stride, tuple):
-            assert len(pool_stride) == 2
-            assert dev.device != 84 or pool_stride[0] == pool_stride[1]
-            assert pool_stride[0] > 0
-            assert pool_stride[0] <= 16 and (dev.device != 84 or pool_stride[0] <= 4)
-            assert pool_stride[1] > 0
-            assert pool_stride[1] <= 16 and (dev.device != 84 or pool_stride[1] <= 4)
-        else:
-            raise ValueError('pool_stride must be int or tuple')
-
-        assert 0 <= padding <= 2
-        assert stride == 1
-
-        self.pool = nn.AvgPool2d(kernel_size=pool_size, stride=pool_stride, padding=0)
-        if kernel_size is not None:
-            assert kernel_size == 3 or dev.device != 84 and kernel_size == 1
-
-            self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size,
-                                    stride=stride, padding=padding, bias=bias)
-        else:
-            self.conv2d = None
-
-        if dev.simulate:
-            self.quantize = Quantize(num_bits=dev.DATA_BITS + output_shift if not wide else 1)
-            if dev.round_avg:
-                self.quantize_pool = Round()
-            else:
-                self.quantize_pool = Floor()
-            bits = dev.ACTIVATION_BITS if not wide else dev.FULL_ACC_BITS
-            self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
-        else:
-            self.quantize = Empty()
-            self.quantize_pool = Empty()
-            self.clamp = Clamp(min_val=-1., max_val=1.)  # Do not combine with ReLU
-
-        self.activate = get_activation(activation)
-
-    def forward(self, x):  # pylint: disable=arguments-differ
-        x = self.clamp(self.quantize_pool(self.pool(x)))
-        if self.conv2d:
-            x = self.conv2d(x)
-            x = self.clamp(self.quantize(self.activate(x)))
-        return x
+    def __init__(self, *args, **kwargs):
+        super(FusedAvgPoolConv2d, self).__init__(*args, pooling='Avg', **kwargs)
 
 
 class FusedAvgPoolConv2dReLU(FusedAvgPoolConv2d):
@@ -367,41 +344,6 @@ class AvgPool2d(FusedAvgPoolConv2d):
                                         activation=None, **kwargs)
 
 
-class Conv2d(nn.Module):
-    """
-    AI8X - Fused 2D Convolution and activation ('ReLU', 'Abs', None)
-    """
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, bias=True,
-                 activation=None, output_shift=0, wide=False):
-        super(Conv2d, self).__init__()
-
-        if isinstance(kernel_size, tuple):
-            assert len(kernel_size) == 2
-            kernel_size = kernel_size[0]
-
-        assert 0 < stride <= 3
-        assert 0 <= padding <= 2
-        assert kernel_size == 3 or dev.device != 84 and kernel_size == 1
-
-        self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride,
-                                padding=padding, bias=bias)
-
-        if dev.simulate:
-            self.quantize = Quantize(num_bits=dev.DATA_BITS + output_shift if not wide else 1)
-            bits = dev.ACTIVATION_BITS if not wide else dev.FULL_ACC_BITS
-            self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
-        else:
-            self.quantize = Empty()
-            self.clamp = Clamp(min_val=-1., max_val=1.)  # Do not combine with ReLU
-
-        self.activate = get_activation(activation)
-
-    def forward(self, x):  # pylint: disable=arguments-differ
-        x = self.conv2d(x)
-        x = self.clamp(self.quantize(self.activate(x)))
-        return x
-
-
 class FusedConv2dReLU(Conv2d):
     """
     AI8X - Fused 2D Convolution and ReLU
@@ -416,6 +358,79 @@ class FusedConv2dAbs(Conv2d):
     """
     def __init__(self, *args, **kwargs):
         super(FusedConv2dAbs, self).__init__(*args, activation='Abs', **kwargs)
+
+
+class ConvTranspose2d(Conv2d):
+    """
+    AI8X - 2D pooling ('Avg', 'Max' or None) optionally followed by
+    transposed 2D convolution and activation ('ReLU', 'Abs', None)
+    """
+    def __init__(self, *args, **kwargs):
+        super(ConvTranspose2d, self).__init__(*args, op='ConvTranspose2d', **kwargs)
+
+
+class FusedMaxPoolConvTranspose2d(ConvTranspose2d):
+    """
+    AI8X - Fused 2D Max Pool, Transposed 2D Convolution and Activation ('ReLU', 'Abs', None)
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedMaxPoolConvTranspose2d, self).__init__(*args, pooling='Max', **kwargs)
+
+
+class FusedMaxPoolConvTranspose2dReLU(FusedMaxPoolConvTranspose2d):
+    """
+    AI8X - Fused 2D Max Pool, Transposed 2D Convolution and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedMaxPoolConvTranspose2dReLU, self).__init__(*args, activation='ReLU', **kwargs)
+
+
+class FusedMaxPoolConvTranspose2dAbs(FusedMaxPoolConvTranspose2d):
+    """
+    AI8X - Fused 2D Max Pool, Transposed 2D Convolution and Abs
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedMaxPoolConvTranspose2dAbs, self).__init__(*args, activation='Abs', **kwargs)
+
+
+class FusedAvgPoolConvTranspose2d(ConvTranspose2d):
+    """
+    AI8X - Fused 2D Avg Pool, Transposed 2D Convolution and activation ('ReLU', 'Abs', None)
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedAvgPoolConvTranspose2d, self).__init__(*args, pooling='Avg', **kwargs)
+
+
+class FusedAvgPoolConvTranspose2dReLU(FusedAvgPoolConvTranspose2d):
+    """
+    AI8X - Fused 2D Avg Pool, Transposed 2D Convolution and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedAvgPoolConvTranspose2dReLU, self).__init__(*args, activation='ReLU', **kwargs)
+
+
+class FusedAvgPoolConvTranspose2dAbs(FusedAvgPoolConvTranspose2d):
+    """
+    AI8X - Fused 2D Avg Pool, Transposed 2D Convolution and Abs
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedAvgPoolConvTranspose2dAbs, self).__init__(*args, activation='Abs', **kwargs)
+
+
+class FusedConvTranspose2dReLU(ConvTranspose2d):
+    """
+    AI8X - Fused Transposed 2D Convolution and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedConvTranspose2dReLU, self).__init__(*args, activation='ReLU', **kwargs)
+
+
+class FusedConvTranspose2dAbs(ConvTranspose2d):
+    """
+    AI8X - Fused Transposed 2D Convolution and Abs
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedConvTranspose2dAbs, self).__init__(*args, activation='Abs', **kwargs)
 
 
 class FusedSoftwareLinearReLU(nn.Module):
@@ -504,36 +519,155 @@ class FusedLinearAbs(Linear):
 
 class Conv1d(nn.Module):
     """
-    AI8X - Fused 1D Convolution and activation ('ReLU', 'Abs', None)
+    AI8X - Fused 1D Pool ('Avg', 'Max' or None) followed by
+    1D Convolution and activation ('ReLU', 'Abs', None)
     """
-    def __init__(self, in_channels, out_channels, kernel_size, stride=3, padding=0, bias=True,
-                 activation=None, output_shift=0, wide=False):
+    def __init__(
+            self,
+            in_channels,
+            out_channels,
+            kernel_size,
+            pooling=None,
+            pool_size=2,
+            pool_stride=2,
+            stride=3,
+            padding=0,
+            bias=True,
+            activation=None,
+            output_shift=0,
+            wide=False,
+    ):
         super(Conv1d, self).__init__()
 
-        assert dev.device != 84 or stride == 3
-        assert dev.device == 84 or stride == 1
-        assert dev.device != 84 or padding in [0, 3, 6]
-        assert dev.device == 84 or padding in [0, 1, 2]
-        assert dev.device != 84 or kernel_size == 9
-        assert dev.device == 84 or kernel_size in [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        if pooling is not None:
+            if pool_stride is None:
+                pool_stride = pool_size
 
-        self.conv1d = nn.Conv1d(in_channels, out_channels, kernel_size, stride=stride,
-                                padding=padding, bias=bias)
+            assert dev.device != 84 or pool_size & 1 == 0
+            assert pool_size <= 16 \
+                and (dev.device != 84 or pool_size <= 4 or pooling == 'Max')
+
+            assert 0 < pool_stride <= 16 \
+                and (dev.device != 84 or pool_stride <= 4 or pooling == 'Max')
+
+            assert stride == 1
+        else:
+            assert dev.device != 84 or stride == 3
+            assert dev.device == 84 or stride == 1
+
+        if pooling == 'Max':
+            self.pool = nn.MaxPool1d(kernel_size=pool_size, stride=pool_stride, padding=0)
+        elif pooling == 'Avg':
+            self.pool = nn.AvgPool1d(kernel_size=pool_size, stride=pool_stride, padding=0)
+        else:
+            self.pool = None
+
+        if kernel_size is not None:
+            assert dev.device != 84 or padding in [0, 3, 6]
+            assert dev.device == 84 or padding in [0, 1, 2]
+            assert dev.device != 84 or kernel_size == 9
+            assert dev.device == 84 or kernel_size in [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+            self.conv1d = nn.Conv1d(in_channels, out_channels, kernel_size, stride=stride,
+                                    padding=padding, bias=bias)
+        else:
+            self.conv1d = None
 
         if dev.simulate:
             self.quantize = Quantize(num_bits=dev.DATA_BITS + output_shift if not wide else 1)
             bits = dev.ACTIVATION_BITS if not wide else dev.FULL_ACC_BITS
             self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
+            if pooling == 'Avg':
+                self.quantize_pool = Round() if dev.round_avg else Floor()
+            else:  # Max, None
+                self.quantize_pool = Empty()
         else:
             self.quantize = Empty()
+            self.quantize_pool = Empty()
             self.clamp = Clamp(min_val=-1., max_val=1.)  # Do not combine with ReLU
+
+        if pooling == 'Avg':
+            self.clamp_pool = self.clamp
+        else:  # Max, None
+            self.clamp_pool = Empty()
 
         self.activate = get_activation(activation)
 
     def forward(self, x):  # pylint: disable=arguments-differ
-        x = self.conv1d(x)
-        x = self.clamp(self.quantize(self.activate(x)))
+        if self.pool is not None:
+            x = self.clamp_pool(self.quantize_pool(self.pool(x)))
+        if self.conv1d is not None:
+            x = self.conv1d(x)
+            x = self.clamp(self.quantize(self.activate(x)))
         return x
+
+
+class FusedMaxPoolConv1d(Conv1d):
+    """
+    AI8X - Fused 1D Max Pool, 1D Convolution and Activation ('ReLU', 'Abs', None)
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedMaxPoolConv1d, self).__init__(*args, pooling='Max', **kwargs)
+
+
+class FusedMaxPoolConv1dReLU(FusedMaxPoolConv1d):
+    """
+    AI8X - Fused 1D Max Pool, 1D Convolution and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedMaxPoolConv1dReLU, self).__init__(*args, activation='ReLU', **kwargs)
+
+
+class FusedMaxPoolConv1dAbs(FusedMaxPoolConv1d):
+    """
+    AI8X - Fused 1D Max Pool, 1D Convolution and Abs
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedMaxPoolConv1dAbs, self).__init__(*args, activation='Abs', **kwargs)
+
+
+class MaxPool1d(FusedMaxPoolConv1d):
+    """
+    AI8X - 1D Max Pool
+    """
+    def __init__(self, kernel_size, stride=None, **kwargs):
+        super(MaxPool1d, self).__init__(0, 0, None,
+                                        pool_size=kernel_size, pool_stride=stride,
+                                        activation=None, **kwargs)
+
+
+class FusedAvgPoolConv1d(Conv1d):
+    """
+    AI8X - Fused 1D Avg Pool, 1D Convolution and activation ('ReLU', 'Abs', None)
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedAvgPoolConv1d, self).__init__(*args, pooling='Avg', **kwargs)
+
+
+class FusedAvgPoolConv1dReLU(FusedAvgPoolConv1d):
+    """
+    AI8X - Fused 1D Avg Pool, 1D Convolution and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedAvgPoolConv1dReLU, self).__init__(*args, activation='ReLU', **kwargs)
+
+
+class FusedAvgPoolConv1dAbs(FusedAvgPoolConv1d):
+    """
+    AI8X - Fused 1D Avg Pool, 1D Convolution and Abs
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedAvgPoolConv1dAbs, self).__init__(*args, activation='Abs', **kwargs)
+
+
+class AvgPool1d(FusedAvgPoolConv1d):
+    """
+    AI8X - 1D Avg Pool
+    """
+    def __init__(self, kernel_size, stride=None, **kwargs):
+        super(AvgPool1d, self).__init__(0, 0, None,
+                                        pool_size=kernel_size, pool_stride=stride,
+                                        activation=None, **kwargs)
 
 
 class FusedConv1dReLU(Conv1d):
