@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_April 22, 2020_
+_April 23, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository._
@@ -52,7 +52,7 @@ $ git config --global user.name "First Last"
 
 ### Prerequisites
 
-This software supports only Ubuntu 18.04 LTS (Ubuntu 20.04 LTS is not yet supported by CUDA). The server version is sufficient, see https://ubuntu.com/download/server.
+This software supports only Ubuntu 18.04 LTS (Ubuntu 20.04 LTS is not supported by CUDA 10.1). The server version is sufficient, see https://ubuntu.com/download/server.
 
 When going beyond simple tests, model training requires CUDA hardware acceleration (the network loader does not require CUDA).
 
@@ -380,7 +380,7 @@ Examples:
 | 1111 1110 | −2/128       |
 | 1111 1111 | −1/128       |
 
-On **AI85**, _weights_ can be 1, 2, 4, or 8 bits wide (configurable per layer using the `quantization` key). Bias values are always 8 bits wide. Data is 8 bits wide, except for the last layer that can optionally output 32 bits of unclipped data in Q18.14 format when not using activation.
+On **AI85**, _weights_ can be 1, 2, 4, or 8 bits wide (configurable per layer using the `quantization` key). Bias values are always 8 bits wide. Data is 8 bits wide, except for the last layer that can optionally output 32 bits of unclipped data in Q17.14 format when not using activation.
 
 |wt bits| min  | max  |
 |:-----:|-----:|-----:|
@@ -750,6 +750,9 @@ The following modules are predefined:
 
 | Name                   | Description / PyTorch equivalent        |
 | ---------------------- | --------------------------------------- |
+| Conv2d                 | Conv2d                                  |
+| FusedConv2dReLU        | Conv2d, followed by ReLU                |
+| FusedConv2dAbs         | Conv2d, followed by Abs                 |
 | MaxPool2d              | MaxPool2d                               |
 | FusedMaxPoolConv2d     | MaxPool2d, followed by Conv2d           |
 | FusedMaxPoolConv2dReLU | MaxPool2d, followed by Conv2d, and ReLU |
@@ -758,15 +761,30 @@ The following modules are predefined:
 | FusedAvgPoolConv2d     | AvgPool2d, followed by Conv2d           |
 | FusedAvgPoolConv2dReLU | AvgPool2d, followed by Conv2d, and ReLU |
 | FusedAvgPoolConv2dAbs  | AvgPool2d, followed by Conv2d, and Abs  |
-| Conv2d                 | Conv2d                                  |
-| FusedConv2dReLU        | Conv2d, followed by ReLU                |
-| FusedConv2dAbs         | Conv2d, followed by Abs                 |
+| ConvTranspose2d	| ConvTranspose2d |
+| FusedConvTranspose2dReLU	| ConvTranspose2d, followed by ReLU |
+| FusedConvTranspose2dAbs	| ConvTranspose2d, followed by Abs |
+| FusedMaxPoolConvTranspose2d	| MaxPool2d, followed by ConvTranspose2d |
+| FusedMaxPoolConvTranspose2dReLU	| MaxPool2d, followed by ConvTranspose2d, and ReLU |
+| FusedMaxPoolConvTranspose2dAbs	| MaxPool2d, followed by ConvTranspose2d, and Abs |
+| FusedAvgPoolConvTranspose2d	| AvgPool2d, followed by ConvTranspose2d |
+| FusedAvgPoolConvTranspose2dReLU	| AvgPool2d, followed by ConvTranspose2d, and ReLU |
+| FusedAvgPoolConvTranspose2dAbs	| AvgPool2d, followed by ConvTranspose2d, and Abs |
 | Linear                 | Linear                                  |
 | FusedLinearReLU        | Linear, followed by ReLU                |
 | FusedLinearAbs         | Linear, followed by Abs                 |
 | Conv1d                 | Conv1d                                  |
 | FusedConv1dReLU        | Conv1d, followed by ReLU                |
 | FusedConv1dAbs         | Conv1d, followed by Abs                 |
+| MaxPool1d | MaxPool1d |
+| FusedMaxPoolConv1d | MaxPool1d, followed by Conv1d |
+| FusedMaxPoolConv1dReLU | MaxPool2d, followed by Conv1d, and ReLU |
+| FusedMaxPoolConv1dAbs | MaxPool2d, followed by Conv1d, and Abs |
+| AvgPool1d | AvgPool1d |
+| FusedAvgPoolConv1d | AvgPool1d, followed by Conv1d |
+| FusedAvgPoolConv1dReLU | AvgPool1d, followed by Conv1d, and ReLU |
+| FusedAvgPoolConv1dAbs | AvgPool1d, followed by Conv1d, and Abs |
+
 
 #### Dropout
 
@@ -1165,7 +1183,7 @@ Example:
 
 On AI84, this value (if specified) has to be `8`.
 
-On AI85, when __not__ using an `activation`, the last layer can output `32` bits of unclipped data in Q18.14 format. The default is `8` bits.
+On AI85, when __not__ using an `activation`, the last layer can output `32` bits of unclipped data in Q17.14 format. The default is `8` bits.
 
 Example:
 	`output_width: 32`
@@ -1503,13 +1521,17 @@ To run another inference, ensure all groups are disabled (stopping the state mac
 
 #### Softmax, and Data unload in C
 
-`ai8xize.py` can generate a custom `cnn_unload()` function using the command line switch `--unload`. The `--softmax` switch additionally inserts a call to a software Softmax function that is provided in the `Device` folder.
+`ai8xize.py` can generate a custom `cnn_unload()` function using the command line switch `--unload`. The `--softmax` switch additionally inserts a call to a software Softmax function that is provided in the `Device` folder. To use the provided software Softmax on AI85, the last layer output should be 32-bit wide (`output_width: 32`).
+
+The software Softmax function is optimized for processing time and it quantizes the input.
+
+![softmax](docs/softmax.png)
 
 #### Contents of the Device Folder
 
 * A sample Makefile is provided.
 * For AI84, there are both a custom software fully connected layer in the file `arm_fully_connected_q7_q8p7_opt.c` that returns Q8.7 fixed-point outputs, and a custom `arm_softmax_q8p7_q15.c` which is aware of the fixed-point input (the `_frac` version delivers greater precision) .
-* For AI85, the software Softmax files are `arm_softmax_q7_q15.c` and `arm_softmax_q18p14_q15.c`.
+* For AI85, the software Softmax is implemented in `arm_softmax_q17p14_q15.c`.
 * A number of files are provided that provide non-square pooling support, and activation support for more than 64 KiB of data (these files are not needed for AI8X hardware).
 * The `tornadocnn.h` header file is included which helps both embedded examples as well as CMSIS NN code.
 
@@ -1600,7 +1622,7 @@ The `--device 85` option enables:
 * In-flight element-wise addition, subtraction, and binary or/xor.
 * Support for more weight memory, and more input and output channels.
 * Support for non-square data and non-square pooling kernels.
-* Support for 32-bit Q18.14 data output for last layer when not using activation.
+* Support for 32-bit Q17.14 data output for last layer when not using activation.
 * Support for streaming mode with FIFOs to allow for larger data sizes.
 * Support for absolute value (`Abs`) activation.
 
