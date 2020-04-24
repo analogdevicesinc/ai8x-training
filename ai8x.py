@@ -240,10 +240,13 @@ class Conv2d(nn.Module):
                 self.conv2d = nn.Conv2d(in_channels, out_channels,
                                         kernel_size=kernel_size, stride=stride,
                                         padding=padding, bias=bias)
-            else:
+            elif op == 'ConvTranspose2d':
+                assert dev.device != 84
                 self.conv2d = nn.ConvTranspose2d(in_channels, out_channels,
                                                  kernel_size=kernel_size, stride=stride,
                                                  padding=padding, bias=bias)
+            else:
+                raise ValueError('Unsupported operation')
         else:
             self.conv2d = None
 
