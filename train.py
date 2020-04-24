@@ -95,6 +95,7 @@ import ai8x
 import datasets
 import nnplot
 import parsecmd
+import sample
 # from range_linear_ai84 import PostTrainLinearQuantizerAI84
 
 
@@ -744,6 +745,10 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
             inputs, target = inputs.to(args.device), target.to(args.device)
             # compute output from model
             output = model(inputs)
+
+            if args.generate_sample is not None:
+                sample.generate(args.generate_sample, inputs, target, output, args.dataset, False)
+                return .0, .0, .0
 
             if args.csv_prefix is not None:
                 save_tensor(inputs, f_x)
