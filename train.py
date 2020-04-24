@@ -336,7 +336,8 @@ def main():
 
     # This sample application can be invoked to produce various summary reports.
     if args.summary:
-        return summarize_model(model, args.dataset, which_summary=args.summary)
+        return summarize_model(model, args.dataset, which_summary=args.summary,
+                               filename=args.summary_filename)
 
     activations_collectors = create_activation_stats_collectors(model, *args.activation_stats)
 
@@ -1057,13 +1058,13 @@ def evaluate_model(model, criterion, test_loader, loggers, activations_collector
                                  dir=msglogger.logdir, extras={'quantized_top1': top1})
 
 
-def summarize_model(model, dataset, which_summary):
+def summarize_model(model, dataset, which_summary, filename='model'):
     """summarize_model"""
     if which_summary.startswith('png'):
-        model_summaries.draw_img_classifier_to_file(model, 'model.png', dataset,
+        model_summaries.draw_img_classifier_to_file(model, filename + '.png', dataset,
                                                     which_summary == 'png_w_params')
     elif which_summary == 'onnx':
-        model_summaries.export_img_classifier_to_onnx(model, 'model.onnx', dataset)
+        model_summaries.export_img_classifier_to_onnx(model, filename + '.onnx', dataset)
     else:
         distiller.model_summary(model, which_summary, dataset)
 
