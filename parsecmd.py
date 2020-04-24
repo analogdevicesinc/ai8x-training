@@ -121,6 +121,9 @@ def get_parser(model_names, dataset_names):
     parser.add_argument('--summary', type=lambda s: s.lower(), choices=SUMMARY_CHOICES,
                         help='print a summary of the model, and exit - options: ' +
                         ' | '.join(SUMMARY_CHOICES))
+    parser.add_argument('--summary-filename', default='model',
+                        help='file name (w/o extension) for the model summary (default: "model"')
+
     parser.add_argument('--compress', dest='compress', type=str, nargs='?', action='store',
                         help='configuration file for pruning the model '
                              '(default is to use hard-coded schedule)')
