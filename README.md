@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_April 23, 2020_
+_April 24, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository._
@@ -687,36 +687,38 @@ To train the FP32 model for MNIST on AI85, run `go_mnist.sh` in the `ai8x-traini
 
 The following table describes the most important command line arguments for `train.py`. Use `--help` for a complete list.
 
-| Argument                  | Description                                                  | Example                     |
-| ------------------------- | ------------------------------------------------------------ | --------------------------- |
-| `--help`                  | Complete list of arguments                                   |                             |
-| *Device selection*        |                                                              |                             |
-| `--device`                | Set device (default: 84)                                     | `--device 85`               |
-| *Model and dataset*       |                                                              |                             |
-| `-a`, `--arch`            | Set model (collected from models folder)                     | `--model ai85net5`          |
-| `--dataset`               | Set dataset (collected from datasets folder)                 | `--dataset MNIST`           |
-| `--data`                  | Path to dataset (default: data)                              | `--data /data/ml`           |
-| *Training*                |                                                              |                             |
-| `--epochs`                | Number of epochs to train (default: 90)                      | `--epochs 100`              |
-| `-b`, `--batch-size`      | Mini-batch size (default: 256)                               | `--batch-size 512`          |
-| `--compress`              | Set compression and learning rate schedule                   | `--compress schedule.yaml`  |
-| `--lr`, `--learning-rate` | Set initial learning rate                                    | `--lr 0.001`                |
-| `--deterministic`         | Seed random number generators with fixed values              |                             |
-| `--resume-from`           | Resume from previous checkpoint                              | `--resume-from chk.pth.tar` |
-| *Display and statistics*  |                                                              |                             |
-| `--confusion`             | Display the confusion matrix                                 |                             |
-| `--param-hist`            | Collect parameter statistics                                 |                             |
-| `--pr-curves`             | Generate precision-recall curves                             |                             |
-| `--embedding`             | Display embedding (using projector)                          |                             |
-| *Hardware*                |                                                              |                             |
-| `--use-bias`              | Use bias in convolution operations                           |                             |
-| `--avg-pool-rounding`     | On AI85 and up, use rounding for AvgPool                     |                             |
-| *Evaluation*              |                                                              |                             |
-| `-e`, `--evaluate`        | Evaluate previously trained model                            |                             |
-| `--8-bit-mode`, `-8`      | Simluate quantized operation for hardware device (8-bit data) |                             |
-| `--exp-load-weights-from` | Load weights from file                                       |                             |
-| *Export*                  |                                                              |                             |
-| `--summary onnx`          | Export trained model to model.onnx                           |                             |
+| Argument                  | Description                                                  | Example                         |
+| ------------------------- | ------------------------------------------------------------ | ------------------------------- |
+| `--help`                  | Complete list of arguments                                   |                                 |
+| *Device selection*        |                                                              |                                 |
+| `--device`                | Set device (default: 84)                                     | `--device 85`                   |
+| *Model and dataset*       |                                                              |                                 |
+| `-a`, `--arch`            | Set model (collected from models folder)                     | `--model ai85net5`              |
+| `--dataset`               | Set dataset (collected from datasets folder)                 | `--dataset MNIST`               |
+| `--data`                  | Path to dataset (default: data)                              | `--data /data/ml`               |
+| *Training*                |                                                              |                                 |
+| `--epochs`                | Number of epochs to train (default: 90)                      | `--epochs 100`                  |
+| `-b`, `--batch-size`      | Mini-batch size (default: 256)                               | `--batch-size 512`              |
+| `--compress`              | Set compression and learning rate schedule                   | `--compress schedule.yaml`      |
+| `--lr`, `--learning-rate` | Set initial learning rate                                    | `--lr 0.001`                    |
+| `--deterministic`         | Seed random number generators with fixed values              |                                 |
+| `--resume-from`           | Resume from previous checkpoint                              | `--resume-from chk.pth.tar`     |
+| *Display and statistics*  |                                                              |                                 |
+| `--confusion`             | Display the confusion matrix                                 |                                 |
+| `--param-hist`            | Collect parameter statistics                                 |                                 |
+| `--pr-curves`             | Generate precision-recall curves                             |                                 |
+| `--embedding`             | Display embedding (using projector)                          |                                 |
+| *Hardware*                |                                                              |                                 |
+| `--use-bias`              | Use bias in convolution operations                           |                                 |
+| `--avg-pool-rounding`     | On AI85 and up, use rounding for AvgPool                     |                                 |
+| *Evaluation*              |                                                              |                                 |
+| `-e`, `--evaluate`        | Evaluate previously trained model                            |                                 |
+| `--8-bit-mode`, `-8`      | Simluate quantized operation for hardware device (8-bit data) |                                 |
+| `--exp-load-weights-from` | Load weights from file                                       |                                 |
+| *Export*                  |                                                              |                                 |
+| `--summary onnx`          | Export trained model (default: to model.onnx)                |                                 |
+| `--summary-filename`      | Change the file name for the exported model                  | `--summary-filename mnist.onnx` |
+| `--save-sample`           | Save data[index] from the test set to a NumPy pickle for use as sample data | `--save-sample 10`              |
 
 ### Observing GPU Resources
 
@@ -1442,70 +1444,25 @@ Adding new datasets to the Network Loader is implemented as follows:
 1. Provide network model, its YAML description and quantized weights. Place the YAML file in the `networks` directory, and the quantized weights in the `trained` directory.
 2. Provide a sample input. The sample input is used to generate a known-answer test (self test). The sample input is provided as a NumPy “pickle” — add `sample_dset.npy` for the dataset named `dset` to the `tests` directory. This file can be generated by saving a sample in CHW format (no batch dimension) using `numpy.save()`. 
 
-For example, the CIFAR-10 3×32×32 image sample would be stored in `tests/sample_cifar-10.npy` in an `np.array` with shape `[3, 32, 32]` and datatype `<i8`. The file can be random, or can be obtained from the dataloader in the `forward()` function of the model.
+For example, the MNIST 1×28×28 image sample would be stored in `tests/sample_mnist.npy` in an `np.array` with shape `[1, 28, 28]` and datatype `<i8`. The file can be random, or can be obtained from the `train.py` software.
 
-#### Generating a Sample Input
+#### Generating a Random Sample Input
 
-To generate a random sample input, use a short NumPy script. In the CIFAR-10 example:
+To generate a random sample input, use a short NumPy script. In the MNIST example:
 
 ```python
 import os
 import numpy as np
 
-a = np.random.randint(-128, 127, size=(3, 32, 32), dtype=np.int64)
-np.save(os.path.join('tests', 'sample_cifar-10'), a, allow_pickle=False, fix_imports=False)
+a = np.random.randint(-128, 127, size=(1, 28, 28), dtype=np.int64)
+np.save(os.path.join('tests', 'sample_mnist'), a, allow_pickle=False, fix_imports=False)
 ```
 
 #### Saving a Sample Input from Training Data
 
-It is a good idea to pick a sample where the quantized model computes the correct answer.
-
-1. In the `ai8x-training` project, add the argument `--truncate-testset` to the `evaluate_cifar10.sh` script.
-
-2. Run the modified `evaluate_cifar10.sh` and check that the answer is correct. The output should be similar to the following (`Top1` must be 100.0):
-
-```
-   ...
-   Dataset sizes:
-           training=45000
-           validation=5000
-           test=1
-   --- test ---------------------
-   1 samples (256 per mini-batch)
-   Test: [    1/    1]    Loss 0.000000    Top1 100.000000    Top5 100.000000    
-   ==> Top1: 100.000    Top5: 100.000    Loss: 0.000
-   
-   ==> Confusion:
-   [[0 0 0 0 0 0 0 0 0 0]
-    [0 0 0 0 0 0 0 0 0 0]
-    [0 0 0 0 0 0 0 0 0 0]
-    [0 0 0 1 0 0 0 0 0 0]
-    [0 0 0 0 0 0 0 0 0 0]
-    [0 0 0 0 0 0 0 0 0 0]
-    [0 0 0 0 0 0 0 0 0 0]
-    [0 0 0 0 0 0 0 0 0 0]
-    [0 0 0 0 0 0 0 0 0 0]
-    [0 0 0 0 0 0 0 0 0 0]]
-    ...
-```
-
-3. Edit `models/ai84net.py` and add the following code to the `forward()` function of the `AI84Net5` class:
-
-```python
-   # ...
-       def forward(self, x):  # pylint: disable=arguments-differ
-           # Save sample
-           import numpy as np
-           a = x.cpu().numpy().squeeze().astype('int64')
-           a = np.clip(a, -128, 127)
-           np.save('sample_cifar-10', a, allow_pickle=False, fix_imports=False)
-   
-           # Original code
-           x = self.conv1(x)
-   # ...
-```
-
-4. Run `evaluate_cifar10.sh` again and copy the saved `sample_cifar-10.npy` file.
+1. In the `ai8x-training` project, add the argument `--save-sample 10` to the `evaluate_mnist.sh` script. *Note: The index 10 is arbitrary, but it must be smaller than the batch size. If manual visual verification is desired, it is a good idea to pick a sample where the quantized model computes the correct answer.*
+2. Run the modified `evaluate_mnist.sh`. It will produce a file named `sample_mnist.npy`.
+3. Save the `sample_mnist.npy` file and copy it to the `ai8x-synthesis` project.
 
 ### Generating C Code
 
