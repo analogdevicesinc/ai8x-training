@@ -103,8 +103,11 @@ def get_parser(model_names, dataset_names):
 
     parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                         help='evaluate model on test set')
-    parser.add_argument('--save-csv', dest='csv_prefix', default=None, type=str,
+    mgroup = parser.add_mutually_exclusive_group()
+    mgroup.add_argument('--save-csv', dest='csv_prefix', default=None, type=str,
                         help='save as CSVs with the given prefix during evaluation')
+    mgroup.add_argument('--save-sample', dest='generate_sample', type=int,
+                        help='save the sample at given index as NumPy sample data')
     parser.add_argument('--shap', default=0, type=int,
                         help='select # of images from the test set and plot SHAP after evaluation')
     parser.add_argument('--activation-stats', '--act-stats', nargs='+', metavar='PHASE',
