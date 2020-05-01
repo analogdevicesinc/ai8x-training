@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_April 24, 2020_
+_April 28, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository._
@@ -30,7 +30,6 @@ Including the SDK from SVN, the expected file system layout will be:
     ..../ai8x-synthesis/
     ..../manifold/
     ..../AI84SDK/
-    ..../AI85SDK/
 
 where “....” is the project root.
 
@@ -1478,18 +1477,16 @@ To run another inference, ensure all groups are disabled (stopping the state mac
 
 #### Softmax, and Data unload in C
 
-`ai8xize.py` can generate a custom `cnn_unload()` function using the command line switch `--unload`. The `--softmax` switch additionally inserts a call to a software Softmax function that is provided in the `Device` folder. To use the provided software Softmax on AI85, the last layer output should be 32-bit wide (`output_width: 32`).
+`ai8xize.py` can generate a custom `cnn_unload()` function using the command line switch `--unload`. The `--softmax` switch additionally inserts a call to a software Softmax function that is provided in the `device-aixx` folder. To use the provided software Softmax on AI85, the last layer output should be 32-bit wide (`output_width: 32`).
 
 The software Softmax function is optimized for processing time and it quantizes the input.
 
 ![softmax](docs/softmax.png)
 
-#### Contents of the Device Folder
+#### Contents of the device-* Folder
 
-* A sample Makefile is provided.
-* For AI84, there are both a custom software fully connected layer in the file `arm_fully_connected_q7_q8p7_opt.c` that returns Q8.7 fixed-point outputs, and a custom `arm_softmax_q8p7_q15.c` which is aware of the fixed-point input (the `_frac` version delivers greater precision) .
-* For AI85, the software Softmax is implemented in `arm_softmax_q17p14_q15.c`.
-* A number of files are provided that provide non-square pooling support, and activation support for more than 64 KiB of data (these files are not needed for AI8X hardware).
+* For AI84, there are both a custom software fully connected layer in the file `arm_fully_connected_q7_q8p7_opt.c` that returns Q8.7 fixed-point outputs, and a custom `arm_softmax_q8p7_q15.c` which is aware of the fixed-point input (the `_frac` version delivers greater precision) . A number of additional files are provided that provide non-square pooling support, and activation support for more than 64 KiB of data (these files are not needed for AI84 hardware).
+* For AI85, the software Softmax is implemented in `softmax.c`.
 * The `tornadocnn.h` header file is included which helps both embedded examples as well as CMSIS NN code.
 
 ---
@@ -1546,11 +1543,7 @@ https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/docs/trunk/AI84%20Test%2
 
 ### AI85 SDK
 
-Use SVN to check out the preliminary AI85 SDK from https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI85/SDK/.
-
-```shell
-$ svn co https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI85/SDK/ AI85SDK
-```
+The AI85 SDK is a git submodule of ai8x-synthesis. It is checked out automatically to a version compatible with the project into the folder `sdk`.
 
 The Arm embedded compiler can be downloaded from https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads.
 
@@ -1558,7 +1551,7 @@ The RISC-V embedded compiler can be downloaded from https://github.com/xpack-dev
 
 In order for the debugger to work, the OpenOCD `max32xxx` branch from https://github.com/MaximIntegratedMicros/openocd.git must be installed (see above for more instructions). Working configuration files are and a `run-openocd-ai85` script are contained in the `hardware` folder of the `ai8x-synthesis` project.
 
-`gen-demos-ai85.sh` will create code that is compatible with the SDK and copy it into the SDK directories (which must exist for each test before calling the generator script).
+`gen-demos-ai85.sh` will create code that is compatible with the SDK and copy it into the SDK’s Example directories.
 
 ---
 
