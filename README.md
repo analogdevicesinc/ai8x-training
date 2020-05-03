@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_April 28, 2020_
+_May 3, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository._
@@ -966,6 +966,16 @@ The training/verification data is located (by default) in `data/DataSetName`, fo
 #### Training Process
 
 Train the new network/new dataset. See `go_mnist.sh` for a command line example.
+
+#### Netron - Network Visualization
+
+The Netron tool (https://github.com/lutzroeder/Netron) can visualize networks, similar to what is available within Tensorboard. To use Netron, use `train.py` to export the trained network to ONNX, and upload the ONNX file.
+
+```shell
+(ai8x-training) $ ./train.py --model ai85net5 --dataset MNIST --evaluate --exp-load-weights-from checkpoint.pth.tar --device 85 --summary onnx
+```
+
+
 
 ---
 
