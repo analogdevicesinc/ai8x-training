@@ -31,14 +31,14 @@ class AI85SimpleNet(nn.Module):
         super(AI85SimpleNet, self).__init__()
 
         self.conv1 = ai8x.FusedConv2dReLU(num_channels, 16, 3, stride=1, padding=1, bias=bias)
-        self.conv2 = ai8x.FusedConv2dReLU(16, 24, 3, stride=1, padding=1, bias=bias)
-        self.conv3 = ai8x.FusedConv2dReLU(24, 24, 3, stride=1, padding=1, bias=bias)
-        self.conv4 = ai8x.FusedConv2dReLU(24, 24, 3, stride=1, padding=1, bias=bias)
-        self.conv5 = ai8x.FusedMaxPoolConv2dReLU(24, 24, 3, pool_size=2, pool_stride=2, 
+        self.conv2 = ai8x.FusedConv2dReLU(16, 20, 3, stride=1, padding=1, bias=bias)
+        self.conv3 = ai8x.FusedConv2dReLU(20, 20, 3, stride=1, padding=1, bias=bias)
+        self.conv4 = ai8x.FusedConv2dReLU(20, 20, 3, stride=1, padding=1, bias=bias)
+        self.conv5 = ai8x.FusedMaxPoolConv2dReLU(20, 20, 3, pool_size=2, pool_stride=2, 
                                                  stride=1, padding=1, bias=bias)
-        self.conv6 = ai8x.FusedConv2dReLU(24, 24, 3, stride=1, padding=1, bias=bias)
-        self.conv7 = ai8x.FusedConv2dReLU(24, 48, 3, stride=1, padding=1, bias=bias)
-        self.conv8 = ai8x.FusedMaxPoolConv2dReLU(48, 48, 3, pool_size=2, pool_stride=2, 
+        self.conv6 = ai8x.FusedConv2dReLU(20, 20, 3, stride=1, padding=1, bias=bias)
+        self.conv7 = ai8x.FusedConv2dReLU(20, 44, 3, stride=1, padding=1, bias=bias)
+        self.conv8 = ai8x.FusedMaxPoolConv2dReLU(44, 48, 3, pool_size=2, pool_stride=2, 
                                                  stride=1, padding=1, bias=bias)
         self.conv9 = ai8x.FusedConv2dReLU(48, 48, 3, stride=1, padding=1, bias=bias)
         self.conv10 = ai8x.FusedMaxPoolConv2dReLU(48, 96, 3, pool_size=2, pool_stride=2, 
