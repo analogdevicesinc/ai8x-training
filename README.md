@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_May 3, 2020_
+_May 11, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository._
@@ -154,7 +154,7 @@ For all other systems:
 (ai8x-training) $ pip3 install -r requirements-cpu.txt
 ```
 
-*Note*: On x86_64 systems, the pre-built TensorFlow wheels require AVX (on macOS, run `sysctl -n machdep.cpu.features` to find out, on Linux use `cat /proc/cpuinfo | grep avx`).
+*Note*: On x86_64 systems, the pre-built TensorFlow wheels require AVX (on macOS, run `sysctl -n machdep.cpu.features` to find out, on Linux use `cat /proc/cpuinfo | grep avx`, on Windows use CPU-Z from [cpuid.com]()).
 Running a TensorFlow wheel that requires AVX instructions on unsupported CPUs results in `Illegal instruction: 4` on startup.
 
 #### Building TensorFlow (for old CPUs)
@@ -903,10 +903,10 @@ The `quantize.py` software has the following important command line arguments:
 
 Copy the working and tested weight files into the `trained/` folder of the `ai8x-synthesis` project.
 
-Example:
+Example for MNIST:
 
 ```shell
-(ai8x-synthesis) $ ./quantize.py ../ai8x-training/logs/path-to-checkpoint/checkpoint.pth.tar trained/ai85-mnist.pth.tar -v --device 85
+(ai8x-synthesis) $ ./quantize_mnist.sh
 ```
 
 To evaluate the quantized network for AI85:
@@ -1025,6 +1025,7 @@ The following table describes the most important command line arguments for `ai8
 | `--fast-fifo-quad`       | Use fast FIFO in quad fanout mode (implies --fast-fifo)      |                                 |
 | *RISC-V*                 |                                                              |                                 |
 | `--riscv`                | Use RISC-V processor                                         |                                 |
+| `--riscv-debug`          | Use RISC-V processor and enable the RISC-V JTAG              |                                 |
 | `--riscv-flash`          | Move kernel/input to Flash (implies --riscv)                 |                                 |
 | `--riscv-cache`          | Enable RISC-V cache (implies --riscv and --riscv-flash)      |                                 |
 | `--riscv-exclusive`      | Use exclusive SRAM access for RISC-V (implies --riscv)       |                                 |
@@ -1547,7 +1548,7 @@ $ make install
 ```
 
 Additional SDK instructions can be found in a separate document,
-https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/docs/trunk/AI84%20Test%20Board%20Setup%20Instructions.docx.
+[https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/docs/trunk/AI84%20Test%20Board%20Setup%20Instructions.docx](https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/docs/trunk/AI84%20Test%20Board%20Setup%20Instructions.docx).
 
 ---
 
@@ -1555,11 +1556,31 @@ https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/docs/trunk/AI84%20Test%2
 
 The AI85 SDK is a git submodule of ai8x-synthesis. It is checked out automatically to a version compatible with the project into the folder `sdk`.
 
-The Arm embedded compiler can be downloaded from https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads.
+The Arm embedded compiler can be downloaded from [https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads).
 
-The RISC-V embedded compiler can be downloaded from https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/.
+The RISC-V embedded compiler can be downloaded from [https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/](https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/).
 
-In order for the debugger to work, the OpenOCD `max32xxx` branch from https://github.com/MaximIntegratedMicros/openocd.git must be installed (see above for more instructions). Working configuration files are and a `run-openocd-ai85` script are contained in the `hardware` folder of the `ai8x-synthesis` project.
+Add the following to your `~/.profile`, adjusting for the actual `PATH` to the compilers:
+
+```shell
+echo $PATH | grep -q -s "/usr/local/gcc-arm-none-eabi-7-2017-q4-major/bin"
+if [ $? -eq 1 ] ; then
+    PATH=$PATH:/usr/local/gcc-arm-none-eabi-9-2019-q4-major/bin
+    export PATH
+    ARMGCC_DIR=/usr/local/gcc-arm-none-eabi-9-2019-q4-major
+    export ARMGCC_DIR
+fi
+
+echo $PATH | grep -q -s "/usr/local/riscv-none-embed-gcc/8.3.0-1.1/bin"
+if [ $? -eq 1 ] ; then
+    PATH=$PATH:/usr/local/riscv-none-embed-gcc/8.3.0-1.1/bin
+    export PATH
+    RISCVGCC_DIR=/usr/local/riscv-none-embed-gcc/8.3.0-1.1
+    export RISCVGCC_DIR
+fi
+```
+
+In order for the debugger to work, the OpenOCD `max32xxx` branch from [https://github.com/MaximIntegratedMicros/openocd.git](https://github.com/MaximIntegratedMicros/openocd.git) must be installed (see above for more instructions). Working configuration files are and a `run-openocd-ai85` script are contained in the `hardware` folder of the `ai8x-synthesis` project.
 
 `gen-demos-ai85.sh` will create code that is compatible with the SDK and copy it into the SDK’s Example directories.
 
