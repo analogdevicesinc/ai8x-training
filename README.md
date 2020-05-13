@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_May 11, 2020_
+_May 13, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository._
@@ -879,7 +879,9 @@ This will create a plot with a random selection of 3 test images. The plot shows
 
 There are two main approaches to quantization — quantization-aware training and post-training quantization.
 
-Since performance for 8-bit weights is decent enough, _naive post-training quantization_ is used in the `quantize.py` software. While several approaches are implemented, a simple fixed scale factor is used based on experimental results. The approach requires the clamping operators implemented in `ai8x.py`.
+Since performance for 8-bit weights is decent enough, *”naive” post-training quantization* is used in the `quantize.py` software. While several approaches for clipping are implemented, clipping with a simple fixed scale factor is used by default based on experimental results. The approach requires the clamping operators implemented in `ai8x.py`.
+
+Note that the “optimum” scale factor for simple clipping is highly dependent on the model and weight data. For the MNIST example, a `--scale 0.85` works well. For the CIFAR-100 example on the other hand, Top-1 performance is 30 points better with `--scale 1.0`.
 
 The software quantizes an existing PyTorch checkpoint file and writes out a new PyTorch checkpoint file that can then be used to evaluate the quality of the quantized network, using the same PyTorch framework used for training. The same new checkpoint file will also be used to feed the [Network Loader](#Network-Loader).
 
@@ -896,6 +898,7 @@ The `quantize.py` software has the following important command line arguments:
 | `-v`                  | Verbose output                                               |                 |
 | *Weight quantization* |                                                              |                 |
 | `-c`, `--config-file` | YAML file with weight quantization information<br />(default: 8-bit for all layers) | `-c mnist.yaml` |
+| `--clip-method`       | Clipping method — either STDDEV, AVG, AVGMAX or SCALE (default) |                 |
 
 *Note: The syntax for the optional YAML file is described below. The same file can be used for both `quantize.py` and `ai8xize.py`.*
 
@@ -1563,7 +1566,7 @@ The RISC-V embedded compiler can be downloaded from [https://github.com/xpack-de
 Add the following to your `~/.profile`, adjusting for the actual `PATH` to the compilers:
 
 ```shell
-echo $PATH | grep -q -s "/usr/local/gcc-arm-none-eabi-7-2017-q4-major/bin"
+echo $PATH | grep -q -s "/usr/local/gcc-arm-none-eabi-9-2019-q4-major/bin"
 if [ $? -eq 1 ] ; then
     PATH=$PATH:/usr/local/gcc-arm-none-eabi-9-2019-q4-major/bin
     export PATH
