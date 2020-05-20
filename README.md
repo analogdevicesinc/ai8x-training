@@ -1,10 +1,10 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_May 13, 2020_
+_May 19, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
-See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository._
+See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository. The GitHub rendering of this document does not show the math formulas._
 
 This software consists of two related projects:
 1. AI8X Model Training and Quantization
@@ -24,25 +24,25 @@ The following graphic shows an overview of the development flow:
 
 ### File System Layout
 
-Including the SDK from SVN, the expected file system layout will be:
+Including the SDK, the expected file system layout will be:
 
     ..../ai8x-training/
     ..../ai8x-synthesis/
+    ..../ai8x-synthesis/sdk/
     ..../manifold/
-    ..../AI84SDK/
 
 where “....” is the project root.
 
 ### Upstream Code
 
-Change to the project root (denoted as `....` above) and run the following commands (substituting your single sign-on name for “first.last”):
+Change to the project root (denoted as `....` above) and run the following commands. Use your GitHub credentials when prompted.
 
 ```shell
-$ git clone https://first.last@gerrit.maxim-ic.com:8443/ai8x-training
-$ git clone https://first.last@gerrit.maxim-ic.com:8443/ai8x-synthesis
+$ git clone https://github.com/MaximIntegratedAI/ai8x-training.git
+$ git clone https://github.com/MaximIntegratedAI/ai8x-synthesis.git
 ```
 
-If the local git environment has not been previously configured, add the following commands to configure e-mail and name. The e-mail must match Gerrit (including upper/lower case):
+If the local git environment has not been previously configured, add the following commands to configure e-mail and name. The e-mail must match GitHub (including upper/lower case):
 
 ```shell
 $ git config --global user.email "first.last@maximintegrated.com"
@@ -337,12 +337,6 @@ The fast FIFO is selected using the `--fast-fifo` argument for `ai8xize.py`.
 
 ### Accelerator Limits
 
-* AI84:
-  * The maximum number of layers is 32 (pooling layers do not count when preceding a convolution).
-  * The maximum number of input or output channels in any layer is 64 each.
-  * The weight memory supports up to 128 * 64 3×3 Q7 kernels (see [Number Format](#Number-Format)).
-    However, weights must be arranged according to specific rules detailed below.
-  * There are 16 instances of 16 KiB data memory. Any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 128×128 pixels per channel in the CHW format. However, when using more than one input channel, the HWC format may be preferred, and all layer output are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance -- or 64×64 pixels per channel. Note that the first layer commonly creates a wide expansion (i.e., large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical.
 * AI85:
   * The maximum number of layers is 32 (pooling and element-wise layers do not count when preceding a convolution).
   * The maximum number of input channels in any layer is 1024 each.
@@ -553,43 +547,6 @@ The Network Loader prints a kernel map that shows the kernel arrangement based o
 The following picture shows an example of a `Conv2d` with 1×1 kernels, 5 input channels, 2 output channels and data size of 2×2. The inputs are shown on the left, and the outputs on the right, and the kernels are shown lined up with the associated inputs --- the number of kernel rows matches the number of input channels, and the number kernel columns matches the number of output channels. The lower half of the picture shows how the data is arranged in memory when HWC data is used for both input and output.
 
 ![Conv2Dk1x1](docs/Conv2Dk1x1.png)
-
-### Limitations of AI84 Networks
-
-The AI84 hardware does not support arbitrary network parameters. Specifically,
-* Dilation, groups, element-wise addition, and batch normalization are not supported.
-* `Conv2d`:
-  * Input data must be square (i.e., rows == columns).
-  * Kernel sizes must be 3×3.
-  * Padding can be 0, 1, or 2.
-  * Stride is fixed to 1. Pooling, including 1×1, can be used to achieve a stride other than 1.
-* `Conv1d`:
-  * Input data lengths must be a multiple of 3.
-  * Kernel size must be 9.
-  * Padding can be 0, 3, or 6.
-  * Stride is fixed to 3.
-* The only supported activation function is `ReLU`.
-* Pooling:
-  * Pooling is only supported for `Conv2d`.
-  * Pooling is always combined with a convolution. Both max pooling and average pooling are available.
-  * Pooling does not support padding.
-  * Pooling strides can be 1, 2, or 4.
-  * On AI84, three pooling sizes are supported:
-    - 2×2 with stride 1
-    - 2×2 with stride 2
-    - and, for the last layer, 4×4 stride 4 using a custom unload function.
-  * Pooling must cleanly divide the input data width and height. For example, a 2×2 pool on 17×17 data is not supported.
-  * Average pooling does not support more than 2048 bits in the accumulator. This translates to a 4×4 pooling window if activation was used on the prior layer, 3×3 otherwise. Additionally, average pooling is currently implemented as a `floor()` operation. Since there is also a quantization step at the output of the average pooling, it may not perform as intended (for example, a 2×2 `AvgPool2d` of `[[0, 0], [0, 3]]` will return `0`).
-  * Pooling window sizes must be even numbers, and have equal H and W dimensions.
-* The number of input or output channels must not exceed 64.
-* The number of layers must not exceed 32 (where pooling does not add to the count when preceding a convolution).
-* The maximum dimension (number of rows or columns) for input or output data is 256.
-* Overall weight storage is limited to 64*128 3×3 kernels. However, weights must be arranged in a certain order, see above.
-* The hardware supports 1D and 2D convolution layers. For convenience, a single final fully connected layer with 8-bit inputs/weights/bias, and 16-bit output is supported in software, as well as a software `Softmax` operator.
-* Since the internal network format is HWC in groups of four channels, output concatenation only works properly when all components of the concatenation other than the last have multiples of four channels. _Output concatenation is not yet supported in the `ai8x.py` primitives._
-* It is recommended to not use bias on the AI84 convolutions when using post-training quantization as described in this document. The reason is that the bias is not shifted by the same amount as the weights. This could be mitigated using a more involved training procedure, but since bias values do not significantly improve performance in the example networks, and since this will be corrected for AI85, the recommendation is to not use bias values for now.
-
-With the exception of weight storage, and bias use, most of these limitations will be flagged when using the network primitives from `ai8x.py`, see [Model Training and Quantization](#AI84-Model-Training-and-Quantization).
 
 ### Limitations of AI85 Networks
 
@@ -930,7 +887,7 @@ Further, a quantized network can be refined using post-quantization training (se
 
 The software also includes an `AI84RangeLinear.py` training quantizer that plugs into the Distiller framework for quantization-aware training. However, it needs work as its performance is not good enough yet and the Distiller source needs to be patched to enable it (add `from range_linear_ai84 import QuantAwareTrainRangeLinearQuantizerAI84` to `distiller/config.py` and remove `False and` from `if False and args.ai84` in `train.py`).
 
-Note that AI84 does not have a configurable per-layer output shift. The addition of this shift value allows easier quantization on AI85, since fractional bits can be used if weights do not span the full 8-bit range (many quantization approaches require a weight scale or output shift).
+Note that AI85 does have a configurable per-layer output shift. The addition of this shift value allows easier quantization, since fractional bits can be used if weights do not span the full 8-bit range (many quantization approaches require a weight scale or output shift).
 
 In all cases, ensure that the quantizer writes out a checkpoint file that the Network Loader can read.
 
@@ -1017,6 +974,7 @@ The following table describes the most important command line arguments for `ai8
 | `--mlator`               | Use hardware to swap output bytes (useful for large multi-channel outputs) |                                 |
 | `--unload`               | Add cnn_unload() function to generated code                  |                                 |
 | `--softmax`              | Add cnn_unload() and Softmax functions to generated code     |                                 |
+| `--boost`                | Turn on a port pin to boost the CNN supply                   | `--boost 2.5`                   |
 | *File names*             |                                                              |                                 |
 | `--c-filename`           | C file name base (default: main.c)                           | `--c-filename cnn.c`            |
 | `--weight-filename`      | Weight header file name (default: weights.h)                 | `--weight-filename wt.h`        |
@@ -1196,8 +1154,6 @@ Example:
 
 ##### `output_width` (Optional)
 
-On AI84, this value (if specified) has to be `8`.
-
 On AI85, when __not__ using an `activation`, the last layer can output `32` bits of unclipped data in Q17.14 format. The default is `8` bits.
 
 Example:
@@ -1210,7 +1166,7 @@ When specified for the first layer only, `data_format` can be either `chw`/`big`
 ##### `operation`
 
 This key (which can also be specified using `op`, `operator`, or `convolution`) selects a layer’s main operation after the optional input pooling.
-When this key is not specified, a warning is displayed and `Conv2d` is selected. AI84 only supports `Conv1d` and `Conv2d`.
+When this key is not specified, a warning is displayed and `Conv2d` is selected.
 
 | Operation                 | Description                                                  |
 | :------------------------ | :----------------------------------------------------------- |
@@ -1251,7 +1207,7 @@ Example:
 
 ##### `activate` (Optional)
 
-This key describes whether to activate the layer output (the default is to not activate). When specified, this key must be `ReLU` or `Abs`. AI84 supports `ReLU` only.
+This key describes whether to activate the layer output (the default is to not activate). When specified, this key must be `ReLU`, `Abs` or `None` (the default).
 
 Note that the output values are clipped (saturated) to $[0, +127]$. Because of this, `ReLU` behaves more similar to PyTorch’s `nn.Hardtanh(min_value=0, max_value=127)` than to PyTorch’s `nn.ReLU()`.
 
@@ -1262,8 +1218,6 @@ Note that `output_shift` can be used for (limited) linear activation.
 
 ##### `quantization` (Optional)
 
-On AI84, this key must always be `8` (the default value).
-
 On AI85, this key describes the width of the weight memory in bits and can be `1`, `2`, `4`, or `8` (`8` is the default).
 
 Example:
@@ -1273,14 +1227,14 @@ Example:
 
 On AI85, when `output_width` is 8, the 32-bit intermediate result can be shifted left or right before reduction to 8-bit. The value specified here is cumulative with the value generated from `quantization`.
 
-The 32-bit intermediate result is multiplied by $2^{totalshift}$ , where the total shift count must be within the range $[-8, +8]$, resulting in a factor of $[2^{-8}, 2^8]$ or $[0.00390625$ to $256]$.
+The 32-bit intermediate result is multiplied by $2^{totalshift}$ , where the total shift count must be within the range $[-15, +15]$, resulting in a factor of $[2^{–15}, 2^{15}]$ or $[0.0000305176$ to $32768]$.
 
 | quantization | implicit shift | range for `output_shift` |
 | ------------ | -------------- | ------------------------ |
-| 8-bit        | 0              | $[-8, +8]$               |
-| 4-bit        | 1              | $[-9,+7]$                |
-| 2-bit        | 2              | $[-10,+6]$               |
-| 1-bit        | 4              | $[-11,+5]$               |
+| 8-bit        | 0              | $[-15, +15]$             |
+| 4-bit        | 1              | $[-16, +14]$             |
+| 2-bit        | 2              | $[-17, +13]$             |
+| 1-bit        | 3              | $[-18, +12]$             |
 
 Using `output_shift` can help normalize data, particularly when using small weights.
 
@@ -1291,13 +1245,11 @@ Example:
 
 2D convolutions:
 
-​	On AI84, this key must always be `3x3` (the default).
-​	On AI85, `1x1` is also permitted.
+​	On AI85, this key must be `3x3` (the default) or `1x1`.
 
 1D convolutions:
 
-​	On AI84, this key must always be `9` (the default).
-​	On AI85, `1` through `9` are permitted.
+​	On AI85, this key must be `1` through `9`.
 
 Example:
 	`kernel_size: 1x1`
@@ -1310,26 +1262,26 @@ This key must always be `1`.
 
 1D convolutions:
 
-On AI84, this key must be set to `3`. On AI85, this key must be `1`.
+On AI85, this key must be `1`.
 
 ##### `pad` (Optional)
 
 `pad` sets the padding for the convolution.
 
 * For `Conv2d`, this value can be `0`, `1` (the default), or `2`.
-* For `Conv1d`, the value can be `0`, `3` (the default), or `6` on AI84 or `0`, `1`, `2` on AI85.
+* For `Conv1d`, the value can be `0`, `1`, `2`, or `3` (the default) on AI85.
 * For `Passthrough`, this value must be `0` (the default).
 
 ##### `max_pool` (Optional)
 
-When specified, performs a `MaxPool` before the convolution. On AI84, `max_pool` is only supported for 2D convolutions. The pooling size can specified as an integer (when the value is identical for both dimensions, or for 1D convolutions), or as two values in order `[H, W]`.
+When specified, performs a `MaxPool` before the convolution. The pooling size can specified as an integer (when the value is identical for both dimensions, or for 1D convolutions), or as two values in order `[H, W]`.
 
 Example:
 	 `max_pool: 2`
 
 ##### `avg_pool` (Optional)
 
-When specified, performs an `AvgPool` before the convolution. On AI84, `avg_pool` is only supported for 2D convolutions. The pooling size can specified as an integer (when the value is identical for both dimensions, or for 1D convolutions), or as two values in order `[H, W]`.
+When specified, performs an `AvgPool` before the convolution. The pooling size can specified as an integer (when the value is identical for both dimensions, or for 1D convolutions), or as two values in order `[H, W]`.
 
 Example:
 	 `avg_pool: 2`
@@ -1499,7 +1451,6 @@ The software Softmax function is optimized for processing time and it quantizes 
 
 #### Contents of the device-* Folder
 
-* For AI84, there are both a custom software fully connected layer in the file `arm_fully_connected_q7_q8p7_opt.c` that returns Q8.7 fixed-point outputs, and a custom `arm_softmax_q8p7_q15.c` which is aware of the fixed-point input (the `_frac` version delivers greater precision) . A number of additional files are provided that provide non-square pooling support, and activation support for more than 64 KiB of data (these files are not needed for AI84 hardware).
 * For AI85, the software Softmax is implemented in `softmax.c`.
 * The `tornadocnn.h` header file is included which helps both embedded examples as well as CMSIS NN code.
 
@@ -1524,36 +1475,6 @@ When compiling the CMSIS code, it may be necessary to disable compiler optimizat
 ---
 
 ## Embedded Software Development Kits (SDKs)
-
-### AI84 SDK
-
-Use SVN to check out the AI84 SDK from https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/Firmware/.
-
-```shell
-$ svn co https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/Firmware/ AI84SDK
-```
-
-Additionally, the Arm embedded compiler is required, it is available from https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads.
-
-In order for the debugger to work, the OpenOCD `max32xxx` branch from https://github.com/MaximIntegratedMicros/openocd.git must be installed, and an ai84.cfg file must be installed in `/usr/local/share/openocd/scripts/target/` (or `C:\Maxim\Toolchain\share\openocd\scripts\target\` on Windows). A copy of the file is contained in the `hardware` folder of the `ai8x-synthesis` project.
-
-Windows binaries for OpenOCD can be installed via https://www.maximintegrated.com/en/design/software-description.html/swpart=SFW0001500A. This download also includes a version of the Arm compilers.
-
-To compile and install this OpenOCD version on macOS, use:
-
-```shell
-$ git clone https://github.com/MaximIntegratedMicros/openocd.git
-$ cd openocd
-$ git checkout max32xxx
-$ MAKEINFO=true LIBTOOL=/usr/local/bin/glibtool ./configure --disable-dependency-tracking --enable-dummy --enable-buspirate --enable-jtag_vpi --enable-remote-bitbang --enable-legacy-ft2232_libftdi
-$ make
-$ make install
-```
-
-Additional SDK instructions can be found in a separate document,
-[https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/docs/trunk/AI84%20Test%20Board%20Setup%20Instructions.docx](https://svn.maxim-ic.com/svn/mcbusw/Hardware/Micro/AI84/docs/trunk/AI84%20Test%20Board%20Setup%20Instructions.docx).
-
----
 
 ### AI85 SDK
 
@@ -1583,32 +1504,9 @@ if [ $? -eq 1 ] ; then
 fi
 ```
 
-In order for the debugger to work, the OpenOCD `max32xxx` branch from [https://github.com/MaximIntegratedMicros/openocd.git](https://github.com/MaximIntegratedMicros/openocd.git) must be installed (see above for more instructions). Working configuration files are and a `run-openocd-ai85` script are contained in the `hardware` folder of the `ai8x-synthesis` project.
+In order for the debugger to work, the OpenOCD `max32xxx` branch from [https://github.com/MaximIntegratedMicros/openocd.git](https://github.com/MaximIntegratedMicros/openocd.git) must be installed (see above for more instructions). Working configuration files are and a `run-openocd-maxdap` script are contained in the `hardware` folder of the `ai8x-synthesis` project.
 
 `gen-demos-ai85.sh` will create code that is compatible with the SDK and copy it into the SDK’s Example directories.
-
----
-
-## AI85/AI87 Changes
-
-The `train.py` training tool, the `quantize.py` quantization tool and the `ai8xize.py` network generator all have a `--device` command line argument that selects the target device.
-
-The `--device 85` option enables:
-* Bias shift ≪7.
-* Per-layer support for 1, 2 and 4-bit weight sizes in addition to 8-bit weights (this is supported using the `quantization` keyword in the configuration file, and the configuration file can also be read by the quantization tool).
-* A programmable shift left/shift right at the output of the convolution that allows for better use of the entire range of weight bits (`output_shift`).
-* Support for many more pooling sizes and pooling strides, and larger limits for average pooling.
-* Support for pooling without convolution (passthrough mode), and optional rounding for average pooling.
-* 1D convolutions.
-* 1×1 kernels for 2D convolutions.
-* Transposed 2D convolutions (upsampling).
-* Data “flattening”, allowing the use of 1×1 kernels to emulate fully connected layers.
-* In-flight element-wise addition, subtraction, and binary or/xor.
-* Support for more weight memory, and more input and output channels.
-* Support for non-square data and non-square pooling kernels.
-* Support for 32-bit Q17.14 data output for last layer when not using activation.
-* Support for streaming mode with FIFOs to allow for larger data sizes.
-* Support for absolute value (`Abs`) activation.
 
 ---
 
@@ -1824,46 +1722,6 @@ Code should not generate any warnings in any of the tools (some of the component
 
 ### Submitting Changes
 
-Do not try to push any changes into the master branch. Instead, create a local “feature” branch. The easiest way to do this is using a graphical client such as [Fork](#Recommended-Software). The command line equivalent is:
-
-```shell
-$ git checkout -b my-new-feature
-$ git status
-On branch my-new-feature
-...
-```
-
-Commit changes and create a description of the changes:
-
-```shell
-$ git commit
-```
-
-Check the address for the Maxim server:
-
-```shell
-$ git remote -v
-origin	https://first.last@gerrit.maxim-ic.com:8443/ai8x-synthesis (fetch)
-origin	https://first.last@gerrit.maxim-ic.com:8443/ai8x-synthesis (push)
-```
-
-Install a commit hook:
-
-```shell
-$ GITDIR=$(git rev-parse --git-dir)
-$ scp -p -P 29418 first.last@gerrit.maxim-ic.com:hooks/commit-msg ${GITDIR}/hooks/
-```
-
-And push the changes to Maxim’s Gerrit server (do not change “master” to anything else even though the local branch is called “my-new-feature”):
-
-```shell
-$ git push https://first.last@gerrit.maxim-ic.com:8443/ai8x-synthesis HEAD:refs/for/master
-...
-remote:
-To URL
-* [new branch] my-new-feature -> refs/for/master
-```
-
-Open the URL in a web browser and request a review for the change list.
+Do not try to push any changes into the master branch. Instead, create a fork on submit a pull request. The easiest way to do this is using a graphical client such as [Fork](#Recommended-Software).
 
 ---
