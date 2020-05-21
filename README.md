@@ -1,10 +1,10 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_May 19, 2020_
+_May 21, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
-See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A PDF copy of this file is available in the repository. The GitHub rendering of this document does not show the math formulas._
+See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A [PDF copy of this file](README.pdf) is available in this repository. The GitHub rendering of this document does not show the formulas or the clickable table of contents._
 
 This software consists of two related projects:
 1. AI8X Model Training and Quantization
@@ -13,6 +13,18 @@ This software consists of two related projects:
 ---
 
 [TOC]
+
+## Part Numbers
+
+This document covers several of Maxim’s ultra-low power machine learning accelerator systems. They are referred to by their die types. The following shows the die types and their corresponding part numbers:
+
+| Die Type | Part Number(s)       |
+| -------- | -------------------- |
+| AI84     | Unreleased test chip |
+| AI85     | MAX78000             |
+| AI87     | Under development    |
+
+The notation “AI8X” covers both AI85 and AI87.
 
 ## Overview
 
@@ -24,7 +36,7 @@ The following graphic shows an overview of the development flow:
 
 ### File System Layout
 
-Including the SDK, the expected file system layout will be:
+Including the SDK, the expected/resulting file system layout will be:
 
     ..../ai8x-training/
     ..../ai8x-synthesis/
@@ -35,18 +47,18 @@ where “....” is the project root.
 
 ### Upstream Code
 
-Change to the project root (denoted as `....` above) and run the following commands. Use your GitHub credentials when prompted.
-
-```shell
-$ git clone https://github.com/MaximIntegratedAI/ai8x-training.git
-$ git clone https://github.com/MaximIntegratedAI/ai8x-synthesis.git
-```
-
 If the local git environment has not been previously configured, add the following commands to configure e-mail and name. The e-mail must match GitHub (including upper/lower case):
 
 ```shell
 $ git config --global user.email "first.last@maximintegrated.com"
 $ git config --global user.name "First Last"
+```
+
+Change to the project root (denoted as `....` above) and run the following commands. Use your GitHub credentials when prompted.
+
+```shell
+$ git clone https://github.com/MaximIntegratedAI/ai8x-training.git
+$ git clone https://github.com/MaximIntegratedAI/ai8x-synthesis.git
 ```
 
 ### Prerequisites
@@ -86,11 +98,12 @@ The following software is optional, and can be replaced with other similar softw
 3. CoolTerm (Serial Terminal, Free), http://freeware.the-meiers.org
    or Serial ($30), https://apps.apple.com/us/app/serial/id877615577?mt=12
 4. Git Fork (Graphical Git Client, $50), https://git-fork.com
+   or GitHub Desktop (Graphical Git Client, Free), https://desktop.github.com
 5. Beyond Compare (Diff and Merge Tool, $60), https://scootersoftware.com
 
 ### Project Installation
 
-*The software in this project requires Python 3.6.9 or a later 3.6.x version. Versions 3.7/3.8 are not yet supported.*
+*The software in this project requires Python 3.6.9 or a later 3.6.x version. Versions 3.7/3.8/3.9 are not yet supported.*
 
 It is not necessary to install Python 3.6.9 system-wide, or to rely on the system-provided Python. To manage Python versions, use `pyenv` (https://github.com/pyenv/pyenv).
 
@@ -125,7 +138,7 @@ $ pyenv install 3.6.9
 
 #### Windows Systems
 
-Windows is not supported at this time.
+Windows is not supported for training networks at this time.
 
 #### Creating the Virtual Environment
 
@@ -299,7 +312,7 @@ The data memory instances inside the accelerator are single-port memories. This 
 
 ### Streaming Mode
 
-On AI85/AI87, the machine also implements a streaming mode. Streaming allows input data dimensions that exceed the available per-channel data memory in the accelerator.
+The machine also implements a streaming mode. Streaming allows input data dimensions that exceed the available per-channel data memory in the accelerator.
 
 The following illustration shows the basic principle: In order to produce the first output pixel of the second layer, not all data needs to be present at the input. In the example, a 5×5 input needs to be available.
 
@@ -615,7 +628,7 @@ The AI85 hardware does not support arbitrary network parameters. Specifically,
 
 ### Fully Connected (Linear) Layers
 
-On AI85/AI87, m×n fully connected layers can be realized in hardware by “flattening” 2D input data into m channels of 1×1 input data. The hardware will produce n channels of 1×1 output data. When chaining multiple fully connected layers, the flattening step is omitted. The following picture shows 2D data, the equivalent flattened 1D data, and the output.
+m×n fully connected layers can be realized in hardware by “flattening” 2D input data into m channels of 1×1 input data. The hardware will produce n channels of 1×1 output data. When chaining multiple fully connected layers, the flattening step is omitted. The following picture shows 2D data, the equivalent flattened 1D data, and the output.
 
 For AI85, both m and n must not be larger than 16.
 
@@ -623,7 +636,7 @@ For AI85, both m and n must not be larger than 16.
 
 ### Upsampling (Fractionally-Strided 2D Convolutions)
 
-On AI85/AI87, the hardware supports 2D upsampling (“fractionally-strided convolutions”, sometimes called “deconvolution” even though this is not strictly mathematically correct). The PyTorch equivalent is `ConvTranspose2D` with a stride of 2.
+The hardware supports 2D upsampling (“fractionally-strided convolutions”, sometimes called “deconvolution” even though this is not strictly mathematically correct). The PyTorch equivalent is `ConvTranspose2D` with a stride of 2.
 
 The example shows a fractionally-strided convolution with a stride of 2, pad of 1, and a 3×3 kernel. This “upsamples” the input dimensions from 3×3 to output dimensions of 6×6.
 
@@ -869,7 +882,7 @@ Example for MNIST:
 (ai8x-synthesis) $ ./quantize_mnist.sh
 ```
 
-To evaluate the quantized network for AI85:
+To evaluate the quantized network for AI85 (run from the training project):
 
 ```shell
 (ai8x-training) $ ./evaluate_mnist.sh
@@ -941,7 +954,7 @@ The Netron tool (https://github.com/lutzroeder/Netron) can visualize networks, s
 
 ## Network Loader (AI8Xize)
 
-_The `ai8xize` network loader currently depends on PyTorch and Nervana’s Distiller. This requirement will be removed in the long term._
+_The `ai8xize` network loader currently depends on PyTorch and Nervana’s Distiller. This requirement will be removed in the future._
 
 The network loader creates C code that programs the AI8X (for embedded execution, or RTL simulation, or CMSIS NN comparison). Additionally, the generated code contains sample input data and the expected output for the sample, as well as code that verifies the expected output.
 
@@ -1154,7 +1167,7 @@ Example:
 
 ##### `output_width` (Optional)
 
-On AI85, when __not__ using an `activation`, the last layer can output `32` bits of unclipped data in Q17.14 format. The default is `8` bits.
+When __not__ using an `activation`, the last layer can output `32` bits of unclipped data in Q17.14 format. The default is `8` bits.
 
 Example:
 	`output_width: 32`
@@ -1211,21 +1224,21 @@ This key describes whether to activate the layer output (the default is to not a
 
 Note that the output values are clipped (saturated) to $[0, +127]$. Because of this, `ReLU` behaves more similar to PyTorch’s `nn.Hardtanh(min_value=0, max_value=127)` than to PyTorch’s `nn.ReLU()`.
 
-Note that `output_shift` can be used for (limited) linear activation.
+Note that `output_shift` can be used for (limited) “linear” activation.
 
 <img src="docs/relu.png" alt="relu" style="zoom:33%;" />
 <img src="docs/abs.png" alt="abs" style="zoom:33%;" />
 
 ##### `quantization` (Optional)
 
-On AI85, this key describes the width of the weight memory in bits and can be `1`, `2`, `4`, or `8` (`8` is the default).
+This key describes the width of the weight memory in bits and can be `1`, `2`, `4`, or `8` (`8` is the default).
 
 Example:
 	`quantization: 4`
 
 ##### `output_shift` (Optional)
 
-On AI85, when `output_width` is 8, the 32-bit intermediate result can be shifted left or right before reduction to 8-bit. The value specified here is cumulative with the value generated from `quantization`.
+When `output_width` is 8, the 32-bit intermediate result can be shifted left or right before reduction to 8-bit. The value specified here is cumulative with the value generated from `quantization`.
 
 The 32-bit intermediate result is multiplied by $2^{totalshift}$ , where the total shift count must be within the range $[-15, +15]$, resulting in a factor of $[2^{–15}, 2^{15}]$ or $[0.0000305176$ to $32768]$.
 
@@ -1245,11 +1258,11 @@ Example:
 
 2D convolutions:
 
-​	On AI85, this key must be `3x3` (the default) or `1x1`.
+​	This key must be `3x3` (the default) or `1x1`.
 
 1D convolutions:
 
-​	On AI85, this key must be `1` through `9`.
+​	This key must be `1` through `9`.
 
 Example:
 	`kernel_size: 1x1`
@@ -1258,18 +1271,18 @@ Example:
 
 2D convolutions:
 
-This key must always be `1`.
+​	This key must be `1`.
 
 1D convolutions:
 
-On AI85, this key must be `1`.
+​	This key must be `1`.
 
 ##### `pad` (Optional)
 
 `pad` sets the padding for the convolution.
 
 * For `Conv2d`, this value can be `0`, `1` (the default), or `2`.
-* For `Conv1d`, the value can be `0`, `1`, `2`, or `3` (the default) on AI85.
+* For `Conv1d`, the value can be `0`, `1`, `2`, or `3` (the default).
 * For `Passthrough`, this value must be `0` (the default).
 
 ##### `max_pool` (Optional)
@@ -1443,7 +1456,7 @@ To run another inference, ensure all groups are disabled (stopping the state mac
 
 #### Softmax, and Data unload in C
 
-`ai8xize.py` can generate a custom `cnn_unload()` function using the command line switch `--unload`. The `--softmax` switch additionally inserts a call to a software Softmax function that is provided in the `device-aixx` folder. To use the provided software Softmax on AI85, the last layer output should be 32-bit wide (`output_width: 32`).
+`ai8xize.py` can generate a custom `cnn_unload()` function using the command line switch `--unload`. The `--softmax` switch additionally inserts a call to a software Softmax function that is provided in the `device-ai8x` folder. To use the provided software Softmax on AI85, the last layer output should be 32-bit wide (`output_width: 32`).
 
 The software Softmax function is optimized for processing time and it quantizes the input.
 
@@ -1458,7 +1471,7 @@ The software Softmax function is optimized for processing time and it quantizes 
 
 ### CMSIS5 NN Emulation (Unsupported)
 
-The `ai8xize.py` tool also has an unsupported mode to create code that executes the same exact network using Arm’s CMSISv5 Neural Networking library, optimized for Arm’s Microcontroller DSP (reportedly 4.6× faster than executing on the CPU), see https://developer.arm.com/solutions/machine-learning-on-arm/developer-material/how-to-guides/converting-a-neural-network-for-arm-cortex-m-with-cmsis-nn and https://github.com/ARM-software/CMSIS_5 for the source code. A version of this repository is automatically checked out as part of the `ai8x-synthesis` project.
+The `ai8xize.py` tool also has an unsupported mode to create code that executes the same exact network for AI84 using Arm’s CMSISv5 Neural Networking library, optimized for Arm’s Microcontroller DSP (reportedly 4.6× faster than executing on the CPU), see https://developer.arm.com/solutions/machine-learning-on-arm/developer-material/how-to-guides/converting-a-neural-network-for-arm-cortex-m-with-cmsis-nn and https://github.com/ARM-software/CMSIS_5 for the source code. A version of this repository is automatically checked out as part of the `ai8x-synthesis` project.
 
 *Note: The CMSIS5 NN emulation is not supported because it does not support the enhanced features of AI85 and AI87.*
 
@@ -1704,7 +1717,7 @@ To pull the latest code, in either project use:
 $ git pull
 $ git submodule update --init
 $ pip3 install -U pip setuptools
-$ pip3 install -U -r requirements.txt # or requirements-[cpu,cuda].txt
+$ pip3 install -U -r requirements.txt # or requirements-[cpu,cuda].txt when in ai8x-training
 ```
 
 ## Contributing Code
@@ -1722,6 +1735,6 @@ Code should not generate any warnings in any of the tools (some of the component
 
 ### Submitting Changes
 
-Do not try to push any changes into the master branch. Instead, create a fork on submit a pull request. The easiest way to do this is using a graphical client such as [Fork](#Recommended-Software).
+Do not try to push any changes into the master branch. Instead, create a fork on submit a pull request. The easiest way to do this is using a graphical client such as [Fork](#Recommended-Software) or GitHub Desktop.
 
 ---
