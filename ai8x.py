@@ -10,6 +10,7 @@
 Contains the limits of the AI84/AI85/AI87 implementations and custom PyTorch modules that take
 the limits into account.
 """
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Function
@@ -687,6 +688,105 @@ class FusedConv1dAbs(Conv1d):
     """
     def __init__(self, *args, **kwargs):
         super(FusedConv1dAbs, self).__init__(*args, activation='Abs', **kwargs)
+
+
+class Eltwise(nn.Module):
+    """
+    AI8X - Base Class for Elementwise Operation
+    """
+    def __init__(self, f):
+        super(Eltwise, self).__init__()
+        self.f = f
+        if dev.simulate:
+            bits = dev.ACTIVATION_BITS
+            self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
+        else:
+            self.clamp = Clamp(min_val=-1., max_val=1.)
+
+    def forward(self, *x):
+        y = x[0]
+        for i in range(1, len(x)):
+            y = self.f(y, x[i])
+
+        x = self.clamp(y)
+        return x
+
+
+class Add(Eltwise):
+    """
+    AI8X - Elementwise Add Operation
+    """
+    def __init__(self):
+        super(Add, self).__init__(torch.add)
+
+
+class Sub(Eltwise):
+    """
+    AI8X - Elementwise Subtract Operation
+    """
+
+    @staticmethod
+    def sub(a, b):
+        """
+        Subtract Tensors
+        """
+        return torch.add(a, torch.neg(b))
+
+    def __init__(self):
+        super(Sub, self).__init__(self.sub)
+
+
+class Mul(Eltwise):
+    """
+    AI8X - Elementwise Multiplication Operation
+    """
+    def __init__(self):
+        super(Mul, self).__init__(torch.mul)
+
+
+class Xor(Eltwise):
+    """
+    AI8X - Elementwise Bitwise Xor Operation
+    """
+
+    @staticmethod
+    def bitwise_xor(a, b):
+        """
+        Bitwise XOR of Tensors via int intermediate
+        """
+        # Convert input from float to byte
+        a = a.add(.5).mul(256.).round().int()
+        b = b.add(.5).mul(256.).round().int()
+        # Bitwise XOR on integers, convert back to float
+        # FIXME: In PyTorch 1.4 or later, use bitwise_xor()
+        return torch.tensor(  # pylint: disable=not-callable
+            np.bitwise_xor(a.detach().numpy(), b.detach().numpy())
+        ).div(256.).sub(.5)
+
+    def __init__(self):
+        super(Xor, self).__init__(self.bitwise_xor)
+
+
+class Or(Eltwise):
+    """
+    AI8X - Elementwise Bitwise Or Operation
+    """
+
+    @staticmethod
+    def bitwise_or(a, b):
+        """
+        Bitwise OR of Tensors via int intermediate
+        """
+        a = a.add(.5).mul(256.).round().int()
+        b = b.add(.5).mul(256.).round().int()
+        # Bitwise OR on integers, convert back to float
+        # FIXME: In PyTorch 1.4 or later, use bitwise_or()
+        return torch.tensor(  # pylint: disable=not-callable
+            np.bitwise_or(a.detach().numpy(), b.detach().numpy())
+        ).div(256.).sub(.5)
+
+    def __init__(self):
+        super(Or, self).__init__(self.bitwise_or)
 
 
 class Device:
