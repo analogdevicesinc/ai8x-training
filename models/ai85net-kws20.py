@@ -7,16 +7,16 @@
 #
 ###################################################################################################
 """
-Test networks for AI85/AI86
-
-Optionally quantize/clamp activations
+Keyword spotting network for AI85/AI86
 """
 import torch.nn as nn
 import ai8x
 
+
 class AI85KWS20Net(nn.Module):
     """
-    Compound KWS20 Audio net, starting with Conv1Ds with kernel_size=1 and then switching to Conv2Ds
+    Compound KWS20 Audio net, starting with Conv1Ds with kernel_size=1
+    and then switching to Conv2Ds
     """
     # num_classes = n keywords + 1 unknown
     def __init__(

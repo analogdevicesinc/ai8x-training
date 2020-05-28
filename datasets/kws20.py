@@ -22,7 +22,7 @@
 # limitations under the License.
 #
 """
-Classes and functions used to utilize Folded 1D Speech Commands dataset.
+Classes and functions used to create keyword spotting dataset.
 """
 import errno
 import hashlib
@@ -277,7 +277,7 @@ class KWS:
 
     @staticmethod
     def stretch(audio, rate=1):
-        """Stretchs audio with specified ratio.
+        """Stretches audio with specified ratio.
         """
         input_length = 16000
         audio2 = librosa.effects.time_stretch(audio, rate)
@@ -304,7 +304,7 @@ class KWS:
         return aug_audio
 
     def augment_multiple(self, audio, fs, n_augment, verbose=False):
-        """Calls `augment` funtion for n_augment times for given audio data.
+        """Calls `augment` function for n_augment times for given audio data.
         Finally the original audio is added to have (n_augment+1) audio data.
         """
         aug_audio = [self.augment(audio, fs, verbose) for i in range(n_augment)]
