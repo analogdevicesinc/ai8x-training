@@ -78,7 +78,7 @@ class AI85ResidualSimpleNet(nn.Module):
 
 def ai85ressimplenet(pretrained=False, **kwargs):
     """
-    Constructs a Resudual SimpleNet v1 model.
+    Constructs a Residual SimpleNet v1 model.
     """
     assert not pretrained
     return AI85ResidualSimpleNet(**kwargs)
