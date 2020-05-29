@@ -1189,12 +1189,12 @@ def save_collectors_data(collectors, directory):
 
 
 def check_pytorch_version():
-    """Ensure PyTorch >= 1.3.1"""
-    if parse_version(torch.__version__) < parse_version('1.3.1'):
+    """Ensure PyTorch >= 1.5.0"""
+    if parse_version(torch.__version__) < parse_version('1.5.0'):
         print("\nNOTICE:")
-        print("The Distiller \'master\' branch now requires at least PyTorch version 1.3.1 due to "
+        print("This software requires at least PyTorch version 1.5.0 due to "
               "PyTorch API changes which are not backward-compatible.\n"
-              "Please install PyTorch 1.3.1 or its derivative.\n"
+              "Please install PyTorch 1.5.0 or its derivative.\n"
               "If you are using a virtual environment, do not forget to update it:\n"
               "  1. Deactivate the old environment\n"
               "  2. Install the new environment\n"
