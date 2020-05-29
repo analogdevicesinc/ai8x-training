@@ -758,10 +758,7 @@ class Xor(Eltwise):
         a = a.add(.5).mul(256.).round().int()
         b = b.add(.5).mul(256.).round().int()
         # Bitwise XOR on integers, convert back to float
-        # FIXME: In PyTorch 1.4 or later, use bitwise_xor()
-        return torch.tensor(  # pylint: disable=not-callable
-            np.bitwise_xor(a.detach().numpy(), b.detach().numpy())
-        ).div(256.).sub(.5)
+        return torch.bitwise_or(a, b).div(256.).sub(.5)
 
     def __init__(self):
         super(Xor, self).__init__(self.bitwise_xor)
@@ -780,10 +777,7 @@ class Or(Eltwise):
         a = a.add(.5).mul(256.).round().int()
         b = b.add(.5).mul(256.).round().int()
         # Bitwise OR on integers, convert back to float
-        # FIXME: In PyTorch 1.4 or later, use bitwise_or()
-        return torch.tensor(  # pylint: disable=not-callable
-            np.bitwise_or(a.detach().numpy(), b.detach().numpy())
-        ).div(256.).sub(.5)
+        return torch.bitwise_xor(a, b).div(256.).sub(.5)
 
     def __init__(self):
         super(Or, self).__init__(self.bitwise_or)
