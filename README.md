@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_May 21, 2020_
+_May 29, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A [PDF copy of this file](README.pdf) is available in this repository. The GitHub rendering of this document does not show the formulas or the clickable table of contents._
@@ -18,11 +18,11 @@ This software consists of two related projects:
 
 This document covers several of Maxim’s ultra-low power machine learning accelerator systems. They are referred to by their die types. The following shows the die types and their corresponding part numbers:
 
-| Die Type | Part Number(s)       |
-| -------- | -------------------- |
-| AI84     | Unreleased test chip |
-| AI85     | MAX78000             |
-| AI87     | Under development    |
+| Die Type | Part Number(s)         |
+| -------- | ---------------------- |
+| *AI84*   | *Unreleased test chip* |
+| **AI85** | **MAX78000**           |
+| AI87     | Under development      |
 
 The notation “AI8X” covers both AI85 and AI87.
 
@@ -63,12 +63,12 @@ $ git clone https://github.com/MaximIntegratedAI/ai8x-synthesis.git
 
 ### Prerequisites
 
-This software supports only Ubuntu 18.04 LTS (Ubuntu 20.04 LTS is not supported by CUDA 10.1). The server version is sufficient, see https://ubuntu.com/download/server.
+This software currently supports Ubuntu 18.04 LTS (Ubuntu 20.04 LTS is not yet supported by CUDA). The server version is sufficient, see https://ubuntu.com/download/server.
 
 When going beyond simple tests, model training requires CUDA hardware acceleration (the network loader does not require CUDA).
 
-Install CUDA 10.1 (PyTorch 1.3.1 does not support CUDA 10.2):
-https://developer.nvidia.com/cuda-10.1-download-archive-update2
+Install CUDA 10.1 or CUDA 10.2:
+https://developer.nvidia.com/cuda-toolkit-archive
 
 *Note: When using multiple GPUs, the software will automatically use all available GPUs and distribute the workload. To prevent this, either use the `--gpus` command line argument, or set the `CUDA_VISIBLE_DEVICES` environment variable.*
 
@@ -158,40 +158,13 @@ The next step differs depending on whether the system is Linux with CUDA, or not
 For CUDA 10.1 on Linux:
 
 ```shell
-(ai8x-training) $ pip3 install -r requirements-cuda.txt
+(ai8x-training) $ pip3 install -r requirements-cu101.txt
 ```
 
-For all other systems:
+For all other systems, including CUDA 10.2 on Linux:
 
 ```shell
-(ai8x-training) $ pip3 install -r requirements-cpu.txt
-```
-
-*Note*: On x86_64 systems, the pre-built TensorFlow wheels require AVX (on macOS, run `sysctl -n machdep.cpu.features` to find out, on Linux use `cat /proc/cpuinfo | grep avx`, on Windows use CPU-Z from [cpuid.com]()).
-Running a TensorFlow wheel that requires AVX instructions on unsupported CPUs results in `Illegal instruction: 4` on startup.
-
-#### Building TensorFlow (for old CPUs)
-
-If the CPU does not support AVX, or to enable support for AVX2, or CUDA, or AMD64, build TensorFlow locally. Otherwise, skip ahead to [Nervana Distiller](#Nervana-Distiller).
-_To repeat: Building TensorFlow is not needed when the binary wheels are functioning properly._
-
-The TensorFlow build requires Java 8 and Bazel, and takes over two hours. 
-Building TensorFlow 1.14 requires Bazel 0.25.2 (newer or much older versions do not work). See
-https://docs.bazel.build/versions/master/install-compile-source.html#build-bazel-using-bazel for build instructions.
-
-Once Bazel is installed, compile and install TensorFlow. On Jetson TX1, disable S3. See 
-https://github.com/peterlee0127/tensorflow-nvJetson/blob/master/patch/tensorflow1.12.patch
-The removal of `-mfpu=neon` does not seem to be necessary.
-
-```shell
-(ai8x-training) $ pip3 install keras_preprocessing
-(ai8x-training) $ git clone https://github.com/tensorflow/tensorflow 
-(ai8x-training) $ cd tensorflow
-(ai8x-training) $ git checkout tags/v1.14.0
-(ai8x-training) $ ./configure
-(ai8x-training) $ bazel build --config=opt //tensorflow/tools/pip_package:build_pip_package
-(ai8x-training) $ bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg
-(ai8x-training) $ pip3 install /tmp/tensorflow_pkg/tensorflow-1.14.0-cp36-cp36m-macosx_10_13_x86_64.whl 
+(ai8x-training) $ pip3 install -r requirements.txt
 ```
 
 #### Nervana Distiller
@@ -241,7 +214,13 @@ $ yarn
 
 For `ai8x-synthesis`, some of the installation steps can be simplified. Specifically, CUDA is not necessary.
 
-Start by creating a second virtual environment:
+Start by deactivating the `ai8x-training` environment if it is active.
+
+```shell
+(ai8x-training) $ deactivate
+```
+
+Then, create a second virtual environment:
 
 ```shell
 $ cd PROJECT_ROOT
@@ -646,11 +625,11 @@ The example shows a fractionally-strided convolution with a stride of 2, pad of 
 
 ## Model Training and Quantization
 
-The main training software is `train.py`. It drives the training aspects including model creation, checkpointing, model save, and status display (see `--help` for the many supported options, and the `go_*.sh` scripts for example usage).
+The main training software is `train.py`. It drives the training aspects including model creation, checkpointing, model save, and status display (see `--help` for the many supported options, and the `train_*.sh` scripts for example usage).
 
 The `ai84net.py` and `ai85net.py` files contain models that fit into AI84’s weight memory. These models rely on the AI8X hardware operators that are defined in `ai8x.py`.
 
-To train the FP32 model for MNIST on AI85, run `go_mnist.sh` in the `ai8x-training` project. This script will place checkpoint files into the log directory. Training makes use of the Distiller framework, but the `train.py` software has been modified slightly to improve it and add some AI8X specifics.
+To train the FP32 model for MNIST on AI85, run `train_mnist.sh` in the `ai8x-training` project. This script will place checkpoint files into the log directory. Training makes use of the Distiller framework, but the `train.py` software has been modified slightly to improve it and add some AI8X specifics.
 
 ### Command Line Arguments
 
@@ -938,7 +917,7 @@ The training/verification data is located (by default) in `data/DataSetName`, fo
 
 #### Training Process
 
-Train the new network/new dataset. See `go_mnist.sh` for a command line example.
+Train the new network/new dataset. See `train_mnist.sh` for a command line example.
 
 #### Netron - Network Visualization
 
@@ -956,7 +935,7 @@ The Netron tool (https://github.com/lutzroeder/Netron) can visualize networks, s
 
 _The `ai8xize` network loader currently depends on PyTorch and Nervana’s Distiller. This requirement will be removed in the future._
 
-The network loader creates C code that programs the AI8X (for embedded execution, or RTL simulation, or CMSIS NN comparison). Additionally, the generated code contains sample input data and the expected output for the sample, as well as code that verifies the expected output.
+The network loader creates C code that programs the AI8X (for embedded execution, or RTL simulation). Additionally, the generated code contains sample input data and the expected output for the sample, as well as code that verifies the expected output.
 
 The `ai8xize.py` program needs two inputs:
 1. A quantized checkpoint file, generated by the AI8X model quantization program `quantize.py`.
@@ -1465,25 +1444,6 @@ The software Softmax function is optimized for processing time and it quantizes 
 #### Contents of the device-* Folder
 
 * For AI85, the software Softmax is implemented in `softmax.c`.
-* The `tornadocnn.h` header file is included which helps both embedded examples as well as CMSIS NN code.
-
----
-
-### CMSIS5 NN Emulation (Unsupported)
-
-The `ai8xize.py` tool also has an unsupported mode to create code that executes the same exact network for AI84 using Arm’s CMSISv5 Neural Networking library, optimized for Arm’s Microcontroller DSP (reportedly 4.6× faster than executing on the CPU), see https://developer.arm.com/solutions/machine-learning-on-arm/developer-material/how-to-guides/converting-a-neural-network-for-arm-cortex-m-with-cmsis-nn and https://github.com/ARM-software/CMSIS_5 for the source code. A version of this repository is automatically checked out as part of the `ai8x-synthesis` project.
-
-*Note: The CMSIS5 NN emulation is not supported because it does not support the enhanced features of AI85 and AI87.*
-
-The results of the generated code have been verified to match AI84 exactly and may be used to demonstrate the efficacy of the custom CNN accelerator. Note there are minor rounding errors in the CMSIS average pooling code when enabling SIMD (`-DARM_MATH_DSP`). If there are hard faults on the device, try limiting compiler optimizations to `-O1`.
-
-For example, the following command would generate code that performs a CIFAR-10 inference from the `trained/ai84-cifar10.pth.tar` checkpoint file and the `cifar10-hwc.yaml` network description file:
-
-```shell
-(ai8x-synthesis) $ ./ai8xize.py --top-level cnn --test-dir demos --prefix CIFAR-10-Arm --checkpoint-file trained/ai84-cifar10.pth.tar --config-file networks/cifar10-hwc.yaml --fc-layer --embedded-code --cmsis-software-nn
-```
-
-When compiling the CMSIS code, it may be necessary to disable compiler optimizations.
 
 ---
 
@@ -1736,5 +1696,8 @@ Code should not generate any warnings in any of the tools (some of the component
 ### Submitting Changes
 
 Do not try to push any changes into the master branch. Instead, create a fork on submit a pull request. The easiest way to do this is using a graphical client such as [Fork](#Recommended-Software) or GitHub Desktop.
+
+The following document has more information:
+https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/CONTRIBUTING.md
 
 ---
