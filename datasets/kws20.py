@@ -331,7 +331,6 @@ class KWS:
             lst = sorted(lst)
             labels = [d for d in lst if os.path.isdir(os.path.join(test_data_path, d))
                       and d[0].isalpha()]
-            # labels = ['left']  # select specific label for dataset
 
             # PARAMETERS
             data_len = 128 * 128
@@ -358,6 +357,9 @@ class KWS:
                 data_class = np.full(((aug_num + 1) * len(records), 1), i, dtype=np.uint8)
 
                 time1 = time.time()
+                traincount = 0
+                validatecount = 0
+                testcount = 0
                 for r, record in enumerate(records):
 
                     if r % 1000 == 0:
@@ -365,10 +367,13 @@ class KWS:
 
                     if hash(record) % 10 < 7:
                         d_typ = np.uint8(0)  # train
+                        traincount += 1
                     elif hash(record) % 10 < 9:
                         d_typ = np.uint8(1)  # val
+                        validatecount += 1
                     else:
                         d_typ = np.uint8(2)  # test
+                        testcount += 1
 
                     record_pth = os.path.join(test_data_path, label, record)
                     y, fs = librosa.load(record_pth, offset=0, sr=None)
@@ -411,6 +416,7 @@ class KWS:
             torch.save(mfcc_dataset, os.path.join(self.processed_folder, self.data_file))
 
         print('Dataset created!')
+        print('Training: %d,  Validation: %d, Test: %d' % (traincount, validatecount, testcount))
 
 
 class KWS_20(KWS):
