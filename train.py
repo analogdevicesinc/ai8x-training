@@ -80,10 +80,10 @@ import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
 import torchnet.meter as tnt
-from tblogger import PythonLogger, TensorBoardLogger
 import distiller
 import distiller.apputils as apputils
 import distiller.model_summaries as model_summaries
+from distiller.data_loggers import PythonLogger, TensorBoardLogger
 # pylint: disable=no-name-in-module
 from distiller.data_loggers.collector import SummaryActivationStatsCollector, \
     RecordsActivationStatsCollector, QuantCalibrationStatsCollector, \
@@ -265,18 +265,18 @@ def main():
     compression_scheduler = None
     # Create a couple of logging backends.  TensorBoardLogger writes log files in a format
     # that can be read by Google's Tensor Board.  PythonLogger writes to the Python logger.
-    pylogger = PythonLogger(msglogger)
+    pylogger = PythonLogger(msglogger, log_1d=True)
     all_loggers = [pylogger]
     if args.tblog:
-        tflogger = TensorBoardLogger(msglogger.logdir, comment='_'+args.dataset)
+        tflogger = TensorBoardLogger(msglogger.logdir, log_1d=True, comment='_'+args.dataset)
 
-        tflogger.writer.add_text('Command line', str(args))
+        tflogger.tblogger.writer.add_text('Command line', str(args))
 
         if dimensions[2] > 1:
             dummy_input = torch.autograd.Variable(torch.randn((1, ) + dimensions))
         else:  # 1D input
             dummy_input = torch.autograd.Variable(torch.randn((1, ) + dimensions[:-1]))
-        tflogger.writer.add_graph(model.to('cpu'), (dummy_input, ), False)
+        tflogger.tblogger.writer.add_graph(model.to('cpu'), (dummy_input, ), False)
 
         all_loggers.append(tflogger)
         all_tbloggers = [tflogger]
@@ -824,8 +824,8 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                     for i in range(args.num_classes):
                         tb_preds = test_preds == i
                         tb_probs = test_probs[:, i]
-                        tflogger.writer.add_pr_curve(str(args.labels[i]),
-                                                     tb_preds, tb_probs, global_step=epoch)
+                        tflogger.tblogger.writer.add_pr_curve(str(args.labels[i]), tb_preds,
+                                                              tb_probs, global_step=epoch)
 
                 if args.display_embedding and tflogger is not None \
                    and steps_completed == total_steps:
@@ -843,10 +843,13 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                     # Get the class labels for each image
                     class_labels = [args.labels[lab] for lab in labels]
 
-                    tflogger.writer.add_embedding(features, metadata=class_labels,
-                                                  label_img=args.visualize_fn(images, args),
-                                                  global_step=epoch,
-                                                  tag='verification/embedding')
+                    tflogger.tblogger.writer.add_embedding(
+                        features,
+                        metadata=class_labels,
+                        label_img=args.visualize_fn(images, args),
+                        global_step=epoch,
+                        tag='verification/embedding'
+                    )
 
     if args.csv_prefix is not None:
         f_ytrue.close()
@@ -870,8 +873,8 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
             msglogger.info('==> Confusion:\n%s\n', str(confusion.value()))
             if tflogger is not None:
                 cf = nnplot.confusion_matrix(confusion.value(), args.labels)
-                tflogger.writer.add_image('Validation/ConfusionMatrix', cf, epoch,
-                                          dataformats='HWC')
+                tflogger.tblogger.writer.add_image('Validation/ConfusionMatrix', cf, epoch,
+                                                   dataformats='HWC')
         if not args.regression:
             return classerr.value(1), classerr.value(min(args.num_classes, 5)), \
                 losses['objective_loss'].mean
