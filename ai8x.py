@@ -736,14 +736,6 @@ class Sub(Eltwise):
         super(Sub, self).__init__(self.sub)
 
 
-class Mul(Eltwise):
-    """
-    AI8X - Elementwise Multiplication Operation
-    """
-    def __init__(self):
-        super(Mul, self).__init__(torch.mul)
-
-
 class Xor(Eltwise):
     """
     AI8X - Elementwise Bitwise Xor Operation
