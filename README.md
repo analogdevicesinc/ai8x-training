@@ -1,7 +1,7 @@
 # AI8X Model Training and Quantization
 # AI8X Network Loader and RTL Simulation Generator
 
-_May 29, 2020_
+_June 2, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A [PDF copy of this file](README.pdf) is available in this repository. The GitHub rendering of this document does not show the formulas or the clickable table of contents._
@@ -734,6 +734,10 @@ The following modules are predefined:
 | FusedAvgPoolConv1d | AvgPool1d, followed by Conv1d |
 | FusedAvgPoolConv1dReLU | AvgPool1d, followed by Conv1d, and ReLU |
 | FusedAvgPoolConv1dAbs | AvgPool1d, followed by Conv1d, and Abs |
+| Add | Element-wise Add |
+| Sub | Element-wise Sub |
+| Or | Element-wise bitwise Or |
+| Xor | Element-wise bitwise Xor |
 
 
 #### Dropout
@@ -764,22 +768,32 @@ Both TensorBoard and Manifold can be used for model comparison and feature attri
 
 #### TensorBoard
 
-TensorBoard is built into `train.py`. It consists of a local web server that can be started before, during, or after training and it picks up all data that is written to the `logs/` directory. To start the TensorBoard server, use a second terminal window:
+TensorBoard is built into `train.py`. It consists of a local web server that can be started before, during, or after training and it picks up all data that is written to the `logs/` directory. 
+
+For classification models, TensorBoard supports the optional `--param-hist` and `--embedding` command line arguments. `--embedding` randomly selects up to 100 data points from the last batch of each verification epoch. These can be viewed in the “projector” tab in TensorBoard.
+
+To start the TensorBoard server, use a second terminal window:
 
 ```shell
 (ai8x-training) $ tensorboard --logdir='./logs'
-TensorBoard 1.14.0 at http://127.0.0.1:6006/ (Press CTRL+C to quit)
+TensorBoard 2.2.2 at http://127.0.0.1:6006/ (Press CTRL+C to quit)
 ```
 
 On a shared system, add the `--port 0` command line option.
 
-Training progress can be observed by starting TensorBoard and pointing a web browser to the port indicated. When using a remote system, use `ssh` in another terminal window to forward the remote port to the local machine:
+Training progress can be observed by starting TensorBoard and pointing a web browser to the port indicated.
+
+##### Remote Access to TensorBoard
+
+When using a remote system, use `ssh` in another terminal window to forward the remote port to the local machine:
 
 ```shell
 $ ssh -L 6006:127.0.0.1:6006 targethost
 ```
 
-For classification models, TensorBoard supports the optional `--param-hist` and `--embedding` command line arguments. `--embedding` randomly selects up to 100 data points from the last batch of each verification epoch. These can be viewed in the “projector” tab in TensorBoard.
+When using Putty, port forwarding is achieved as follows:
+
+![putty-forward](docs/putty-forward.jpg)
 
 #### Manifold
 
@@ -1671,13 +1685,21 @@ Total: 2 KiB (4 instances of 128 × 32)
 
 ## Updating the Project
 
-To pull the latest code, in either project use:
+The following instructions are required for both projects, `ai8x-training` and `ai8x-synthesis`.
+
+Major upgrades (such as updating from PyTorch 1.3.1 to PyTorch 1.5) are best done by removing all installed wheels:
+
+```shell
+$ pip3 uninstall -r requirements.txt -y # or requirements-cu101.txt when in ai8x-training with CUDA 10.1
+```
+
+To pull the latest code and install the updated wheels, use:
 
 ```shell
 $ git pull
 $ git submodule update --init
 $ pip3 install -U pip setuptools
-$ pip3 install -U -r requirements.txt # or requirements-[cpu,cuda].txt when in ai8x-training
+$ pip3 install -U -r requirements.txt # or requirements-cu101.txt when in ai8x-training with CUDA 10.1
 ```
 
 ## Contributing Code
@@ -1695,7 +1717,7 @@ Code should not generate any warnings in any of the tools (some of the component
 
 ### Submitting Changes
 
-Do not try to push any changes into the master branch. Instead, create a fork on submit a pull request. The easiest way to do this is using a graphical client such as [Fork](#Recommended-Software) or GitHub Desktop.
+Do not try to push any changes into the master branch. Instead, create a fork and submit a pull request against the `develop` branch. The easiest way to do this is using a [graphical client](#Recommended-Software) such as Fork or GitHub Desktop.
 
 The following document has more information:
 https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/CONTRIBUTING.md
