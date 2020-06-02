@@ -10,7 +10,6 @@
 Contains the limits of the AI84/AI85/AI87 implementations and custom PyTorch modules that take
 the limits into account.
 """
-import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Function
