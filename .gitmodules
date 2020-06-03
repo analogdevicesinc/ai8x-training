@@ -1,3 +1,4 @@
 [submodule "distiller"]
 	path = distiller
-	url = https://github.com/NervanaSystems/distiller.git
+	url = https://github.com/MaximIntegratedAI/distiller.git
+	branch = pytorch-1.5
