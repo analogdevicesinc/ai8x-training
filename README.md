@@ -21,13 +21,11 @@ This software consists of two related projects:
 
 This document covers several of Maxim’s ultra-low power machine learning accelerator systems. They are sometimes referred to by their die types. The following shows the die types and their corresponding part numbers:
 
-| Die Type | Part Number(s)               |
-| -------- | ---------------------------- |
-| *AI84*   | *Unreleased test chip*       |
-| **AI85** | **MAX78000**                 |
-| AI87     | MAX78002 (under development) |
-
-The notation “MAX7800X” covers both MAX78000 and MAX78002.
+| Die Type | Part Number(s)            |
+| -------- | ------------------------- |
+| *AI84*   | *Unreleased test chip*    |
+| **AI85** | **MAX78000**              |
+| AI87     | MAX78002 (in development) |
 
 ## Overview
 
@@ -61,7 +59,7 @@ https://developer.nvidia.com/cuda-toolkit-archive
 
 #### Shared (Multi-User) and Remote Systems
 
-On a shared (multi-user) system that has previously been set up , only local installation is needed. CUDA and any `apt-get` or `brew` tasks are not necessary.
+On a shared (multi-user) system that has previously been set up, only local installation is needed. CUDA and any `apt-get` or `brew` tasks are not necessary.
 
 The `screen` command can be used inside a remote terminal to disconnect a session from the controlling terminal, so that a long running training session doesn’t abort due to network issues, or local power saving. In addition, screen can log all console output to a text file.
 
@@ -187,7 +185,7 @@ $ yarn
 
 #### Windows Systems
 
-Windows is not supported for training networks at this time.
+Windows/MS-DOS is not supported for training networks at this time.
 
 ### Upstream Code
 
@@ -236,12 +234,12 @@ For minor updates, pull the latest code and install the updated wheels:
 (ai8x-training) $ git pull
 (ai8x-training) $ git submodule update --init
 (ai8x-training) $ pip3 install -U pip setuptools
-(ai8x-training) $ pip3 install -U -r requirements.txt # or requirements-cu101.txt when in ai8x-training with CUDA 10.1
+(ai8x-training) $ pip3 install -U -r requirements.txt # or requirements-cu101.txt with CUDA 10.1
 ```
 
 #### Synthesis Project
 
-The `ai8x-synthesis` does not require CUDA.
+The `ai8x-synthesis` project does not require CUDA.
 
 Start by deactivating the `ai8x-training` environment if it is active.
 
@@ -275,21 +273,55 @@ To pull the latest code and install the updated wheels, use:
 (ai8x-synthesis) $ pip3 install -U -r requirements.txt
 ```
 
+### Embedded Software Development Kit (SDK)
+
+The MAX78000 SDK is a git submodule of ai8x-synthesis. It is checked out automatically to a version compatible with the project into the folder `sdk`.
+
+*If the embedded C compiler is run on Windows instead of Linux, ignore this section and install the Maxim SDK executable, see https://github.com/MaximIntegratedAI/MaximAI_Documentation.*
+
+The Arm embedded compiler can be downloaded from [https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads).
+
+The RISC-V embedded compiler can be downloaded from [https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/](https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/).
+
+Add the following to your `~/.profile`, adjusting for the actual `PATH` to the compilers:
+
+```shell
+echo $PATH | grep -q -s "/usr/local/gcc-arm-none-eabi-9-2019-q4-major/bin"
+if [ $? -eq 1 ] ; then
+    PATH=$PATH:/usr/local/gcc-arm-none-eabi-9-2019-q4-major/bin
+    export PATH
+    ARMGCC_DIR=/usr/local/gcc-arm-none-eabi-9-2019-q4-major
+    export ARMGCC_DIR
+fi
+
+echo $PATH | grep -q -s "/usr/local/riscv-none-embed-gcc/8.3.0-1.1/bin"
+if [ $? -eq 1 ] ; then
+    PATH=$PATH:/usr/local/riscv-none-embed-gcc/8.3.0-1.1/bin
+    export PATH
+    RISCVGCC_DIR=/usr/local/riscv-none-embed-gcc/8.3.0-1.1
+    export RISCVGCC_DIR
+fi
+```
+
+In order for the debugger to work, the OpenOCD `max32xxx` branch from [https://github.com/MaximIntegratedMicros/openocd.git](https://github.com/MaximIntegratedMicros/openocd.git) must be installed (see above for more instructions). Working configuration files are and a `run-openocd-maxdap` script are contained in the `hardware` folder of the `ai8x-synthesis` project.
+
+`gen-demos-ai85.sh` will create code that is compatible with the SDK and copy it into the SDK’s Example directories.
+
 ---
 
 ## MAX78000 Hardware and Resources
 
-MAX7800X are embedded accelerators. Unlike GPUs, MAX7800X do not have gigabytes of memory, and cannot support arbitrary data (image) sizes.
+MAX78000/MAX78002 are embedded accelerators. Unlike GPUs, MAX78000/MAX78002 do not have gigabytes of memory, and cannot support arbitrary data (image) sizes.
 
 ### Overview
 
-A typical CNN operation consists of pooling followed by a convolution. While these are traditionally expressed as separate layers, pooling can be done “in-flight” on MAX7800X for greater efficiency.
+A typical CNN operation consists of pooling followed by a convolution. While these are traditionally expressed as separate layers, pooling can be done “in-flight” on MAX78000/MAX78002 for greater efficiency.
 
 To minimize data movement, the accelerator is optimized for convolutions with in-flight pooling on a sequence of layers. MAX78000 and MAX78002 also support in-flight element-wise operations, pass-through layers and 1D convolutions (without element-wise operations):
 
 ![CNNInFlight](docs/CNNInFlight.png)
 
-The MAX7800X accelerator consists of 64 parallel processors. There are four groups that contain 16 processors each.
+The MAX78000/MAX78002 accelerators contain 64 parallel processors. There are four groups that contain 16 processors each.
 
 Each processor includes a pooling unit and a convolutional engine with dedicated weight memory:
 
@@ -304,7 +336,7 @@ The following picture shows an example view of a 2D convolution with pooling:
 
 Data memory, weight memory, and processors are interdependent.
 
-In the MAX7800X accelerator, processors are organized as follows:
+In the MAX78000/MAX78002 accelerator, processors are organized as follows:
 
 * Each processor is connected to its own dedicated weight memory instance.
 * Four processors share one data memory instance.
@@ -407,7 +439,7 @@ Examples:
 | 1111 1110 | −2/128       |
 | 1111 1111 | −1/128       |
 
-On **MAX78000**, _weights_ can be 1, 2, 4, or 8 bits wide (configurable per layer using the `quantization` key). Bias values are always 8 bits wide. Data is 8 bits wide, except for the last layer that can optionally output 32 bits of unclipped data in Q17.14 format when not using activation.
+On MAX78000/MAX78002, _weights_ can be 1, 2, 4, or 8 bits wide (configurable per layer using the `quantization` key). Bias values are always 8 bits wide. Data is 8 bits wide, except for the last layer that can optionally output 32 bits of unclipped data in Q17.14 format when not using activation.
 
 |wt bits| min  | max  |
 |:-----:|-----:|-----:|
@@ -420,7 +452,7 @@ Note that 1-bit weights (and, to a lesser degree, 2-bit weights) require the use
 
 #### Rounding
 
-MAX7800X rounding (for the CNN sum of products) uses “round half towards positive infinity”, i.e. $y=⌊0.5+x⌋$. This rounding method is not the default method in either Excel or Python/NumPy. The rounding method can be achieved in NumPy using `y = np.floor(0.5 + x)` and in Excel as `=FLOOR.PRECISE(0.5 + X)`.
+MAX78000/MAX78002 rounding (for the CNN sum of products) uses “round half towards positive infinity”, i.e. $y=⌊0.5+x⌋$. This rounding method is not the default method in either Excel or Python/NumPy. The rounding method can be achieved in NumPy using `y = np.floor(0.5 + x)` and in Excel as `=FLOOR.PRECISE(0.5 + X)`.
 
 By way of example:
 
@@ -448,7 +480,7 @@ $$ w_0 + w_1 = 33/64 → 01000010 $$
 
 Values smaller than $–128⁄128$ are saturated to $–128⁄128$ (1000 0000). Values larger than $+127⁄128$ are saturated to $+127⁄128$ (0111 1111).
 
-The MAX7800X CNN sum of products uses full resolution for both products and sums, so the saturation happens only at the very end of the computation.
+The MAX78000/MAX78002 CNN sum of products uses full resolution for both products and sums, so the saturation happens only at the very end of the computation.
 
 Example 1:
 
@@ -482,7 +514,7 @@ $$ w_0 = 1/64 → 00000010 $$
 $$ w_1 = 1/2 → 01000000 $$
 $$ w_0 * w_1 = 1/128 → shift, truncate → 00000001 (= 1/128) $$
 
-A “standard” two’s-complement multiplication would return 00000000 10000000. The MAX7800X data format discards the rightmost bits.
+A “standard” two’s-complement multiplication would return 00000000 10000000. The MAX78000/MAX78002 data format discards the rightmost bits.
 
 Example 2:
 
@@ -490,7 +522,7 @@ $$ w_0 = 1/64 → 00000010 $$
 $$ w_1 = 1/4 → 00100000 $$
 $$ w_0 * w_1 = 1/256 → shift, truncate → 00000000 (= 0) $$
 
-“Standard” two’s-complement multiplication would return 00000000 01000000, the MAX7800X result is truncated to 0 after the shift operation.
+“Standard” two’s-complement multiplication would return 00000000 01000000, the MAX78000/MAX78002 result is truncated to 0 after the shift operation.
 
 #### Sign Bit
 
@@ -651,7 +683,7 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
 
 m×n fully connected layers can be realized in hardware by “flattening” 2D input data into m channels of 1×1 input data. The hardware will produce n channels of 1×1 output data. When chaining multiple fully connected layers, the flattening step is omitted. The following picture shows 2D data, the equivalent flattened 1D data, and the output.
 
-For MAX78000, both m and n must not be larger than 16.
+For MAX78000/MAX78002, both m and n must not be larger than 16.
 
 ![MLP](docs/MLP.png)
 
@@ -669,9 +701,9 @@ The example shows a fractionally-strided convolution with a stride of 2, pad of 
 
 The main training software is `train.py`. It drives the training aspects including model creation, checkpointing, model save, and status display (see `--help` for the many supported options, and the `train_*.sh` scripts for example usage).
 
-The `ai84net.py` and `ai85net.py` files contain models that fit into AI84’s weight memory. These models rely on the MAX7800X hardware operators that are defined in `ai8x.py`.
+The `ai84net.py` and `ai85net.py` files contain models that fit into AI84’s weight memory. These models rely on the MAX78000/MAX78002 hardware operators that are defined in `ai8x.py`.
 
-To train the FP32 model for MNIST on MAX78000, run `train_mnist.sh` in the `ai8x-training` project. This script will place checkpoint files into the log directory. Training makes use of the Distiller framework, but the `train.py` software has been modified slightly to improve it and add some MAX7800X specifics.
+To train the FP32 model for MNIST on MAX78000, run `train_mnist.sh` in the `ai8x-training` project. This script will place checkpoint files into the log directory. Training makes use of the Distiller framework, but the `train.py` software has been modified slightly to improve it and add some MAX78000/MAX78002 specifics.
 
 ### Command Line Arguments
 
@@ -700,7 +732,7 @@ The following table describes the most important command line arguments for `tra
 | `--embedding`             | Display embedding (using projector)                          |                                 |
 | *Hardware*                |                                                              |                                 |
 | `--use-bias`              | Use bias in convolution operations                           |                                 |
-| `--avg-pool-rounding`     | On MAX78000 and up, use rounding for AvgPool                     |                                 |
+| `--avg-pool-rounding`     | Use rounding for AvgPool                                     |                                 |
 | *Evaluation*              |                                                              |                                 |
 | `-e`, `--evaluate`        | Evaluate previously trained model                            |                                 |
 | `--8-bit-mode`, `-8`      | Simluate quantized operation for hardware device (8-bit data) |                                 |
@@ -730,7 +762,7 @@ $ nvidia-smi
 
 ### Custom nn.Modules
 
-The `ai8x.py` file contains customized PyTorch classes (subclasses of `torch.nn.Module`). Any model that is designed to run on MAX7800X should use these classes. There are three main changes over the default classes in `torch.nn.Module`:
+The `ai8x.py` file contains customized PyTorch classes (subclasses of `torch.nn.Module`). Any model that is designed to run on MAX78000/MAX78002 should use these classes. There are three main changes over the default classes in `torch.nn.Module`:
 
 1. Additional “Fused” operators that model in-flight pooling and activation.
 2. Rounding and clipping that matches the hardware.
@@ -810,7 +842,7 @@ Both TensorBoard and Manifold can be used for model comparison and feature attri
 
 #### TensorBoard
 
-TensorBoard is built into `train.py`. It consists of a local web server that can be started before, during, or after training and it picks up all data that is written to the `logs/` directory. 
+TensorBoard is built into `train.py`. It provides a local web server that can be started before, during, or after training and it picks up all data that is written to the `logs/` directory. 
 
 For classification models, TensorBoard supports the optional `--param-hist` and `--embedding` command line arguments. `--embedding` randomly selects up to 100 data points from the last batch of each verification epoch. These can be viewed in the “projector” tab in TensorBoard.
 
@@ -823,7 +855,7 @@ TensorBoard 2.2.2 at http://127.0.0.1:6006/ (Press CTRL+C to quit)
 
 On a shared system, add the `--port 0` command line option.
 
-Training progress can be observed by starting TensorBoard and pointing a web browser to the port indicated.
+The training progress can be observed by starting TensorBoard and pointing a web browser to the port indicated.
 
 ##### Remote Access to TensorBoard
 
@@ -833,7 +865,7 @@ When using a remote system, use `ssh` in another terminal window to forward the 
 $ ssh -L 6006:127.0.0.1:6006 targethost
 ```
 
-When using Putty, port forwarding is achieved as follows:
+When using PuTTY, port forwarding is achieved as follows:
 
 ![putty-forward](docs/putty-forward.jpg)
 
@@ -935,7 +967,7 @@ Further, a quantized network can be refined using post-quantization training (se
 
 The software also includes an `AI84RangeLinear.py` training quantizer that plugs into the Distiller framework for quantization-aware training. However, it needs work as its performance is not good enough yet and the Distiller source needs to be patched to enable it (add `from range_linear_ai84 import QuantAwareTrainRangeLinearQuantizerAI84` to `distiller/config.py` and remove `False and` from `if False and args.ai84` in `train.py`).
 
-Note that MAX78000 does have a configurable per-layer output shift. The addition of this shift value allows easier quantization, since fractional bits can be used if weights do not span the full 8-bit range (many quantization approaches require a weight scale or output shift).
+Note that MAX78000/MAX78002 does have a configurable per-layer output shift. The addition of this shift value allows easier quantization, since fractional bits can be used if weights do not span the full 8-bit range (many quantization approaches require a weight scale or output shift).
 
 In all cases, ensure that the quantizer writes out a checkpoint file that the Network Loader can read.
 
@@ -991,10 +1023,10 @@ The Netron tool (https://github.com/lutzroeder/Netron) can visualize networks, s
 
 _The `ai8xize` network loader currently depends on PyTorch and Nervana’s Distiller. This requirement will be removed in the future._
 
-The network loader creates C code that programs the MAX7800X (for embedded execution, or RTL simulation). Additionally, the generated code contains sample input data and the expected output for the sample, as well as code that verifies the expected output.
+The network loader creates C code that programs the MAX78000/MAX78002 (for embedded execution, or RTL simulation). Additionally, the generated code contains sample input data and the expected output for the sample, as well as code that verifies the expected output.
 
 The `ai8xize.py` program needs two inputs:
-1. A quantized checkpoint file, generated by the MAX7800X model quantization program `quantize.py`.
+1. A quantized checkpoint file, generated by the MAX78000/MAX78002 model quantization program `quantize.py`.
 2. A YAML description of the network.
 
 ### Command Line Arguments
@@ -1007,7 +1039,7 @@ The following table describes the most important command line arguments for `ai8
 | *Device selection*       |                                                              |                                 |
 | `--device`               | Set device (default: 84)                                     | `--device 85`                   |
 | *Hardware features*      |                                                              |                                 |
-| `--avg-pool-rounding`    | Round average pooling results on (MAX78000 and up)               |                                 |
+| `--avg-pool-rounding`    | Round average pooling results                                |                                 |
 | `--simple1b`             | Use simple XOR instead of 1-bit multiplication               |                                 |
 | *Embedded code*          |                                                              |                                 |
 | `-e`, `--embedded-code`  | Generate embedded code for device                            |                                 |
@@ -1121,7 +1153,7 @@ layers:
 To generate an embedded MAX78000 demo in the `demos/ai85-mnist/` folder, use the following command line:
 
 ```shell
-$ ./ai8xize.py --verbose -L --top-level cnn --test-dir demos --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device 85 --compact-data --mexpress --softmax --embedded-code
+(ai8x-synthesize) $ ./ai8xize.py --verbose -L --top-level cnn --test-dir demos --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device 85 --compact-data --mexpress --softmax --embedded-code
 ```
 
 Running this command will combine the network described above with a fully connected software classification layer. The generated code will include all loading, unloading, and configuration steps.
@@ -1129,7 +1161,7 @@ Running this command will combine the network described above with a fully conne
 To generate an RTL simulation for the same network and sample data in the directory `tests/ai85-mnist-....` (where .... is an autogenerated string based on the network topology), use:
 
 ```shell
-$ ./ai8xize.py --verbose --autogen rtlsim --top-level cnn -L --test-dir rtlsim --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device 85
+(ai8x-synthesize) $ ./ai8xize.py --verbose --autogen rtlsim --top-level cnn -L --test-dir rtlsim --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device 85
 ```
 
 ### Network Loader Configuration Language
@@ -1275,7 +1307,7 @@ Example:
 
 When `output_width` is 8, the 32-bit intermediate result can be shifted left or right before reduction to 8-bit. The value specified here is cumulative with the value generated from `quantization`.
 
-The 32-bit intermediate result is multiplied by $2^{totalshift}$ , where the total shift count must be within the range $[-15, +15]$, resulting in a factor of $[2^{–15}, 2^{15}]$ or $[0.0000305176$ to $32768]$.
+The 32-bit intermediate result is multiplied by $2^{totalshift}$, where the total shift count must be within the range $[-15, +15]$, resulting in a factor of $[2^{–15}, 2^{15}]$ or $[0.0000305176$ to $32768]$.
 
 | quantization | implicit shift | range for `output_shift` |
 | ------------ | -------------- | ------------------------ |
@@ -1451,13 +1483,46 @@ layers:
 ```
 
 
-### Adding Datasets to the Network Loader
+### Adding New Models and New Datasets to the Network Loader
 
 Adding new datasets to the Network Loader is implemented as follows:
-1. Provide network model, its YAML description and quantized weights. Place the YAML file in the `networks` directory, and the quantized weights in the `trained` directory.
-2. Provide a sample input. The sample input is used to generate a known-answer test (self test). The sample input is provided as a NumPy “pickle” — add `sample_dset.npy` for the dataset named `dset` to the `tests` directory. This file can be generated by saving a sample in CHW format (no batch dimension) using `numpy.save()`. 
+1. Provide the network model, its YAML description and weights. Place the YAML file (e.g., `new.yaml`) in the `networks` directory, and weights in the `trained` directory.
+   The non-quantized weights are obtained from a training checkpoint, for example:
+   `(ai8x-synthesis) $ cp ../ai8x-training/logs/2020.06.02-154133/best.pth.tar trained/new-unquantized.pth.tar`
 
-For example, the MNIST 1×28×28 image sample would be stored in `tests/sample_mnist.npy` in an `np.array` with shape `[1, 28, 28]` and datatype `<i8`. The file can be random, or can be obtained from the `train.py` software.
+2. When using post-training quantization, the quantized weights are the result of the quantization step. Copy and customize an existing quantization shell script, for example:
+   `(ai8x-synthesis) $ cp quantize_mnist.sh quantize_new.sh`
+
+   Then, *edit this script to point to the new model and dataset* (`vim quantize_new.sh`), and call the script to generate the quantized weights. Example:
+   ```shell
+   (ai8x-synthesis) $ ./quantize_new.sh 
+   Configuring device: AI85.
+   Reading networks/new.yaml to configure network...
+   Converting checkpoint file trained/new-unquantized.pth.tar to trained/new.pth.tar
+   +----------------------+-------------+----------+
+   | Key                  | Type        | Value    |
+   |----------------------+-------------+----------|
+   | arch                 | str         | ai85net5 |
+   | compression_sched    | dict        |          |
+   | epoch                | int         | 165      |
+   | extras               | dict        |          |
+   | optimizer_state_dict | dict        |          |
+   | optimizer_type       | type        | SGD      |
+   | state_dict           | OrderedDict |          |
+   +----------------------+-------------+----------+
+   Model keys (state_dict):
+   conv1.conv2d.weight, conv2.conv2d.weight, conv3.conv2d.weight, conv4.conv2d.weight, fc.linear.weight, fc.linear.bias
+   conv1.conv2d.weight avg_max: tensor(0.3100) max: tensor(0.7568) mean: tensor(0.0104) factor: 54.4 bits: 8
+   conv2.conv2d.weight avg_max: tensor(0.1843) max: tensor(0.2897) mean: tensor(-0.0063) factor: 108.8 bits: 8
+   conv3.conv2d.weight avg_max: tensor(0.1972) max: tensor(0.3065) mean: tensor(-0.0053) factor: 108.8 bits: 8
+   conv4.conv2d.weight avg_max: tensor(0.3880) max: tensor(0.5299) mean: tensor(0.0036) factor: 108.8 bits: 8
+   fc.linear.weight avg_max: tensor(0.6916) max: tensor(0.9419) mean: tensor(-0.0554) factor: 108.8 bits: 8
+   fc.linear.bias   
+   ```
+
+3. Provide a sample input. The sample input is used to generate a known-answer test (self test). The sample input is provided as a NumPy “pickle” — add `sample_dset.npy` for the dataset named `dset` to the `tests` directory. This file can be generated by saving a sample in CHW format (no batch dimension) using `numpy.save()`, see below.
+
+   For example, the MNIST 1×28×28 image sample would be stored in `tests/sample_mnist.npy` in an `np.array` with shape `[1, 28, 28]` and datatype `<i8`. The file can be random, or can be obtained from the `train.py` software.
 
 #### Generating a Random Sample Input
 
@@ -1474,8 +1539,89 @@ np.save(os.path.join('tests', 'sample_mnist'), a, allow_pickle=False, fix_import
 #### Saving a Sample Input from Training Data
 
 1. In the `ai8x-training` project, add the argument `--save-sample 10` to the `evaluate_mnist.sh` script. *Note: The index 10 is arbitrary, but it must be smaller than the batch size. If manual visual verification is desired, it is a good idea to pick a sample where the quantized model computes the correct answer.*
+
 2. Run the modified `evaluate_mnist.sh`. It will produce a file named `sample_mnist.npy`.
+
 3. Save the `sample_mnist.npy` file and copy it to the `ai8x-synthesis` project.
+
+#### Evaluate the Quantized Weights with the New Dataset and Model
+
+1. Switch to training project directory and activate the environment:
+   ```shell
+   (ai8x-synthesis) $ deactivate`
+   $ cd ../ai8x-training
+   $ source bin/activate
+   ```
+2. Create an evaluation script and run it:
+   ```shell
+   (ai8x-training) $ cp evaluate_mnist.sh evaluate_new.sh
+   (ai8x-training) $ vim evaluate_new.sh
+   (ai8x-training) $ ./evaluate_new.sh
+   ```
+   Example output:
+   ```shell
+   (ai8x-training) $ ./evaluate_new.sh 
+   Configuring device: AI85, simulate=True.
+   Log file for this run: logs/2020.06.03-125328/2020.06.03-125328.log
+   --------------------------------------------------------
+   Logging to TensorBoard - remember to execute the server:
+   > tensorboard --logdir='./logs'
+
+   => loading checkpoint ../ai8x-synthesis/trained/new.pth.tar
+   => Checkpoint contents:
+   +----------------------+-------------+----------+
+   | Key                  | Type        | Value    |
+   |----------------------+-------------+----------|
+   | arch                 | str         | ai85net5 |
+   | compression_sched    | dict        |          |
+   | epoch                | int         | 165      |
+   | extras               | dict        |          |
+   | optimizer_state_dict | dict        |          |
+   | optimizer_type       | type        | SGD      |
+   | state_dict           | OrderedDict |          |
+   +----------------------+-------------+----------+
+
+   => Checkpoint['extras'] contents:
+   +-----------------+--------+-------------------+
+   | Key             | Type   | Value             |
+   |-----------------+--------+-------------------|
+   | best_epoch      | int    | 165               |
+   | best_top1       | float  | 99.46666666666667 |
+   | clipping_method | str    | SCALE             |
+   | clipping_scale  | float  | 0.85              |
+   | current_top1    | float  | 99.46666666666667 |
+   +-----------------+--------+-------------------+
+
+   Loaded compression schedule from checkpoint (epoch 165)
+   => loaded 'state_dict' from checkpoint '../ai8x-synthesis/trained/new.pth.tar'
+   Optimizer Type: <class 'torch.optim.sgd.SGD'>
+   Optimizer Args: {'lr': 0.1, 'momentum': 0.9, 'dampening': 0, 'weight_decay': 0.0001, 'nesterov': False}
+   Dataset sizes:
+     training=54000
+     validation=6000
+     test=10000
+   --- test ---------------------
+   10000 samples (256 per mini-batch)
+   Test: [   10/   40]    Loss 44.193750    Top1 99.609375    Top5 99.960938    
+   Test: [   20/   40]    Loss 66.567578    Top1 99.433594    Top5 99.980469    
+   Test: [   30/   40]    Loss 51.816276    Top1 99.518229    Top5 99.986979    
+   Test: [   40/   40]    Loss 53.596094    Top1 99.500000    Top5 99.990000    
+   ==> Top1: 99.500    Top5: 99.990    Loss: 53.596
+
+   ==> Confusion:
+   [[ 979    0    0    0    0    0    0    0    1    0]
+    [   0 1132    1    0    0    0    0    2    0    0]
+    [   2    0 1026    1    0    0    0    3    0    0]
+    [   0    0    0 1009    0    0    0    0    1    0]
+    [   0    0    0    0  978    0    0    0    0    4]
+    [   1    0    0    3    0  886    1    0    0    1]
+    [   5    4    1    0    1    0  946    0    1    0]
+    [   0    1    3    0    0    0    0 1023    0    1]
+    [   0    0    0    1    1    1    0    0  970    1]
+    [   0    0    0    0    4    1    0    3    0 1001]]
+   
+   Log file for this run: logs/2020.06.03-125328/2020.06.03-125328.log
+   ```
 
 ### Generating C Code
 
@@ -1491,7 +1637,7 @@ To run another inference, ensure all groups are disabled (stopping the state mac
 
 #### Softmax, and Data unload in C
 
-`ai8xize.py` can generate a custom `cnn_unload()` function using the command line switch `--unload`. The `--softmax` switch additionally inserts a call to a software Softmax function that is provided in the `device-ai8x` folder. To use the provided software Softmax on MAX78000, the last layer output should be 32-bit wide (`output_width: 32`).
+`ai8xize.py` can generate a custom `cnn_unload()` function using the command line switch `--unload`. The `--softmax` switch additionally inserts a call to a software Softmax function that is provided in the `device-ai8x` folder. To use the provided software Softmax on MAX78000/MAX78002, the last layer output should be 32-bit wide (`output_width: 32`).
 
 The software Softmax function is optimized for processing time and it quantizes the input.
 
@@ -1499,43 +1645,7 @@ The software Softmax function is optimized for processing time and it quantizes 
 
 #### Contents of the device-* Folder
 
-* For MAX78000, the software Softmax is implemented in `softmax.c`.
-
----
-
-## Embedded Software Development Kits (SDKs)
-
-### MAX78000 SDK
-
-The MAX78000 SDK is a git submodule of ai8x-synthesis. It is checked out automatically to a version compatible with the project into the folder `sdk`.
-
-The Arm embedded compiler can be downloaded from [https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads).
-
-The RISC-V embedded compiler can be downloaded from [https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/](https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/).
-
-Add the following to your `~/.profile`, adjusting for the actual `PATH` to the compilers:
-
-```shell
-echo $PATH | grep -q -s "/usr/local/gcc-arm-none-eabi-9-2019-q4-major/bin"
-if [ $? -eq 1 ] ; then
-    PATH=$PATH:/usr/local/gcc-arm-none-eabi-9-2019-q4-major/bin
-    export PATH
-    ARMGCC_DIR=/usr/local/gcc-arm-none-eabi-9-2019-q4-major
-    export ARMGCC_DIR
-fi
-
-echo $PATH | grep -q -s "/usr/local/riscv-none-embed-gcc/8.3.0-1.1/bin"
-if [ $? -eq 1 ] ; then
-    PATH=$PATH:/usr/local/riscv-none-embed-gcc/8.3.0-1.1/bin
-    export PATH
-    RISCVGCC_DIR=/usr/local/riscv-none-embed-gcc/8.3.0-1.1
-    export RISCVGCC_DIR
-fi
-```
-
-In order for the debugger to work, the OpenOCD `max32xxx` branch from [https://github.com/MaximIntegratedMicros/openocd.git](https://github.com/MaximIntegratedMicros/openocd.git) must be installed (see above for more instructions). Working configuration files are and a `run-openocd-maxdap` script are contained in the `hardware` folder of the `ai8x-synthesis` project.
-
-`gen-demos-ai85.sh` will create code that is compatible with the SDK and copy it into the SDK’s Example directories.
+* For MAX78000/MAX78002, the software Softmax is implemented in `softmax.c`.
 
 ---
 
