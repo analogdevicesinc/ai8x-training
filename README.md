@@ -1,14 +1,17 @@
-# AI8X Model Training and Quantization
-# AI8X Network Loader and RTL Simulation Generator
 
-_June 2, 2020_
+
+# MAX78000 Model Training and Quantization
+
+# MAX78000 Network Loader and RTL Simulation Generator
+
+_June 3, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A [PDF copy of this file](README.pdf) is available in this repository. The GitHub rendering of this document does not show the formulas or the clickable table of contents._
 
 This software consists of two related projects:
-1. AI8X Model Training and Quantization
-2. AI8X Network Loader and RTL Simulation Generator
+1. MAX78000 Model Training and Quantization
+2. MAX78000 Network Loader and RTL Simulation Generator
 
 ---
 
@@ -16,15 +19,15 @@ This software consists of two related projects:
 
 ## Part Numbers
 
-This document covers several of Maxim’s ultra-low power machine learning accelerator systems. They are referred to by their die types. The following shows the die types and their corresponding part numbers:
+This document covers several of Maxim’s ultra-low power machine learning accelerator systems. They are sometimes referred to by their die types. The following shows the die types and their corresponding part numbers:
 
-| Die Type | Part Number(s)         |
-| -------- | ---------------------- |
-| *AI84*   | *Unreleased test chip* |
-| **AI85** | **MAX78000**           |
-| AI87     | Under development      |
+| Die Type | Part Number(s)               |
+| -------- | ---------------------------- |
+| *AI84*   | *Unreleased test chip*       |
+| **AI85** | **MAX78000**                 |
+| AI87     | MAX78002 (under development) |
 
-The notation “AI8X” covers both AI85 and AI87.
+The notation “MAX7800X” covers both MAX78000 and MAX78002.
 
 ## Overview
 
@@ -43,23 +46,7 @@ Including the SDK, the expected/resulting file system layout will be:
     ..../ai8x-synthesis/sdk/
     ..../manifold/
 
-where “....” is the project root.
-
-### Upstream Code
-
-If the local git environment has not been previously configured, add the following commands to configure e-mail and name. The e-mail must match GitHub (including upper/lower case):
-
-```shell
-$ git config --global user.email "first.last@maximintegrated.com"
-$ git config --global user.name "First Last"
-```
-
-Change to the project root (denoted as `....` above) and run the following commands. Use your GitHub credentials when prompted.
-
-```shell
-$ git clone https://github.com/MaximIntegratedAI/ai8x-training.git
-$ git clone https://github.com/MaximIntegratedAI/ai8x-synthesis.git
-```
+where “....” is the project root, for example `~/Documents/Source/AI`.
 
 ### Prerequisites
 
@@ -136,36 +123,24 @@ Next, close the Terminal and install Python 3.6.9:
 $ pyenv install 3.6.9
 ```
 
-#### Windows Systems
+#### git Environment
 
-Windows is not supported for training networks at this time.
-
-#### Creating the Virtual Environment
-
-To create the virtual environment and install basic wheels:
+If the local git environment has not been previously configured, add the following commands to configure e-mail and name. The e-mail must match GitHub (including upper/lower case):
 
 ```shell
-$ cd ai8x-training
-$ git submodule update --init
-$ pyenv local 3.6.9
-$ python3 -m venv .
-$ source bin/activate
-(ai8x-training) $ pip3 install -U pip setuptools
+$ git config --global user.email "first.last@maximintegrated.com"
+$ git config --global user.name "First Last"
 ```
 
-The next step differs depending on whether the system is Linux with CUDA, or not.
+#### Project Root
 
-For CUDA 10.1 on Linux:
+For convenience, define a shell variable named `AI_PROJECT_ROOT`:
 
 ```shell
-(ai8x-training) $ pip3 install -r requirements-cu101.txt
+$ export AI_PROJECT_ROOT="$HOME/Documents/Source/AI"
 ```
 
-For all other systems, including CUDA 10.2 on Linux:
-
-```shell
-(ai8x-training) $ pip3 install -r requirements.txt
-```
+Add this line to `~/.profile`.
 
 #### Nervana Distiller
 
@@ -190,7 +165,7 @@ brew install yarn npm
 On Ubuntu 18.04 LTS,
 
 ```shell
-$ cd PROJECT_ROOT
+$ cd $AI_PROJECT_ROOT
 $ curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
 $ echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
 $ curl -sL https://deb.nodesource.com/setup_13.x | sudo -E bash -
@@ -210,9 +185,63 @@ $ yarn
 # ignore warnings
 ```
 
+#### Windows Systems
+
+Windows is not supported for training networks at this time.
+
+### Upstream Code
+
+Change to the project root and run the following commands. Use your GitHub credentials when prompted.
+
+```shell
+$ cd $AI_PROJECT_ROOT
+$ git clone https://github.com/MaximIntegratedAI/ai8x-training.git
+$ git clone https://github.com/MaximIntegratedAI/ai8x-synthesis.git
+```
+
+#### Creating the Virtual Environment
+
+To create the virtual environment and install basic wheels:
+
+```shell
+$ cd ai8x-training
+$ git submodule update --init
+$ pyenv local 3.6.9
+$ python3 -m venv .
+$ source bin/activate
+(ai8x-training) $ pip3 install -U pip setuptools
+```
+
+The next step differs depending on whether the system uses Linux with CUDA 10.1, or any other setup.
+
+For CUDA 10.1 on Linux:
+
+```shell
+(ai8x-training) $ pip3 install -r requirements-cu101.txt
+```
+
+For all other systems, including CUDA 10.2 on Linux:
+
+```shell
+(ai8x-training) $ pip3 install -r requirements.txt
+```
+
+##### Updating the Project
+
+Major upgrades (such as updating from PyTorch 1.3.1 to PyTorch 1.5) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#Upstream Code). 
+
+For minor updates, pull the latest code and install the updated wheels:
+
+```shell
+(ai8x-training) $ git pull
+(ai8x-training) $ git submodule update --init
+(ai8x-training) $ pip3 install -U pip setuptools
+(ai8x-training) $ pip3 install -U -r requirements.txt # or requirements-cu101.txt when in ai8x-training with CUDA 10.1
+```
+
 #### Synthesis Project
 
-For `ai8x-synthesis`, some of the installation steps can be simplified. Specifically, CUDA is not necessary.
+The `ai8x-synthesis` does not require CUDA.
 
 Start by deactivating the `ai8x-training` environment if it is active.
 
@@ -223,7 +252,7 @@ Start by deactivating the `ai8x-training` environment if it is active.
 Then, create a second virtual environment:
 
 ```shell
-$ cd PROJECT_ROOT
+$ cd $AI_PROJECT_ROOT
 $ cd ai8x-synthesis
 $ git submodule update --init
 $ pyenv local 3.6.9
@@ -233,21 +262,34 @@ $ source bin/activate
 (ai8x-synthesis) $ pip3 install -r requirements.txt
 ```
 
+##### Updating the Project
+
+Major upgrades (such as updating from PyTorch 1.3.1 to PyTorch 1.5) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#Upstream Code). 
+
+To pull the latest code and install the updated wheels, use:
+
+```shell
+(ai8x-synthesis) $ git pull
+(ai8x-synthesis) $ git submodule update --init
+(ai8x-synthesis) $ pip3 install -U pip setuptools
+(ai8x-synthesis) $ pip3 install -U -r requirements.txt
+```
+
 ---
 
-## AI8X Hardware and Resources
+## MAX78000 Hardware and Resources
 
-AI8X are embedded accelerators. Unlike GPUs, AI8X do not have gigabytes of memory, and cannot support arbitrary data (image) sizes.
+MAX7800X are embedded accelerators. Unlike GPUs, MAX7800X do not have gigabytes of memory, and cannot support arbitrary data (image) sizes.
 
 ### Overview
 
-A typical CNN operation consists of pooling followed by a convolution. While these are traditionally expressed as separate layers, pooling can be done “in-flight” on AI8X for greater efficiency.
+A typical CNN operation consists of pooling followed by a convolution. While these are traditionally expressed as separate layers, pooling can be done “in-flight” on MAX7800X for greater efficiency.
 
-To minimize data movement, the accelerator is optimized for convolutions with in-flight pooling on a sequence of layers. AI85 and AI87 also support in-flight element-wise operations, pass-through layers and 1D convolutions (without element-wise operations):
+To minimize data movement, the accelerator is optimized for convolutions with in-flight pooling on a sequence of layers. MAX78000 and MAX78002 also support in-flight element-wise operations, pass-through layers and 1D convolutions (without element-wise operations):
 
 ![CNNInFlight](docs/CNNInFlight.png)
 
-The AI8X accelerator consists of 64 parallel processors. There are four groups that contain 16 processors each.
+The MAX7800X accelerator consists of 64 parallel processors. There are four groups that contain 16 processors each.
 
 Each processor includes a pooling unit and a convolutional engine with dedicated weight memory:
 
@@ -262,7 +304,7 @@ The following picture shows an example view of a 2D convolution with pooling:
 
 Data memory, weight memory, and processors are interdependent.
 
-In the AI8X accelerator, processors are organized as follows:
+In the MAX7800X accelerator, processors are organized as follows:
 
 * Each processor is connected to its own dedicated weight memory instance.
 * Four processors share one data memory instance.
@@ -313,7 +355,7 @@ The number of discarded pixels is network specific and dependent on pooling stri
 
 Since the data memory instances are single-port memories, software would have to temporarily disable the accelerator in order to feed it new data. Using  FIFOs, software can input available data while the accelerator is running. The accelerator will autonomously fetch data from the FIFOs when needed, and stall (pause) when no enough data is available.
 
-The AI85/AI87 accelerator has two types of FIFO:
+The MAX78000/MAX78002 accelerator has two types of FIFO:
 
 ##### Standard FIFOs
 
@@ -329,7 +371,7 @@ The fast FIFO is selected using the `--fast-fifo` argument for `ai8xize.py`.
 
 ### Accelerator Limits
 
-* AI85:
+* MAX78000:
   * The maximum number of layers is 32 (pooling and element-wise layers do not count when preceding a convolution).
   * The maximum number of input channels in any layer is 1024 each.
   * The maximum number of output channels in any layer is 1024 each.
@@ -365,7 +407,7 @@ Examples:
 | 1111 1110 | −2/128       |
 | 1111 1111 | −1/128       |
 
-On **AI85**, _weights_ can be 1, 2, 4, or 8 bits wide (configurable per layer using the `quantization` key). Bias values are always 8 bits wide. Data is 8 bits wide, except for the last layer that can optionally output 32 bits of unclipped data in Q17.14 format when not using activation.
+On **MAX78000**, _weights_ can be 1, 2, 4, or 8 bits wide (configurable per layer using the `quantization` key). Bias values are always 8 bits wide. Data is 8 bits wide, except for the last layer that can optionally output 32 bits of unclipped data in Q17.14 format when not using activation.
 
 |wt bits| min  | max  |
 |:-----:|-----:|-----:|
@@ -378,7 +420,7 @@ Note that 1-bit weights (and, to a lesser degree, 2-bit weights) require the use
 
 #### Rounding
 
-AI8X rounding (for the CNN sum of products) uses “round half towards positive infinity”, i.e. $y=⌊0.5+x⌋$. This rounding method is not the default method in either Excel or Python/NumPy. The rounding method can be achieved in NumPy using `y = np.floor(0.5 + x)` and in Excel as `=FLOOR.PRECISE(0.5 + X)`.
+MAX7800X rounding (for the CNN sum of products) uses “round half towards positive infinity”, i.e. $y=⌊0.5+x⌋$. This rounding method is not the default method in either Excel or Python/NumPy. The rounding method can be achieved in NumPy using `y = np.floor(0.5 + x)` and in Excel as `=FLOOR.PRECISE(0.5 + X)`.
 
 By way of example:
 
@@ -406,7 +448,7 @@ $$ w_0 + w_1 = 33/64 → 01000010 $$
 
 Values smaller than $–128⁄128$ are saturated to $–128⁄128$ (1000 0000). Values larger than $+127⁄128$ are saturated to $+127⁄128$ (0111 1111).
 
-The AI8X CNN sum of products uses full resolution for both products and sums, so the saturation happens only at the very end of the computation.
+The MAX7800X CNN sum of products uses full resolution for both products and sums, so the saturation happens only at the very end of the computation.
 
 Example 1:
 
@@ -440,7 +482,7 @@ $$ w_0 = 1/64 → 00000010 $$
 $$ w_1 = 1/2 → 01000000 $$
 $$ w_0 * w_1 = 1/128 → shift, truncate → 00000001 (= 1/128) $$
 
-A “standard” two’s-complement multiplication would return 00000000 10000000. The AI8X data format discards the rightmost bits.
+A “standard” two’s-complement multiplication would return 00000000 10000000. The MAX7800X data format discards the rightmost bits.
 
 Example 2:
 
@@ -448,7 +490,7 @@ $$ w_0 = 1/64 → 00000010 $$
 $$ w_1 = 1/4 → 00100000 $$
 $$ w_0 * w_1 = 1/256 → shift, truncate → 00000000 (= 0) $$
 
-“Standard” two’s-complement multiplication would return 00000000 01000000, the AI8X result is truncated to 0 after the shift operation.
+“Standard” two’s-complement multiplication would return 00000000 01000000, the MAX7800X result is truncated to 0 after the shift operation.
 
 #### Sign Bit
 
@@ -540,9 +582,9 @@ The following picture shows an example of a `Conv2d` with 1×1 kernels, 5 input 
 
 ![Conv2Dk1x1](docs/Conv2Dk1x1.png)
 
-### Limitations of AI85 Networks
+### Limitations of MAX78000 Networks
 
-The AI85 hardware does not support arbitrary network parameters. Specifically,
+The MAX78000 hardware does not support arbitrary network parameters. Specifically,
 * Dilation, groups, depth-wise convolutions, and batch normalization are not supported. *Note: Batch normalization should be folded into the weights.*
 
 * `Conv2d`:
@@ -609,7 +651,7 @@ The AI85 hardware does not support arbitrary network parameters. Specifically,
 
 m×n fully connected layers can be realized in hardware by “flattening” 2D input data into m channels of 1×1 input data. The hardware will produce n channels of 1×1 output data. When chaining multiple fully connected layers, the flattening step is omitted. The following picture shows 2D data, the equivalent flattened 1D data, and the output.
 
-For AI85, both m and n must not be larger than 16.
+For MAX78000, both m and n must not be larger than 16.
 
 ![MLP](docs/MLP.png)
 
@@ -627,9 +669,9 @@ The example shows a fractionally-strided convolution with a stride of 2, pad of 
 
 The main training software is `train.py`. It drives the training aspects including model creation, checkpointing, model save, and status display (see `--help` for the many supported options, and the `train_*.sh` scripts for example usage).
 
-The `ai84net.py` and `ai85net.py` files contain models that fit into AI84’s weight memory. These models rely on the AI8X hardware operators that are defined in `ai8x.py`.
+The `ai84net.py` and `ai85net.py` files contain models that fit into AI84’s weight memory. These models rely on the MAX7800X hardware operators that are defined in `ai8x.py`.
 
-To train the FP32 model for MNIST on AI85, run `train_mnist.sh` in the `ai8x-training` project. This script will place checkpoint files into the log directory. Training makes use of the Distiller framework, but the `train.py` software has been modified slightly to improve it and add some AI8X specifics.
+To train the FP32 model for MNIST on MAX78000, run `train_mnist.sh` in the `ai8x-training` project. This script will place checkpoint files into the log directory. Training makes use of the Distiller framework, but the `train.py` software has been modified slightly to improve it and add some MAX7800X specifics.
 
 ### Command Line Arguments
 
@@ -658,7 +700,7 @@ The following table describes the most important command line arguments for `tra
 | `--embedding`             | Display embedding (using projector)                          |                                 |
 | *Hardware*                |                                                              |                                 |
 | `--use-bias`              | Use bias in convolution operations                           |                                 |
-| `--avg-pool-rounding`     | On AI85 and up, use rounding for AvgPool                     |                                 |
+| `--avg-pool-rounding`     | On MAX78000 and up, use rounding for AvgPool                     |                                 |
 | *Evaluation*              |                                                              |                                 |
 | `-e`, `--evaluate`        | Evaluate previously trained model                            |                                 |
 | `--8-bit-mode`, `-8`      | Simluate quantized operation for hardware device (8-bit data) |                                 |
@@ -688,7 +730,7 @@ $ nvidia-smi
 
 ### Custom nn.Modules
 
-The `ai8x.py` file contains customized PyTorch classes (subclasses of `torch.nn.Module`). Any model that is designed to run on AI8X should use these classes. There are three main changes over the default classes in `torch.nn.Module`:
+The `ai8x.py` file contains customized PyTorch classes (subclasses of `torch.nn.Module`). Any model that is designed to run on MAX7800X should use these classes. There are three main changes over the default classes in `torch.nn.Module`:
 
 1. Additional “Fused” operators that model in-flight pooling and activation.
 2. Rounding and clipping that matches the hardware.
@@ -875,7 +917,7 @@ Example for MNIST:
 (ai8x-synthesis) $ ./quantize_mnist.sh
 ```
 
-To evaluate the quantized network for AI85 (run from the training project):
+To evaluate the quantized network for MAX78000 (run from the training project):
 
 ```shell
 (ai8x-training) $ ./evaluate_mnist.sh
@@ -893,7 +935,7 @@ Further, a quantized network can be refined using post-quantization training (se
 
 The software also includes an `AI84RangeLinear.py` training quantizer that plugs into the Distiller framework for quantization-aware training. However, it needs work as its performance is not good enough yet and the Distiller source needs to be patched to enable it (add `from range_linear_ai84 import QuantAwareTrainRangeLinearQuantizerAI84` to `distiller/config.py` and remove `False and` from `if False and args.ai84` in `train.py`).
 
-Note that AI85 does have a configurable per-layer output shift. The addition of this shift value allows easier quantization, since fractional bits can be used if weights do not span the full 8-bit range (many quantization approaches require a weight scale or output shift).
+Note that MAX78000 does have a configurable per-layer output shift. The addition of this shift value allows easier quantization, since fractional bits can be used if weights do not span the full 8-bit range (many quantization approaches require a weight scale or output shift).
 
 In all cases, ensure that the quantizer writes out a checkpoint file that the Network Loader can read.
 
@@ -949,10 +991,10 @@ The Netron tool (https://github.com/lutzroeder/Netron) can visualize networks, s
 
 _The `ai8xize` network loader currently depends on PyTorch and Nervana’s Distiller. This requirement will be removed in the future._
 
-The network loader creates C code that programs the AI8X (for embedded execution, or RTL simulation). Additionally, the generated code contains sample input data and the expected output for the sample, as well as code that verifies the expected output.
+The network loader creates C code that programs the MAX7800X (for embedded execution, or RTL simulation). Additionally, the generated code contains sample input data and the expected output for the sample, as well as code that verifies the expected output.
 
 The `ai8xize.py` program needs two inputs:
-1. A quantized checkpoint file, generated by the AI8X model quantization program `quantize.py`.
+1. A quantized checkpoint file, generated by the MAX7800X model quantization program `quantize.py`.
 2. A YAML description of the network.
 
 ### Command Line Arguments
@@ -965,7 +1007,7 @@ The following table describes the most important command line arguments for `ai8
 | *Device selection*       |                                                              |                                 |
 | `--device`               | Set device (default: 84)                                     | `--device 85`                   |
 | *Hardware features*      |                                                              |                                 |
-| `--avg-pool-rounding`    | Round average pooling results on (AI85 and up)               |                                 |
+| `--avg-pool-rounding`    | Round average pooling results on (MAX78000 and up)               |                                 |
 | `--simple1b`             | Use simple XOR instead of 1-bit multiplication               |                                 |
 | *Embedded code*          |                                                              |                                 |
 | `-e`, `--embedded-code`  | Generate embedded code for device                            |                                 |
@@ -1076,7 +1118,7 @@ layers:
   processors: 0x0000000000000fff
 ```
 
-To generate an embedded AI85 demo in the `demos/ai85-mnist/` folder, use the following command line:
+To generate an embedded MAX78000 demo in the `demos/ai85-mnist/` folder, use the following command line:
 
 ```shell
 $ ./ai8xize.py --verbose -L --top-level cnn --test-dir demos --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device 85 --compact-data --mexpress --softmax --embedded-code
@@ -1347,7 +1389,7 @@ Example:
 
 #### Example
 
-The following shows an example for a single “Fire” operation, the AI85/AI87 hardware layer numbers and its YAML description.
+The following shows an example for a single “Fire” operation, the MAX78000/MAX78002 hardware layer numbers and its YAML description.
 
 <img src="docs/fireexample.png" alt="Fire example" style="zoom:35%;" />
 
@@ -1443,13 +1485,13 @@ Run `ai8xize.py` with the new network and the new sample data to generate embedd
 
 An inference is started by loading registers and kernels, loading the input, and enabling processing.  This code is automatically generated—see the `cnn_load()`, `load_kernels()`, and `load_input()` functions. The sample data can be used as a self-checking feature on device power-up since the output for the sample data is known.
 
-The AI85/AI87 accelerator can generate an interrupt on completion, and it will set a status bit (see `cnn_wait()`). The resulting data can now be unloaded from the accelerator (code for this is also auto-generated in `cnn_unload()`).
+The MAX78000/MAX78002 accelerator can generate an interrupt on completion, and it will set a status bit (see `cnn_wait()`). The resulting data can now be unloaded from the accelerator (code for this is also auto-generated in `cnn_unload()`).
 
 To run another inference, ensure all groups are disabled (stopping the state machine, as shown in `cnn_load()`). Next, load the new input data and start processing.
 
 #### Softmax, and Data unload in C
 
-`ai8xize.py` can generate a custom `cnn_unload()` function using the command line switch `--unload`. The `--softmax` switch additionally inserts a call to a software Softmax function that is provided in the `device-ai8x` folder. To use the provided software Softmax on AI85, the last layer output should be 32-bit wide (`output_width: 32`).
+`ai8xize.py` can generate a custom `cnn_unload()` function using the command line switch `--unload`. The `--softmax` switch additionally inserts a call to a software Softmax function that is provided in the `device-ai8x` folder. To use the provided software Softmax on MAX78000, the last layer output should be 32-bit wide (`output_width: 32`).
 
 The software Softmax function is optimized for processing time and it quantizes the input.
 
@@ -1457,15 +1499,15 @@ The software Softmax function is optimized for processing time and it quantizes 
 
 #### Contents of the device-* Folder
 
-* For AI85, the software Softmax is implemented in `softmax.c`.
+* For MAX78000, the software Softmax is implemented in `softmax.c`.
 
 ---
 
 ## Embedded Software Development Kits (SDKs)
 
-### AI85 SDK
+### MAX78000 SDK
 
-The AI85 SDK is a git submodule of ai8x-synthesis. It is checked out automatically to a version compatible with the project into the folder `sdk`.
+The MAX78000 SDK is a git submodule of ai8x-synthesis. It is checked out automatically to a version compatible with the project into the folder `sdk`.
 
 The Arm embedded compiler can be downloaded from [https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads).
 
@@ -1499,7 +1541,7 @@ In order for the debugger to work, the OpenOCD `max32xxx` branch from [https://g
 
 ## AHB Memory Addresses
 
-The following tables show the AHB memory addresses for the AI85 accelerator:
+The following tables show the AHB memory addresses for the MAX78000 accelerator:
 
 ### Data memory
 
@@ -1682,25 +1724,6 @@ Total: 2 KiB (4 instances of 128 × 32)
 | 3         | 0x50D08000 - 0x50D09FFF |
 
 ---
-
-## Updating the Project
-
-The following instructions are required for both projects, `ai8x-training` and `ai8x-synthesis`.
-
-Major upgrades (such as updating from PyTorch 1.3.1 to PyTorch 1.5) are best done by removing all installed wheels:
-
-```shell
-$ pip3 uninstall -r requirements.txt -y # or requirements-cu101.txt when in ai8x-training with CUDA 10.1
-```
-
-To pull the latest code and install the updated wheels, use:
-
-```shell
-$ git pull
-$ git submodule update --init
-$ pip3 install -U pip setuptools
-$ pip3 install -U -r requirements.txt # or requirements-cu101.txt when in ai8x-training with CUDA 10.1
-```
 
 ## Contributing Code
 
