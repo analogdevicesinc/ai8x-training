@@ -77,6 +77,7 @@ class VGGFace2Dataset(data.Dataset):
         embedding = self.embedding_list[idx]
         embedding = np.expand_dims(embedding, 1)
         embedding = np.expand_dims(embedding, 2)
+        embedding *= 6.0
 
         inp = torch.Tensor(self.__normalize_data(self.img_list[idx]))
         if self.transform is not None:

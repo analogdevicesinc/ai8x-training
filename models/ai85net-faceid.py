@@ -29,9 +29,9 @@ class AI85FaceIDNet(nn.Module):
         super(AI85FaceIDNet, self).__init__()
 
         self.conv1 = ai8x.FusedConv2dReLU(num_channels, 16, 3, padding=1,
-                                          bias=bias)
+                                          bias=False)
         self.conv2 = ai8x.FusedMaxPoolConv2dReLU(16, 32, 3, pool_size=2, pool_stride=2,
-                                                 padding=1, bias=bias)
+                                                 padding=1, bias=False)
         self.conv3 = ai8x.FusedMaxPoolConv2dReLU(32, 32, 3, pool_size=2, pool_stride=2,
                                                  padding=1, bias=bias)
         self.conv4 = ai8x.FusedMaxPoolConv2dReLU(32, 64, 3, pool_size=2, pool_stride=2,
