@@ -132,6 +132,63 @@ class Clamp(nn.Module):
         return x.clamp(min=self.min_val, max=self.max_val)
 
 
+def quantize_clamp(wide, output_shift):
+    """
+    Return new Quantization and Clamp objects.
+    """
+    if dev.simulate:
+        if not wide:
+            quantize = Quantize(num_bits=dev.DATA_BITS + output_shift)
+            clamp = Clamp(
+                min_val=-(2**(dev.ACTIVATION_BITS-1)),
+                max_val=2**(dev.ACTIVATION_BITS-1)-1,
+            )
+        else:
+            quantize = Quantize(num_bits=dev.DATA_BITS + 1)
+            clamp = Clamp(
+                min_val=-(2**(dev.FULL_ACC_BITS-1)),
+                max_val=2**(dev.FULL_ACC_BITS-1)-1,
+            )
+    else:
+        quantize = Empty()
+        if not wide:
+            clamp = Clamp(  # Do not combine with ReLU
+                min_val=-1.,
+                max_val=1.,
+            )
+        else:
+            clamp = Clamp(
+                min_val=-(2.**((dev.FULL_ACC_BITS-2*(dev.DATA_BITS-1))-1)),
+                max_val=2.**((dev.FULL_ACC_BITS-2*(dev.DATA_BITS-1))-1),
+            )
+
+    return quantize, clamp
+
+
+def quantize_clamp_pool(pooling):
+    """
+    Return new Quantization and Clamp objects for pooling.
+    """
+    if dev.simulate:
+        if pooling == 'Avg':
+            quantize = Round() if dev.round_avg else Floor()
+            clamp = Clamp(
+                min_val=-(2**(dev.DATA_BITS-1)),
+                max_val=2**(dev.DATA_BITS-1)-1,
+            )
+        else:  # Max, None
+            quantize = Empty()
+            clamp = Empty()
+    else:
+        quantize = Empty()
+        if pooling == 'Avg':
+            clamp = Clamp(min_val=-1., max_val=1.)
+        else:  # Max, None
+            clamp = Empty()
+
+    return quantize, clamp
+
+
 class Abs(nn.Module):
     """
     Return abs(x)
@@ -182,6 +239,8 @@ class Conv2d(nn.Module):
             wide=False,
     ):
         super(Conv2d, self).__init__()
+
+        assert not wide or activation is None
 
         if pooling is not None:
             if pool_stride is None:
@@ -250,24 +309,8 @@ class Conv2d(nn.Module):
         else:
             self.conv2d = None
 
-        if dev.simulate:
-            self.quantize = Quantize(num_bits=dev.DATA_BITS + output_shift if not wide else 1)
-            bits = dev.ACTIVATION_BITS if not wide else dev.FULL_ACC_BITS
-            self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
-            if pooling == 'Avg':
-                self.quantize_pool = Round() if dev.round_avg else Floor()
-            else:  # Max, None
-                self.quantize_pool = Empty()
-        else:
-            self.quantize = Empty()
-            self.quantize_pool = Empty()
-            self.clamp = Clamp(min_val=-1., max_val=1.)  # Do not combine with ReLU
-
-        if pooling == 'Avg':
-            self.clamp_pool = self.clamp
-        else:  # Max, None
-            self.clamp_pool = Empty()
-
+        self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
+        self.quantize, self.clamp = quantize_clamp(wide, output_shift)
         self.activate = get_activation(activation)
 
     def forward(self, x):  # pylint: disable=arguments-differ
@@ -486,16 +529,11 @@ class Linear(nn.Module):
         assert dev.device != 84
         assert in_features <= 1024
         assert out_features <= 1024
+        assert not wide or activation is None
+
         self.linear = nn.Linear(in_features, out_features, bias)
 
-        if dev.simulate:
-            self.quantize = Quantize(num_bits=dev.DATA_BITS + output_shift if not wide else 1)
-            bits = dev.ACTIVATION_BITS if not wide else dev.FULL_ACC_BITS
-            self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
-        else:
-            self.quantize = Empty()
-            self.clamp = Clamp(min_val=-1., max_val=1.)  # Do not combine with ReLU
-
+        self.quantize, self.clamp = quantize_clamp(wide, output_shift)
         self.activate = get_activation(activation)
 
     def forward(self, x):  # pylint: disable=arguments-differ
@@ -542,6 +580,8 @@ class Conv1d(nn.Module):
     ):
         super(Conv1d, self).__init__()
 
+        assert not wide or activation is None
+
         if pooling is not None:
             if pool_stride is None:
                 pool_stride = pool_size
@@ -576,24 +616,8 @@ class Conv1d(nn.Module):
         else:
             self.conv1d = None
 
-        if dev.simulate:
-            self.quantize = Quantize(num_bits=dev.DATA_BITS + output_shift if not wide else 1)
-            bits = dev.ACTIVATION_BITS if not wide else dev.FULL_ACC_BITS
-            self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
-            if pooling == 'Avg':
-                self.quantize_pool = Round() if dev.round_avg else Floor()
-            else:  # Max, None
-                self.quantize_pool = Empty()
-        else:
-            self.quantize = Empty()
-            self.quantize_pool = Empty()
-            self.clamp = Clamp(min_val=-1., max_val=1.)  # Do not combine with ReLU
-
-        if pooling == 'Avg':
-            self.clamp_pool = self.clamp
-        else:  # Max, None
-            self.clamp_pool = Empty()
-
+        self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
+        self.quantize, self.clamp = quantize_clamp(wide, output_shift)
         self.activate = get_activation(activation)
 
     def forward(self, x):  # pylint: disable=arguments-differ
@@ -793,6 +817,7 @@ class DevAI84(Device):
     """
     def __init__(self, simulate, round_avg):
         assert not round_avg
+
         super(DevAI84, self).__init__(84, simulate, round_avg)
 
         self.WEIGHT_BITS = 8
@@ -820,7 +845,7 @@ class DevAI85(Device):
         self.WEIGHT_BITS = 8
         self.DATA_BITS = 8
         self.ACTIVATION_BITS = 8
-        self.FULL_ACC_BITS = 32
+        self.FULL_ACC_BITS = 30
         self.FC_ACTIVATION_BITS = 16
 
         self.WEIGHT_INPUTS = 256
