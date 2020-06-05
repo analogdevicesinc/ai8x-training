@@ -237,6 +237,7 @@ class Conv2d(nn.Module):
             activation=None,
             output_shift=0,
             wide=False,
+            batchnorm=None,
     ):
         super(Conv2d, self).__init__()
 
@@ -288,6 +289,13 @@ class Conv2d(nn.Module):
         else:
             self.pool = None
 
+        if batchnorm == 'Affine':
+            self.bn = nn.BatchNorm2d(out_channels, eps=1e-05, momentum=0.05, affine=True)
+        elif batchnorm == 'NoAffine':
+            self.bn = nn.BatchNorm2d(out_channels, eps=1e-05, momentum=0.05, affine=False)
+        else:
+            self.bn = None
+
         if kernel_size is not None:
             if isinstance(kernel_size, tuple):
                 assert len(kernel_size) == 2 and kernel_size[0] == kernel_size[1]
@@ -318,6 +326,8 @@ class Conv2d(nn.Module):
             x = self.clamp_pool(self.quantize_pool(self.pool(x)))
         if self.conv2d is not None:
             x = self.conv2d(x)
+            if self.bn is not None:
+                x = self.bn(x)
             x = self.clamp(self.quantize(self.activate(x)))
         return x
 
@@ -337,6 +347,12 @@ class FusedMaxPoolConv2dReLU(FusedMaxPoolConv2d):
     def __init__(self, *args, **kwargs):
         super(FusedMaxPoolConv2dReLU, self).__init__(*args, activation='ReLU', **kwargs)
 
+class FusedMaxPoolConv2dBNReLU(FusedMaxPoolConv2dReLU):
+    """
+    AI8X - Fused 2D Max Pool, 2D Convolution, BatchNorm and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedMaxPoolConv2dBNReLU, self).__init__(*args, batchnorm='NoAffine', **kwargs)
 
 class FusedMaxPoolConv2dAbs(FusedMaxPoolConv2d):
     """
@@ -397,6 +413,12 @@ class FusedConv2dReLU(Conv2d):
     def __init__(self, *args, **kwargs):
         super(FusedConv2dReLU, self).__init__(*args, activation='ReLU', **kwargs)
 
+class FusedConv2dBNReLU(FusedConv2dReLU):
+    """
+    AI8X - Fused 2D Convolution and BatchNorm and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedConv2dBNReLU, self).__init__(*args, batchnorm='NoAffine', **kwargs)
 
 class FusedConv2dAbs(Conv2d):
     """
