@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2018-2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -33,6 +33,7 @@ import distiller
 import distiller.quantization
 from distiller.utils import float_range_argparse_checker as float_range
 from examples.auto_compression.amc import amc_args as adc
+from devices import device
 
 
 SUMMARY_CHOICES = ['sparsity', 'compute', 'model', 'modules', 'png', 'png_w_params', 'onnx']
@@ -43,8 +44,8 @@ def get_parser(model_names, dataset_names):
     Return the argument parser
     """
     parser = argparse.ArgumentParser(description='Image classification model')
-    parser.add_argument('--device', type=int, default=84,
-                        help='set device (default: 84)')
+    parser.add_argument('--device', type=device, default=84,
+                        help='set device (default: AI84)')
     parser.add_argument('--8-bit-mode', '-8', dest='act_mode_8bit', action='store_true',
                         default=False,
                         help='simluate device operation (8-bit data)')

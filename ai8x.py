@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2019-2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -13,6 +13,7 @@ the limits into account.
 import torch
 import torch.nn as nn
 from torch.autograd import Function
+import devices
 
 
 dev = None
@@ -893,13 +894,12 @@ def set_device(
         round_avg,
 ):
     """
-    Change implementation configuration to match the AI84 or AI85, depending on the `device`
-    integer input value and `simulate` bool. `round_avg` (AI85+) controls the average pooling
-    rounding.
+    Change implementation configuration to match the `device` input value and
+    `simulate` bool. `round_avg` (AI85+) controls the average pooling rounding.
     """
     global dev  # pylint: disable=global-statement
 
-    print(f'Configuring device: AI{device}, simulate={simulate}.')
+    print(f'Configuring device: {devices.partnum(device)}, simulate={simulate}.')
 
     if device == 84:
         dev = DevAI84(simulate, round_avg)
