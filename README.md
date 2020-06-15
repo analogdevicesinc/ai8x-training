@@ -4,7 +4,7 @@
 
 # MAX78000 Network Loader and RTL Simulation Generator
 
-_June 9, 2020_
+_June 15, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A [PDF copy of this file](README.pdf) is available in this repository. The GitHub rendering of this document does not show the formulas or the clickable table of contents._
@@ -633,7 +633,7 @@ The following picture shows an example of a `Conv2d` with 1×1 kernels, 5 input 
 ### Limitations of MAX78000 Networks
 
 The MAX78000 hardware does not support arbitrary network parameters. Specifically,
-* Dilation, groups, depth-wise convolutions, and batch normalization are not supported. *Note: Batch normalization should be folded into the weights.*
+* Dilation, groups, depth-wise convolutions, and hardware batch normalization are not supported. *Note: Batch normalization should be folded into the weights, see [Batch Normalization](#Batch-Normalization).*
 
 * `Conv2d`:
   
@@ -852,6 +852,12 @@ When reshaping data, `in_dim:` must be specified in the model description file.
 
 When using the `-8` command line switch, all module outputs are quantized to 8-bit in the range  [-128...+127] to simulate hardware behavior. The last layer can optionally use 32-bit output for increased precision. This is simulated by adding the parameter `wide=True` to the module function call.
 
+#### Batch Normalization
+
+Batch normalization after `Conv2d` layers is supported using “fusing”. The fusing operation merges the effect of batch normalization layers into the parameters of the preceding convolutional layer. For detailed information about batch normalization fusing/folding, see Section 3.2 of the following paper: https://arxiv.org/pdf/1712.05877.pdf.
+
+After fusing/folding, the network will not contain any batchnorm layers. The effects of batch normalization will instead be expressed by modified weights and biases of the preceding convolutional layer. If the trained network contains batchnorm layers, the `batchnormfuser.py` script (see [BatchNorm Fusing](#BatchNorm-Fusing)) should be called before `quantize.py` to fuse the batchnorm layers. To be able perform folding/fusing by running `batchnormfuser.py`, a second model architecture should be defined without batchnorm layers. This architecture should be exactly the same as the input model architecture, except for the removal of all batchnorm layers.
+
 ### Model Comparison and Feature Attribution
 
 Both TensorBoard and Manifold can be used for model comparison and feature attribution.
@@ -927,6 +933,21 @@ The train.py program can create plots using the `--shap` command line argument i
 This will create a plot with a random selection of 3 test images. The plot shows ten outputs (the ten classes) for the three different input images on the left. Red pixels increase the model’s output while blue pixels decrease the output. The sum of the SHAP values equals the difference between the expected model output (averaged over the background dataset) and the current model output.
 
 <img src="docs/shap.png" alt="shap"  />
+
+### BatchNorm Fusing
+
+If batchnorm fusing is needed (see [Batch Normalization](#Batch-Normalization)), the `batchnormfuser.py` tool must be run.
+
+#### Command Line Arguments
+
+The following table describes the command line arguments for `batchnormfuser.py`:
+
+| Argument            | Description                                                  | Example                                  |
+| ------------------- | ------------------------------------------------------------ | ---------------------------------------- |
+| `-i`, `--inp_path`  | Set input checkpoint path                                    | `-i logs/2020.06.05-235316/best.pth.tar` |
+| `-o`, `--out_path`  | Set output checkpoint path for saving fused model            | `-o best_without_bn.pth.tar`             |
+| `-oa`, `--out_arch` | Set output architecture name (architecture without batchnorm layers) | `-oa ai85simplenet`                      |
+
 
 ### Quantization
 
