@@ -4,7 +4,7 @@
 
 # MAX78000 Network Loader and RTL Simulation Generator
 
-_June 15, 2020_
+_June 16, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A [PDF copy of this file](README.pdf) is available in this repository. The GitHub rendering of this document does not show the formulas or the clickable table of contents._
@@ -48,7 +48,7 @@ where “....” is the project root, for example `~/Documents/Source/AI`.
 
 ### Prerequisites
 
-This software currently supports Ubuntu 18.04 LTS (Ubuntu 20.04 LTS is not yet supported by CUDA). The server version is sufficient, see https://ubuntu.com/download/server.
+This software currently supports Ubuntu 18.04 LTS (Ubuntu 20.04 LTS is not yet supported by CUDA). The server version is sufficient, see https://ubuntu.com/download/server. *Note: The Windows Subsystem for Linux (WSL) currently does <u>not</u> support CUDA.*
 
 When going beyond simple tests, model training requires CUDA hardware acceleration (the network loader does not require CUDA).
 
@@ -108,7 +108,7 @@ $ sudo apt-get install -y make build-essential libssl-dev zlib1g-dev \
 $ curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
 ```
 
-Then, add to ~/.bash_profile or ~/.profile (as shown by the terminal output of the previous step):
+Then, add to either `~/.bash_profile`, `~/.bashrc` or `~/.profile` (as shown by the terminal output of the previous step):
 
 ```shell
 eval "$(pyenv init -)"
@@ -185,7 +185,7 @@ $ yarn
 
 #### Windows Systems
 
-Windows/MS-DOS is not supported for training networks at this time.
+Windows/MS-DOS is not supported for training networks at this time. *This includes the Windows Subsystem for Linux (WSL) since it currently lacks CUDA support.*
 
 ### Upstream Code
 
@@ -293,7 +293,7 @@ To pull the latest code and install the updated wheels, use:
 
 The MAX78000 SDK is a git submodule of ai8x-synthesis. It is checked out automatically to a version compatible with the project into the folder `sdk`.
 
-*If the embedded C compiler is run on Windows instead of Linux, ignore this section and install the Maxim SDK executable, see https://github.com/MaximIntegratedAI/MaximAI_Documentation.*
+***If the embedded C compiler is run on Windows instead of Linux, ignore this section*** *and install the Maxim SDK executable, see https://github.com/MaximIntegratedAI/MaximAI_Documentation.*
 
 The Arm embedded compiler can be downloaded from [https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads).
 
