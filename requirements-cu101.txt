@@ -9,8 +9,8 @@ Pillow>=7
 shap>=0.34.0
 tk>=0.1.0
 sndfile>=0.2
-https://download.pytorch.org/whl/cu101/torch-1.5.0%2Bcu101-cp36-cp36m-linux_x86_64.whl
-https://download.pytorch.org/whl/cu101/torchvision-0.6.0%2Bcu101-cp36-cp36m-linux_x86_64.whl
+https://download.pytorch.org/whl/cu101/torch-1.5.1%2Bcu101-cp36-cp36m-linux_x86_64.whl
+https://download.pytorch.org/whl/cu101/torchvision-0.6.1%2Bcu101-cp36-cp36m-linux_x86_64.whl
 tensorboard==2.2.2
 numba<0.50.0
 -e distiller
