@@ -897,10 +897,8 @@ def update_training_scores_history(perf_scores_history, model, top1, top5, epoch
                                                                 'top1': top1, 'top5': top5,
                                                                 'epoch': epoch}))
         # Keep perf_scores_history sorted from best to worst
-        # Sort by sparsity as main sort key, then sort by top1, top5 and epoch
-        perf_scores_history.sort(key=operator.attrgetter('params_nnz_cnt', 'top1',
-                                                         'top5', 'epoch'),
-                                 reverse=True)
+        # Sort by top1 as main sort key, then sort by top5 and epoch
+        perf_scores_history.sort(key=operator.attrgetter('top1', 'top5', 'epoch'), reverse=True)
         for score in perf_scores_history[:args.num_best_scores]:
             if args.num_classes > 5:
                 msglogger.info('==> Best [Top1: %.3f   Top5: %.3f   Sparsity:%.2f   '
@@ -918,9 +916,8 @@ def update_training_scores_history(perf_scores_history, model, top1, top5, epoch
                                                                 'top1': 1. - top1,
                                                                 'epoch': epoch}))
         # Keep perf_scores_history sorted from best to worst
-        # Sort by sparsity as main sort key, then sort by mse, and epoch
-        perf_scores_history.sort(key=operator.attrgetter('params_nnz_cnt', 'top1', 'epoch'),
-                                 reverse=True)
+        # Sort by mse as main sort key, then sort by epoch
+        perf_scores_history.sort(key=operator.attrgetter('top1', 'epoch'), reverse=True)
         for score in perf_scores_history[:args.num_best_scores]:
             msglogger.info('==> Best [MSE: %.5f   Sparsity:%.2f   '
                            'Params: %d on epoch: %d]',
