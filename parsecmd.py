@@ -203,6 +203,8 @@ def get_parser(model_names, dataset_names):
                         help='Load a model without DataParallel wrapping it')
     parser.add_argument('--thinnify', dest='thinnify', action='store_true', default=False,
                         help='physically remove zero-filters and create a smaller model')
+    parser.add_argument('--sparsity-perf', action='store_true', default=False,
+                        help='when determining best epoch, use sparsity as primary key')
 
     distiller.knowledge_distillation.add_distillation_args(parser, model_names, True)
     distiller.quantization.add_post_train_quant_args(parser)
