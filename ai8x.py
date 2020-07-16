@@ -10,6 +10,7 @@
 Contains the limits of the AI84/AI85/AI87 implementations and custom PyTorch modules that take
 the limits into account.
 """
+import math
 import torch
 import torch.nn as nn
 from torch.autograd import Function
@@ -41,11 +42,15 @@ class QuantizationFunction(Function):
     """
     @staticmethod
     def forward(ctx, x, bits=None):  # pylint: disable=arguments-differ
-        if bits > 1:
-            return x.add(.5).div(2**(bits-1)).add(.5).floor()
-        if bits < 1:
-            return x.mul(2**(1-bits)).add(.5).floor()
-        return x.add(.5).floor()
+        if dev.simulate:
+            if bits > 1:
+                return x.add(.5).div(2**(bits-1)).add(.5).floor()
+            if bits < 1:
+                return x.mul(2**(1-bits)).add(.5).floor()
+            return x.add(.5).floor()
+        else:
+            factor = 2**(bits-1)
+            return x.mul(factor).round().div(factor)
 
     @staticmethod
     def backward(ctx, x):  # pylint: disable=arguments-differ
@@ -133,7 +138,7 @@ class Clamp(nn.Module):
         return x.clamp(min=self.min_val, max=self.max_val)
 
 
-def quantize_clamp(wide, output_shift):
+def quantize_clamp(wide, output_shift, quantize_activation=False):
     """
     Return new Quantization and Clamp objects.
     """
@@ -151,11 +156,14 @@ def quantize_clamp(wide, output_shift):
                 max_val=2**(dev.FULL_ACC_BITS-1)-1,
             )
     else:
-        quantize = Empty()
+        if quantize_activation:
+            quantize = Quantize(num_bits=dev.ACTIVATION_BITS)
+        else:
+            quantize = Empty()
         if not wide:
             clamp = Clamp(  # Do not combine with ReLU
                 min_val=-1.,
-                max_val=1.,
+                max_val=(2.**(dev.ACTIVATION_BITS-1)-1)/(2.**(dev.ACTIVATION_BITS-1)),
             )
         else:
             clamp = Clamp(
@@ -183,9 +191,23 @@ def quantize_clamp_pool(pooling):
     else:
         quantize = Empty()
         if pooling == 'Avg':
-            clamp = Clamp(min_val=-1., max_val=1.)
+            clamp = Clamp(min_val=-1., max_val=127./128.)
         else:  # Max, None
             clamp = Empty()
+
+    return quantize, clamp
+
+
+def quantize_clamp_parameters(bits):
+    """
+    Return new Quantization and Clamp objects for parameter
+    """
+    if dev.simulate or (not bits):
+        clamp = Empty()
+        quantize = Empty()
+    else:
+        clamp = Clamp(min_val=-1., max_val=(2.**(bits-1)-1)/(2.**(bits-1)))
+        quantize = Quantize(num_bits=bits)
 
     return quantize, clamp
 
@@ -239,6 +261,9 @@ class Conv2d(nn.Module):
             output_shift=0,
             wide=False,
             batchnorm=None,
+            weight_bits=None,
+            bias_bits=None,
+            quantize_activation=False
     ):
         super(Conv2d, self).__init__()
 
@@ -318,19 +343,43 @@ class Conv2d(nn.Module):
         else:
             self.conv2d = None
 
+        self.adjust_output_shift = (not dev.simulate) and ((weight_bits) or (bias_bits))
+
         self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
-        self.quantize, self.clamp = quantize_clamp(wide, output_shift)
+        self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(weight_bits)
+        self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(bias_bits)
+        self.quantize, self.clamp = quantize_clamp(wide, output_shift, quantize_activation)
         self.activate = get_activation(activation)
 
     def forward(self, x):  # pylint: disable=arguments-differ
         if self.pool is not None:
             x = self.clamp_pool(self.quantize_pool(self.pool(x)))
         if self.conv2d is not None:
-            x = self.conv2d(x)
+            # x = self.conv2d(x)
+            weight_scale = 1
+            if self.adjust_output_shift:
+                weight_scale, _ = self._calc_weight_scale()
+            weight = self.clamp_weight(self.quantize_weight(weight_scale * self.conv2d.weight))
+            bias = self.clamp_bias(self.quantize_bias(self.conv2d.bias))
+
+            if torch.rand(1).item() < 0.002:
+                if not isinstance(self.quantize_weight, Empty):
+                    print(self.quantize_weight.num_bits, weight_scale, torch.unique(weight).shape)
+            x = nn.functional.conv2d(x, weight, bias, self.conv2d.stride, self.conv2d.padding,
+                                     self.conv2d.dilation, self.conv2d.groups)
             if self.bn is not None:
                 x = self.bn(x)
-            x = self.clamp(self.quantize(self.activate(x)))
+            x = self.clamp(self.quantize(self.activate(x/weight_scale)))
         return x
+
+    def _calc_weight_scale(self):
+        with torch.no_grad():
+            weight_scale = 1./torch.max(torch.abs(self.conv2d.weight)).detach().item()
+            weight_scale = max(min(math.ceil(math.log2(weight_scale)), 15), -15)
+            output_shift = -weight_scale
+            weight_scale = 2.**weight_scale
+
+        return weight_scale, output_shift
 
 
 class FusedMaxPoolConv2d(Conv2d):
@@ -348,12 +397,14 @@ class FusedMaxPoolConv2dReLU(FusedMaxPoolConv2d):
     def __init__(self, *args, **kwargs):
         super(FusedMaxPoolConv2dReLU, self).__init__(*args, activation='ReLU', **kwargs)
 
+
 class FusedMaxPoolConv2dBNReLU(FusedMaxPoolConv2dReLU):
     """
     AI8X - Fused 2D Max Pool, 2D Convolution, BatchNorm and ReLU
     """
     def __init__(self, *args, **kwargs):
         super(FusedMaxPoolConv2dBNReLU, self).__init__(*args, batchnorm='NoAffine', **kwargs)
+
 
 class FusedMaxPoolConv2dAbs(FusedMaxPoolConv2d):
     """
@@ -414,12 +465,14 @@ class FusedConv2dReLU(Conv2d):
     def __init__(self, *args, **kwargs):
         super(FusedConv2dReLU, self).__init__(*args, activation='ReLU', **kwargs)
 
+
 class FusedConv2dBNReLU(FusedConv2dReLU):
     """
     AI8X - Fused 2D Convolution and BatchNorm and ReLU
     """
     def __init__(self, *args, **kwargs):
         super(FusedConv2dBNReLU, self).__init__(*args, batchnorm='NoAffine', **kwargs)
+
 
 class FusedConv2dAbs(Conv2d):
     """

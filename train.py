@@ -241,22 +241,8 @@ def main():
     if args.regression and args.display_embedding:
         raise ValueError('ERROR: Argument --embedding cannot be used with regression')
 
-    # Create the model
-    module = next(item for item in supported_models if item['name'] == args.cnn)
-    Model = locate(module['module'] + '.' + args.cnn)
-    if not Model:
-        raise RuntimeError("Model " + args.cnn + " not found\n")
-    if module['dim'] > 1 and module['min_input'] > dimensions[2]:
-        model = Model(pretrained=False, num_classes=args.num_classes,
-                      num_channels=dimensions[0],
-                      dimensions=(dimensions[1], dimensions[2]),
-                      padding=(module['min_input'] - dimensions[2] + 1) // 2,
-                      bias=args.use_bias).to(args.device)
-    else:
-        model = Model(pretrained=False, num_classes=args.num_classes,
-                      num_channels=dimensions[0],
-                      dimensions=(dimensions[1], dimensions[2]),
-                      bias=args.use_bias).to(args.device)
+    # create model
+    model = create_model(supported_models, dimensions, False, args)
     # if args.add_logsoftmax:
     #     model = nn.Sequential(model, nn.LogSoftmax(dim=1))
     # if args.add_softmax:
@@ -424,6 +410,18 @@ def main():
 
     vloss = 10**6
     for epoch in range(start_epoch, ending_epoch):
+        # Switch model from unquantized to quantized for Quantization Aware Training
+        if args.qat and (epoch == int(args.start_qat_epoch)):
+            model_state = model.state_dict()
+            optimizer_state = optimizer.state_dict()
+
+            model = create_model(supported_models, dimensions, True, args)
+            model.load_state_dict(model_state)
+
+            optimizer = create_optimizer(model, args)
+            optimizer.load_state_dict(optimizer_state)
+            print('MODEL QUANTIZED!!!!')
+
         # This is the main training loop.
         msglogger.info('\n')
         if compression_scheduler:
@@ -480,6 +478,58 @@ def main():
 
 OVERALL_LOSS_KEY = 'Overall Loss'
 OBJECTIVE_LOSS_KEY = 'Objective Loss'
+
+
+def create_model(supported_models, dimensions, is_quantized, args):
+    """Create the model"""
+    module = next(item for item in supported_models if item['name'] == args.cnn)
+    Model = locate(module['module'] + '.' + args.cnn)
+    if not Model:
+        raise RuntimeError("Model " + args.cnn + " not found\n")
+
+    # Set model paramaters for Quantization Aware Training
+    if is_quantized:
+        weight_bits = int(args.qat_num_bits)
+        bias_bits = None
+        quantize_activation = True
+    else:
+        weight_bits = None
+        bias_bits = None
+        quantize_activation = False
+
+    if module['dim'] > 1 and module['min_input'] > dimensions[2]:
+        model = Model(pretrained=False, num_classes=args.num_classes,
+                      num_channels=dimensions[0],
+                      dimensions=(dimensions[1], dimensions[2]),
+                      padding=(module['min_input'] - dimensions[2] + 1) // 2,
+                      bias=args.use_bias,
+                      weight_bits=weight_bits,
+                      bias_bits=bias_bits,
+                      quantize_activation=quantize_activation).to(args.device)
+    else:
+        model = Model(pretrained=False, num_classes=args.num_classes,
+                      num_channels=dimensions[0],
+                      dimensions=(dimensions[1], dimensions[2]),
+                      bias=args.use_bias,
+                      weight_bits=weight_bits,
+                      bias_bits=bias_bits,
+                      quantize_activation=quantize_activation).to(args.device)
+
+    return model
+
+
+def create_optimizer(model, args):
+    """Create the optimizer"""
+    if args.optimizer.lower() == 'sgd':
+        optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum,
+                                    weight_decay=args.weight_decay)
+    elif args.optimizer.lower() == 'adam':
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    else:
+        msglogger.info('Unknown optimizer type: %s. SGD is set as optimizer!!!', args.optimizer)
+        optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum,
+                                    weight_decay=args.weight_decay)
+    return optimizer
 
 
 def train(train_loader, model, criterion, optimizer, epoch,
