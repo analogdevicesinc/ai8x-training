@@ -242,7 +242,10 @@ def main():
         raise ValueError('ERROR: Argument --embedding cannot be used with regression')
 
     # create model
-    model = create_model(supported_models, dimensions, False, args)
+    if args.evaluate and args.qat:
+        model = create_model(supported_models, dimensions, True, args)
+    else:
+        model = create_model(supported_models, dimensions, False, args)
     # if args.add_logsoftmax:
     #     model = nn.Sequential(model, nn.LogSoftmax(dim=1))
     # if args.add_softmax:
