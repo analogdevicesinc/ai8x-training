@@ -423,6 +423,11 @@ def main():
 
             optimizer = create_optimizer(model, args)
             optimizer.load_state_dict(optimizer_state)
+
+            for _, val in compression_scheduler.policies.items():
+                if isinstance(val[0], distiller.policy.LRPolicy):
+                    val[0].lr_scheduler.optimizer = optimizer
+
             print('MODEL QUANTIZED!!!!')
 
         # This is the main training loop.
