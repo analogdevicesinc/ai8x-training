@@ -498,7 +498,7 @@ def create_model(supported_models, dimensions, is_quantized, args):
     # Set model paramaters for Quantization Aware Training
     if is_quantized:
         weight_bits = int(args.qat_num_bits)
-        bias_bits = None
+        bias_bits = 8
         quantize_activation = True
     else:
         weight_bits = None
