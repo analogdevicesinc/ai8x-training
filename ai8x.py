@@ -374,7 +374,7 @@ class Conv2d(nn.Module):
                 out_shift = 2**(self.output_shift.detach().item())
 
             weight = self.clamp_weight(self.quantize_weight(weight_scale * self.conv2d.weight))
-            bias = self.clamp_bias(self.quantize_bias(self.conv2d.bias))
+            bias = self.clamp_bias(self.quantize_bias(weight_scale * self.conv2d.bias))
 
             x = nn.functional.conv2d(x, weight, bias, self.conv2d.stride, self.conv2d.padding,
                                      self.conv2d.dilation, self.conv2d.groups)
