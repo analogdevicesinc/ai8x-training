@@ -428,8 +428,6 @@ def main():
                 if isinstance(val[0], distiller.policy.LRPolicy):
                     val[0].lr_scheduler.optimizer = optimizer
 
-            print('MODEL QUANTIZED!!!!')
-
         # This is the main training loop.
         msglogger.info('\n')
         if compression_scheduler:

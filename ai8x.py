@@ -48,9 +48,9 @@ class QuantizationFunction(Function):
             if bits < 1:
                 return x.mul(2**(1-bits)).add(.5).floor()
             return x.add(.5).floor()
-        else:
-            factor = 2**(bits-1)
-            return x.mul(factor).round().div(factor)
+
+        factor = 2**(bits-1)
+        return x.mul(factor).round().div(factor)
 
     @staticmethod
     def backward(ctx, x):  # pylint: disable=arguments-differ
@@ -138,13 +138,13 @@ class Clamp(nn.Module):
         return x.clamp(min=self.min_val, max=self.max_val)
 
 
-def quantize_clamp(wide, output_shift, quantize_activation=False):
+def quantize_clamp(wide, quantize_activation=False):
     """
     Return new Quantization and Clamp objects.
     """
     if dev.simulate:
         if not wide:
-            quantize = Quantize(num_bits=dev.DATA_BITS + output_shift)
+            quantize = Quantize(num_bits=dev.DATA_BITS)
             clamp = Clamp(
                 min_val=-(2**(dev.ACTIVATION_BITS-1)),
                 max_val=2**(dev.ACTIVATION_BITS-1)-1,
@@ -264,7 +264,6 @@ class Conv2d(nn.Module):
             padding=0,
             bias=True,
             activation=None,
-            output_shift=0,
             wide=False,
             batchnorm=None,
             weight_bits=None,
@@ -353,38 +352,44 @@ class Conv2d(nn.Module):
         assert bias_bits in [None, 8], f'Bias bits cannot be {bias_bits}'
 
         self.adjust_output_shift = (not dev.simulate) and ((weight_bits) or (bias_bits))
-        self.output_shift = nn.Parameter(torch.Tensor([output_shift]), requires_grad=False)
+        self.output_shift = nn.Parameter(torch.Tensor([0]), requires_grad=False)
 
         self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
         self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(weight_bits)
         self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(bias_bits)
-        self.quantize, self.clamp = quantize_clamp(wide, output_shift, quantize_activation)
+        self.quantize, self.clamp = quantize_clamp(wide, quantize_activation)
         self.activate = get_activation(activation)
 
     def forward(self, x):  # pylint: disable=arguments-differ
         if self.pool is not None:
             x = self.clamp_pool(self.quantize_pool(self.pool(x)))
         if self.conv2d is not None:
-            # x = self.conv2d(x)
             weight_scale = 1.0
+            out_shift = self.output_shift.detach().item()
             if self.adjust_output_shift:
-                weight_scale, _ = self._calc_weight_scale()
-                out_shift = 1.0 / weight_scale
-            else:
-                out_shift = 2**(self.output_shift.detach().item())
+                weight_scale, out_shift = self._calc_weight_scale()
+                self.output_shift.data = torch.Tensor([out_shift])
+            out_scale = 2**out_shift
 
             weight = self.clamp_weight(self.quantize_weight(weight_scale * self.conv2d.weight))
-            bias = self.clamp_bias(self.quantize_bias(weight_scale * self.conv2d.bias))
+            bias = self.conv2d.bias
+            if bias is not None:
+                bias = self.clamp_bias(self.quantize_bias(weight_scale * bias))
 
             x = nn.functional.conv2d(x, weight, bias, self.conv2d.stride, self.conv2d.padding,
                                      self.conv2d.dilation, self.conv2d.groups)
             if self.bn is not None:
                 x = self.bn(x)
 
-            x = self.clamp(self.quantize(self.activate(x*out_shift)))
+            if torch.rand(1).item() < 0.0002:
+                print(f'Weight Scale: {weight_scale}, Out Shift: {out_shift}')
+                print(f'Weight Min: {weight.min()}, Weight Max: {weight.max()}, Weight N: {torch.unique(weight).shape}')
+
+            x = self.clamp(self.quantize(self.activate(out_scale * x)))
         return x
 
     def _calc_weight_scale(self):
+        # only weight scale is considered for QAT as bias is always 8-bit
         with torch.no_grad():
             weight_scale = 1./torch.max(torch.abs(self.conv2d.weight)).detach().item()
             weight_scale = max(min(math.ceil(math.log2(weight_scale)), 15), -15)
@@ -663,8 +668,10 @@ class Conv1d(nn.Module):
             padding=0,
             bias=True,
             activation=None,
-            output_shift=0,
             wide=False,
+            weight_bits=None,
+            bias_bits=None,
+            quantize_activation=False
     ):
         super(Conv1d, self).__init__()
 
@@ -704,17 +711,48 @@ class Conv1d(nn.Module):
         else:
             self.conv1d = None
 
+        assert weight_bits in [None, 1, 2, 4, 8], f'Weight bits cannot be {weight_bits}'
+        assert bias_bits in [None, 8], f'Bias bits cannot be {bias_bits}'
+
+        self.adjust_output_shift = (not dev.simulate) and ((weight_bits) or (bias_bits))
+        self.output_shift = nn.Parameter(torch.Tensor([0]), requires_grad=False)
+
         self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
-        self.quantize, self.clamp = quantize_clamp(wide, output_shift)
+        self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(weight_bits)
+        self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(bias_bits)
+        self.quantize, self.clamp = quantize_clamp(wide, quantize_activation)
         self.activate = get_activation(activation)
 
     def forward(self, x):  # pylint: disable=arguments-differ
         if self.pool is not None:
             x = self.clamp_pool(self.quantize_pool(self.pool(x)))
         if self.conv1d is not None:
-            x = self.conv1d(x)
-            x = self.clamp(self.quantize(self.activate(x)))
+            weight_scale = 1.0
+            out_shift = self.output_shift.detach().item()
+            if self.adjust_output_shift:
+                weight_scale, out_shift = self._calc_weight_scale()
+                self.output_shift.data = torch.Tensor([out_shift])
+            out_scale = 2**out_shift
+
+            weight = self.clamp_weight(self.quantize_weight(weight_scale * self.conv1d.weight))
+            bias = self.conv1d.bias
+            if bias is not None:
+                bias = self.clamp_bias(self.quantize_bias(weight_scale * bias))
+
+            x = nn.functional.conv1d(x, weight, bias, self.conv1d.stride, self.conv1d.padding,
+                                     self.conv1d.dilation, self.conv1d.groups)
+            x = self.clamp(self.quantize(self.activate(out_scale*x)))
         return x
+
+    def _calc_weight_scale(self):
+        # only weight scale is considered for QAT as bias is always 8-bit
+        with torch.no_grad():
+            weight_scale = 1./torch.max(torch.abs(self.conv1d.weight)).detach().item()
+            weight_scale = max(min(math.ceil(math.log2(weight_scale)), 15), -15)
+            output_shift = -weight_scale
+            weight_scale = 2.**weight_scale
+
+        return weight_scale, output_shift
 
 
 class FusedMaxPoolConv1d(Conv1d):

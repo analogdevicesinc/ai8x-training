@@ -21,17 +21,17 @@ class Fire(nn.Module):
     AI8X - Fire Layer
     """
     def __init__(self, in_planes, squeeze_planes, expand1x1_planes, expand3x3_planes,
-                 bias=True):
+                 bias=True, **kwargs):
         super(Fire, self).__init__()
         self.squeeze_layer = ai8x.FusedConv2dReLU(in_channels=in_planes,
                                                   out_channels=squeeze_planes, kernel_size=1,
-                                                  bias=bias)
+                                                  bias=bias, **kwargs)
         self.expand1x1_layer = ai8x.FusedConv2dReLU(in_channels=squeeze_planes,
                                                     out_channels=expand1x1_planes, kernel_size=1,
-                                                    bias=bias)
+                                                    bias=bias, **kwargs)
         self.expand3x3_layer = ai8x.FusedConv2dReLU(in_channels=squeeze_planes,
                                                     out_channels=expand3x3_planes, kernel_size=3,
-                                                    padding=1, bias=bias)
+                                                    padding=1, bias=bias, **kwargs)
 
     def forward(self, x):  # pylint: disable=arguments-differ
         x = self.squeeze_layer(x)

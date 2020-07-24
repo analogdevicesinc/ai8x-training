@@ -26,36 +26,37 @@ class AI85KWS20Net(nn.Module):
             num_channels=128,
             dimensions=(128, 1),  # pylint: disable=unused-argument
             fc_inputs=7,
-            bias=False
+            bias=False,
+            **kwargs
     ):
         super(AI85KWS20Net, self).__init__()
 
         self.voice_conv1 = ai8x.FusedConv1dReLU(num_channels, 100, 1, stride=1, padding=0,
-                                                bias=bias)
+                                                bias=bias, **kwargs)
 
         self.voice_conv2 = ai8x.FusedConv1dReLU(100, 100, 1, stride=1, padding=0,
-                                                bias=bias)
+                                                bias=bias, **kwargs)
 
         self.voice_conv3 = ai8x.FusedConv1dReLU(100, 50, 1, stride=1, padding=0,
-                                                bias=bias)
+                                                bias=bias, **kwargs)
 
         self.voice_conv4 = ai8x.FusedConv1dReLU(50, 16, 1, stride=1, padding=0,
-                                                bias=bias)
+                                                bias=bias, **kwargs)
 
         self.kws_conv1 = ai8x.FusedConv2dReLU(16, 32, 3, stride=1, padding=1,
-                                              bias=bias)
+                                              bias=bias, **kwargs)
 
         self.kws_conv2 = ai8x.FusedConv2dReLU(32, 64, 3, stride=1, padding=1,
-                                              bias=bias)
+                                              bias=bias, **kwargs)
 
         self.kws_conv3 = ai8x.FusedConv2dReLU(64, 64, 3, stride=1, padding=1,
-                                              bias=bias)
+                                              bias=bias, **kwargs)
 
         self.kws_conv4 = ai8x.FusedConv2dReLU(64, 30, 3, stride=1, padding=1,
-                                              bias=bias)
+                                              bias=bias, **kwargs)
 
         self.kws_conv5 = ai8x.FusedConv2dReLU(30, fc_inputs, 3, stride=1, padding=1,
-                                              bias=bias)
+                                              bias=bias, **kwargs)
 
         self.fc = ai8x.Linear(fc_inputs * 128, num_classes, bias=bias)
 
