@@ -242,7 +242,8 @@ def main():
     if args.regression and args.display_embedding:
         raise ValueError('ERROR: Argument --embedding cannot be used with regression')
 
-    model = create_model(supported_models, dimensions, args.evaluate and args.qat, args)
+    model = create_model(supported_models, dimensions,
+                         args.qat and (args.evaluate or args.start_qat_epoch == 0), args)
 
     # if args.add_logsoftmax:
     #     model = nn.Sequential(model, nn.LogSoftmax(dim=1))
@@ -401,7 +402,7 @@ def main():
     vloss = 10**6
     for epoch in range(start_epoch, ending_epoch):
         # Switch model from unquantized to quantized for Quantization Aware Training
-        if args.qat and epoch == args.start_qat_epoch:
+        if args.qat and epoch > 0 and epoch == args.start_qat_epoch:
             model_state = model.state_dict()
             optimizer_state = optimizer.state_dict()
 
@@ -414,6 +415,9 @@ def main():
             for _, val in compression_scheduler.policies.items():
                 if isinstance(val[0], distiller.policy.LRPolicy):
                     val[0].lr_scheduler.optimizer = optimizer
+
+            # Model is re-transferred to GPU in case parameters were added
+            model.to(args.device)
 
         # This is the main training loop.
         msglogger.info('\n')
