@@ -73,15 +73,16 @@ def get_parser(model_names, dataset_names):
                         help='when simulating, use "round()" in AvgPool operations '
                              '(default: use "floor()")')
 
-    optimizer_args = parser.add_argument_group('Quantization arguments')
-    parser.add_argument('--qat', action='store_true', default=False,
-                        help='enable quantization aware training')
-    parser.add_argument('--qat-num-bits', type=int, default=8,
-                        help='weight bits for quantization aware training')
-    parser.add_argument('--start-qat-epoch', type=int, default=10,
-                        help='epoch to quantize model for quantization aware training')
+    qat_args = parser.add_argument_group('Quantization Arguments')
+    qat_args.add_argument('--qat', action='store_true', default=False,
+                          help='enable quantization aware training')
+    qat_args.add_argument('--qat-num-bits', type=int, default=8,
+                          help='weight bits for quantization aware training')
+    qat_args.add_argument('--qat-start-epoch', '--start-qat-epoch', type=int, default=10,
+                          dest='start_qat_epoch',
+                          help='epoch to quantize model for quantization aware training')
 
-    optimizer_args = parser.add_argument_group('Optimizer arguments')
+    optimizer_args = parser.add_argument_group('Optimizer Arguments')
     optimizer_args.add_argument('--optimizer', default='SGD',
                                 help='optimizer for training (default: SGD)')
     optimizer_args.add_argument('--lr', '--learning-rate', default=0.1,
@@ -94,7 +95,7 @@ def get_parser(model_names, dataset_names):
     parser.add_argument('--print-freq', '-p', default=10, type=int,
                         metavar='N', help='print frequency (default: 10)')
 
-    load_checkpoint_group = parser.add_argument_group('Resuming arguments')
+    load_checkpoint_group = parser.add_argument_group('Resuming Arguments')
     load_checkpoint_group_exc = load_checkpoint_group.add_mutually_exclusive_group()
     load_checkpoint_group_exc.add_argument('--resume-from', dest='resumed_checkpoint_path',
                                            default='', type=str, metavar='PATH',

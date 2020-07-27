@@ -264,7 +264,6 @@ def main():
         else:  # 1D input
             dummy_input = torch.autograd.Variable(torch.randn((1, ) + dimensions[:-1]))
         tflogger.tblogger.writer.add_graph(model.to('cpu'), (dummy_input, ), False)
-        model.to(args.device)
 
         all_loggers.append(tflogger)
         all_tbloggers = [tflogger]

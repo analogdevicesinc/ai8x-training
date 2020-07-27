@@ -10,7 +10,6 @@
 Contains the limits of the AI84/AI85/AI87 implementations and custom PyTorch modules that take
 the limits into account.
 """
-import math
 import torch
 import torch.nn as nn
 from torch.autograd import Function
@@ -218,6 +217,15 @@ def quantize_clamp_parameters(bits):
     return quantize, clamp
 
 
+def calculate_weight_scale(w):
+    """
+    Return weight_scale and output_shift for a set of given weights `w`.
+    """
+    weight_scale = (1./w.abs().max()).log2().ceil().clamp(min=-15., max=15.)
+
+    return 2.**weight_scale, -weight_scale
+
+
 class Abs(nn.Module):
     """
     Return abs(x)
@@ -352,7 +360,7 @@ class Conv2d(nn.Module):
         assert bias_bits in [None, 8], f'Bias bits cannot be {bias_bits}'
 
         self.adjust_output_shift = (not dev.simulate) and ((weight_bits) or (bias_bits))
-        self.output_shift = nn.Parameter(torch.Tensor([0]), requires_grad=False)
+        self.output_shift = nn.Parameter(torch.Tensor([0.]), requires_grad=False)
 
         self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
         self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(weight_bits)
@@ -364,12 +372,13 @@ class Conv2d(nn.Module):
         if self.pool is not None:
             x = self.clamp_pool(self.quantize_pool(self.pool(x)))
         if self.conv2d is not None:
-            weight_scale = 1.0
-            out_shift = self.output_shift.detach().item()
             if self.adjust_output_shift:
                 weight_scale, out_shift = self._calc_weight_scale()
-                self.output_shift.data = torch.Tensor([out_shift])
-            out_scale = 2**out_shift
+                self.output_shift.data = out_shift.unsqueeze(0)
+            else:
+                weight_scale, out_shift = 1., self.output_shift.detach()
+
+            out_scale = 2.**out_shift
 
             weight = self.clamp_weight(self.quantize_weight(weight_scale * self.conv2d.weight))
             bias = self.conv2d.bias
@@ -381,23 +390,17 @@ class Conv2d(nn.Module):
             if self.bn is not None:
                 x = self.bn(x)
 
-            if torch.rand(1).item() < 0.0002:
-                print(f'Weight Scale: {weight_scale}, Out Shift: {out_shift}')
-                print(f'Weight Min: {weight.min()}, Weight Max: {weight.max()}, '
-                      f'Weight N: {torch.unique(weight).shape}')
+            # if torch.rand(1).item() < 0.0002:
+            #     print(f'Weight Scale: {weight_scale}, Out Shift: {out_shift}')
+            #     print(f'Weight Min: {weight.min()}, Weight Max: {weight.max()}, '
+            #           f'Weight N: {torch.unique(weight).shape}')
 
             x = self.clamp(self.quantize(self.activate(out_scale * x)))
         return x
 
     def _calc_weight_scale(self):
-        # only weight scale is considered for QAT as bias is always 8-bit
-        with torch.no_grad():
-            weight_scale = 1./torch.max(torch.abs(self.conv2d.weight)).detach().item()
-            weight_scale = max(min(math.ceil(math.log2(weight_scale)), 15), -15)
-            output_shift = -weight_scale
-            weight_scale = 2.**weight_scale
-
-        return weight_scale, output_shift
+        # Weight scale is considered for QAT only as bias is always 8-bit
+        return calculate_weight_scale(self.conv2d.weight.detach())
 
 
 class FusedMaxPoolConv2d(Conv2d):
@@ -716,7 +719,7 @@ class Conv1d(nn.Module):
         assert bias_bits in [None, 8], f'Bias bits cannot be {bias_bits}'
 
         self.adjust_output_shift = (not dev.simulate) and ((weight_bits) or (bias_bits))
-        self.output_shift = nn.Parameter(torch.Tensor([0]), requires_grad=False)
+        self.output_shift = nn.Parameter(torch.Tensor([0.]), requires_grad=False)
 
         self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
         self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(weight_bits)
@@ -728,12 +731,13 @@ class Conv1d(nn.Module):
         if self.pool is not None:
             x = self.clamp_pool(self.quantize_pool(self.pool(x)))
         if self.conv1d is not None:
-            weight_scale = 1.0
-            out_shift = self.output_shift.detach().item()
             if self.adjust_output_shift:
                 weight_scale, out_shift = self._calc_weight_scale()
-                self.output_shift.data = torch.Tensor([out_shift])
-            out_scale = 2**out_shift
+                self.output_shift.data = out_shift.unsqueeze(0)
+            else:
+                weight_scale, out_shift = 1., self.output_shift.detach()
+
+            out_scale = 2.**out_shift
 
             weight = self.clamp_weight(self.quantize_weight(weight_scale * self.conv1d.weight))
             bias = self.conv1d.bias
@@ -746,14 +750,8 @@ class Conv1d(nn.Module):
         return x
 
     def _calc_weight_scale(self):
-        # only weight scale is considered for QAT as bias is always 8-bit
-        with torch.no_grad():
-            weight_scale = 1./torch.max(torch.abs(self.conv1d.weight)).detach().item()
-            weight_scale = max(min(math.ceil(math.log2(weight_scale)), 15), -15)
-            output_shift = -weight_scale
-            weight_scale = 2.**weight_scale
-
-        return weight_scale, output_shift
+        # Weight scale is considered for QAT only as bias is always 8-bit
+        return calculate_weight_scale(self.conv2d.weight.detach())
 
 
 class FusedMaxPoolConv1d(Conv1d):
