@@ -374,7 +374,7 @@ class Conv2d(nn.Module):
         if self.conv2d is not None:
             if self.adjust_output_shift:
                 weight_scale, out_shift = self._calc_weight_scale()
-                self.output_shift.data = out_shift.unsqueeze(0)
+                self.output_shift = nn.Parameter(out_shift.unsqueeze(0), requires_grad=False)
             else:
                 weight_scale, out_shift = 1., self.output_shift.detach()
 
@@ -733,7 +733,7 @@ class Conv1d(nn.Module):
         if self.conv1d is not None:
             if self.adjust_output_shift:
                 weight_scale, out_shift = self._calc_weight_scale()
-                self.output_shift.data = out_shift.unsqueeze(0)
+                self.output_shift = nn.Parameter(out_shift.unsqueeze(0), requires_grad=False)
             else:
                 weight_scale, out_shift = 1., self.output_shift.detach()
 
