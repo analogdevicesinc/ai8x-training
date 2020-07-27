@@ -303,17 +303,7 @@ def main():
         criterion = nn.MSELoss().to(args.device)
 
     if optimizer is None:
-        if args.optimizer.lower() == 'sgd':
-            optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum,
-                                        weight_decay=args.weight_decay)
-        elif args.optimizer.lower() == 'adam':
-            optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-        else:
-            msglogger.info('Unknown optimizer type: %s. SGD is set as optimizer!!!',
-                           args.optimizer)
-            optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum,
-                                        weight_decay=args.weight_decay)
-
+        optimizer = create_optimizer(model, args)
         msglogger.info('Optimizer Type: %s', type(optimizer))
         msglogger.info('Optimizer Args: %s', optimizer.defaults)
 
