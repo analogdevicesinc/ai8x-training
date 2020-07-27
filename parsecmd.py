@@ -72,11 +72,13 @@ def get_parser(model_names, dataset_names):
     parser.add_argument('--avg-pool-rounding', action='store_true', default=False,
                         help='when simulating, use "round()" in AvgPool operations '
                              '(default: use "floor()")')
+
+    optimizer_args = parser.add_argument_group('Quantization arguments')
     parser.add_argument('--qat', action='store_true', default=False,
                         help='enable quantization aware training')
-    parser.add_argument('--qat-num-bits', default=8,
+    parser.add_argument('--qat-num-bits', type=int, default=8,
                         help='weight bits for quantization aware training')
-    parser.add_argument('--start-qat-epoch', default=10,
+    parser.add_argument('--start-qat-epoch', type=int, default=10,
                         help='epoch to quantize model for quantization aware training')
 
     optimizer_args = parser.add_argument_group('Optimizer arguments')

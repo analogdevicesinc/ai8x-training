@@ -268,7 +268,7 @@ class Conv2d(nn.Module):
             batchnorm=None,
             weight_bits=None,
             bias_bits=None,
-            quantize_activation=False
+            quantize_activation=False,
     ):
         super(Conv2d, self).__init__()
 
@@ -383,7 +383,8 @@ class Conv2d(nn.Module):
 
             if torch.rand(1).item() < 0.0002:
                 print(f'Weight Scale: {weight_scale}, Out Shift: {out_shift}')
-                print(f'Weight Min: {weight.min()}, Weight Max: {weight.max()}, Weight N: {torch.unique(weight).shape}')
+                print(f'Weight Min: {weight.min()}, Weight Max: {weight.max()}, '
+                      f'Weight N: {torch.unique(weight).shape}')
 
             x = self.clamp(self.quantize(self.activate(out_scale * x)))
         return x
@@ -590,7 +591,7 @@ class FusedSoftwareLinearReLU(nn.Module):
             self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
         else:
             self.quantize = Empty()
-            self.clamp = Clamp(min_val=-1., max_val=1.)  # Do not combine with ReLU
+            self.clamp = Clamp(min_val=-1., max_val=127./128.)  # Do not combine with ReLU
 
         if relu:
             self.activate = nn.ReLU(inplace=True)
@@ -850,7 +851,7 @@ class Eltwise(nn.Module):
             bits = dev.ACTIVATION_BITS
             self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
         else:
-            self.clamp = Clamp(min_val=-1., max_val=1.)
+            self.clamp = Clamp(min_val=-1., max_val=127./128.)
 
     def forward(self, *x):
         y = x[0]

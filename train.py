@@ -62,6 +62,7 @@ models, or with the provided sample models:
 
 import time
 import os
+import sys
 import traceback
 import logging
 from collections import OrderedDict
@@ -241,11 +242,8 @@ def main():
     if args.regression and args.display_embedding:
         raise ValueError('ERROR: Argument --embedding cannot be used with regression')
 
-    # create model
-    if args.evaluate and args.qat:
-        model = create_model(supported_models, dimensions, True, args)
-    else:
-        model = create_model(supported_models, dimensions, False, args)
+    model = create_model(supported_models, dimensions, args.evaluate and args.qat, args)
+
     # if args.add_logsoftmax:
     #     model = nn.Sequential(model, nn.LogSoftmax(dim=1))
     # if args.add_softmax:
@@ -390,7 +388,7 @@ def main():
 
     args.kd_policy = None
     if args.kd_teacher:
-        teacher = Model(pretrained=False, num_classes=args.num_classes, num_channels=dimensions[0])
+        teacher = create_model(supported_models, dimensions, False, args)
         if args.kd_resume:
             teacher = apputils.load_lean_checkpoint(teacher, args.kd_resume)
         dlw = distiller.DistillationLossWeights(args.kd_distill_wt, args.kd_student_wt,
@@ -414,7 +412,7 @@ def main():
     vloss = 10**6
     for epoch in range(start_epoch, ending_epoch):
         # Switch model from unquantized to quantized for Quantization Aware Training
-        if args.qat and (epoch == int(args.start_qat_epoch)):
+        if args.qat and epoch == args.start_qat_epoch:
             model_state = model.state_dict()
             optimizer_state = optimizer.state_dict()
 
@@ -495,7 +493,7 @@ def create_model(supported_models, dimensions, is_quantized, args):
 
     # Set model paramaters for Quantization Aware Training
     if is_quantized:
-        weight_bits = int(args.qat_num_bits)
+        weight_bits = args.qat_num_bits
         bias_bits = 8
         quantize_activation = True
     else:
@@ -1268,7 +1266,7 @@ def check_pytorch_version():
               "  1. Deactivate the old environment\n"
               "  2. Install the new environment\n"
               "  3. Activate the new environment")
-        exit(1)
+        sys.exit(1)
 
 
 if __name__ == '__main__':
