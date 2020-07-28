@@ -359,7 +359,8 @@ class Conv2d(nn.Module):
         assert weight_bits in [None, 1, 2, 4, 8], f'Weight bits cannot be {weight_bits}'
         assert bias_bits in [None, 8], f'Bias bits cannot be {bias_bits}'
 
-        self.adjust_output_shift = (not dev.simulate) and ((weight_bits) or (bias_bits))
+        self.adjust_output_shift = not dev.simulate \
+            and (weight_bits is not None or bias_bits is not None)
         self.output_shift = nn.Parameter(torch.Tensor([0.]), requires_grad=False)
 
         self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
@@ -718,7 +719,8 @@ class Conv1d(nn.Module):
         assert weight_bits in [None, 1, 2, 4, 8], f'Weight bits cannot be {weight_bits}'
         assert bias_bits in [None, 8], f'Bias bits cannot be {bias_bits}'
 
-        self.adjust_output_shift = (not dev.simulate) and ((weight_bits) or (bias_bits))
+        self.adjust_output_shift = not dev.simulate \
+            and (weight_bits is not None or bias_bits is not None)
         self.output_shift = nn.Parameter(torch.Tensor([0.]), requires_grad=False)
 
         self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
@@ -746,7 +748,7 @@ class Conv1d(nn.Module):
 
             x = nn.functional.conv1d(x, weight, bias, self.conv1d.stride, self.conv1d.padding,
                                      self.conv1d.dilation, self.conv1d.groups)
-            x = self.clamp(self.quantize(self.activate(out_scale*x)))
+            x = self.clamp(self.quantize(self.activate(out_scale * x)))
         return x
 
     def _calc_weight_scale(self):
