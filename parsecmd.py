@@ -74,13 +74,13 @@ def get_parser(model_names, dataset_names):
                              '(default: use "floor()")')
 
     qat_args = parser.add_argument_group('Quantization Arguments')
-    qat_args.add_argument('--qat', action='store_true', default=False,
-                          help='enable quantization aware training')
+    qat_args.add_argument('--disable-qat', dest='qat', action='store_false', default=True,
+                          help='disable quantization-aware training')
     qat_args.add_argument('--qat-num-bits', type=int,
-                          help='weight bits for quantization aware training')
+                          help='override all weight bits for quantization aware training')
     qat_args.add_argument('--qat-start-epoch', '--start-qat-epoch', type=int, default=10,
                           dest='start_qat_epoch',
-                          help='epoch to quantize model for quantization aware training')
+                          help='epoch to quantize model for quantization-aware training')
 
     optimizer_args = parser.add_argument_group('Optimizer Arguments')
     optimizer_args.add_argument('--optimizer', default='SGD',

@@ -362,7 +362,8 @@ class Conv2d(nn.Module):
         self.adjust_output_shift = not dev.simulate \
             and (weight_bits is not None or bias_bits is not None)
         self.output_shift = nn.Parameter(torch.Tensor([0.]), requires_grad=False)
-        self.weight_bits = nn.Parameter(torch.Tensor([weight_bits]), requires_grad=False)
+        if weight_bits is not None:
+            self.weight_bits = nn.Parameter(torch.Tensor([weight_bits]), requires_grad=False)
 
         self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
         self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(weight_bits)
@@ -723,7 +724,8 @@ class Conv1d(nn.Module):
         self.adjust_output_shift = not dev.simulate \
             and (weight_bits is not None or bias_bits is not None)
         self.output_shift = nn.Parameter(torch.Tensor([0.]), requires_grad=False)
-        self.weight_bits = nn.Parameter(torch.Tensor([weight_bits]), requires_grad=False)
+        if weight_bits is not None:
+            self.weight_bits = nn.Parameter(torch.Tensor([weight_bits]), requires_grad=False)
 
         self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
         self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(weight_bits)
