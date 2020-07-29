@@ -401,8 +401,8 @@ def main():
 
     vloss = 10**6
     for epoch in range(start_epoch, ending_epoch):
-        # Switch model from unquantized to quantized for Quantization Aware Training
         if args.qat and epoch > 0 and epoch == args.start_qat_epoch:
+            # Switch model from unquantized to quantized for Quantization Aware Training (QAT)
             model_state = model.state_dict()
             optimizer_state = optimizer.state_dict()
 
