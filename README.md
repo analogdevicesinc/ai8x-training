@@ -4,7 +4,7 @@
 
 # MAX78000 Network Loader and RTL Simulation Generator
 
-_June 16, 2020_
+_July 29, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A [PDF copy of this file](README.pdf) is available in this repository. The GitHub rendering of this document does not show the formulas or the clickable table of contents._
@@ -319,7 +319,7 @@ if [ $? -eq 1 ] ; then
 fi
 ```
 
-In order for the debugger to work, the OpenOCD `max32xxx` branch from [https://github.com/MaximIntegratedMicros/openocd.git](https://github.com/MaximIntegratedMicros/openocd.git) must be installed (see above for more instructions). Working configuration files are and a `run-openocd-maxdap` script are contained in the `hardware` folder of the `ai8x-synthesis` project.
+The debugger requires OpenOCD. On Windows, an OpenOCD executable is installed with the SDK. On macOS and Linux, the OpenOCD fork from [https://github.com/MaximIntegratedMicros/openocd.git](https://github.com/MaximIntegratedMicros/openocd.git) must be used. An Ubuntu 18.04 LTS binary is available at https://github.com/MaximIntegratedAI/MAX78000_SDK/blob/master/Tools/OpenOCD/openocd. *Note: A copy of the configuration files and a `run-openocd-maxdap` script are contained in the `hardware` folder of the `ai8x-synthesis` project.*
 
 `gen-demos-max78000.sh` will create code that is compatible with the SDK and copy it into the SDK’s Example directories.
 
@@ -741,6 +741,8 @@ The following table describes the most important command line arguments for `tra
 | `--lr`, `--learning-rate` | Set initial learning rate                                    | `--lr 0.001`                    |
 | `--deterministic`         | Seed random number generators with fixed values              |                                 |
 | `--resume-from`           | Resume from previous checkpoint                              | `--resume-from chk.pth.tar`     |
+| `--qat`                   | Enable Quantization Aware Training (“QAT”)                   |                                 |
+| `--qat-start-epoch`       | Begin learning QAT parameters at this epoch (default: 10)    | `--qat-start-epoch 2`           |
 | *Display and statistics*  |                                                              |                                 |
 | `--confusion`             | Display the confusion matrix                                 |                                 |
 | `--param-hist`            | Collect parameter statistics                                 |                                 |
@@ -850,7 +852,17 @@ When reshaping data, `in_dim:` must be specified in the model description file.
 
 #### Support for Quantization
 
+##### Data
+
 When using the `-8` command line switch, all module outputs are quantized to 8-bit in the range  [-128...+127] to simulate hardware behavior. The last layer can optionally use 32-bit output for increased precision. This is simulated by adding the parameter `wide=True` to the module function call.
+
+##### Weights: Quantization Aware Training
+
+After `--qat-start-epoch` epochs (10 by default), training will learn an additional parameter that corresponds to a shift of the final sum of products.
+
+By default, weights are quantized to 8-bits. The custom modules in `ai8x.py` have an optional `weight_bits=` parameter that can be used to reduce the number of bits available for weights on a per-layer basis.
+
+*Note: This feature can be disabled using the `--disable-qat` command line argument.* 
 
 #### Batch Normalization
 
@@ -951,13 +963,21 @@ The following table describes the command line arguments for `batchnormfuser.py`
 
 ### Quantization
 
-There are two main approaches to quantization — quantization-aware training and post-training quantization.
+There are two main approaches to quantization — quantization-aware training and post-training quantization. The MAX78000/MAX78002 support both approaches.
 
-Since performance for 8-bit weights is decent enough, *”naive” post-training quantization* is used in the `quantize.py` software. While several approaches for clipping are implemented, clipping with a simple fixed scale factor is used by default based on experimental results. The approach requires the clamping operators implemented in `ai8x.py`.
+The `quantize.py` software quantizes an existing PyTorch checkpoint file and writes out a new PyTorch checkpoint file that can then be used to evaluate the quality of the quantized network, using the same PyTorch framework used for training. The same new checkpoint file will also be used to feed the [Network Loader](#Network-Loader).
+
+#### Quantization-Aware Training (QAT)
+
+Quantization-aware training is the better performing approach. It is enabled by default. QAT learns additional parameters during training that help with quantization. No additional arguments are needed for `quantize.py`.
+
+#### Post-Training Quantization
+
+This approach is also called *”naive quantization”*. It should be used when  `--disable-qat` is specified for training. 
+
+While several approaches for clipping are implemented in `quantize.py`, clipping with a simple fixed scale factor performs best, based on experimental results. The approach requires the clamping operators implemented in `ai8x.py`.
 
 Note that the “optimum” scale factor for simple clipping is highly dependent on the model and weight data. For the MNIST example, a `--scale 0.85` works well. For the CIFAR-100 example on the other hand, Top-1 performance is 30 points better with `--scale 1.0`.
-
-The software quantizes an existing PyTorch checkpoint file and writes out a new PyTorch checkpoint file that can then be used to evaluate the quality of the quantized network, using the same PyTorch framework used for training. The same new checkpoint file will also be used to feed the [Network Loader](#Network-Loader).
 
 #### Command Line Arguments
 
@@ -971,8 +991,9 @@ The `quantize.py` software has the following important command line arguments:
 | *Debug*               |                                                              |                 |
 | `-v`                  | Verbose output                                               |                 |
 | *Weight quantization* |                                                              |                 |
-| `-c`, `--config-file` | YAML file with weight quantization information<br />(default: 8-bit for all layers) | `-c mnist.yaml` |
-| `--clip-method`       | Clipping method — either STDDEV, AVG, AVGMAX or SCALE (default) |                 |
+| `-c`, `--config-file` | YAML file with weight quantization information<br />(default: from checkpoint file, or 8-bit for all layers) | `-c mnist.yaml` |
+| `--clip-method`       | Non-QAT clipping method — either STDDEV, AVG, AVGMAX or SCALE | `--clip-method SCALE` |
+| `--scale` | Sets scale for the SCALE clipping method | `--scale 0.85` |
 
 *Note: The syntax for the optional YAML file is described below. The same file can be used for both `quantize.py` and `ai8xize.py`.*
 
@@ -994,17 +1015,13 @@ To evaluate the quantized network for MAX78000 (run from the training project):
 
 #### Alternative Quantization Approaches
 
-Post-training quantization can be improved using more sophisticated methods. For example, see
+If Quantization-aware training is not desired, post-training quantization can be improved using more sophisticated methods. For example, see
 https://github.com/pytorch/glow/blob/master/docs/Quantization.md,
 https://github.com/ARM-software/ML-examples/tree/master/cmsisnn-cifar10,
 https://github.com/ARM-software/ML-KWS-for-MCU/blob/master/Deployment/Quant_guide.md,
 or Distiller’s approach (installed with this software).
 
 Further, a quantized network can be refined using post-quantization training (see Distiller).
-
-The software also includes an `AI84RangeLinear.py` training quantizer that plugs into the Distiller framework for quantization-aware training. However, it needs work as its performance is not good enough yet and the Distiller source needs to be patched to enable it (add `from range_linear_ai84 import QuantAwareTrainRangeLinearQuantizerAI84` to `distiller/config.py` and remove `False and` from `if False and args.ai84` in `train.py`).
-
-Note that MAX78000/MAX78002 does have a configurable per-layer output shift. The addition of this shift value allows easier quantization, since fractional bits can be used if weights do not span the full 8-bit range (many quantization approaches require a weight scale or output shift).
 
 In all cases, ensure that the quantizer writes out a checkpoint file that the Network Loader can read.
 
@@ -1290,7 +1307,7 @@ When this key is not specified, a warning is displayed and `Conv2d` is selected.
 | `Conv1d`                  | 1D convolution over an input composed of several input planes |
 | `Conv2d`                  | 2D convolution over an input composed of several input planes |
 | `ConvTranspose2d`         | 2D transposed convolution (upsampling) over an input composed of several input planes |
-| `None` or `Passthrough`   | No operation                                                 |
+| `None` or `Passthrough`   | No operation *(note: input and output processors must be the same)* |
 | `Linear` or `FC` or `MLP` | Linear transformation to the incoming data                   |
 | `Add`                     | Element-wise addition                                        |
 | `Sub`                     | Element-wise subtraction                                     |
@@ -1335,7 +1352,7 @@ Note that `output_shift` can be used for (limited) “linear” activation.
 
 ##### `quantization` (Optional)
 
-This key describes the width of the weight memory in bits and can be `1`, `2`, `4`, or `8` (`8` is the default).
+This key describes the width of the weight memory in bits and can be `1`, `2`, `4`, or `8` (the default is based on the range of the layer’s weights). Specifying a `quantization` that is smaller than what the weights require results in an error message.
 
 Example:
 	`quantization: 4`
@@ -1349,11 +1366,11 @@ The 32-bit intermediate result is multiplied by $2^{totalshift}$, where the tota
 | quantization | implicit shift | range for `output_shift` |
 | ------------ | -------------- | ------------------------ |
 | 8-bit        | 0              | $[-15, +15]$             |
-| 4-bit        | 1              | $[-16, +14]$             |
-| 2-bit        | 2              | $[-17, +13]$             |
-| 1-bit        | 3              | $[-18, +12]$             |
+| 4-bit        | 4              | $[-19, +11]$             |
+| 2-bit        | 6              | $[-21, +9]$              |
+| 1-bit        | 7              | $[-22, +8]$              |
 
-Using `output_shift` can help normalize data, particularly when using small weights.
+Using `output_shift` can help normalize data, particularly when using small weights. By default, `output_shift` is generated by the training software.
 
 Example:
 	`output_shift: 2`
@@ -1456,6 +1473,13 @@ Example:
 Example:
 	`flatten: true`
 
+##### `write_gap` (Optional)
+
+`write_gap` specifies the number of words that should be skipped during write operations (i.e., write every *n*th word). This creates an interleaved output that can be used as the input for subsequent layers that use element-wise operations.
+
+Example:
+	`write_gap: 1`
+
 #### Example
 
 The following shows an example for a single “Fire” operation, the MAX78000/MAX78002 hardware layer numbers and its YAML description.
@@ -1519,6 +1543,54 @@ layers:
   output_width: 32
 ```
 
+#### Residual Connections
+
+Many networks use residual connections. In the following example, the convolution on the right works on the output data of the first convolution. However, that same output data also “bypasses” the second convolution and is added to the output.
+
+<img src="docs/residual-basic.png" alt="residual-basic" style="zoom:33%;" />
+
+On MAX78000/MAX78002, the element-wise addition works on “interleaved data”, i.e., each machine fetch gathers one operand.
+
+In order to achieve this, a layer must be inserted that does nothing else but reformat the data into interleaved format using the `write_gap` keyword (this operation happens in parallel and is fast).
+
+```yaml
+# Layer 1
+- out_offset: 0x0000
+  processors: 0x0ffff00000000000
+  operation: conv2d
+  kernel_size: 3x3
+  pad: 1
+  activate: ReLU
+
+# Layer 2 - re-format data with gap
+- out_offset: 0x2000
+  processors: 0x00000000000fffff
+  output_processors: 0x00000000000fffff
+  operation: passthrough
+  write_gap: 1
+
+# Layer 3
+- in_offset: 0x0000
+  out_offset: 0x2004
+  processors: 0x00000000000fffff
+  operation: conv2d
+  kernel_size: 3x3
+  pad: 1
+  activate: ReLU
+  write_gap: 1
+
+# Layer 4 - Residual
+- in_sequences: [2, 3]
+  in_offset: 0x2000
+  out_offset: 0x0000
+  processors: 0x00000000000fffff
+  eltwise: add
+  ...
+```
+
+The same network can also be viewed graphically:
+
+<img src="docs/residual.png" alt="residual" style="zoom:38%;" />
 
 ### Adding New Models and New Datasets to the Network Loader
 
