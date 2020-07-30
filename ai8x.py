@@ -757,7 +757,7 @@ class Conv1d(nn.Module):
 
     def _calc_weight_scale(self):
         # Weight scale is considered for QAT only as bias is always 8-bit
-        return calculate_weight_scale(self.conv2d.weight.detach())
+        return calculate_weight_scale(self.conv1d.weight.detach())
 
 
 class FusedMaxPoolConv1d(Conv1d):
