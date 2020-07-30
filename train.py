@@ -224,11 +224,6 @@ def main():
         args.regression = True
     dimensions = selected_source['input']
     args.dimensions = dimensions
-    # Override distiller's input shape detection. This is not a very clean way to do it since
-    # we're replacing a protected member.
-    distiller.utils._validate_input_shape = (  # pylint: disable=protected-access
-        lambda _a, _b: (1, ) + dimensions
-    )
 
     args.datasets_fn = selected_source['loader']
     args.visualize_fn = selected_source['visualize'] \
@@ -243,6 +238,13 @@ def main():
 
     # Create the model
     module = next(item for item in supported_models if item['name'] == args.cnn)
+
+    # Override distiller's input shape detection. This is not a very clean way to do it since
+    # we're replacing a protected member.
+    distiller.utils._validate_input_shape = (  # pylint: disable=protected-access
+        lambda _a, _b: (1, ) + dimensions[:module['dim'] + 1]
+    )
+
     Model = locate(module['module'] + '.' + args.cnn)
     if not Model:
         raise RuntimeError("Model " + args.cnn + " not found\n")
