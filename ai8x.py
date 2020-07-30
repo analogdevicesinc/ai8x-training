@@ -71,6 +71,20 @@ class Quantize(nn.Module):
         return QuantizationFunction.apply(x, self.num_bits)
 
 
+class QuantizeONNX(nn.Module):
+    """
+    Post-activation integer quantization module
+    Apply the custom autograd function
+    """
+    def __init__(self, num_bits=8):
+        super(QuantizeONNX, self).__init__()
+        self.num_bits = num_bits
+
+    def forward(self, x):  # pylint: disable=arguments-differ
+        factor = 2**(self.num_bits-1)
+        return x.mul(factor).round().div(factor)
+
+
 class FloorFunction(Function):
     """
     Custom AI8X autograd function
@@ -157,9 +171,9 @@ def quantize_clamp(wide, quantize_activation=False):
     else:
         if quantize_activation:
             if not wide:
-                quantize = Quantize(num_bits=dev.ACTIVATION_BITS)
+                quantize = QuantizeONNX(num_bits=dev.ACTIVATION_BITS)
             else:
-                quantize = Quantize(num_bits=dev.DATA_BITS + 1)
+                quantize = QuantizeONNX(num_bits=dev.DATA_BITS + 1)
         else:
             quantize = Empty()
         if not wide:
@@ -212,7 +226,7 @@ def quantize_clamp_parameters(bits):
             quantize = Empty()
     else:
         clamp = Clamp(min_val=-1., max_val=(2.**(bits-1)-1)/(2.**(bits-1)))
-        quantize = Quantize(num_bits=bits)
+        quantize = QuantizeONNX(num_bits=bits)
 
     return quantize, clamp
 

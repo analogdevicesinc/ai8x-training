@@ -1131,7 +1131,8 @@ def summarize_model(model, dataset, which_summary, filename='model'):
         model_summaries.draw_img_classifier_to_file(model, filename + '.png', dataset,
                                                     which_summary == 'png_w_params')
     elif which_summary == 'onnx':
-        model_summaries.export_img_classifier_to_onnx(model, filename + '.onnx', dataset)
+        model_summaries.export_img_classifier_to_onnx(model, filename + '.onnx', dataset,
+                                                      opset_version=11)
     else:
         distiller.model_summary(model, which_summary, dataset)
 
