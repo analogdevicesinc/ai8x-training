@@ -4,7 +4,7 @@
 
 # MAX78000 Network Loader and RTL Simulation Generator
 
-_July 29, 2020_
+_August 6, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A [PDF copy of this file](README.pdf) is available in this repository. The GitHub rendering of this document does not show the formulas or the clickable table of contents._
@@ -725,40 +725,41 @@ To train the FP32 model for MNIST on MAX78000, run `train_mnist.sh` in the `ai8x
 
 The following table describes the most important command line arguments for `train.py`. Use `--help` for a complete list.
 
-| Argument                  | Description                                                  | Example                         |
-| ------------------------- | ------------------------------------------------------------ | ------------------------------- |
-| `--help`                  | Complete list of arguments                                   |                                 |
-| *Device selection*        |                                                              |                                 |
-| `--device`                | Set device (default: AI84)                                   | `--device MAX78000`             |
-| *Model and dataset*       |                                                              |                                 |
-| `-a`, `--arch`            | Set model (collected from models folder)                     | `--model ai85net5`              |
-| `--dataset`               | Set dataset (collected from datasets folder)                 | `--dataset MNIST`               |
-| `--data`                  | Path to dataset (default: data)                              | `--data /data/ml`               |
-| *Training*                |                                                              |                                 |
-| `--epochs`                | Number of epochs to train (default: 90)                      | `--epochs 100`                  |
-| `-b`, `--batch-size`      | Mini-batch size (default: 256)                               | `--batch-size 512`              |
-| `--compress`              | Set compression and learning rate schedule                   | `--compress schedule.yaml`      |
-| `--lr`, `--learning-rate` | Set initial learning rate                                    | `--lr 0.001`                    |
-| `--deterministic`         | Seed random number generators with fixed values              |                                 |
-| `--resume-from`           | Resume from previous checkpoint                              | `--resume-from chk.pth.tar`     |
-| `--qat`                   | Enable Quantization Aware Training (“QAT”)                   |                                 |
-| `--qat-start-epoch`       | Begin learning QAT parameters at this epoch (default: 10)    | `--qat-start-epoch 2`           |
-| *Display and statistics*  |                                                              |                                 |
-| `--confusion`             | Display the confusion matrix                                 |                                 |
-| `--param-hist`            | Collect parameter statistics                                 |                                 |
-| `--pr-curves`             | Generate precision-recall curves                             |                                 |
-| `--embedding`             | Display embedding (using projector)                          |                                 |
-| *Hardware*                |                                                              |                                 |
-| `--use-bias`              | Use bias in convolution operations                           |                                 |
-| `--avg-pool-rounding`     | Use rounding for AvgPool                                     |                                 |
-| *Evaluation*              |                                                              |                                 |
-| `-e`, `--evaluate`        | Evaluate previously trained model                            |                                 |
-| `--8-bit-mode`, `-8`      | Simluate quantized operation for hardware device (8-bit data) |                                 |
-| `--exp-load-weights-from` | Load weights from file                                       |                                 |
-| *Export*                  |                                                              |                                 |
-| `--summary onnx`          | Export trained model (default: to model.onnx)                |                                 |
-| `--summary-filename`      | Change the file name for the exported model                  | `--summary-filename mnist.onnx` |
-| `--save-sample`           | Save data[index] from the test set to a NumPy pickle for use as sample data | `--save-sample 10`              |
+| Argument                   | Description                                                  | Example                         |
+| -------------------------- | ------------------------------------------------------------ | ------------------------------- |
+| `--help`                   | Complete list of arguments                                   |                                 |
+| *Device selection*         |                                                              |                                 |
+| `--device`                 | Set device (default: AI84)                                   | `--device MAX78000`             |
+| *Model and dataset*        |                                                              |                                 |
+| `-a`, `--arch`             | Set model (collected from models folder)                     | `--model ai85net5`              |
+| `--dataset`                | Set dataset (collected from datasets folder)                 | `--dataset MNIST`               |
+| `--data`                   | Path to dataset (default: data)                              | `--data /data/ml`               |
+| *Training*                 |                                                              |                                 |
+| `--epochs`                 | Number of epochs to train (default: 90)                      | `--epochs 100`                  |
+| `-b`, `--batch-size`       | Mini-batch size (default: 256)                               | `--batch-size 512`              |
+| `--compress`               | Set compression and learning rate schedule                   | `--compress schedule.yaml`      |
+| `--lr`, `--learning-rate`  | Set initial learning rate                                    | `--lr 0.001`                    |
+| `--deterministic`          | Seed random number generators with fixed values              |                                 |
+| `--resume-from`            | Resume from previous checkpoint                              | `--resume-from chk.pth.tar`     |
+| `--disable-qat`            | Disable Quantization Aware Training (“QAT”)                  |                                 |
+| `--qat-start-epoch`        | Begin learning QAT parameters at this epoch (default: 10)    | `--qat-start-epoch 2`           |
+| *Display and statistics*   |                                                              |                                 |
+| `--confusion`              | Display the confusion matrix                                 |                                 |
+| `--param-hist`             | Collect parameter statistics                                 |                                 |
+| `--pr-curves`              | Generate precision-recall curves                             |                                 |
+| `--embedding`              | Display embedding (using projector)                          |                                 |
+| *Hardware*                 |                                                              |                                 |
+| `--use-bias`               | Use bias in convolution operations                           |                                 |
+| `--avg-pool-rounding`      | Use rounding for AvgPool                                     |                                 |
+| *Evaluation*               |                                                              |                                 |
+| `-e`, `--evaluate`         | Evaluate previously trained model                            |                                 |
+| `--8-bit-mode`, `-8`       | Simluate quantized operation for hardware device (8-bit data) |                                 |
+| `--exp-load-weights-from`  | Load weights from file                                       |                                 |
+| *Export*                   |                                                              |                                 |
+| `--summary onnx`           | Export trained model to ONNX (default name: to model.onnx)   |                                 |
+| `—summary onnx_simplified` | Export trained model to simplified ONNX file (default name: model.onnx) |                                 |
+| `--summary-filename`       | Change the file name for the exported model                  | `--summary-filename mnist.onnx` |
+| `--save-sample`            | Save data[index] from the test set to a NumPy pickle for use as sample data | `--save-sample 10`              |
 
 ### Observing GPU Resources
 

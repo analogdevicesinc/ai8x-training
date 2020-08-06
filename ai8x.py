@@ -71,20 +71,6 @@ class Quantize(nn.Module):
         return QuantizationFunction.apply(x, self.num_bits)
 
 
-class QuantizeONNX(nn.Module):
-    """
-    Post-activation integer quantization module
-    Apply the custom autograd function
-    """
-    def __init__(self, num_bits=8):
-        super(QuantizeONNX, self).__init__()
-        self.num_bits = num_bits
-
-    def forward(self, x):  # pylint: disable=arguments-differ
-        factor = 2**(self.num_bits-1)
-        return x.mul(factor).round().div(factor)
-
-
 class FloorFunction(Function):
     """
     Custom AI8X autograd function
@@ -171,9 +157,9 @@ def quantize_clamp(wide, quantize_activation=False):
     else:
         if quantize_activation:
             if not wide:
-                quantize = QuantizeONNX(num_bits=dev.ACTIVATION_BITS)
+                quantize = Quantize(num_bits=dev.ACTIVATION_BITS)
             else:
-                quantize = QuantizeONNX(num_bits=dev.DATA_BITS + 1)
+                quantize = Quantize(num_bits=dev.DATA_BITS + 1)
         else:
             quantize = Empty()
         if not wide:
@@ -226,18 +212,46 @@ def quantize_clamp_parameters(bits):
             quantize = Empty()
     else:
         clamp = Clamp(min_val=-1., max_val=(2.**(bits-1)-1)/(2.**(bits-1)))
-        quantize = QuantizeONNX(num_bits=bits)
+        quantize = Quantize(num_bits=bits)
 
     return quantize, clamp
 
 
-def calculate_weight_scale(w):
+class OutputShift(nn.Module):
     """
-    Return weight_scale and output_shift for a set of given weights `w`.
+    Calculate the clamped output shift when adjusting during quantization-aware training.
     """
-    weight_scale = (1./w.abs().max()).log2().ceil().clamp(min=-15., max=15.)
+    def __init__(self, adjust=False):
+        super(OutputShift, self).__init__()
+        self.adjust = adjust
 
-    return 2.**weight_scale, -weight_scale
+    def forward(self, x, shift):  # pylint: disable=arguments-differ
+        return -(1./x.abs().max()).log2().ceil().clamp(min=-15., max=15.) if self.adjust \
+            else shift.squeeze(0)
+
+
+class WeightScale(nn.Module):
+    """
+    Calculate the weight scale (square root of the output shift)
+    """
+    def __init__(self, adjust=False):
+        super(WeightScale, self).__init__()
+        self.adjust = adjust
+
+    def forward(self, x):  # pylint: disable=arguments-differ
+        return 2.**(-x) if self.adjust else 1.
+
+
+class OutputScale(nn.Module):
+    """
+    Calculate the output scale (square of the output shift)
+    """
+    def __init__(self, adjust=False):
+        super(OutputScale, self).__init__()
+        self.adjust = adjust
+
+    def forward(self, x):  # pylint: disable=arguments-differ
+        return 2.**x if self.adjust else 1.
 
 
 class Abs(nn.Module):
@@ -379,6 +393,9 @@ class Conv2d(nn.Module):
         if weight_bits is not None:
             self.weight_bits = nn.Parameter(torch.Tensor([weight_bits]), requires_grad=False)
 
+        self.calc_out_shift = OutputShift(self.adjust_output_shift)
+        self.calc_weight_scale = WeightScale(self.adjust_output_shift)
+        self.calc_out_scale = OutputScale(self.adjust_output_shift)
         self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
         self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(weight_bits)
         self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(bias_bits)
@@ -389,13 +406,12 @@ class Conv2d(nn.Module):
         if self.pool is not None:
             x = self.clamp_pool(self.quantize_pool(self.pool(x)))
         if self.conv2d is not None:
-            if self.adjust_output_shift:
-                weight_scale, out_shift = self._calc_weight_scale()
-                self.output_shift = nn.Parameter(out_shift.unsqueeze(0), requires_grad=False)
-            else:
-                weight_scale, out_shift = 1., self.output_shift.detach()
+            out_shift = self.calc_out_shift(self.conv2d.weight.detach(),
+                                            self.output_shift.detach())
+            weight_scale = self.calc_weight_scale(out_shift)
+            out_scale = self.calc_out_scale(out_shift)
 
-            out_scale = 2.**out_shift
+            self.output_shift = nn.Parameter(out_shift.unsqueeze(0), requires_grad=False)
 
             weight = self.clamp_weight(self.quantize_weight(weight_scale * self.conv2d.weight))
             bias = self.conv2d.bias
@@ -407,17 +423,8 @@ class Conv2d(nn.Module):
             if self.bn is not None:
                 x = self.bn(x)
 
-            # if torch.rand(1).item() < 0.0002:
-            #     print(f'Weight Scale: {weight_scale}, Out Shift: {out_shift}')
-            #     print(f'Weight Min: {weight.min()}, Weight Max: {weight.max()}, '
-            #           f'Weight N: {torch.unique(weight).shape}')
-
             x = self.clamp(self.quantize(self.activate(out_scale * x)))
         return x
-
-    def _calc_weight_scale(self):
-        # Weight scale is considered for QAT only as bias is always 8-bit
-        return calculate_weight_scale(self.conv2d.weight.detach())
 
 
 class FusedMaxPoolConv2d(Conv2d):
@@ -741,6 +748,9 @@ class Conv1d(nn.Module):
         if weight_bits is not None:
             self.weight_bits = nn.Parameter(torch.Tensor([weight_bits]), requires_grad=False)
 
+        self.calc_out_shift = OutputShift(self.adjust_output_shift)
+        self.calc_weight_scale = WeightScale(self.adjust_output_shift)
+        self.calc_out_scale = OutputScale(self.adjust_output_shift)
         self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
         self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(weight_bits)
         self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(bias_bits)
@@ -751,13 +761,12 @@ class Conv1d(nn.Module):
         if self.pool is not None:
             x = self.clamp_pool(self.quantize_pool(self.pool(x)))
         if self.conv1d is not None:
-            if self.adjust_output_shift:
-                weight_scale, out_shift = self._calc_weight_scale()
-                self.output_shift = nn.Parameter(out_shift.unsqueeze(0), requires_grad=False)
-            else:
-                weight_scale, out_shift = 1., self.output_shift.detach()
+            out_shift = self.calc_out_shift(self.conv1d.weight.detach(),
+                                            self.output_shift.detach())
+            weight_scale = self.calc_weight_scale(out_shift)
+            out_scale = self.calc_out_scale(out_shift)
 
-            out_scale = 2.**out_shift
+            self.output_shift = nn.Parameter(out_shift.unsqueeze(0), requires_grad=False)
 
             weight = self.clamp_weight(self.quantize_weight(weight_scale * self.conv1d.weight))
             bias = self.conv1d.bias
@@ -768,10 +777,6 @@ class Conv1d(nn.Module):
                                      self.conv1d.dilation, self.conv1d.groups)
             x = self.clamp(self.quantize(self.activate(out_scale * x)))
         return x
-
-    def _calc_weight_scale(self):
-        # Weight scale is considered for QAT only as bias is always 8-bit
-        return calculate_weight_scale(self.conv1d.weight.detach())
 
 
 class FusedMaxPoolConv1d(Conv1d):
@@ -1031,3 +1036,49 @@ def set_device(
         dev = DevAI87(simulate, round_avg)
     else:
         raise ValueError(f'Unkown device {device}.')
+
+
+class QuantizeONNX(nn.Module):
+    """
+    Post-activation integer quantization module
+    Apply the custom autograd function
+    """
+    def __init__(self, num_bits=8):
+        super(QuantizeONNX, self).__init__()
+        self.num_bits = num_bits
+
+    def forward(self, x):  # pylint: disable=arguments-differ
+        factor = 2**(self.num_bits-1)
+        return x.mul(factor).round().div(factor)
+
+
+def enable_output_shift(m):
+    """
+    Modify model `m` to enable adjustment/learning of the output shift.
+    """
+    def _enable_output_shift(m):
+        for attr_str in dir(m):
+            target_attr = getattr(m, attr_str)
+            if isinstance(target_attr, (Conv1d, Conv2d)):
+                target_attr.adjust_output_shift = True
+                setattr(m, attr_str, target_attr)
+
+    m.apply(_enable_output_shift)
+
+
+def onnx_export_prep(m, simplify=False):
+    """
+    Prepare model `m` for ONNX export. When `simplify` is True, remove several
+    quantization related operators from the model graph.
+    """
+    def _onnx_export_prep(m):
+        for attr_str in dir(m):
+            target_attr = getattr(m, attr_str)
+            if not simplify:
+                if isinstance(target_attr, Quantize):
+                    setattr(m, attr_str, QuantizeONNX(target_attr.num_bits))
+            else:
+                if isinstance(target_attr, (Quantize, Clamp, Round, Floor)):
+                    setattr(m, attr_str, Empty())
+
+    m.apply(_onnx_export_prep)

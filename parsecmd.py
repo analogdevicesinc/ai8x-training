@@ -36,7 +36,8 @@ from examples.auto_compression.amc import amc_args as adc
 from devices import device
 
 
-SUMMARY_CHOICES = ['sparsity', 'compute', 'model', 'modules', 'png', 'png_w_params', 'onnx']
+SUMMARY_CHOICES = ['sparsity', 'compute', 'model', 'modules', 'png', 'png_w_params', 'onnx',
+                   'onnx_simplified']
 
 
 def get_parser(model_names, dataset_names):

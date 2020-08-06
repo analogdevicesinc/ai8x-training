@@ -398,12 +398,10 @@ def main():
     for epoch in range(start_epoch, ending_epoch):
         if args.qat and epoch > 0 and epoch == args.start_qat_epoch:
             # Switch model from unquantized to quantized for Quantization Aware Training (QAT)
-            model_state = model.state_dict()
+            ai8x.enable_output_shift(model)
+
+            # Re-initialize optimizer
             optimizer_state = optimizer.state_dict()
-
-            model = create_model(supported_models, dimensions, True, args)
-            model.load_state_dict(model_state)
-
             optimizer = create_optimizer(model, args)
             optimizer.load_state_dict(optimizer_state)
 
@@ -1130,7 +1128,8 @@ def summarize_model(model, dataset, which_summary, filename='model'):
     if which_summary.startswith('png'):
         model_summaries.draw_img_classifier_to_file(model, filename + '.png', dataset,
                                                     which_summary == 'png_w_params')
-    elif which_summary == 'onnx':
+    elif which_summary in ['onnx', 'onnx_simplified']:
+        ai8x.onnx_export_prep(model, simplify=(which_summary == 'onnx_simplified'))
         model_summaries.export_img_classifier_to_onnx(model, filename + '.onnx', dataset,
                                                       opset_version=11)
     else:
