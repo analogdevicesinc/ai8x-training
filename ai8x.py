@@ -643,8 +643,15 @@ class Linear(nn.Module):
     """
     AI85+ - Fused Linear and activation ('ReLU', 'Abs', None)
     """
-    def __init__(self, in_features, out_features, bias=None,
-                 activation=None, output_shift=0, wide=False):
+    def __init__(
+            self,
+            in_features,
+            out_features,
+            bias=None,
+            activation=None,
+            wide=False,
+            quantize_activation=False,
+    ):
         super(Linear, self).__init__()
 
         assert dev.device != 84
@@ -654,7 +661,7 @@ class Linear(nn.Module):
 
         self.linear = nn.Linear(in_features, out_features, bias)
 
-        self.quantize, self.clamp = quantize_clamp(wide, output_shift)
+        self.quantize, self.clamp = quantize_clamp(wide, quantize_activation)
         self.activate = get_activation(activation)
 
     def forward(self, x):  # pylint: disable=arguments-differ
