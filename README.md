@@ -835,7 +835,7 @@ The following modules are predefined:
 
 #### Dropout
 
-`torch.nn.Dropout` is not used during inference, and can therefore be used for training without problems.
+Dropout modules such as `torch.nn.Dropout()` and `torch.nn.Dropout2d()`are automatically disabled during inference, and can therefore be used for training without affecting inference.
 
 #### view and reshape
 
