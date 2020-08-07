@@ -217,41 +217,36 @@ def quantize_clamp_parameters(bits):
     return quantize, clamp
 
 
+class OutputShiftSqueeze(nn.Module):
+    """
+    Return output_shift when not using quantization-aware training.
+    """
+    def forward(self, _, x):  # pylint: disable=arguments-differ
+        return x.squeeze(0)
+
+
 class OutputShift(nn.Module):
     """
     Calculate the clamped output shift when adjusting during quantization-aware training.
     """
-    def __init__(self, adjust=False):
-        super(OutputShift, self).__init__()
-        self.adjust = adjust
-
-    def forward(self, x, shift):  # pylint: disable=arguments-differ
-        return -(1./x.abs().max()).log2().ceil().clamp(min=-15., max=15.) if self.adjust \
-            else shift.squeeze(0)
+    def forward(self, x, _):  # pylint: disable=arguments-differ
+        return -(1./x.abs().max()).log2().ceil().clamp(min=-15., max=15.)
 
 
 class WeightScale(nn.Module):
     """
     Calculate the weight scale (square root of the output shift)
     """
-    def __init__(self, adjust=False):
-        super(WeightScale, self).__init__()
-        self.adjust = adjust
-
     def forward(self, x):  # pylint: disable=arguments-differ
-        return 2.**(-x) if self.adjust else 1.
+        return 2.**(-x)
 
 
 class OutputScale(nn.Module):
     """
     Calculate the output scale (square of the output shift)
     """
-    def __init__(self, adjust=False):
-        super(OutputScale, self).__init__()
-        self.adjust = adjust
-
     def forward(self, x):  # pylint: disable=arguments-differ
-        return 2.**x if self.adjust else 1.
+        return 2.**x
 
 
 class Abs(nn.Module):
@@ -390,15 +385,22 @@ class Conv2d(nn.Module):
         self.adjust_output_shift = not dev.simulate \
             and (weight_bits is not None or bias_bits is not None)
         self.output_shift = nn.Parameter(torch.Tensor([0.]), requires_grad=False)
-        if weight_bits is not None:
-            self.weight_bits = nn.Parameter(torch.Tensor([weight_bits]), requires_grad=False)
+        self.qat_weight_bits = weight_bits if weight_bits is not None else 8
+        self.qat_bias_bits = bias_bits if bias_bits is not None else 8
+        self.weight_bits = nn.Parameter(torch.Tensor([self.qat_weight_bits]), requires_grad=False)
 
-        self.calc_out_shift = OutputShift(self.adjust_output_shift)
-        self.calc_weight_scale = WeightScale(self.adjust_output_shift)
-        self.calc_out_scale = OutputScale(self.adjust_output_shift)
+        if self.adjust_output_shift:
+            self.calc_out_shift = OutputShift()
+            self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(weight_bits)
+            self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(bias_bits)
+        else:
+            self.calc_out_shift = OutputShiftSqueeze()
+            self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(None)
+            self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(None)
+
+        self.calc_weight_scale = WeightScale()
+        self.calc_out_scale = OutputScale()
         self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
-        self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(weight_bits)
-        self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(bias_bits)
         self.quantize, self.clamp = quantize_clamp(wide, quantize_activation)
         self.activate = get_activation(activation)
 
@@ -752,15 +754,22 @@ class Conv1d(nn.Module):
         self.adjust_output_shift = not dev.simulate \
             and (weight_bits is not None or bias_bits is not None)
         self.output_shift = nn.Parameter(torch.Tensor([0.]), requires_grad=False)
-        if weight_bits is not None:
-            self.weight_bits = nn.Parameter(torch.Tensor([weight_bits]), requires_grad=False)
+        self.qat_weight_bits = weight_bits if weight_bits is not None else 8
+        self.qat_bias_bits = bias_bits if bias_bits is not None else 8
+        self.weight_bits = nn.Parameter(torch.Tensor([self.qat_weight_bits]), requires_grad=False)
 
-        self.calc_out_shift = OutputShift(self.adjust_output_shift)
-        self.calc_weight_scale = WeightScale(self.adjust_output_shift)
-        self.calc_out_scale = OutputScale(self.adjust_output_shift)
+        if self.adjust_output_shift:
+            self.calc_out_shift = OutputShift()
+            self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(weight_bits)
+            self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(bias_bits)
+        else:
+            self.calc_out_shift = OutputShiftSqueeze()
+            self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(None)
+            self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(None)
+
+        self.calc_weight_scale = WeightScale()
+        self.calc_out_scale = OutputScale()
         self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
-        self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(weight_bits)
-        self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(bias_bits)
         self.quantize, self.clamp = quantize_clamp(wide, quantize_activation)
         self.activate = get_activation(activation)
 
@@ -1068,6 +1077,11 @@ def enable_output_shift(m):
             target_attr = getattr(m, attr_str)
             if isinstance(target_attr, (Conv1d, Conv2d)):
                 target_attr.adjust_output_shift = True
+                target_attr.calc_out_shift = OutputShift()
+                target_attr.quantize_weight, target_attr.clamp_weight = \
+                    quantize_clamp_parameters(target_attr.qat_weight_bits)
+                target_attr.quantize_bias, target_attr.clamp_bias = \
+                    quantize_clamp_parameters(target_attr.qat_bias_bits)
                 setattr(m, attr_str, target_attr)
 
     m.apply(_enable_output_shift)
