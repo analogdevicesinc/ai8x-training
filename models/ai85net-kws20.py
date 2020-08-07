@@ -58,7 +58,7 @@ class AI85KWS20Net(nn.Module):
         self.kws_conv5 = ai8x.FusedConv2dReLU(30, fc_inputs, 3, stride=1, padding=1,
                                               bias=bias, **kwargs)
 
-        self.fc = ai8x.Linear(fc_inputs * 128, num_classes, bias=bias)
+        self.fc = ai8x.Linear(fc_inputs * 128, num_classes, bias=bias, wide=True)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
