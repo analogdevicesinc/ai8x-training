@@ -238,6 +238,8 @@ class WeightScale(nn.Module):
     Calculate the weight scale (square root of the output shift)
     """
     def forward(self, x):  # pylint: disable=arguments-differ
+        if dev.simulate:
+            return 1.
         return 2.**(-x)
 
 
@@ -652,6 +654,8 @@ class Linear(nn.Module):
             bias=None,
             activation=None,
             wide=False,
+            weight_bits=None,
+            bias_bits=None,
             quantize_activation=False,
     ):
         super(Linear, self).__init__()
@@ -660,15 +664,46 @@ class Linear(nn.Module):
         assert in_features <= 1024
         assert out_features <= 1024
         assert not wide or activation is None
+        assert weight_bits in [None, 1, 2, 4, 8], f'Weight bits cannot be {weight_bits}'
+        assert bias_bits in [None, 8], f'Bias bits cannot be {bias_bits}'
+
+        self.adjust_output_shift = not dev.simulate \
+            and (weight_bits is not None or bias_bits is not None)
+        self.output_shift = nn.Parameter(torch.Tensor([0.]), requires_grad=False)
+        self.qat_weight_bits = weight_bits if weight_bits is not None else 8
+        self.qat_bias_bits = bias_bits if bias_bits is not None else 8
+        self.weight_bits = nn.Parameter(torch.Tensor([self.qat_weight_bits]), requires_grad=False)
 
         self.linear = nn.Linear(in_features, out_features, bias)
 
+        if self.adjust_output_shift:
+            self.calc_out_shift = OutputShift()
+            self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(weight_bits)
+            self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(bias_bits)
+        else:
+            self.calc_out_shift = OutputShiftSqueeze()
+            self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(None)
+            self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(None)
+
+        self.calc_weight_scale = WeightScale()
+        self.calc_out_scale = OutputScale()
         self.quantize, self.clamp = quantize_clamp(wide, quantize_activation)
         self.activate = get_activation(activation)
 
     def forward(self, x):  # pylint: disable=arguments-differ
-        x = self.linear(x)
-        x = self.clamp(self.quantize(self.activate(x)))
+        out_shift = self.calc_out_shift(self.linear.weight.detach(), self.output_shift.detach())
+        weight_scale = self.calc_weight_scale(out_shift)
+        out_scale = self.calc_out_scale(out_shift)
+
+        self.output_shift = nn.Parameter(out_shift.unsqueeze(0), requires_grad=False)
+
+        weight = self.clamp_weight(self.quantize_weight(weight_scale * self.linear.weight))
+        bias = self.linear.bias
+        if bias is not None:
+            bias = self.clamp_bias(self.quantize_bias(weight_scale * bias))
+
+        x = nn.functional.linear(x, weight, bias)
+        x = self.clamp(self.quantize(self.activate(out_scale * x)))
         return x
 
 
@@ -1075,7 +1110,7 @@ def enable_output_shift(m):
     def _enable_output_shift(m):
         for attr_str in dir(m):
             target_attr = getattr(m, attr_str)
-            if isinstance(target_attr, (Conv1d, Conv2d)):
+            if isinstance(target_attr, (Conv1d, Conv2d, Linear)):
                 target_attr.adjust_output_shift = True
                 target_attr.calc_out_shift = OutputShift()
                 target_attr.quantize_weight, target_attr.clamp_weight = \
