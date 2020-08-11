@@ -803,8 +803,10 @@ class Conv1d(QuantizationAwareModule):
 
         if batchnorm == 'Affine':
             bn = nn.BatchNorm1d(out_channels, eps=1e-05, momentum=0.05, affine=True)
+            assert bias, '--use-bias must be set when batchnorm is used'
         elif batchnorm == 'NoAffine':
             bn = nn.BatchNorm1d(out_channels, eps=1e-05, momentum=0.05, affine=False)
+            assert bias, '--use-bias must be set when batchnorm is used'
         else:
             bn = None
 
