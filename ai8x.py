@@ -431,8 +431,10 @@ class Conv2d(QuantizationAwareModule):
 
         if batchnorm == 'Affine':
             bn = nn.BatchNorm2d(out_channels, eps=1e-05, momentum=0.05, affine=True)
+            assert bias, '--use-bias must be set when batchnorm is used'
         elif batchnorm == 'NoAffine':
             bn = nn.BatchNorm2d(out_channels, eps=1e-05, momentum=0.05, affine=False)
+            assert bias, '--use-bias must be set when batchnorm is used'
         else:
             bn = None
 
@@ -1121,6 +1123,40 @@ def enable_output_shift(m):
                 setattr(m, attr_str, target_attr)
 
     m.apply(_enable_output_shift)
+
+
+def fuse_bn_layers(m):
+    """
+    Fuse the bn layers before the quantization aware training starts.
+    """
+    def _fuse_bn_layers(m):
+        for attr_str in dir(m):
+            target_attr = getattr(m, attr_str)
+            if isinstance(target_attr, (Conv1d, Conv2d)):
+                if target_attr.bn:
+                    w = target_attr.conv2d.weight.data
+                    device = w.device
+                    b = target_attr.conv2d.bias.data
+
+                    r_mean = target_attr.bn.running_mean
+                    r_var = target_attr.bn.running_var
+                    r_std = torch.sqrt(r_var + 1e-20)
+                    beta = target_attr.bn.weight
+                    gamma = target_attr.bn.bias
+
+                    if not beta:
+                        beta = torch.ones(w.shape[0]).to(device)
+                    if not gamma:
+                        gamma = torch.zeros(w.shape[0]).to(device)
+
+                    w_new = w * (beta / r_std).reshape([w.shape[0], 1, 1, 1])
+                    b_new = (b - r_mean)/r_std * beta + gamma
+
+                    target_attr.conv2d.weight.data = w_new
+                    target_attr.conv2d.bias.data = b_new
+                    target_attr.bn = None
+                setattr(m, attr_str, target_attr)
+    m.apply(_fuse_bn_layers)
 
 
 def onnx_export_prep(m, simplify=False):

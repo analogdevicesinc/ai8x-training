@@ -397,7 +397,10 @@ def main():
     vloss = 10**6
     for epoch in range(start_epoch, ending_epoch):
         if args.qat and epoch > 0 and epoch == args.start_qat_epoch:
-            # Switch model from unquantized to quantized for Quantization Aware Training (QAT)
+            # Fuse the BN parameters into conv layers before Quantization Aware Training (QAT)
+            ai8x.fuse_bn_layers(model)
+
+            # Switch model from unquantized to quantized for QAT
             ai8x.enable_output_shift(model)
 
             # Re-initialize optimizer
