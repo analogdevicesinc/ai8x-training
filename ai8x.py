@@ -233,13 +233,19 @@ class OutputShift(nn.Module):
         return -(1./x.abs().max()).log2().ceil().clamp(min=-15., max=15.)
 
 
+class One(nn.Module):
+    """
+    Return 1.
+    """
+    def forward(self, _):  # pylint: disable=arguments-differ
+        return 1.
+
+
 class WeightScale(nn.Module):
     """
     Calculate the weight scale (square root of the output shift)
     """
     def forward(self, x):  # pylint: disable=arguments-differ
-        if dev.simulate:
-            return 1.
         return 2.**(-x)
 
 
@@ -279,7 +285,79 @@ def get_activation(activation=None):
     return Empty()
 
 
-class Conv2d(nn.Module):
+class QuantizationAwareModule(nn.Module):
+    """
+    AI8X - Common code for Quantization-Aware Training
+    """
+    def __init__(
+            self,
+            pooling=None,
+            activation=None,
+            wide=False,
+            weight_bits=None,
+            bias_bits=None,
+            quantize_activation=False,
+            pool=None,
+            op=None,
+            func=None,
+            bn=None,
+    ):
+        super(QuantizationAwareModule, self).__init__()
+
+        assert weight_bits in [None, 1, 2, 4, 8], f'Weight bits cannot be {weight_bits}'
+        assert bias_bits in [None, 8], f'Bias bits cannot be {bias_bits}'
+
+        self.adjust_output_shift = not dev.simulate \
+            and (weight_bits is not None or bias_bits is not None)
+        self.output_shift = nn.Parameter(torch.Tensor([0.]), requires_grad=False)
+        self.qat_weight_bits = weight_bits if weight_bits is not None else 8
+        self.qat_bias_bits = bias_bits if bias_bits is not None else 8
+        self.weight_bits = nn.Parameter(torch.Tensor([self.qat_weight_bits]), requires_grad=False)
+
+        if self.adjust_output_shift:
+            self.calc_out_shift = OutputShift()
+            self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(weight_bits)
+            self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(bias_bits)
+        else:
+            self.calc_out_shift = OutputShiftSqueeze()
+            self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(None)
+            self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(None)
+
+        self.calc_weight_scale = WeightScale() if not dev.simulate else One()
+        self.calc_out_scale = OutputScale()
+        self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
+        self.quantize, self.clamp = quantize_clamp(wide, quantize_activation)
+        self.activate = get_activation(activation)
+
+        self.pool = pool
+        self.op = op
+        self.func = func
+        self.bn = bn
+
+    def forward(self, x):  # pylint: disable=arguments-differ
+        if self.pool is not None:
+            x = self.clamp_pool(self.quantize_pool(self.pool(x)))
+        if self.op is not None:
+            out_shift = self.calc_out_shift(self.op.weight.detach(), self.output_shift.detach())
+            weight_scale = self.calc_weight_scale(out_shift)
+            out_scale = self.calc_out_scale(out_shift)
+
+            self.output_shift = nn.Parameter(out_shift.unsqueeze(0), requires_grad=False)
+
+            weight = self.clamp_weight(self.quantize_weight(weight_scale * self.op.weight))
+            bias = self.op.bias
+            if bias is not None:
+                bias = self.clamp_bias(self.quantize_bias(weight_scale * bias))
+
+            x = self.func(x, weight, bias, self.op.stride, self.op.padding,
+                          self.op.dilation, self.op.groups)
+            if self.bn is not None:
+                x = self.bn(x)
+            x = self.clamp(self.quantize(self.activate(out_scale * x)))
+        return x
+
+
+class Conv2d(QuantizationAwareModule):
     """
     AI8X - 2D pooling ('Avg', 'Max' or None) optionally followed by
     2D convolution/transposed 2D convolution and activation ('ReLU', 'Abs', None)
@@ -303,8 +381,6 @@ class Conv2d(nn.Module):
             bias_bits=None,
             quantize_activation=False,
     ):
-        super(Conv2d, self).__init__()
-
         assert not wide or activation is None
 
         if pooling is not None:
@@ -347,18 +423,18 @@ class Conv2d(nn.Module):
         assert 0 <= padding <= 2
 
         if pooling == 'Max':
-            self.pool = nn.MaxPool2d(kernel_size=pool_size, stride=pool_stride, padding=0)
+            pool = nn.MaxPool2d(kernel_size=pool_size, stride=pool_stride, padding=0)
         elif pooling == 'Avg':
-            self.pool = nn.AvgPool2d(kernel_size=pool_size, stride=pool_stride, padding=0)
+            pool = nn.AvgPool2d(kernel_size=pool_size, stride=pool_stride, padding=0)
         else:
-            self.pool = None
+            pool = None
 
         if batchnorm == 'Affine':
-            self.bn = nn.BatchNorm2d(out_channels, eps=1e-05, momentum=0.05, affine=True)
+            bn = nn.BatchNorm2d(out_channels, eps=1e-05, momentum=0.05, affine=True)
         elif batchnorm == 'NoAffine':
-            self.bn = nn.BatchNorm2d(out_channels, eps=1e-05, momentum=0.05, affine=False)
+            bn = nn.BatchNorm2d(out_channels, eps=1e-05, momentum=0.05, affine=False)
         else:
-            self.bn = None
+            bn = None
 
         if kernel_size is not None:
             if isinstance(kernel_size, tuple):
@@ -368,67 +444,31 @@ class Conv2d(nn.Module):
             assert kernel_size == 3 or dev.device != 84 and kernel_size == 1
 
             if op == 'Conv2d':
-                self.conv2d = nn.Conv2d(in_channels, out_channels,
-                                        kernel_size=kernel_size, stride=stride,
-                                        padding=padding, bias=bias)
+                opn = nn.Conv2d(in_channels, out_channels,
+                                kernel_size=kernel_size, stride=stride,
+                                padding=padding, bias=bias)
             elif op == 'ConvTranspose2d':
                 assert dev.device != 84
-                self.conv2d = nn.ConvTranspose2d(in_channels, out_channels,
-                                                 kernel_size=kernel_size, stride=stride,
-                                                 padding=padding, bias=bias)
+                opn = nn.ConvTranspose2d(in_channels, out_channels,
+                                         kernel_size=kernel_size, stride=stride,
+                                         padding=padding, bias=bias)
             else:
                 raise ValueError('Unsupported operation')
         else:
-            self.conv2d = None
+            opn = None
 
-        assert weight_bits in [None, 1, 2, 4, 8], f'Weight bits cannot be {weight_bits}'
-        assert bias_bits in [None, 8], f'Bias bits cannot be {bias_bits}'
-
-        self.adjust_output_shift = not dev.simulate \
-            and (weight_bits is not None or bias_bits is not None)
-        self.output_shift = nn.Parameter(torch.Tensor([0.]), requires_grad=False)
-        self.qat_weight_bits = weight_bits if weight_bits is not None else 8
-        self.qat_bias_bits = bias_bits if bias_bits is not None else 8
-        self.weight_bits = nn.Parameter(torch.Tensor([self.qat_weight_bits]), requires_grad=False)
-
-        if self.adjust_output_shift:
-            self.calc_out_shift = OutputShift()
-            self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(weight_bits)
-            self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(bias_bits)
-        else:
-            self.calc_out_shift = OutputShiftSqueeze()
-            self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(None)
-            self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(None)
-
-        self.calc_weight_scale = WeightScale()
-        self.calc_out_scale = OutputScale()
-        self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
-        self.quantize, self.clamp = quantize_clamp(wide, quantize_activation)
-        self.activate = get_activation(activation)
-
-    def forward(self, x):  # pylint: disable=arguments-differ
-        if self.pool is not None:
-            x = self.clamp_pool(self.quantize_pool(self.pool(x)))
-        if self.conv2d is not None:
-            out_shift = self.calc_out_shift(self.conv2d.weight.detach(),
-                                            self.output_shift.detach())
-            weight_scale = self.calc_weight_scale(out_shift)
-            out_scale = self.calc_out_scale(out_shift)
-
-            self.output_shift = nn.Parameter(out_shift.unsqueeze(0), requires_grad=False)
-
-            weight = self.clamp_weight(self.quantize_weight(weight_scale * self.conv2d.weight))
-            bias = self.conv2d.bias
-            if bias is not None:
-                bias = self.clamp_bias(self.quantize_bias(weight_scale * bias))
-
-            x = nn.functional.conv2d(x, weight, bias, self.conv2d.stride, self.conv2d.padding,
-                                     self.conv2d.dilation, self.conv2d.groups)
-            if self.bn is not None:
-                x = self.bn(x)
-
-            x = self.clamp(self.quantize(self.activate(out_scale * x)))
-        return x
+        super(Conv2d, self).__init__(
+            pooling,
+            activation,
+            wide,
+            weight_bits,
+            bias_bits,
+            quantize_activation,
+            pool,
+            opn,
+            nn.functional.conv2d,
+            bn,
+        )
 
 
 class FusedMaxPoolConv2d(Conv2d):
@@ -614,7 +654,7 @@ class FusedSoftwareLinearReLU(nn.Module):
         if dev.device != 84:
             print('WARNING: SoftwareLinear should be used on AI84 only')
 
-        self.linear = nn.Linear(in_features, out_features, bias)
+        self.op = nn.Linear(in_features, out_features, bias)
 
         if dev.simulate:
             self.quantize = Quantize(num_bits=dev.DATA_BITS)
@@ -630,7 +670,7 @@ class FusedSoftwareLinearReLU(nn.Module):
             self.activate = Empty()
 
     def forward(self, x):  # pylint: disable=arguments-differ
-        x = self.linear(x)
+        x = self.op(x)
         x = self.clamp(self.quantize(self.activate(x)))
         return x
 
@@ -643,7 +683,14 @@ class SoftwareLinear(FusedSoftwareLinearReLU):
         super(SoftwareLinear, self).__init__(in_features, out_features, relu=False, **kwargs)
 
 
-class Linear(nn.Module):
+def func_linear(x, weight, bias, _stride, _padding, _dilation, _groups):
+    """
+    Wrapper for `nn.functional.linear` that takes the same number of arguments as Conv1d/Conv2d.
+    """
+    return nn.functional.linear(x, weight, bias)
+
+
+class Linear(QuantizationAwareModule):
     """
     AI85+ - Fused Linear and activation ('ReLU', 'Abs', None)
     """
@@ -651,60 +698,41 @@ class Linear(nn.Module):
             self,
             in_features,
             out_features,
+            pooling=None,
             bias=None,
             activation=None,
             wide=False,
+            batchnorm=None,  # pylint: disable=unused-argument
             weight_bits=None,
             bias_bits=None,
             quantize_activation=False,
     ):
-        super(Linear, self).__init__()
+        assert not wide or activation is None
 
         assert dev.device != 84
         assert in_features <= 1024
         assert out_features <= 1024
-        assert not wide or activation is None
-        assert weight_bits in [None, 1, 2, 4, 8], f'Weight bits cannot be {weight_bits}'
-        assert bias_bits in [None, 8], f'Bias bits cannot be {bias_bits}'
+        assert pooling is None
+        assert batchnorm is None
 
-        self.adjust_output_shift = not dev.simulate \
-            and (weight_bits is not None or bias_bits is not None)
-        self.output_shift = nn.Parameter(torch.Tensor([0.]), requires_grad=False)
-        self.qat_weight_bits = weight_bits if weight_bits is not None else 8
-        self.qat_bias_bits = bias_bits if bias_bits is not None else 8
-        self.weight_bits = nn.Parameter(torch.Tensor([self.qat_weight_bits]), requires_grad=False)
+        super(Linear, self).__init__(
+            pooling,
+            activation,
+            wide,
+            weight_bits,
+            bias_bits,
+            quantize_activation,
+            None,
+            nn.Linear(in_features, out_features, bias),
+            func_linear,
+            None,
+        )
 
-        self.linear = nn.Linear(in_features, out_features, bias)
-
-        if self.adjust_output_shift:
-            self.calc_out_shift = OutputShift()
-            self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(weight_bits)
-            self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(bias_bits)
-        else:
-            self.calc_out_shift = OutputShiftSqueeze()
-            self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(None)
-            self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(None)
-
-        self.calc_weight_scale = WeightScale()
-        self.calc_out_scale = OutputScale()
-        self.quantize, self.clamp = quantize_clamp(wide, quantize_activation)
-        self.activate = get_activation(activation)
-
-    def forward(self, x):  # pylint: disable=arguments-differ
-        out_shift = self.calc_out_shift(self.linear.weight.detach(), self.output_shift.detach())
-        weight_scale = self.calc_weight_scale(out_shift)
-        out_scale = self.calc_out_scale(out_shift)
-
-        self.output_shift = nn.Parameter(out_shift.unsqueeze(0), requires_grad=False)
-
-        weight = self.clamp_weight(self.quantize_weight(weight_scale * self.linear.weight))
-        bias = self.linear.bias
-        if bias is not None:
-            bias = self.clamp_bias(self.quantize_bias(weight_scale * bias))
-
-        x = nn.functional.linear(x, weight, bias)
-        x = self.clamp(self.quantize(self.activate(out_scale * x)))
-        return x
+        # Define dummy arguments to make Linear and Conv1d/Conv2d compatible.
+        self.op.stride = None
+        self.op.padding = None
+        self.op.dilation = None
+        self.op.groups = None
 
 
 class FusedLinearReLU(Linear):
@@ -723,7 +751,7 @@ class FusedLinearAbs(Linear):
         super(FusedLinearAbs, self).__init__(*args, activation='Abs', **kwargs)
 
 
-class Conv1d(nn.Module):
+class Conv1d(QuantizationAwareModule):
     """
     AI8X - Fused 1D Pool ('Avg', 'Max' or None) followed by
     1D Convolution and activation ('ReLU', 'Abs', None)
@@ -741,12 +769,11 @@ class Conv1d(nn.Module):
             bias=True,
             activation=None,
             wide=False,
+            batchnorm=None,
             weight_bits=None,
             bias_bits=None,
-            quantize_activation=False
+            quantize_activation=False,
     ):
-        super(Conv1d, self).__init__()
-
         assert not wide or activation is None
 
         if pooling is not None:
@@ -766,11 +793,18 @@ class Conv1d(nn.Module):
             assert dev.device == 84 or stride == 1
 
         if pooling == 'Max':
-            self.pool = nn.MaxPool1d(kernel_size=pool_size, stride=pool_stride, padding=0)
+            pool = nn.MaxPool1d(kernel_size=pool_size, stride=pool_stride, padding=0)
         elif pooling == 'Avg':
-            self.pool = nn.AvgPool1d(kernel_size=pool_size, stride=pool_stride, padding=0)
+            pool = nn.AvgPool1d(kernel_size=pool_size, stride=pool_stride, padding=0)
         else:
-            self.pool = None
+            pool = None
+
+        if batchnorm == 'Affine':
+            bn = nn.BatchNorm1d(out_channels, eps=1e-05, momentum=0.05, affine=True)
+        elif batchnorm == 'NoAffine':
+            bn = nn.BatchNorm1d(out_channels, eps=1e-05, momentum=0.05, affine=False)
+        else:
+            bn = None
 
         if kernel_size is not None:
             assert dev.device != 84 or padding in [0, 3, 6]
@@ -778,56 +812,23 @@ class Conv1d(nn.Module):
             assert dev.device != 84 or kernel_size == 9
             assert dev.device == 84 or kernel_size in [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
-            self.conv1d = nn.Conv1d(in_channels, out_channels, kernel_size, stride=stride,
-                                    padding=padding, bias=bias)
+            opn = nn.Conv1d(in_channels, out_channels, kernel_size, stride=stride,
+                            padding=padding, bias=bias)
         else:
-            self.conv1d = None
+            opn = None
 
-        assert weight_bits in [None, 1, 2, 4, 8], f'Weight bits cannot be {weight_bits}'
-        assert bias_bits in [None, 8], f'Bias bits cannot be {bias_bits}'
-
-        self.adjust_output_shift = not dev.simulate \
-            and (weight_bits is not None or bias_bits is not None)
-        self.output_shift = nn.Parameter(torch.Tensor([0.]), requires_grad=False)
-        self.qat_weight_bits = weight_bits if weight_bits is not None else 8
-        self.qat_bias_bits = bias_bits if bias_bits is not None else 8
-        self.weight_bits = nn.Parameter(torch.Tensor([self.qat_weight_bits]), requires_grad=False)
-
-        if self.adjust_output_shift:
-            self.calc_out_shift = OutputShift()
-            self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(weight_bits)
-            self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(bias_bits)
-        else:
-            self.calc_out_shift = OutputShiftSqueeze()
-            self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(None)
-            self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(None)
-
-        self.calc_weight_scale = WeightScale()
-        self.calc_out_scale = OutputScale()
-        self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
-        self.quantize, self.clamp = quantize_clamp(wide, quantize_activation)
-        self.activate = get_activation(activation)
-
-    def forward(self, x):  # pylint: disable=arguments-differ
-        if self.pool is not None:
-            x = self.clamp_pool(self.quantize_pool(self.pool(x)))
-        if self.conv1d is not None:
-            out_shift = self.calc_out_shift(self.conv1d.weight.detach(),
-                                            self.output_shift.detach())
-            weight_scale = self.calc_weight_scale(out_shift)
-            out_scale = self.calc_out_scale(out_shift)
-
-            self.output_shift = nn.Parameter(out_shift.unsqueeze(0), requires_grad=False)
-
-            weight = self.clamp_weight(self.quantize_weight(weight_scale * self.conv1d.weight))
-            bias = self.conv1d.bias
-            if bias is not None:
-                bias = self.clamp_bias(self.quantize_bias(weight_scale * bias))
-
-            x = nn.functional.conv1d(x, weight, bias, self.conv1d.stride, self.conv1d.padding,
-                                     self.conv1d.dilation, self.conv1d.groups)
-            x = self.clamp(self.quantize(self.activate(out_scale * x)))
-        return x
+        super(Conv1d, self).__init__(
+            pooling,
+            activation,
+            wide,
+            weight_bits,
+            bias_bits,
+            quantize_activation,
+            pool,
+            opn,
+            nn.functional.conv1d,
+            bn,
+        )
 
 
 class FusedMaxPoolConv1d(Conv1d):
