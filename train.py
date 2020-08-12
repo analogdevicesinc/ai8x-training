@@ -72,6 +72,15 @@ import operator
 from pkg_resources import parse_version
 import matplotlib
 import numpy as np
+
+# TensorFlow 2.x compatibility
+try:
+    import tensorflow  # pylint: disable=import-error
+    import tensorboard  # pylint: disable=import-error
+    tensorflow.io.gfile = tensorboard.compat.tensorflow_stub.io.gfile
+except (ModuleNotFoundError, AttributeError):
+    pass
+
 import shap
 import torch
 import torch.nn as nn
