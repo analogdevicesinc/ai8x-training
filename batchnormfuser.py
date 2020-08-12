@@ -22,15 +22,18 @@ def bn_fuser(state_dict):
     dict_keys = state_dict.keys()
     set_convbn_layers = set()
     for dict_key in dict_keys:
-        if 'bn' in dict_key:
-            set_convbn_layers.add(dict_key.split('.')[0])
+        if dict_key.endswith('.bn.running_mean'):
+            set_convbn_layers.add(dict_key.rsplit('.', 3)[0])
 
     for layer in set_convbn_layers:
-        bn_key = layer + '.bn'
-        conv_key = layer + '.op'
+        if layer + '.op.weight' in state_dict:
+            conv_key = layer + '.op'
+        else:
+            conv_key = layer + '.conv2d'  # Compatibility with older checkpoints
         w_key = conv_key + '.weight'
         b_key = conv_key + '.bias'
 
+        bn_key = layer + '.bn'
         r_mean_key = bn_key + '.running_mean'
         r_var_key = bn_key + '.running_var'
         beta_key = bn_key + '.weight'
