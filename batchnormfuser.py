@@ -1,6 +1,7 @@
+#!/usr/bin/env python3
 ###################################################################################################
 #
-# Copyright (C) 2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -13,6 +14,7 @@ Script that is used for fusing/folding batchnorm layers onto conv2d layers.
 import argparse
 import torch
 
+
 def bn_fuser(state_dict):
     """
     Fuses the BN parameters and returns a new statedict
@@ -20,11 +22,12 @@ def bn_fuser(state_dict):
     dict_keys = state_dict.keys()
     set_convbn_layers = set()
     for dict_key in dict_keys:
-        if 'conv2d' and 'bn' in dict_key:
+        if 'bn' in dict_key:
             set_convbn_layers.add(dict_key.split('.')[0])
+
     for layer in set_convbn_layers:
         bn_key = layer + '.bn'
-        conv_key = layer + '.conv2d'
+        conv_key = layer + '.op'
         w_key = conv_key + '.weight'
         b_key = conv_key + '.bias'
 
@@ -53,7 +56,9 @@ def bn_fuser(state_dict):
         else:
             gamma = torch.zeros(w.shape[0]).to(device)
 
-        w_new = w * (beta / r_std).reshape([w.shape[0], 1, 1, 1])
+        w_new = w * (beta / r_std).reshape(
+            (w.shape[0],) + tuple(1 for _ in range(len(w.shape) - 1))
+        )
         b_new = (b - r_mean)/r_std * beta + gamma
 
         state_dict[w_key] = w_new
@@ -70,6 +75,7 @@ def bn_fuser(state_dict):
 
     return state_dict
 
+
 def main(args):
     """
     Main function
@@ -85,6 +91,7 @@ def main(args):
 
     torch.save(model_params, out_path)
     print(f'New checkpoint is saved to: {out_path}')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
