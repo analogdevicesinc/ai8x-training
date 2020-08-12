@@ -1151,9 +1151,7 @@ def fuse_bn_layers(m):
                 if gamma is None:
                     gamma = torch.zeros(w.shape[0]).to(device)
 
-                w_new = w * (beta / r_std).reshape(
-                    (w.shape[0],) + tuple(1 for _ in range(len(w.shape) - 1))
-                )
+                w_new = w * (beta / r_std).reshape((w.shape[0],) + (1,) * (len(w.shape) - 1))
                 b_new = (b - r_mean)/r_std * beta + gamma
 
                 target_attr.op.weight.data = w_new
