@@ -1115,7 +1115,7 @@ def enable_output_shift(m):
     def _enable_output_shift(m):
         for attr_str in dir(m):
             target_attr = getattr(m, attr_str)
-            if isinstance(target_attr, (Conv1d, Conv2d, Linear)):
+            if isinstance(target_attr, QuantizationAwareModule):
                 target_attr.adjust_output_shift = True
                 target_attr.calc_out_shift = OutputShift()
                 target_attr.quantize_weight, target_attr.clamp_weight = \
