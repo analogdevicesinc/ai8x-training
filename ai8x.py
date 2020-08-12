@@ -1134,30 +1134,31 @@ def fuse_bn_layers(m):
     def _fuse_bn_layers(m):
         for attr_str in dir(m):
             target_attr = getattr(m, attr_str)
-            if isinstance(target_attr, (Conv1d, Conv2d)):
-                if target_attr.bn:
-                    w = target_attr.conv2d.weight.data
-                    device = w.device
-                    b = target_attr.conv2d.bias.data
+            if isinstance(target_attr, QuantizationAwareModule) \
+               and target_attr.bn is not None:
+                w = target_attr.op.weight.data
+                b = target_attr.op.bias.data
+                device = w.device
 
-                    r_mean = target_attr.bn.running_mean
-                    r_var = target_attr.bn.running_var
-                    r_std = torch.sqrt(r_var + 1e-20)
-                    beta = target_attr.bn.weight
-                    gamma = target_attr.bn.bias
+                r_mean = target_attr.bn.running_mean
+                r_var = target_attr.bn.running_var
+                r_std = torch.sqrt(r_var + 1e-20)
+                beta = target_attr.bn.weight
+                gamma = target_attr.bn.bias
 
-                    if not beta:
-                        beta = torch.ones(w.shape[0]).to(device)
-                    if not gamma:
-                        gamma = torch.zeros(w.shape[0]).to(device)
+                if beta is None:
+                    beta = torch.ones(w.shape[0]).to(device)
+                if gamma is None:
+                    gamma = torch.zeros(w.shape[0]).to(device)
 
-                    w_new = w * (beta / r_std).reshape([w.shape[0], 1, 1, 1])
-                    b_new = (b - r_mean)/r_std * beta + gamma
+                w_new = w * (beta / r_std).reshape([w.shape[0], 1, 1, 1])
+                b_new = (b - r_mean)/r_std * beta + gamma
 
-                    target_attr.conv2d.weight.data = w_new
-                    target_attr.conv2d.bias.data = b_new
-                    target_attr.bn = None
+                target_attr.op.weight.data = w_new
+                target_attr.op.bias.data = b_new
+                target_attr.bn = None
                 setattr(m, attr_str, target_attr)
+
     m.apply(_fuse_bn_layers)
 
 
