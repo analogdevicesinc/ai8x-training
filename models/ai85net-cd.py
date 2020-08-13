@@ -8,11 +8,10 @@
 ###################################################################################################
 """
 Cats and Dogs classification network for AI85
-
-Optionally quantize/clamp activations
 """
 import torch.nn as nn
 import ai8x
+
 
 class AI85CatsDogsNet(nn.Module):
     """
@@ -71,12 +70,14 @@ class AI85CatsDogsNet(nn.Module):
 
         return x
 
+
 def ai85cdnet(pretrained=False, **kwargs):
     """
     Constructs a AI85CatsDogsNet model.
     """
     assert not pretrained
     return AI85CatsDogsNet(**kwargs)
+
 
 models = [
     {
