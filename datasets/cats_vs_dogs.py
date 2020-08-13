@@ -35,12 +35,12 @@ def catsdogs_get_datasets(data, load_train=True, load_test=True):
         if not is_dir:
             print("******************************************")
             print("Please follow instructions below:")
-            print("Download the dataset in the current working directory by visiting this link" \
-                "\'https://www.kaggle.com/c/dogs-vs-cats/data\'")
+            print("Download the dataset in the current working directory by visiting this link"
+                  "\'https://www.kaggle.com/c/dogs-vs-cats/data\'")
             print("and click the \'Download all\' button")
             print("If you do not have a Kaggle account, sign-up first.")
-            print("Unzip \'dogs-vs-cats.zip\' and you will see train.zip, test1.zip and .csv " \
-                " file. Unzip the train.zip file and re-run the script")
+            print("Unzip \'dogs-vs-cats.zip\' and you will see train.zip, test1.zip and .csv "
+                  " file. Unzip the train.zip file and re-run the script")
             print("******************************************")
             sys.exit("Dataset not found..")
         else:
@@ -52,14 +52,14 @@ def catsdogs_get_datasets(data, load_train=True, load_test=True):
                 sys.exit("Unzip \'train.zip\' file from dogs-vs-cats directory")
 
             # create directories
-            dataset_home = os.path.join(data_dir, "cats_vs_dogs", "")
-            newdir = os.path.join(dataset_home, "train", "", "dogs", "")
+            dataset_home = os.path.join(data_dir, "cats_vs_dogs")
+            newdir = os.path.join(dataset_home, "train", "dogs")
             makedirs(newdir, exist_ok=True)
-            newdir = os.path.join(dataset_home, "train", "", "cats", "")
+            newdir = os.path.join(dataset_home, "train", "cats")
             makedirs(newdir, exist_ok=True)
-            newdir = os.path.join(dataset_home, "test", "", "dogs", "")
+            newdir = os.path.join(dataset_home, "test", "dogs")
             makedirs(newdir, exist_ok=True)
-            newdir = os.path.join(dataset_home, "test", "", "cats", "")
+            newdir = os.path.join(dataset_home, "test", "cats")
             makedirs(newdir, exist_ok=True)
 
             # seed random number generator
@@ -67,17 +67,17 @@ def catsdogs_get_datasets(data, load_train=True, load_test=True):
             # define ratio of pictures to use for test set
             test_ratio = 0.2
             # copy training dataset images into subdirectories
-            src_directory = os.path.join(path, "dogs-vs-cats", "train", "")
+            src_directory = os.path.join(path, "dogs-vs-cats", "train")
             for file in listdir(src_directory):
-                src = os.path.join(src_directory, "", file)
-                dst_dir = os.path.join(dataset_home, "train", "")
+                src = os.path.join(src_directory, file)
+                dst_dir = os.path.join(dataset_home, "train")
                 if random() < test_ratio:
-                    dst_dir = os.path.join(dataset_home, "test", "")
+                    dst_dir = os.path.join(dataset_home, "test")
                 if file.startswith("cat"):
-                    dst = os.path.join(dst_dir, "cats", "", file)
+                    dst = os.path.join(dst_dir, "cats", file)
                     shutil.copyfile(src, dst)
                 elif file.startswith("dog"):
-                    dst = os.path.join(dst_dir, "dogs", "", file)
+                    dst = os.path.join(dst_dir, "dogs", file)
                     shutil.copyfile(src, dst)
             shutil.rmtree("./dogs-vs-cats/")
 
