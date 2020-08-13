@@ -212,7 +212,14 @@ $ source bin/activate
 
 The next step differs depending on whether the system uses Linux with CUDA 10.1, or any other setup.
 
-For CUDA 10.1 on Linux:
+For TensorFlow with CUDA 10.1 on LInux:
+
+```
+(ai8x-training) $ cd TensorFlow
+(ai8x-training) $ pip3 install -r requirements_TF.txt
+```
+
+For Pytorch with  CUDA 10.1 on Linux:
 
 ```shell
 (ai8x-training) $ pip3 install -r requirements-cu101.txt
