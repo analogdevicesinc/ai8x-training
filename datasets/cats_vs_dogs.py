@@ -79,7 +79,7 @@ def catsdogs_get_datasets(data, load_train=True, load_test=True):
                 elif file.startswith("dog"):
                     dst = os.path.join(dst_dir, "dogs", file)
                     shutil.copyfile(src, dst)
-            shutil.rmtree("./dogs-vs-cats/")
+            shutil.rmtree("dogs-vs-cats")
 
     training_data_path = os.path.join(data_dir, "cats_vs_dogs")
     training_data_path = os.path.join(training_data_path, "train")
