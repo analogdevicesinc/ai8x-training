@@ -327,7 +327,7 @@ if __name__ == '__main__':
 
     # print graphical model
     tf.keras.utils.plot_model(
-        model, to_file=os.path.join(logdir, 'kws20.png'), show_shapes=True)
+        model, to_file=os.path.join(logdir, 'model.png'), show_shapes=True)
 
     # return log folder
     sys.exit(saved_model_dir)
