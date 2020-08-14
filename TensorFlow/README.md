@@ -246,7 +246,7 @@ model = tf.keras.models.Sequential([
 To train MNIST model execute following script:
 
 ```bash
-(TensorflowSupport) $ bash train_mnist.sh
+$ bash train_mnist.sh
 ```
 
 Training progress, accuracy results and confusion table are reported and stored in log file.
@@ -367,7 +367,7 @@ model = tf.keras.Model(inputs=[input_layer], outputs=[output_layer])
 To train fashion MNIST model execute following script:
 
 ```bash
-(TensorflowSupport) $ bash train_fashionmnist.sh
+$ bash train_fashionmnist.sh
 ```
 
 Training progress, accuracy results and confusion table are reported and stored in log file.
@@ -482,7 +482,7 @@ model = tf.keras.models.Sequential([
 To train CIFAR10 model execute following script:
 
 ```bash
-(TensorflowSupport) $ bash train_cifar10.sh
+$ bash train_cifar10.sh
 ```
 
 Training progress, accuracy results and confusion table are reported and stored in log file.
@@ -591,7 +591,7 @@ model = tf.keras.models.Sequential([
 To train CIFAR100 model execute following script:
 
 ```bash
-(TensorflowSupport) $ bash train_cifar100.sh
+$ bash train_cifar100.sh
 ```
 
 Training progress, accuracy results and confusion table are reported and stored in log file.
@@ -769,7 +769,7 @@ model = tf.keras.models.Sequential([
 To train KWS20 model execute following script:
 
 ```bash
-(TensorflowSupport) $ bash train_kws20.sh
+$ bash train_kws20.sh
 ```
 
 Training progress, accuracy results and confusion table are reported and stored in log file.
@@ -923,7 +923,7 @@ model = tf.keras.models.Sequential([
 To train RPS model execute following script:
 
 ```bash
-(TensorflowSupport) $ bash train_rock.sh
+$ bash train_rock.sh
 ```
 
 Training progress, accuracy results and confusion table are reported and stored in log file.
@@ -992,8 +992,8 @@ export/rock/saved_model.onnx
 
 To quantize weights execute following script (MNIST example):
 
-```python
-(TensorflowSupport) $python quantitize_weights.py --input export/mnist/saved_model.onnx --output export/mnist/saved_model_quant.onnx
+```bash
+$ bash quantize_mnist.sh
 ```
 
 The MNIST ONNX model with quantized weights is stored in **/export/mnist/** directory.
@@ -1001,29 +1001,23 @@ The MNIST ONNX model with quantized weights is stored in **/export/mnist/** dire
 Alternatively, the user can quantize all model examples by running bash script:
 
 ```bash
-(TensorflowSupport) $ bash quantize_ALL.sh
+$ bash quantize_ALL.sh
 ```
 
 
 
 ## Model evaluation
 
-After quantization the model can be evaluated (MNIST example):
+After quantization the model can be evaluated and compared with unquantized model (MNIST example) :
 
-```python
-python evaluate.py --onnx-file export/mnist/saved_model_quant.onnx --dataset mnist
-```
-
-The accuracy result ca be compared with unquantized model (MNIST example):
-
-```python
-python evaluate.py --onnx-file export/mnist/saved_model.onnx --dataset mnist
+```bash
+$ bash evaluate_mnist.sh
 ```
 
 Alternatively, the user can evaluate all model examples by running bash script:
 
-```
-(TensorflowSupport) $ bash evaluate_ALL.sh
+```bash
+$ bash evaluate_ALL.sh
 ```
 
 
