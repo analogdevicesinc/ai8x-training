@@ -11,6 +11,6 @@ tk>=0.1.0
 sndfile>=0.2
 torch==1.5.1
 torchvision==0.6.1
-tensorboard==2.2.2
+tensorboard==2.3.0
 numba<0.50.0
 -e distiller
