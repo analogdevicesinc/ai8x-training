@@ -287,13 +287,12 @@ if __name__ == '__main__':
         if save_sample_per_class and test_labels[index] != selected:
             continue
         conf = predict_soft[index][predict_soft_index[index]]
-        print("\t\nindex: %d: predict: %d(%.2f) actual: %d" % (index, predict[index], conf,
-                                                               test_labels[index]))
-        conf = predict_soft[index][predict_soft_index[index]]
         # only for classes with high confidence
         if save_sample_per_class and conf < 0.90:
             continue
 
+        print("\t\nindex: %d: predicted: %d(%.2f) actual: %d" % (index, predict[index], conf,
+                                                                 test_labels[index]))
         selected += 1
 
         # Adjust the shape similar to the model shape
@@ -355,9 +354,14 @@ if __name__ == '__main__':
     tf.saved_model.save(model, expdir)
 
     # save a copy of sample data in export dir
-    np.save(expdir +
-            '/sampledata_class-' + f"{test_labels[index]}_pred-{np.argmax(prediction)}_NHWC",
-            np.array(sample_image, dtype=np.int32))
+    if sample_index:
+        index = sample_index
+        sample_image = np.expand_dims(
+            np.array(test_images[index], dtype=np.float32), 0)
+        prediction = model.predict(sample_image)
+        np.save(expdir +
+                '/sampledata_class-' + f"{test_labels[index]}_pred-{np.argmax(prediction)}_NHWC",
+                np.array(sample_image * 256, dtype=np.int32))
 
     # print graphical model
     tf.keras.utils.plot_model(

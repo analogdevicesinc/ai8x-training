@@ -141,16 +141,17 @@ The script automatically downloads corresponding dataset and process and copy in
 
 User can modify following training command-line parameters:
 
-| Training parameter | Description                                                  |
-| ------------------ | ------------------------------------------------------------ |
-| --epochs           | Number of training epochs (default: 100)                     |
-| --batch_size       | Training batch size (default: 32)                            |
-| --optimizer        | Optimizer type: Adam or SGD (default: Adam)                  |
-| --lr               | Initial learning rate (default: 0.0001). During training learning rate is adjusted according to schedule in model |
-| --model            | Model name                                                   |
-| --dataset          | Dataset name                                                 |
-| --save-sample      | Save input sample with specified index in **.npy** format for verification in synthesis |
-| --metrics          | Metrics used in compiling model (default: accuracy)          |
+| Training parameter      | Description                                                  |
+| ----------------------- | ------------------------------------------------------------ |
+| --epochs                | Number of training epochs (default: 100)                     |
+| --batch_size            | Training batch size (default: 32)                            |
+| --optimizer             | Optimizer type: Adam or SGD (default: Adam)                  |
+| --lr                    | Initial learning rate (default: 0.0001). During training learning rate is adjusted according to schedule in model |
+| --model                 | Model name                                                   |
+| --dataset               | Dataset name                                                 |
+| --save-sample           | Save input sample with specified index in **.npy** format in **/export/** folder for verification in synthesis in |
+| --save-sample-per-class | Save one input sample for each class in **.npy** format in **logs** folder to be used for verification |
+| --metrics               | Metrics used in compiling model (default: accuracy)          |
 
 
 
@@ -185,7 +186,7 @@ lr_schedule = tf.keras.callbacks.ReduceLROnPlateau(
 
 ### Datasets
 
-Dataset scripts are located in /**dataset**/ directory and used to download the dataset and create a processed .**npz** dataset file in /**data**/ to be used by training script: 
+Dataset scripts are located in /**dataset**/ directory and used to download the dataset and create a processed .**npz** dataset file (if needed) in /**data**/ to be used by training script: 
 
 ```bash
 datasets/cifar10.py
@@ -196,7 +197,9 @@ datasets/mnist.py
 datasets/rock.py
 ```
 
+datasets include training, validation and test images and labels. Images are in [-128,127] range when created by dataset scripts.
 
+In training script, they are normalized to [-0.5,0.5] and fed to the network.
 
 ## Examples
 
