@@ -76,6 +76,12 @@ parser.add_argument(
     default='accuracy',
     type=str,
     help='metrics used in compiling model(default: accuracy)')
+parser.add_argument(
+    '--save-sample-per-class',
+    action='store_true',
+    dest='save_sample_per_class',
+    default=False,
+    help='save one sample with confidence >0.9 for each class')
 args = parser.parse_args()
 
 # parser.print_help()
@@ -126,6 +132,7 @@ if __name__ == '__main__':
     model_optimizer = args.optimizer
     sample_index = args.generate_sample
     metrics = args.metrics
+    save_sample_per_class = args.save_sample_per_class
 
     # Log stdout to file
     foldername = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -134,6 +141,12 @@ if __name__ == '__main__':
         os.makedirs(logdir)
     sys.stdout = Logger(os.path.join(logdir,  # type: ignore[assignment] # noqa: F821
                                      foldername + '.log'))
+
+    # Tensorboard
+    file_writer = tf.summary.create_file_writer(os.path.join(logdir, 'metrics'))
+    file_writer.set_as_default()
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=logdir)
+
     print('script:', sys.argv[0])
     print('log dir:', logdir)
     print('epochs:', epochs)
@@ -193,8 +206,14 @@ if __name__ == '__main__':
     print("valid_labels shape:", valid_labels.shape)
     print("test_labels shape:", test_labels.shape)
 
-    # print("train_images min:",train_images.min())
-    # print("train_image max:",train_images.max())
+    # Normalize data to [-0.5, 0.5] range
+    print('Normalize image to [-0.5,0.5] range')
+    train_images = train_images/256.0
+    valid_images = valid_images/256.0
+    test_images = test_images/256.0
+
+    print("train_images min:", train_images.min())
+    print("train_image max:", train_images.max())
     # print("train_labels min:", train_labels.min())
     # print("train_labels max:", train_labels.max())
 
@@ -205,7 +224,7 @@ if __name__ == '__main__':
     # callbacks
     callbacks = [
         md.lr_schedule,  # type: ignore[attr-defined] # noqa: F821
-        # TensorBoard(log_dir=logdir),
+        tensorboard_callback,
         tf.keras.callbacks.ModelCheckpoint(
             os.path.join(logdir, 'checkpoint-best.hdf5'),
             save_best_only=True,
@@ -252,21 +271,37 @@ if __name__ == '__main__':
     print("Confusion Matrix:")
     print(tf.math.confusion_matrix(test_labels, predict))
 
-    print("Check prediction for some random indexes:")
-    for i in range(10):
-        index = randint(0, test_labels.size)
-        print("\tindex: %d: predict: %d   actual: %d" % (index, predict[index],
-                                                         test_labels[index]))
+    # create probability model
+    probability_model = tf.keras.Sequential([model, tf.keras.layers.Softmax()])
+    # predicted outcome
+    predict_soft = probability_model.predict(test_images)
+    predict_soft_index = np.argmax(predict_soft, axis=1)
 
-    # save one sample from test set
-    if sample_index:
-        index = sample_index
+    print("Check prediction for some indexes:")
+    selected = 0
+
+    num_samples = 3 if not save_sample_per_class else test_labels.size
+    for i in range(num_samples):
+        index = randint(0, test_labels.size-1)
+
+        if save_sample_per_class and test_labels[index] != selected:
+            continue
+        conf = predict_soft[index][predict_soft_index[index]]
+        print("\t\nindex: %d: predict: %d(%.2f) actual: %d" % (index, predict[index], conf,
+                                                               test_labels[index]))
+        conf = predict_soft[index][predict_soft_index[index]]
+        # only for classes with high confidence
+        if save_sample_per_class and conf < 0.90:
+            continue
+
+        selected += 1
+
         # Adjust the shape similar to the model shape
-        print("Save sample data:")
+        print("\tSave sample data")
         sample_image = np.expand_dims(
             np.array(test_images[index], dtype=np.float32), 0)
         prediction = model.predict(sample_image)
-        print('\tSample index:', index)
+        # print('\tSample index:', index)
         print('\tPrediction:', prediction)
         print(
             f'\tPredicted: {np.argmax(prediction)}({class_names[np.argmax(prediction)]})'
@@ -274,28 +309,27 @@ if __name__ == '__main__':
         print(
             f'\tExpected: {test_labels[index]}({class_names[test_labels[index]]})'
         )
+
+        # save sample data and all predictions in [-0.5,0.5] range
         np.savez(
             logdir + '/sampledata_class_' +
             f"{test_labels[index]}_all_predictions",
             sample_image=sample_image,
             prediction=prediction)
+
+        # scale back image to [-128,127] before storing to a file
+        sample_image = sample_image * 256
+
+        print(f'\tSaving sample image in [{sample_image.min()},{sample_image.max()}] range')
+
         # save as pty
         np.save(logdir +
-                '/sampledata_class-' + f"{test_labels[index]}_pred-{np.argmax(prediction)}_HWC",
+                '/sampledata_class-' + f"{test_labels[index]}_pred-{np.argmax(prediction)}_NHWC",
                 np.array(sample_image, dtype=np.int32))
 
-    # verify
-    '''
-    a = np.load(logdir + '/sampledata_class_'+ f"{test_labels[index]}_all_predictions" + '.npz')
-    imageload = a['sample_image']
-    predictionload = a['prediction']
-
-    if not(np.array_equal(sample_image, imageload)):
-          print("Error")
-
-    if not(np.array_equal(prediction, predictionload)):
-          print("Error")
-    '''  # pylint: disable=pointless-string-statement
+        # end if one sample per class is saved
+        if save_sample_per_class and selected > len(class_names):
+            break
 
     # print model
     model.summary()
@@ -314,15 +348,15 @@ if __name__ == '__main__':
     saved_model_dir = os.path.join(logdir, model_dataset + '_SavedModel')
     tf.saved_model.save(model, saved_model_dir)
 
-    # save a copy to onnx folder
+    # save a copy to onnx folder in export dir
     expdir = os.path.join('export', model_dataset)
     if not os.path.isdir(expdir):
         os.makedirs(expdir)
     tf.saved_model.save(model, expdir)
 
-    # save a copy of sample data
+    # save a copy of sample data in export dir
     np.save(expdir +
-            '/sampledata_class-' + f"{test_labels[index]}_pred-{np.argmax(prediction)}_HWC",
+            '/sampledata_class-' + f"{test_labels[index]}_pred-{np.argmax(prediction)}_NHWC",
             np.array(sample_image, dtype=np.int32))
 
     # print graphical model
