@@ -12,7 +12,7 @@ Cats and Dogs Datasets
 import os
 import sys
 from os import listdir, makedirs
-from random import random, seed
+from random import random
 import shutil
 import torchvision
 from torchvision import transforms
@@ -62,8 +62,6 @@ def catsdogs_get_datasets(data, load_train=True, load_test=True):
             newdir = os.path.join(dataset_home, "test", "cats")
             makedirs(newdir, exist_ok=True)
 
-            # seed random number generator
-            seed(1)
             # define ratio of pictures to use for test set
             test_ratio = 0.2
             # copy training dataset images into subdirectories
