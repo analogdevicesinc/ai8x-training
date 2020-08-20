@@ -60,7 +60,7 @@ sys.stdout = Logger(os.path.join(logdir, 'result.log'))
 test_input = np.random.normal(0, 0.5, size=(4, 4))
 print (test_input.shape)
 test_input = clamp(np.floor(test_input*128+0.5))/128.0
-print (test_input.shape)
+#print (test_input.shape)
 test_input = np.reshape(test_input,(1, 4, 4))
 print ('Test Input shape', test_input.shape)
 print('Test Input', test_input)
@@ -97,7 +97,7 @@ model.summary()
 
 for layer in model.layers:
       weight = np.array((layer.get_weights()[0:1])) #weights
-      # Convert to 8bit and round
+      # Convert to 8bit, round and clamp
       print('Weight(8-bit)=\n', clamp(np.floor(weight*128+0.5)))
       bias = (layer.get_weights()[1:2]) #bias
       print('Bias=', bias)
@@ -111,15 +111,17 @@ for layer in model.layers:
 output = model.predict(test_input)
 
 # Model output
-print('Model output =', output)
+print('Model output:\n', output)
 
 # Save model
 tf.saved_model.save(model,'saved_model')
 
+# Convert to 8bit, round and clamp
 saved_input = clamp(np.floor(test_input*128+0.5))
-print('Input(8-bit)\n:', saved_input)
+print('Input(8-bit):\n', saved_input)
 # Save input
 np.save (os.path.join(logdir, 'input_sample_1x4x4.npy'), np.array(saved_input, dtype=np.int32))
-print('Output(8-bit)\n:', clamp(np.floor(output*128+0.5)))
+# Convert to 8bit, round and clamp
+print('Output(8-bit):\n', clamp(np.floor(output*128+0.5)))
 
 exit(0)
