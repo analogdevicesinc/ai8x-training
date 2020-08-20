@@ -40,7 +40,10 @@ class Logger():
         """
         pass  # pylint: disable=unnecessary-pass
 
-# following piece it to init seed to make repeatable results
+def clamp(x, min=-128,max=127):
+    return np.array(tf.clip_by_value(x, min, max))
+    
+# following piece it to init seed to make repeated results
 os.environ['PYTHONHASHSEED'] = '0'
 np.random.seed(10)
 tf.random.set_seed(7)
@@ -54,33 +57,38 @@ if not os.path.isdir(logdir):
 sys.stdout = Logger(os.path.join(logdir, 'result.log'))
 
 # Init input samples
-test_input = np.random.normal(0, 0.5, size=(5))
-test_input = test_input.reshape(1, 5)
+test_input = np.random.normal(0, 0.5, size=(7,7))
+
+print (test_input.shape)
+test_input = clamp(np.floor(test_input*128+0.5))/128.0
+print (test_input.shape)
+test_input = np.reshape(test_input,(1, 7, 7))
 print ('Test Input shape', test_input.shape)
 print('Test Input', test_input)
 
 # Init layer kernel
-k_size = 5
+k_size = 7*2
 init_kernel = np.linspace(-0.9, 0.9, num=k_size, dtype=np.float32)
+init_kernel = clamp(np.floor(init_kernel*128+0.5))/128.0
+
 kernel_initializer = tf.keras.initializers.constant(init_kernel)
 
 init_bias = np.array([0.5])
 bias_initializer = tf.keras.initializers.constant(init_bias)
 
 # Create functional model
-input_layer = tf.keras.Input(shape=(5))
-reshape = tf.keras.layers.Reshape(target_shape=(5, 1))(input_layer)
+input_layer = tf.keras.Input(shape=(7,7))
+reshape = tf.keras.layers.Reshape(target_shape=(7,7))(input_layer)
 conv1 = ai8xTF.FusedConv1D(
-    filters=5,
+    filters=2,
     kernel_size=1,
     strides=1,
     padding_size=0,
     use_bias=False,
     kernel_initializer=kernel_initializer,
-    wide = True,
     )(reshape)
-flat = tf.keras.layers.Flatten()(conv1)
-model = tf.keras.Model(inputs=[input_layer], outputs=[flat])
+#flat = tf.keras.layers.Flatten()(conv1)
+model = tf.keras.Model(inputs=[input_layer], outputs=[conv1])
 
 
 model.compile( optimizer = 'adam' ,
@@ -90,8 +98,9 @@ model.compile( optimizer = 'adam' ,
 model.summary()
 
 for layer in model.layers:
-      weight = (layer.get_weights()[0:1]) #weights
-      print('Weight=', weight)
+      weight = np.array((layer.get_weights()[0:1])) #weights
+      # Convert to 8bit and round
+      print('Weight(8-bit)=\n', clamp(np.floor(weight*128+0.5)))
       bias = (layer.get_weights()[1:2]) #bias
       print('Bias=', bias)
       tf.print(f"Layer: {layer.get_config ()['name']} \
@@ -109,10 +118,16 @@ print('Model output =', output)
 # Save model
 tf.saved_model.save(model,'saved_model')
 
-saved_input = np.trunc(test_input * 128)
-print('Input (8bit):', saved_input)
+saved_input = clamp(np.floor(test_input*128+0.5))
+print('Input(8-bit)\n:', saved_input)
+#saved_input = saved_input.flatten()
+saved_input = saved_input.swapaxes(0,2)
+#saved_input = saved_input.swapaxes(0,1)
+
+
+print(saved_input.shape)
 # Save input
 np.save (os.path.join(logdir, 'input_sample_1x5.npy'), np.array(saved_input, dtype=np.int32))
-print('Output (int):', np.trunc(output*128))
+print('Output(8-bit)\n:', clamp(np.floor(output*128+0.5)))
 
 exit(0)
