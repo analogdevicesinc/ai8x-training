@@ -40,6 +40,9 @@ class Logger():
         """
         pass  # pylint: disable=unnecessary-pass
 
+def clamp(x, min=-128,max=127):
+    return np.array(tf.clip_by_value(x, min, max))
+    
 # following piece it to init seed to make repeated results
 os.environ['PYTHONHASHSEED'] = '0'
 np.random.seed(10)
@@ -55,13 +58,18 @@ sys.stdout = Logger(os.path.join(logdir, 'result.log'))
 
 # Init input samples
 test_input = np.random.normal(0, 0.5, size=(4, 4))
-test_input = test_input.reshape(1, 4, 4)
+print (test_input.shape)
+test_input = clamp(np.floor(test_input*128+0.5))/128.0
+print (test_input.shape)
+test_input = np.reshape(test_input,(1, 4, 4))
 print ('Test Input shape', test_input.shape)
 print('Test Input', test_input)
 
 # Init layer kernel
 k_size = 18
 init_kernel = np.linspace(-0.9, 0.9, num=k_size, dtype=np.float32)
+init_kernel = clamp(np.floor(init_kernel*128+0.5))/128.0
+
 kernel_initializer = tf.keras.initializers.constant(init_kernel)
 
 init_bias = np.array([-0.5, 0.5])
@@ -90,7 +98,7 @@ model.summary()
 for layer in model.layers:
       weight = np.array((layer.get_weights()[0:1])) #weights
       # Convert to 8bit and round
-      print('Weight(8-bit)=\n', np.floor(weight*128+0.5))
+      print('Weight(8-bit)=\n', clamp(np.floor(weight*128+0.5)))
       bias = (layer.get_weights()[1:2]) #bias
       print('Bias=', bias)
       tf.print(f"Layer: {layer.get_config ()['name']} \
@@ -108,10 +116,10 @@ print('Model output =', output)
 # Save model
 tf.saved_model.save(model,'saved_model')
 
-saved_input = np.floor(test_input*128+0.5)
+saved_input = clamp(np.floor(test_input*128+0.5))
 print('Input(8-bit)\n:', saved_input)
 # Save input
 np.save (os.path.join(logdir, 'input_sample_1x4x4.npy'), np.array(saved_input, dtype=np.int32))
-print('Output(8-bit)\n:', np.floor(output*128+0.5))
+print('Output(8-bit)\n:', clamp(np.floor(output*128+0.5)))
 
 exit(0)
