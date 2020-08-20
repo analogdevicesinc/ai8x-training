@@ -1,10 +1,12 @@
 import tensorflow as tf
 import tensorflow.keras as keras
 import numpy as np
-import ai8xTF
 from random import randint
 import os
 import sys
+
+sys.path.append('../../')
+import ai8xTF
 
 ai8xTF.set_device (85 , False , 10 )
 
