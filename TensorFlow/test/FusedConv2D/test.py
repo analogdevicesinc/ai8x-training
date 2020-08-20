@@ -67,23 +67,6 @@ kernel_initializer = tf.keras.initializers.constant(init_kernel)
 init_bias = np.array([-0.5, 0.5])
 bias_initializer = tf.keras.initializers.constant(init_bias)
 
-"""
-#Create sequential model
-model = keras.Sequential ( [
-    keras.Input (shape = (4, 4)) ,
-    keras.layers.Reshape ( target_shape = (4, 4 , 1) ) ,
-    ai8xTF.FusedConv2D(
-        filters = 2,
-        kernel_size = 3,
-        strides = 1,
-        padding_size = 1,
-        use_bias = True,
-        kernel_initializer = kernel_initializer, wide = True,
-        bias_initializer = bias_initializer,
-    ),
-    keras.layers.Flatten()
-] )
-"""
 # Create functional model
 input_layer = tf.keras.Input(shape=(4, 4))
 reshape = tf.keras.layers.Reshape(target_shape=(4, 4, 1))(input_layer)
@@ -94,11 +77,9 @@ conv1 = ai8xTF.FusedConv2D(
     padding_size=1,
     use_bias=False,
     kernel_initializer=kernel_initializer,
-    wide = True,
     )(reshape)
-flat = tf.keras.layers.Flatten()(conv1)
-model = tf.keras.Model(inputs=[input_layer], outputs=[flat])
-
+#flat = tf.keras.layers.Flatten()(conv1)
+model = tf.keras.Model(inputs=[input_layer], outputs=[conv1])
 
 model.compile( optimizer = 'adam' ,
                 loss = tf.keras.losses.SparseCategoricalCrossentropy ( from_logits = True ),
@@ -107,8 +88,9 @@ model.compile( optimizer = 'adam' ,
 model.summary()
 
 for layer in model.layers:
-      weight = (layer.get_weights()[0:1]) #weights
-      print('Weight=', weight)
+      weight = np.array((layer.get_weights()[0:1])) #weights
+      # Convert to 8bit and round
+      print('Weight(8-bit)=\n', np.floor(weight*128+0.5))
       bias = (layer.get_weights()[1:2]) #bias
       print('Bias=', bias)
       tf.print(f"Layer: {layer.get_config ()['name']} \
@@ -126,10 +108,10 @@ print('Model output =', output)
 # Save model
 tf.saved_model.save(model,'saved_model')
 
-saved_input = np.trunc(test_input * 128)
-print('Input (8bit):', saved_input)
+saved_input = np.floor(test_input*128+0.5)
+print('Input(8-bit)\n:', saved_input)
 # Save input
 np.save (os.path.join(logdir, 'input_sample_1x4x4.npy'), np.array(saved_input, dtype=np.int32))
-print('Output (int):', np.trunc(output*128))
+print('Output(8-bit)\n:', np.floor(output*128+0.5))
 
 exit(0)
