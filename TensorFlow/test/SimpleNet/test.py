@@ -61,10 +61,8 @@ print('Test Input', test_input)
 # Init layer kernel
 
 k1 = np.linspace(-0.9, 0.9, num=18, dtype=np.float32)
-k2 = np.linspace(-0.7, 0.7, num=18, dtype=np.float32)
-k3 = np.linspace(-0.5, 0.5, num=9, dtype=np.float32)
-k4 = np.linspace(-0.3, 0.3, num=9, dtype=np.float32)
-k5 = np.linspace(-0.1, 0.1, num=5, dtype=np.float32)
+k5 = np.linspace(-0.5, 0.5, num=160, dtype=np.float32)
+#k5 = np.random.normal(0, 0.5, size=160)
 
 init_bias = np.array([-0.5, 0.5])
 bias_initializer = tf.keras.initializers.constant(init_bias)
@@ -81,7 +79,7 @@ conv1 = ai8xTF.FusedConv2DReLU(
     use_bias=False,
     kernel_initializer=tf.keras.initializers.constant(k1)
     )(reshape)
-
+"""
 conv2 = ai8xTF.FusedMaxPoolConv2DReLU(
     filters=1,
     kernel_size=3,
@@ -114,8 +112,8 @@ conv4 = ai8xTF.FusedAvgPoolConv2DReLU(
     use_bias=False,
     kernel_initializer=tf.keras.initializers.constant(k4)
     )(conv3)
-
-flat = tf.keras.layers.Flatten()(conv4)
+"""
+flat = tf.keras.layers.Flatten()(conv1)
 
 output_layer = ai8xTF.FusedDense(5, wide=True, kernel_initializer=tf.keras.initializers.constant(k5))(flat)
 
@@ -128,8 +126,9 @@ model.compile( optimizer = 'adam' ,
 model.summary()
 
 for layer in model.layers:
-      weight = (layer.get_weights()[0:1]) #weights
-      print('Weight=', weight)
+      weight = np.array((layer.get_weights()[0:1])) #weights
+      # Convert to 8bit and round
+      print('Weight(8bit)=\n', np.floor(weight*128+0.5))
       bias = (layer.get_weights()[1:2]) #bias
       print('Bias=', bias)
       tf.print(f"Layer: {layer.get_config ()['name']} \
@@ -141,15 +140,16 @@ for layer in model.layers:
 output = model.predict(test_input)
 
 # Model output
-print('Output=', output)
+print('Output=\n', output)
 
 # Save model
 tf.saved_model.save(model,'saved_model')
-
-saved_input = np.trunc(test_input * 128)
-print('Save Input as int8:', saved_input)
+# Convert to 8bit and round
+saved_input = np.floor(test_input*128+0.5)
+print('Input(8-bit):\n', saved_input)
 # Save input
 np.save (os.path.join(logdir, 'input_sample_1x4x4.npy'), np.array(saved_input, dtype=np.int32))
-print('Output (int):', np.trunc(output*127))
+
+print('Output(8-bit):\n', np.floor(output*128+0.5))
 
 exit(0)
