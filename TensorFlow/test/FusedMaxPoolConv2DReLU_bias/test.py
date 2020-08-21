@@ -40,6 +40,9 @@ class Logger():
         """
         pass  # pylint: disable=unnecessary-pass
 
+def clamp(x, min=-128,max=127):
+    return np.array(tf.clip_by_value(x, min, max))
+    
 # following piece it to init seed to make repeated results
 os.environ['PYTHONHASHSEED'] = '0'
 np.random.seed(10)
@@ -55,17 +58,22 @@ sys.stdout = Logger(os.path.join(logdir, 'result.log'))
 
 # Init input samples
 test_input = np.random.normal(0, 0.5, size=(4, 4))
-test_input = test_input.reshape(1, 4, 4)
+print (test_input.shape)
+test_input = clamp(np.floor(test_input*128+0.5))/128.0
+#print (test_input.shape)
+test_input = np.reshape(test_input,(1, 4, 4))
 print ('Test Input shape', test_input.shape)
 print('Test Input', test_input)
 
 # Init layer kernel
 k_size = 18
 init_kernel = np.linspace(-0.9, 0.9, num=k_size, dtype=np.float32)
+init_kernel = clamp(np.floor(init_kernel*128+0.5))/128.0
 
 kernel_initializer = tf.keras.initializers.constant(init_kernel)
 
-init_bias = np.array([-0.5, 0.5])
+init_bias = np.array([-0.1, 0.1])
+init_bias = clamp(np.floor(init_bias*128+0.5))/128.0
 bias_initializer = tf.keras.initializers.constant(init_bias)
 
 # Create functional model
@@ -80,9 +88,8 @@ conv1 = ai8xTF.FusedMaxPoolConv2DReLU(
     kernel_initializer=kernel_initializer,
     bias_initializer=bias_initializer
     )(reshape)
-flat = tf.keras.layers.Flatten()(conv1)
-model = tf.keras.Model(inputs=[input_layer], outputs=[flat])
-
+#flat = tf.keras.layers.Flatten()(conv1)
+model = tf.keras.Model(inputs=[input_layer], outputs=[conv1])
 
 model.compile( optimizer = 'adam' ,
                 loss = tf.keras.losses.SparseCategoricalCrossentropy ( from_logits = True ),
@@ -91,10 +98,11 @@ model.compile( optimizer = 'adam' ,
 model.summary()
 
 for layer in model.layers:
-      weight = (layer.get_weights()[0:1]) #weights
-      print('Weight=', weight)
-      bias = (layer.get_weights()[1:2]) #bias
-      print('Bias=', bias)
+      weight = np.array((layer.get_weights()[0:1])) #weights
+      # Convert to 8bit, round and clamp
+      print('Weight(8-bit)=\n', clamp(np.floor(weight*128+0.5)))
+      bias = np.array((layer.get_weights()[1:2])) #bias
+      print('Bias(8-bit)=', clamp(np.floor(bias*128+0.5)))
       tf.print(f"Layer: {layer.get_config ()['name']} \
                 Wmin: {tf.math.reduce_min(weight)}, \
                 Wmax: {tf.math.reduce_max(weight)}, \
@@ -105,15 +113,17 @@ for layer in model.layers:
 output = model.predict(test_input)
 
 # Model output
-print('Output=', output)
+print('Model output:\n', output)
 
 # Save model
 tf.saved_model.save(model,'saved_model')
 
-saved_input = np.trunc(test_input * 128)
-print('Save Input as int8:', saved_input)
+# Convert to 8bit, round and clamp
+saved_input = clamp(np.floor(test_input*128+0.5))
+print('Input(8-bit):\n', saved_input)
 # Save input
 np.save (os.path.join(logdir, 'input_sample_1x4x4.npy'), np.array(saved_input, dtype=np.int32))
-print('Output (int):', np.trunc(output*127))
+# Convert to 8bit, round and clamp
+print('Output(8-bit):\n', clamp(np.floor(output*128+0.5)))
 
 exit(0)
