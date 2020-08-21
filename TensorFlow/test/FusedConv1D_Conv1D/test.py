@@ -57,38 +57,51 @@ if not os.path.isdir(logdir):
 sys.stdout = Logger(os.path.join(logdir, 'result.log'))
 
 # Init input samples
-test_input = np.random.normal(0, 0.5, size=(7,7))
+#test_input = np.random.normal(0, 0.5, size=(7,7))
+test_input = np.arange(0,63,1).reshape(9,7)/128.0
 
 print (test_input.shape)
 test_input = clamp(np.floor(test_input*128+0.5))/128.0
 print (test_input.shape)
-test_input = np.reshape(test_input,(1, 7, 7))
+test_input = np.reshape(test_input,(1, 9, 7))
 print ('Test Input shape', test_input.shape)
 print('Test Input', test_input)
 
 # Init layer kernel
-k_size = 7*2
-init_kernel = np.linspace(-0.9, 0.9, num=k_size, dtype=np.float32)
-init_kernel = clamp(np.floor(init_kernel*128+0.5))/128.0
+k1_size = 7*2
+init_kernel1 = np.linspace(-0.9, 0.9, num=k1_size, dtype=np.float32)
+init_kernel1 = clamp(np.floor(init_kernel1*128+0.5))/128.0
+kernel_initializer1 = tf.keras.initializers.constant(init_kernel1)
 
-kernel_initializer = tf.keras.initializers.constant(init_kernel)
+k2_size = 2*3
+init_kernel2 = np.linspace(-0.7, 0.6, num=k2_size, dtype=np.float32)
+init_kernel2 = clamp(np.floor(init_kernel2*128+0.5))/128.0
+kernel_initializer2 = tf.keras.initializers.constant(init_kernel2)
 
 init_bias = np.array([0.5])
 bias_initializer = tf.keras.initializers.constant(init_bias)
 
 # Create functional model
-input_layer = tf.keras.Input(shape=(7,7))
-reshape = tf.keras.layers.Reshape(target_shape=(7,7))(input_layer)
+input_layer = tf.keras.Input(shape=(9,7))
+reshape = tf.keras.layers.Reshape(target_shape=(9,7))(input_layer)
 conv1 = ai8xTF.FusedConv1D(
     filters=2,
     kernel_size=1,
     strides=1,
     padding_size=0,
     use_bias=False,
-    kernel_initializer=kernel_initializer,
+    kernel_initializer=kernel_initializer1,
     )(reshape)
+conv2 = ai8xTF.FusedConv1D(
+    filters=3,
+    kernel_size=1,
+    strides=1,
+    padding_size=0,
+    use_bias=False,
+    kernel_initializer=kernel_initializer2,
+    )(conv1)
 #flat = tf.keras.layers.Flatten()(conv1)
-model = tf.keras.Model(inputs=[input_layer], outputs=[conv1])
+model = tf.keras.Model(inputs=[input_layer], outputs=[conv1,conv2])
 
 
 model.compile( optimizer = 'adam' ,
@@ -110,24 +123,28 @@ for layer in model.layers:
                 Bias max: {tf.math.reduce_min(bias)}")
 
 
-output = model.predict(test_input)
+output1,output = model.predict(test_input)
 
 # Model output
-print('Model output =', output)
+#print('Model output =', output)
 
 # Save model
 tf.saved_model.save(model,'saved_model')
 
 saved_input = clamp(np.floor(test_input*128+0.5))
 print('Input(8-bit)\n:', saved_input)
-#saved_input = saved_input.flatten()
-saved_input = saved_input.swapaxes(0,2)
-#saved_input = saved_input.swapaxes(0,1)
-
+#saved_input = saved_input.swapaxes(0,2)
+saved_input = saved_input.reshape(9,7)
+saved_input = saved_input.swapaxes(0,1) #swap row,col
+print('Saved Input(8-bit) for izer\n:', saved_input)
 
 print(saved_input.shape)
 # Save input
-np.save (os.path.join(logdir, 'input_sample_7x7x1.npy'), np.array(saved_input, dtype=np.int32))
+np.save (os.path.join(logdir, 'input_sample_7x9.npy'), np.array(saved_input, dtype=np.int32))
+print('OutputConv1(8-bit)\n:', clamp(np.floor(output1*128+0.5)))
+print(output1.shape)
 print('Output(8-bit)\n:', clamp(np.floor(output*128+0.5)))
+print(output.shape)
+
 
 exit(0)
