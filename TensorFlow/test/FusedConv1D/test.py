@@ -127,7 +127,7 @@ saved_input = saved_input.swapaxes(0,2)
 
 print(saved_input.shape)
 # Save input
-np.save (os.path.join(logdir, 'input_sample_1x5.npy'), np.array(saved_input, dtype=np.int32))
+np.save (os.path.join(logdir, 'input_sample_7x7x1.npy'), np.array(saved_input, dtype=np.int32))
 print('Output(8-bit)\n:', clamp(np.floor(output*128+0.5)))
 
 exit(0)
