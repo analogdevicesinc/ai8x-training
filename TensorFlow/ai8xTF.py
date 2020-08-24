@@ -314,7 +314,7 @@ class Conv2D(keras.layers.Layer):  # pylint: disable=too-many-instance-attribute
                 else:
                     assert strides == 1
             elif op == 'ConvTranspose2d':
-                assert strides == 1
+                assert strides == 2
 
         assert 0 <= padding_size <= 2
 
