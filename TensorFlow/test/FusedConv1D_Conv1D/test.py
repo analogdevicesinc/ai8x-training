@@ -101,8 +101,8 @@ conv2 = ai8xTF.FusedConv1D(
     kernel_initializer=kernel_initializer2,
     )(conv1)
 #flat = tf.keras.layers.Flatten()(conv1)
-model = tf.keras.Model(inputs=[input_layer], outputs=[conv1,conv2])
-
+#model = tf.keras.Model(inputs=[input_layer], outputs=[conv1,conv2])
+model = tf.keras.Model(inputs=[input_layer], outputs=[conv2])
 
 model.compile( optimizer = 'adam' ,
                 loss = tf.keras.losses.SparseCategoricalCrossentropy ( from_logits = True ),
@@ -123,7 +123,8 @@ for layer in model.layers:
                 Bias max: {tf.math.reduce_min(bias)}")
 
 
-output1,output = model.predict(test_input)
+#output1,output = model.predict(test_input)
+output = model.predict(test_input)
 
 # Model output
 #print('Model output =', output)
@@ -141,8 +142,8 @@ print('Saved Input(8-bit) for izer\n:', saved_input)
 print(saved_input.shape)
 # Save input
 np.save (os.path.join(logdir, 'input_sample_7x9.npy'), np.array(saved_input, dtype=np.int32))
-print('OutputConv1(8-bit)\n:', clamp(np.floor(output1*128+0.5)))
-print(output1.shape)
+#print('OutputConv1(8-bit)\n:', clamp(np.floor(output1*128+0.5)))
+#print(output1.shape)
 print('Output(8-bit)\n:', clamp(np.floor(output*128+0.5)))
 print(output.shape)
 

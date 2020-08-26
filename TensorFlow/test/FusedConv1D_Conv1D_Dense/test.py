@@ -114,8 +114,8 @@ output_layer = ai8xTF.FusedDense(
     bias_initializer= bias_initializer,
     kernel_initializer=kernel_initializer3
     )(flat)
-model = tf.keras.Model(inputs=[input_layer], outputs=[conv1,conv2,flat,output_layer])
-
+#model = tf.keras.Model(inputs=[input_layer], outputs=[conv1,conv2,flat,output_layer])
+model = tf.keras.Model(inputs=[input_layer], outputs=[conv2, output_layer])
 
 model.compile( optimizer = 'adam' ,
                 loss = tf.keras.losses.SparseCategoricalCrossentropy ( from_logits = True ),
@@ -136,7 +136,8 @@ for layer in model.layers:
                 Bias max: {tf.math.reduce_min(bias)}")
 
 
-output1,output2,output_flat,output = model.predict(test_input)
+#output1,output2,output_flat,output = model.predict(test_input)
+output2, output = model.predict(test_input)
 
 # Model output
 #print('Model output =', output)
@@ -154,14 +155,14 @@ print('Saved Input(8-bit) for izer\n:', saved_input)
 print(saved_input.shape)
 # Save input
 np.save (os.path.join(logdir, 'input_sample_7x9.npy'), np.array(saved_input, dtype=np.int32))
-print('OutputConv1(8-bit)\n:', clamp(np.floor(output1*128+0.5)))
-print(output1.shape)
+#print('OutputConv1(8-bit)\n:', clamp(np.floor(output1*128+0.5)))
+#print(output1.shape)
 
 print('OutputConv2(8-bit)\n:', clamp(np.floor(output2*128+0.5)))
 print(output2.shape)
 
-print('OutputFlat(8-bit)\n:', clamp(np.floor(output_flat*128+0.5)))
-print(output_flat.shape)
+#print('OutputFlat(8-bit)\n:', clamp(np.floor(output_flat*128+0.5)))
+#print(output_flat.shape)
 
 print('Output(8-bit)\n:', clamp(np.floor(output*128+0.5)))
 print(output.shape)
