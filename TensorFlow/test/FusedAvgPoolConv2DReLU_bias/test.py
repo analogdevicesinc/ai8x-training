@@ -72,7 +72,7 @@ init_kernel = clamp(np.floor(init_kernel*128+0.5))/128.0
 
 kernel_initializer = tf.keras.initializers.constant(init_kernel)
 
-init_bias = np.array([-0.1, 0.1])
+init_bias = np.array([-0.4, 0.4])
 init_bias = clamp(np.floor(init_bias*128+0.5))/128.0
 bias_initializer = tf.keras.initializers.constant(init_bias)
 
@@ -101,8 +101,10 @@ for layer in model.layers:
       weight = np.array((layer.get_weights()[0:1])) #weights
       # Convert to 8bit, round and clamp
       print('Weight(8-bit)=\n', clamp(np.floor(weight*128+0.5)))
+      print(weight.shape)
       bias = np.array((layer.get_weights()[1:2])) #bias
       print('Bias(8-bit)=', clamp(np.floor(bias*128+0.5)))
+      print(bias.shape)
       tf.print(f"Layer: {layer.get_config ()['name']} \
                 Wmin: {tf.math.reduce_min(weight)}, \
                 Wmax: {tf.math.reduce_max(weight)}, \
@@ -121,9 +123,11 @@ tf.saved_model.save(model,'saved_model')
 # Convert to 8bit, round and clamp
 saved_input = clamp(np.floor(test_input*128+0.5))
 print('Input(8-bit):\n', saved_input)
+print(saved_input.shape)
 # Save input
 np.save (os.path.join(logdir, 'input_sample_1x4x4.npy'), np.array(saved_input, dtype=np.int32))
 # Convert to 8bit, round and clamp
 print('Output(8-bit):\n', clamp(np.floor(output*128+0.5)))
-
+print(output.shape)
+ 
 exit(0)
