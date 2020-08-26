@@ -99,6 +99,7 @@ for layer in model.layers:
       weight = np.array((layer.get_weights()[0:1])) #weights
       # Convert to 8bit, round and clamp
       print('Weight(8-bit)=\n', clamp(np.floor(weight*128+0.5)))
+      print(weight.shape)
       bias = (layer.get_weights()[1:2]) #bias
       print('Bias=', bias)
       tf.print(f"Layer: {layer.get_config ()['name']} \
@@ -119,9 +120,10 @@ tf.saved_model.save(model,'saved_model')
 # Convert to 8bit, round and clamp
 saved_input = clamp(np.floor(test_input*128+0.5))
 print('Input(8-bit):\n', saved_input)
+print(saved_input.shape)
 # Save input
 np.save (os.path.join(logdir, 'input_sample_1x4x4.npy'), np.array(saved_input, dtype=np.int32))
 # Convert to 8bit, round and clamp
 print('Output(8-bit):\n', clamp(np.floor(output*128+0.5)))
-
+print(output.shape)
 exit(0)

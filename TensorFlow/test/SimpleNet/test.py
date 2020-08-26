@@ -88,40 +88,7 @@ conv1 = ai8xTF.FusedConv2DReLU(
     use_bias=False,
     kernel_initializer=tf.keras.initializers.constant(k1)
     )(reshape)
-"""
-conv2 = ai8xTF.FusedMaxPoolConv2DReLU(
-    filters=1,
-    kernel_size=3,
-    strides=1,
-    padding_size=2,
-    pool_size=2,
-    pool_strides=2,
-    use_bias=False,
-    kernel_initializer = tf.keras.initializers.constant(k2)
-    )(conv1)
 
-conv3 = ai8xTF.FusedMaxPoolConv2DReLU(
-    filters=1,
-    kernel_size=3,
-    strides=1,
-    padding_size=1,
-    pool_size=2,
-    pool_strides=2,
-    use_bias=False,
-    kernel_initializer=tf.keras.initializers.constant(k3)
-    )(conv2)
-
-conv4 = ai8xTF.FusedAvgPoolConv2DReLU(
-    filters=1,
-    kernel_size=3,
-    strides=1,
-    padding_size=1,
-    pool_size=2,
-    pool_strides=2,
-    use_bias=False,
-    kernel_initializer=tf.keras.initializers.constant(k4)
-    )(conv3)
-"""
 flat = tf.keras.layers.Flatten()(conv1)
 
 output_layer = ai8xTF.FusedDense(5, wide=True, kernel_initializer=tf.keras.initializers.constant(k5))(flat)
@@ -139,6 +106,7 @@ for layer in model.layers:
       weight = np.array((layer.get_weights()[0:1])) #weights
       # Convert to 8bit, round and clamp
       print('Weight(8-bit)=\n', clamp(np.floor(weight*128+0.5)))
+      print(weight.shape)
       bias = np.array((layer.get_weights()[1:2])) #bias
       # Convert to 8bit, round and clamp
       print('Bias(8-bit)=\n', clamp(np.floor(bias*128+0.5)))
@@ -161,12 +129,16 @@ tf.saved_model.save(model,'saved_model')
 # Convert to 8bit, round and clamp
 saved_input = clamp(np.floor(test_input*128+0.5))
 print('Input(8-bit):\n', saved_input)
+print(saved_input.shape)
 # Save input
 np.save (os.path.join(logdir, 'input_sample_1x4x4.npy'), np.array(saved_input, dtype=np.int32))
 
 # Convert to 8bit, round and clamp
 print('Conv1 output(8-bit):\n', clamp(np.floor(conv1_out*128+0.5)))
+print(conv1_out.shape)
 print('Flat output(8-bit):\n', clamp(np.floor(flat_out*128+0.5)))
+print(flat_out.shape)
 print('Output(8-bit):\n', clamp(np.floor(output*128+0.5)))
+print(output.shape)
 
 exit(0)

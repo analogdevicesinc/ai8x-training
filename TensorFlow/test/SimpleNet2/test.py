@@ -102,34 +102,8 @@ conv2 = ai8xTF.FusedConv2D(
     use_bias=False,
     kernel_initializer = tf.keras.initializers.constant(k2)
     )(conv1)
-"""
-conv3 = ai8xTF.FusedMaxPoolConv2(
-    filters=1,
-    kernel_size=3,
-    strides=1,
-    padding_size=1,
-    pool_size=2,
-    pool_strides=2,
-    use_bias=False,
-    kernel_initializer=tf.keras.initializers.constant(k3)
-    )(conv2)
 
-conv4 = ai8xTF.FusedAvgPoolConv2DReLU(
-    filters=1,
-    kernel_size=3,
-    strides=1,
-    padding_size=1,
-    pool_size=2,
-    pool_strides=2,
-    use_bias=False,
-    kernel_initializer=tf.keras.initializers.constant(k4)
-    )(conv3)
-"""
-#flat = tf.keras.layers.Flatten()(conv1)
-#output_layer = ai8xTF.FusedDense(5, wide=True, kernel_initializer=tf.keras.initializers.constant(k5))(flat)
-
-model = tf.keras.Model(inputs=[input_layer], outputs=[conv1, conv2])
-
+model = tf.keras.Model(inputs=[input_layer], outputs=[conv2])
 
 model.compile( optimizer = 'adam' ,
                 loss = tf.keras.losses.SparseCategoricalCrossentropy ( from_logits = True ),
@@ -141,21 +115,22 @@ for layer in model.layers:
       weight = np.array((layer.get_weights()[0:1])) #weights
       # Convert to 8bit, round and clamp
       print('Weight(8-bit)=\n', clamp(np.floor(weight*128+0.5)))
-      print('Weight(8-bit)shape=\n', weight.shape)
+      print(weight.shape)
       bias = np.array((layer.get_weights()[1:2])) #bias
       # Convert to 8bit, round and clamp
       print('Bias(8-bit)=\n', clamp(np.floor(bias*128+0.5)))
-      print('Bias(8-bit)shape=\n', bias.shape)
+      print(bias.shape)
       tf.print(f"Layer: {layer.get_config ()['name']} \
                 Wmin: {tf.math.reduce_min(weight)}, \
                 Wmax: {tf.math.reduce_max(weight)}, \
                 Bias min: {tf.math.reduce_min(bias)}, \
                 Bias max: {tf.math.reduce_min(bias)}")
 
-conv1_out, output = model.predict(test_input)
+#conv1_out, output = model.predict(test_input)
+output = model.predict(test_input)
 
 # Model output
-print('Conv1 output=\n', conv1_out)
+#print('Conv1 output=\n', conv1_out)
 print('Conv2 output=\n', output)
 
 # Save model
@@ -164,14 +139,14 @@ tf.saved_model.save(model,'saved_model')
 # Convert to 8bit, round and clamp
 saved_input = clamp(np.floor(test_input*128+0.5))
 print('Input(8-bit):\n', saved_input)
-print('Input(8-bit) shape', saved_input.shape)
+print(saved_input.shape)
 # Save input
 np.save (os.path.join(logdir, 'input_sample_1x3x5.npy'), np.array(saved_input, dtype=np.int32))
 
 # Convert to 8bit, round and clamp
-print('Conv1 output(8-bit):\n', clamp(np.floor(conv1_out*128+0.5)))
-print('Conv1 output(8-bit) shape', conv1_out.shape)
+#print('Conv1 output(8-bit):\n', clamp(np.floor(conv1_out*128+0.5)))
+#print(conv1_out.shape)
 print('Conv2 output(8-bit):\n', clamp(np.floor(output*128+0.5)))
-print('Conv2 output(8-bit) shape', output.shape)
+print(output.shape)
 
 exit(0)
