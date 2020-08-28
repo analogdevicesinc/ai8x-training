@@ -4,7 +4,7 @@
 
 # MAX78000 Network Loader and RTL Simulation Generator
 
-_August 6, 2020_
+_August 28, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A [PDF copy of this file](README.pdf) is available in this repository. The GitHub rendering of this document does not show the formulas or the clickable table of contents._
@@ -749,7 +749,7 @@ The following table describes the most important command line arguments for `tra
 | `--pr-curves`              | Generate precision-recall curves                             |                                 |
 | `--embedding`              | Display embedding (using projector)                          |                                 |
 | *Hardware*                 |                                                              |                                 |
-| `--use-bias`               | Use bias in convolution operations                           |                                 |
+| `--use-bias`               | The `bias=True` parameter is passed to the model. The effect of this parameter is model dependent (the parameter is either ignored, effective for some operations, or all operations). |                                 |
 | `--avg-pool-rounding`      | Use rounding for AvgPool                                     |                                 |
 | *Evaluation*               |                                                              |                                 |
 | `-e`, `--evaluate`         | Evaluate previously trained model                            |                                 |
