@@ -4,7 +4,7 @@
 
 # MAX78000 Network Loader and RTL Simulation Generator
 
-_June 16, 2020_
+_August 28, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A [PDF copy of this file](README.pdf) is available in this repository. The GitHub rendering of this document does not show the formulas or the clickable table of contents._
@@ -319,7 +319,7 @@ if [ $? -eq 1 ] ; then
 fi
 ```
 
-In order for the debugger to work, the OpenOCD `max32xxx` branch from [https://github.com/MaximIntegratedMicros/openocd.git](https://github.com/MaximIntegratedMicros/openocd.git) must be installed (see above for more instructions). Working configuration files are and a `run-openocd-maxdap` script are contained in the `hardware` folder of the `ai8x-synthesis` project.
+The debugger requires OpenOCD. On Windows, an OpenOCD executable is installed with the SDK. On macOS and Linux, the OpenOCD fork from [https://github.com/MaximIntegratedMicros/openocd.git](https://github.com/MaximIntegratedMicros/openocd.git) must be used. An Ubuntu 18.04 LTS binary is available at https://github.com/MaximIntegratedAI/MAX78000_SDK/blob/master/Tools/OpenOCD/openocd. *Note: A copy of the configuration files and a `run-openocd-maxdap` script are contained in the `hardware` folder of the `ai8x-synthesis` project.*
 
 `gen-demos-max78000.sh` will create code that is compatible with the SDK and copy it into the SDK’s Example directories.
 
@@ -747,7 +747,7 @@ The following table describes the most important command line arguments for `tra
 | `--pr-curves`             | Generate precision-recall curves                             |                                 |
 | `--embedding`             | Display embedding (using projector)                          |                                 |
 | *Hardware*                |                                                              |                                 |
-| `--use-bias`              | Use bias in convolution operations                           |                                 |
+| `--use-bias`              | The `bias=True` parameter is passed to the model. The effect of this parameter is model dependent (the parameter is either ignored, effective for some operations, or all operations). |                                 |
 | `--avg-pool-rounding`     | Use rounding for AvgPool                                     |                                 |
 | *Evaluation*              |                                                              |                                 |
 | `-e`, `--evaluate`        | Evaluate previously trained model                            |                                 |
@@ -1290,7 +1290,7 @@ When this key is not specified, a warning is displayed and `Conv2d` is selected.
 | `Conv1d`                  | 1D convolution over an input composed of several input planes |
 | `Conv2d`                  | 2D convolution over an input composed of several input planes |
 | `ConvTranspose2d`         | 2D transposed convolution (upsampling) over an input composed of several input planes |
-| `None` or `Passthrough`   | No operation                                                 |
+| `None` or `Passthrough`   | No operation *(note: input and output processors must be the same)* |
 | `Linear` or `FC` or `MLP` | Linear transformation to the incoming data                   |
 | `Add`                     | Element-wise addition                                        |
 | `Sub`                     | Element-wise subtraction                                     |
@@ -1335,7 +1335,7 @@ Note that `output_shift` can be used for (limited) “linear” activation.
 
 ##### `quantization` (Optional)
 
-This key describes the width of the weight memory in bits and can be `1`, `2`, `4`, or `8` (`8` is the default).
+This key describes the width of the weight memory in bits and can be `1`, `2`, `4`, or `8` (the default is based on the range of the layer’s weights). Specifying a `quantization` that is smaller than what the weights require results in an error message.
 
 Example:
 	`quantization: 4`
@@ -1349,11 +1349,11 @@ The 32-bit intermediate result is multiplied by $2^{totalshift}$, where the tota
 | quantization | implicit shift | range for `output_shift` |
 | ------------ | -------------- | ------------------------ |
 | 8-bit        | 0              | $[-15, +15]$             |
-| 4-bit        | 1              | $[-16, +14]$             |
-| 2-bit        | 2              | $[-17, +13]$             |
-| 1-bit        | 3              | $[-18, +12]$             |
+| 4-bit        | 4              | $[-19, +11]$             |
+| 2-bit        | 6              | $[-21, +9]$              |
+| 1-bit        | 7              | $[-22, +8]$              |
 
-Using `output_shift` can help normalize data, particularly when using small weights.
+Using `output_shift` can help normalize data, particularly when using small weights. By default, `output_shift` is generated by the training software.
 
 Example:
 	`output_shift: 2`
@@ -1456,6 +1456,13 @@ Example:
 Example:
 	`flatten: true`
 
+##### `write_gap` (Optional)
+
+`write_gap` specifies the number of words that should be skipped during write operations (i.e., write every *n*th word). This creates an interleaved output that can be used as the input for subsequent layers that use element-wise operations.
+
+Example:
+	`write_gap: 1`
+
 #### Example
 
 The following shows an example for a single “Fire” operation, the MAX78000/MAX78002 hardware layer numbers and its YAML description.
@@ -1519,6 +1526,54 @@ layers:
   output_width: 32
 ```
 
+#### Residual Connections
+
+Many networks use residual connections. In the following example, the convolution on the right works on the output data of the first convolution. However, that same output data also “bypasses” the second convolution and is added to the output.
+
+<img src="docs/residual-basic.png" alt="residual-basic" style="zoom:33%;" />
+
+On MAX78000/MAX78002, the element-wise addition works on “interleaved data”, i.e., each machine fetch gathers one operand.
+
+In order to achieve this, a layer must be inserted that does nothing else but reformat the data into interleaved format using the `write_gap` keyword (this operation happens in parallel and is fast).
+
+```yaml
+# Layer 1
+- out_offset: 0x0000
+  processors: 0x0ffff00000000000
+  operation: conv2d
+  kernel_size: 3x3
+  pad: 1
+  activate: ReLU
+
+# Layer 2 - re-format data with gap
+- out_offset: 0x2000
+  processors: 0x00000000000fffff
+  output_processors: 0x00000000000fffff
+  operation: passthrough
+  write_gap: 1
+
+# Layer 3
+- in_offset: 0x0000
+  out_offset: 0x2004
+  processors: 0x00000000000fffff
+  operation: conv2d
+  kernel_size: 3x3
+  pad: 1
+  activate: ReLU
+  write_gap: 1
+
+# Layer 4 - Residual
+- in_sequences: [2, 3]
+  in_offset: 0x2000
+  out_offset: 0x0000
+  processors: 0x00000000000fffff
+  eltwise: add
+  ...
+```
+
+The same network can also be viewed graphically:
+
+<img src="docs/residual.png" alt="residual" style="zoom:38%;" />
 
 ### Adding New Models and New Datasets to the Network Loader
 
