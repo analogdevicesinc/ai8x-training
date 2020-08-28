@@ -28,7 +28,7 @@ class Logger():
         """
         write to file
         """
-        with open(self.filename, "a") as self.log:
+        with open(self.filename, "w+") as self.log:
             self.log.write(message)
         self.terminal.write(message)
 
