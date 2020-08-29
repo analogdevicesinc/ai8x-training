@@ -19,7 +19,7 @@ import argparse
 import tensorflow as tf
 import numpy as np
 
-# following piece it to init seed to make reproducable results
+# following piece it to init seed to make reproducible results
 os.environ['PYTHONHASHSEED'] = '0'
 np.random.seed(10)
 rn.seed(100)
@@ -81,7 +81,19 @@ parser.add_argument(
     action='store_true',
     dest='save_sample_per_class',
     default=False,
-    help='save one sample with confidence >0.9 for each class')
+    help='save one sample with confidence >0.75 for each class')
+parser.add_argument(
+    '--channel-first',
+    action='store_true',
+    dest='channelfirst',
+    default=False,
+    help='samples will be saved in channel-first format [default:channel-last]')
+parser.add_argument(
+    '--swap-hw',
+    action='store_true',
+    dest='swap',
+    default=False,
+    help='samples will be saved in WH format[default:HW]')
 args = parser.parse_args()
 
 # parser.print_help()
@@ -120,6 +132,39 @@ class Logger():
         pass  # pylint: disable=unnecessary-pass
 
 
+def reformat_sample(image, first=True, swapped=False):
+    """
+    reformat image from Tensorflow default HWC formating
+    """
+
+    if not first:
+        # print('only works in channel is moved from last to first')
+        formating = 'NHWC'
+        return formating, image
+
+    # if image is NHWC, N is 1. Remove N and
+    if image.ndim == 4:
+        image = image.reshape(image.shape[1], image.shape[2],
+                              image.shape[3])
+        print('removed N:', image.shape)
+        image = image.swapaxes(0, 2)
+        print('converted to cwh:', image.shape)
+        formating = 'CWH'
+        if not swapped:
+            image = image.swapaxes(1, 2)
+            print('converted to chw:', image.shape)
+            formating = 'CHW'
+    elif image.ndim == 3:
+        image = image.swapaxes(0, 2)
+        print('converted to cwh:', image.shape)
+        formating = 'CWH'
+        if not swapped:
+            image = image.swapaxes(0, 1)
+            print('converted to chw:', image.shape)
+            formating = 'CHW'
+    return formating, image
+
+
 if __name__ == '__main__':
     script_dir = os.path.dirname(__file__)
 
@@ -133,6 +178,8 @@ if __name__ == '__main__':
     sample_index = args.generate_sample
     metrics = args.metrics
     save_sample_per_class = args.save_sample_per_class
+    channelfirst = args.channelfirst
+    swap = args.swap
 
     # Log stdout to file
     foldername = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -280,7 +327,7 @@ if __name__ == '__main__':
     print("Check prediction for some indexes:")
     selected = 0
 
-    num_samples = 3 if not save_sample_per_class else test_labels.size
+    num_samples = 1 if not save_sample_per_class else test_labels.size
     for i in range(num_samples):
         index = randint(0, test_labels.size-1)
 
@@ -288,7 +335,7 @@ if __name__ == '__main__':
             continue
         conf = predict_soft[index][predict_soft_index[index]]
         # only for classes with high confidence
-        if save_sample_per_class and conf < 0.90:
+        if save_sample_per_class and conf < 0.75:
             continue
 
         print("\t\nindex: %d: predicted: %d(%.2f) actual: %d" % (index, predict[index], conf,
@@ -310,21 +357,24 @@ if __name__ == '__main__':
         )
 
         # save sample data and all predictions in [-0.5,0.5] range
-        np.savez(
-            logdir + '/sampledata_class_' +
-            f"{test_labels[index]}_all_predictions",
-            sample_image=sample_image,
-            prediction=prediction)
+        # np.savez(
+        #    logdir + '/sampledata_class_' +
+        #    f"{test_labels[index]}_all_predictions",
+        #    sample_image=sample_image,
+        #    prediction=prediction)
 
         # scale back image to [-128,127] before storing to a file
         sample_image = sample_image * 256
 
         print(f'\tSaving sample image in [{sample_image.min()},{sample_image.max()}] range')
 
+        # reformat as needed
+        form, sample_image = reformat_sample(sample_image, channelfirst, swap)
+
         # save as pty
-        np.save(logdir +
-                '/sampledata_class-' + f"{test_labels[index]}_pred-{np.argmax(prediction)}_NHWC",
-                np.array(sample_image, dtype=np.int32))
+        path = os.path.join(logdir, 'sampledata_class-' +
+                            f'{test_labels[index]}_pred-{np.argmax(prediction)}_' + form)
+        np.save(path, np.array(sample_image, dtype=np.int32))
 
         # end if one sample per class is saved
         if save_sample_per_class and selected > len(class_names):
@@ -356,12 +406,23 @@ if __name__ == '__main__':
     # save a copy of sample data in export dir
     if sample_index:
         index = sample_index
+
+        print(f'Saving a sampledata file of index {index} into export dir')
         sample_image = np.expand_dims(
             np.array(test_images[index], dtype=np.float32), 0)
         prediction = model.predict(sample_image)
-        np.save(expdir +
-                '/sampledata_class-' + f"{test_labels[index]}_pred-{np.argmax(prediction)}_NHWC",
+
+        # reformat as needed
+        form, sample_image = reformat_sample(sample_image, channelfirst, swap)
+
+        np.save(os.path.join(expdir, 'sampledata'),
                 np.array(sample_image * 256, dtype=np.int32))
+        fn = open(os.path.join(expdir, 'sampledata.log'), 'w+')
+        print(f'index: {index}\nactual class:{test_labels[index]}')
+        fn.writelines(f'index: {index}\nactual class:{test_labels[index]}\n')
+        print(f'predicted:{np.argmax(prediction)}\npredictions:\n{prediction}')
+        fn.writelines(f'predicted:{np.argmax(prediction)}\npredictions:\n{prediction}\n')
+        fn.close()
 
     # print graphical model
     tf.keras.utils.plot_model(
