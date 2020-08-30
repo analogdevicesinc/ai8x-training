@@ -57,12 +57,13 @@ if not os.path.isdir(logdir):
 sys.stdout = Logger(os.path.join(logdir, 'result.log'))
 
 # Init input samples
-test_input = np.random.normal(0, 0.5, size=(7,7))
+#test_input = np.random.normal(0, 0.5, size=(7,7))
+test_input = np.arange(0,63,1).reshape(9,7)/128.0
 
 print (test_input.shape)
 test_input = clamp(np.floor(test_input*128+0.5))/128.0
 print (test_input.shape)
-test_input = np.reshape(test_input,(1, 7, 7))
+test_input = np.reshape(test_input,(1, 9, 7))
 print ('Test Input shape', test_input.shape)
 print('Test Input', test_input)
 
@@ -77,8 +78,8 @@ init_bias = np.array([0.5])
 bias_initializer = tf.keras.initializers.constant(init_bias)
 
 # Create functional model
-input_layer = tf.keras.Input(shape=(7,7))
-reshape = tf.keras.layers.Reshape(target_shape=(7,7))(input_layer)
+input_layer = tf.keras.Input(shape=(9,7))
+reshape = tf.keras.layers.Reshape(target_shape=(9,7))(input_layer)
 conv1 = ai8xTF.FusedAvgPoolConv1DReLU(
     filters=2,
     kernel_size=1,
@@ -122,14 +123,16 @@ tf.saved_model.save(model,'saved_model')
 
 saved_input = clamp(np.floor(test_input*128+0.5))
 print('Input(8-bit)\n:', saved_input)
-#saved_input = saved_input.flatten()
-saved_input = saved_input.swapaxes(0,2)
-#saved_input = saved_input.swapaxes(0,1)
+
+#saved_input = saved_input.swapaxes(0,2)
+saved_input = saved_input.reshape(9,7)
+saved_input = saved_input.swapaxes(0,1) #swap row,col
+print('Saved Input(8-bit) for izer\n:', saved_input)
 
 
 print(saved_input.shape)
 # Save input
-np.save (os.path.join(logdir, 'input_sample_7x7x1.npy'), np.array(saved_input, dtype=np.int32))
+np.save (os.path.join(logdir, 'input_sample_7x9.npy'), np.array(saved_input, dtype=np.int32))
 print('Output(8-bit)\n:', clamp(np.floor(output*128+0.5)))
 
 exit(0)
