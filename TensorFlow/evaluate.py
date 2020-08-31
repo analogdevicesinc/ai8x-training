@@ -42,6 +42,13 @@ parser.add_argument(
     dest='dataset',
     type=str,
     help='dataset for the model')
+parser.add_argument(
+    '--inputs-as-nchw',
+    action='store_true',
+    required=False,
+    dest='nchw',
+    default=False,
+    help='onnx model input is nchw (default:false)')
 args = parser.parse_args()
 
 
@@ -82,6 +89,7 @@ if __name__ == '__main__':
 
     onnx_file = args.onnx_file
     model_dataset = args.dataset
+    nchw = args.nchw
 
     # Log stdout to file
     foldername = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -122,6 +130,21 @@ if __name__ == '__main__':
     train_images = train_images/256.0
     valid_images = valid_images/256.0
     test_images = test_images/256.0
+
+    if nchw:
+        ndim = train_images.ndim
+        print(ndim)
+        if ndim in (3, 4):
+            train_images = train_images.swapaxes(1, ndim-1)
+            valid_images = valid_images.swapaxes(1, ndim-1)
+            test_images = test_images.swapaxes(1, ndim-1)
+
+            train_images = train_images.swapaxes(ndim-1, ndim-2)
+            valid_images = valid_images.swapaxes(ndim-1, ndim-2)
+            test_images = test_images.swapaxes(ndim-1, ndim-2)
+        else:
+            print("Error: ndim should be 3 or 4!")
+            sys.exit(0)
 
     # Inference session
     sess = rt.InferenceSession(onnx_file)
