@@ -1027,6 +1027,30 @@ $ bash evaluate_ALL.sh
 
 ## MAX78000 synthesis
 
+To quantize TensorFlow model and synthesize MAX78000 C source code from ONNX file execute the following command (MNIST example) :
+
+```bash
+$ (ai8x-synthesis) ./ai8xize.py --verbose -L --top-level cnn --test-dir tensorflow --prefix tf-mnist --checkpoint-file ../ai8x-training/TensorFlow/export/mnist/saved_model.onnx --config-file ./networks/mnist-chw-ai85-tf.yaml --sample-input ../ai8x-training/TensorFlow/export/mnist/sampledata.npy --device MAX78000 --compact-data --mexpress --embedded-code --scale 1.0 --softmax --display-checkpoint $@
+```
+
+It requires three input files:
+
+**/ai8x-training/TensorFlow/export/mnist/saved_model.onnx**  -  ONNX presentation of TensorFlow model
+
+**/ai8x-synthesis/networks/mnist-chw-ai85-tf.yaml** -  YAML description of the model
+
+**/ai8x-training/TensorFlow/export/mnist/sampledata.npy** -  input data sample file
+
+Other used options are described in section "Network Loader (AI8Xize)" of  **[1]** 
+
+Generated C code is stored in **/ai8x-synthesis/tensorflow/tf-mnist/** directory.
+
+To generate MAX78000 C source code for all TensorFlow examples execute following script:
+
+```bash
+$ (ai8x-synthesis) bash gen-tf-demos-max78000.sh
+```
+
 
 
 ## References
