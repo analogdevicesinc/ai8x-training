@@ -859,7 +859,7 @@ export/kws20/saved_model.onnx
 
 
 
-### Rock-Paper-Scissors model
+### Rock-Paper-Scissor model
 
 This model demonstrates recognition of images of hands playing rock, paper, scissor popular game. 
 
@@ -1030,7 +1030,7 @@ $ bash evaluate_ALL.sh
 To quantize TensorFlow model and synthesize MAX78000 C source code from ONNX file execute the following command (MNIST example) :
 
 ```bash
-$ (ai8x-synthesis) ./ai8xize.py --verbose -L --top-level cnn --test-dir tensorflow --prefix tf-mnist --checkpoint-file ../ai8x-training/TensorFlow/export/mnist/saved_model.onnx --config-file ./networks/mnist-chw-ai85-tf.yaml --sample-input ../ai8x-training/TensorFlow/export/mnist/sampledata.npy --device MAX78000 --compact-data --mexpress --embedded-code --scale 1.0 --softmax --display-checkpoint $@
+$ (ai8x-synthesis) ./ai8xize.py --verbose -L --top-level cnn --test-dir tensorflow --prefix tf-mnist --checkpoint-file ../ai8x-training/TensorFlow/export/mnist/saved_model.onnx --config-file ./networks/mnist-chw-ai85-tf.yaml --sample-input ../ai8x-training/TensorFlow/export/mnist/sampledata.npy --device MAX78000 --compact-data --mexpress --embedded-code --keep-first --scale 1.0 --softmax --display-checkpoint $@
 ```
 
 It requires three input files:
@@ -1039,9 +1039,14 @@ It requires three input files:
 
 **/ai8x-synthesis/networks/mnist-chw-ai85-tf.yaml** -  YAML description of the model
 
-**/ai8x-training/TensorFlow/export/mnist/sampledata.npy** -  input data sample file
+**/ai8x-training/TensorFlow/export/mnist/sampledata.npy** -  Input data sample file
 
-Other used options are described in section "Network Loader (AI8Xize)" of  **[1]** 
+| Parameter    | Description                                                  |
+| ------------ | ------------------------------------------------------------ |
+| --keep-first | If present it applies same scale factor of weights at the first layer as specified in **--scale**, otherwise a scale factor at first layer is 0.5 |
+| --scale      | Scale factor of weight's quantization                        |
+
+Other used parameters are described in section "Network Loader (AI8Xize)" of  **[1]** 
 
 Generated C code is stored in **/ai8x-synthesis/tensorflow/tf-mnist/** directory.
 
