@@ -1,4 +1,4 @@
-# TensorFlow 2 Support
+# TensorFlow 2.3.0 Support
 
 
 
@@ -65,6 +65,7 @@ export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/cuda-10.1/extras/CUPTI/lib64
 | FusedMaxPoolConv2DTransposeReLU | MaxPool2D, followed by Conv2DTranspose with activation as 'relu', padding_size=0 |
 | FusedAvgPoolConv2DTranspose     | AveragePooling2D, followed by Conv2DTranspose with activation as None, padding_size=0 |
 | FusedAvgPoolConv2DTransposeReLU | AveragePooling2D followed by Conv2DTranspose with activation as 'relu', padding_size=0 |
+|                                 |                                                              |
 | Dense                           | Generic Dense                                                |
 | FusedDense                      | Dense with activation as None                                |
 | FusedDenseReLU                  | Dense with activation as 'relu'                              |
@@ -151,6 +152,8 @@ User can modify following training command-line parameters:
 | --dataset               | Dataset name                                                 |
 | --save-sample           | Save input sample with specified index in **.npy** format in **/export/** folder for verification in synthesis in |
 | --save-sample-per-class | Save one input sample for each class in **.npy** format in **logs** folder to be used for verification |
+| --channel-first         | Save sample in channel first format in multi-channel cases (default: channel last as native form on Tensorflow), suitable to be used by synthesis script (NCHW) |
+| --swap                  | if --channel-first is selected,  this option swaps order of H,W in saved sample data. This is only needed if first layer is a conv1d. (default: no swap) |
 | --metrics               | Metrics used in compiling model (default: accuracy)          |
 
 
@@ -197,9 +200,11 @@ datasets/mnist.py
 datasets/rock.py
 ```
 
-datasets include training, validation and test images and labels. Images are in [-128,127] range when created by dataset scripts.
+Datasets include training, validation and test images and labels. Images are in [-128,127] range when created by dataset scripts.
 
-In training script, they are normalized to [-0.5,0.5] and fed to the network.
+In training script, they are normalized to [-0.5,0.5] and fed to the network. However, in synthesis script, samples are expected in [-128,127] range and normalized to [-1,+1] range to mimic hardware. To accommodate x2 scaling, the first layer weights are scaled by 1/2 by default, unless **--keep-first** is selected in synthesis.
+
+
 
 ## Examples
 
@@ -993,25 +998,13 @@ export/rock/saved_model.onnx
 
 ## Post-training model quantization
 
-To quantize weights execute following script (MNIST example):
-
-```bash
-$ bash quantize_mnist.sh
-```
-
-The MNIST ONNX model with quantized weights is stored in **/export/mnist/** directory.
-
-Alternatively, the user can quantize all model examples by running bash script:
-
-```bash
-$ bash quantize_ALL.sh
-```
+The synthesis script quantizes the weights from provided onnx file internally. if needed to run through evaluation, it can be run with **--generate-dequantized-onnx-file** and it will regenerate a dequantized onnx file that can be used with onnx runtime for evaluation.
 
 
 
 ## Model evaluation
 
-After quantization the model can be evaluated and compared with unquantized model (MNIST example) :
+After quantization, the dequantized model can be evaluated and compared with unquantized model (MNIST example) :
 
 ```bash
 $ bash evaluate_mnist.sh
@@ -1030,7 +1023,7 @@ $ bash evaluate_ALL.sh
 To quantize TensorFlow model and synthesize MAX78000 C source code from ONNX file execute the following command (MNIST example) :
 
 ```bash
-$ (ai8x-synthesis) ./ai8xize.py --verbose -L --top-level cnn --test-dir tensorflow --prefix tf-mnist --checkpoint-file ../ai8x-training/TensorFlow/export/mnist/saved_model.onnx --config-file ./networks/mnist-chw-ai85-tf.yaml --sample-input ../ai8x-training/TensorFlow/export/mnist/sampledata.npy --device MAX78000 --compact-data --mexpress --embedded-code --keep-first --scale 1.0 --softmax --display-checkpoint $@
+$ (ai8x-synthesis) ./ai8xize.py --verbose -L --top-level cnn --test-dir tensorflow --prefix tf-mnist --checkpoint-file ../ai8x-training/TensorFlow/export/mnist/saved_model.onnx --config-file ./networks/mnist-chw-ai85-tf.yaml --sample-input ../ai8x-training/TensorFlow/export/mnist/sampledata.npy --device MAX78000 --compact-data --mexpress --embedded-code --scale 1.0 --softmax --display-checkpoint $@
 ```
 
 It requires three input files:
@@ -1041,10 +1034,11 @@ It requires three input files:
 
 **/ai8x-training/TensorFlow/export/mnist/sampledata.npy** -  Input data sample file
 
-| Parameter    | Description                                                  |
-| ------------ | ------------------------------------------------------------ |
-| --keep-first | If present it applies same scale factor of weights at the first layer as specified in **--scale**, otherwise a scale factor at first layer is 0.5 |
-| --scale      | Scale factor of weight's quantization                        |
+| Parameter                        | Description                                                  |
+| -------------------------------- | ------------------------------------------------------------ |
+| --keep-first                     | If present, it applies same scale factor of weights as specified in **--scale** to the first layer, otherwise half of the scale factor is applied to the first layer. See Datasets section. |
+| --scale                          | Scale factor of weight's quantization (default =1)           |
+| --generate-dequantized-onnx-file | Generates a dequantized copy of the onnx file to be used for evaluation. See Post-training model quantization section. |
 
 Other used parameters are described in section "Network Loader (AI8Xize)" of  **[1]** 
 
@@ -1055,6 +1049,16 @@ To generate MAX78000 C source code for all TensorFlow examples execute following
 ```bash
 $ (ai8x-synthesis) bash gen-tf-demos-max78000.sh
 ```
+
+
+
+### Expected shape of input data sample file:
+
+| Example                                                      | Tensorflow dataset native shape | Synthesis expected shape | commandline option for training to generate expected sample file shape |
+| ------------------------------------------------------------ | ------------------------------- | ------------------------ | ------------------------------------------------------------ |
+| mnist, fashionmnist (or cases with conv2d as input with 1 channel) | (1,28,28)                       | same:  (1,28,28)         | none                                                         |
+| cifar10, cifar100, (or cases with conv2d as input with multiple channels like rock) | (1,32,32,3)                     | channel first: (3,32,32) | --channel-first                                              |
+| kws20 (or cases with conv1d as input)                        | (1,128,128)                     | channel first: (128,128) | -- channel-first --swap                                      |
 
 
 
