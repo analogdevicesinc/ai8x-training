@@ -27,7 +27,7 @@ export PATH="$PATH:/usr/local/cuda-10.1/bin"
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/cuda-10.1/extras/CUPTI/lib64"
 ```
 
-3- To create a virtual environment please refer to section "Creating the Virtual Environment" of **[1]** document.
+3- To create a virtual environment please refer to section "Creating the Virtual Environment" of **[1]** document, including installation of ai8x-training and  ai8x-synthesis requirements.
 
 
 
