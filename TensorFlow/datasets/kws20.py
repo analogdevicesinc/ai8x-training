@@ -353,7 +353,7 @@ class KWS:
             data_len = 128 * 128
             print('data_len: %s' % data_len)
 
-            aug_num = 0  # No dataset augmentation
+            aug_num = 1  # No dataset augmentation
 
             if aug_num == 0:
                 print('No augmentation added')
@@ -428,10 +428,10 @@ class KWS:
                     record_pth = os.path.join(test_data_path, label, record)
                     y, fs = librosa.load(record_pth, offset=0, sr=None)
                     audio_list = self.augment_multiple(
-                        y, fs, aug_num, verbose=True)
+                        y, fs, aug_num, verbose=False)
                     for n_a, y in enumerate(audio_list):
                         # store set type: train, validate or test
-                        assert n_a == 0
+                        assert n_a < 3
 
                         if y.size >= data_len:
                             y = y[:data_len]
