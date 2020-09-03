@@ -481,6 +481,14 @@ class FusedMaxPoolConv2d(Conv2d):
         super(FusedMaxPoolConv2d, self).__init__(*args, pooling='Max', **kwargs)
 
 
+class FusedMaxPoolConv2dBN(FusedMaxPoolConv2d):
+    """
+    AI8X - Fused 2D Max Pool, 2D Convolution, BatchNorm and Activation ('ReLU', 'Abs', None)
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedMaxPoolConv2dBN, self).__init__(*args, batchnorm='NoAffine', **kwargs)
+
+
 class FusedMaxPoolConv2dReLU(FusedMaxPoolConv2d):
     """
     AI8X - Fused 2D Max Pool, 2D Convolution and ReLU
@@ -503,6 +511,14 @@ class FusedMaxPoolConv2dAbs(FusedMaxPoolConv2d):
     """
     def __init__(self, *args, **kwargs):
         super(FusedMaxPoolConv2dAbs, self).__init__(*args, activation='Abs', **kwargs)
+
+
+class FusedMaxPoolConv2dBNAbs(FusedMaxPoolConv2dAbs):
+    """
+    AI8X - Fused 2D Max Pool, 2D Convolution, BatchNorm and Abs
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedMaxPoolConv2dBNAbs, self).__init__(*args, batchnorm='NoAffine', **kwargs)
 
 
 class MaxPool2d(FusedMaxPoolConv2d):
@@ -531,12 +547,28 @@ class FusedAvgPoolConv2dReLU(FusedAvgPoolConv2d):
         super(FusedAvgPoolConv2dReLU, self).__init__(*args, activation='ReLU', **kwargs)
 
 
+class FusedAvgPoolConv2dBNReLU(FusedAvgPoolConv2dReLU):
+    """
+    AI8X - Fused 2D Avg Pool, 2D Convolution, BatchNorm and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedAvgPoolConv2dBNReLU, self).__init__(*args, batchnorm='NoAffine', **kwargs)
+
+
 class FusedAvgPoolConv2dAbs(FusedAvgPoolConv2d):
     """
     AI8X - Fused 2D Avg Pool, 2D Convolution and Abs
     """
     def __init__(self, *args, **kwargs):
         super(FusedAvgPoolConv2dAbs, self).__init__(*args, activation='Abs', **kwargs)
+
+
+class FusedAvgPoolConv2dBNAbs(FusedAvgPoolConv2dAbs):
+    """
+    AI8X - Fused 2D Avg Pool, 2D Convolution, BatchNorm and Abs
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedAvgPoolConv2dBNAbs, self).__init__(*args, batchnorm='NoAffine', **kwargs)
 
 
 class AvgPool2d(FusedAvgPoolConv2d):
@@ -843,6 +875,14 @@ class FusedMaxPoolConv1d(Conv1d):
         super(FusedMaxPoolConv1d, self).__init__(*args, pooling='Max', **kwargs)
 
 
+class FusedMaxPoolConv1dBN(FusedMaxPoolConv1d):
+    """
+    AI8X - Fused 1D Max Pool, 1D Convolution, BatchNorm and Activation ('ReLU', 'Abs', None)
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedMaxPoolConv1dBN, self).__init__(*args, batchnorm='NoAffine', **kwargs)
+
+
 class FusedMaxPoolConv1dReLU(FusedMaxPoolConv1d):
     """
     AI8X - Fused 1D Max Pool, 1D Convolution and ReLU
@@ -851,12 +891,34 @@ class FusedMaxPoolConv1dReLU(FusedMaxPoolConv1d):
         super(FusedMaxPoolConv1dReLU, self).__init__(*args, activation='ReLU', **kwargs)
 
 
+class FusedMaxPoolConv1dBNReLU(FusedMaxPoolConv1dReLU):
+    """
+    AI8X - Fused 1D Max Pool, 1D Convolution, BatchNorm and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        if 'batchnorm' in kwargs:
+            super(FusedMaxPoolConv1dBNReLU, self).__init__(*args, **kwargs)
+        else:
+            super(FusedMaxPoolConv1dBNReLU, self).__init__(*args, batchnorm='NoAffine', **kwargs)
+
+
 class FusedMaxPoolConv1dAbs(FusedMaxPoolConv1d):
     """
     AI8X - Fused 1D Max Pool, 1D Convolution and Abs
     """
     def __init__(self, *args, **kwargs):
         super(FusedMaxPoolConv1dAbs, self).__init__(*args, activation='Abs', **kwargs)
+
+
+class FusedMaxPoolConv1dBNAbs(FusedMaxPoolConv1d):
+    """
+    AI8X - Fused 1D Max Pool, 1D Convolution, BatchNorm and Abs
+    """
+    def __init__(self, *args, **kwargs):
+        if 'batchnorm' in kwargs:
+            super(FusedMaxPoolConv1dBNAbs, self).__init__(*args, **kwargs)
+        else:
+            super(FusedMaxPoolConv1dBNAbs, self).__init__(*args, batchnorm='NoAffine', **kwargs)
 
 
 class MaxPool1d(FusedMaxPoolConv1d):
@@ -885,12 +947,31 @@ class FusedAvgPoolConv1dReLU(FusedAvgPoolConv1d):
         super(FusedAvgPoolConv1dReLU, self).__init__(*args, activation='ReLU', **kwargs)
 
 
+class FusedAvgPoolConv1dBNReLU(FusedAvgPoolConv1dReLU):
+    """
+    AI8X - Fused 1D Avg Pool, 1D Convolution, BatchNorm and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        if 'batchnorm' in kwargs:
+            super(FusedAvgPoolConv1dBNReLU, self).__init__(*args, **kwargs)
+        else:
+            super(FusedAvgPoolConv1dBNReLU, self).__init__(*args, batchnorm='NoAffine', **kwargs)
+
+
 class FusedAvgPoolConv1dAbs(FusedAvgPoolConv1d):
     """
     AI8X - Fused 1D Avg Pool, 1D Convolution and Abs
     """
     def __init__(self, *args, **kwargs):
         super(FusedAvgPoolConv1dAbs, self).__init__(*args, activation='Abs', **kwargs)
+
+
+class FusedAvgPoolConv1dBNAbs(FusedAvgPoolConv1d):
+    """
+    AI8X - Fused 1D Avg Pool, 1D Convolution, BatchNorm and Abs
+    """
+    def __init__(self, *args, **kwargs):
+        super(FusedAvgPoolConv1dBNAbs, self).__init__(*args, batchnorm='NoAffine', **kwargs)
 
 
 class AvgPool1d(FusedAvgPoolConv1d):
@@ -911,12 +992,34 @@ class FusedConv1dReLU(Conv1d):
         super(FusedConv1dReLU, self).__init__(*args, activation='ReLU', **kwargs)
 
 
+class FusedConv1dBNReLU(FusedConv1dReLU):
+    """
+    AI8X - Fused 1D Convolution, BatchNorm and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        if 'batchnorm' in kwargs:
+            super(FusedConv1dBNReLU, self).__init__(*args, **kwargs)
+        else:
+            super(FusedConv1dBNReLU, self).__init__(*args, batchnorm='NoAffine', **kwargs)
+
+
 class FusedConv1dAbs(Conv1d):
     """
     AI8X - Fused 1D Convolution and Abs
     """
     def __init__(self, *args, **kwargs):
         super(FusedConv1dAbs, self).__init__(*args, activation='Abs', **kwargs)
+
+
+class FusedConv1dBNAbs(FusedConv1dAbs):
+    """
+    AI8X - Fused 1D Convolution, BatchNorm and Abs
+    """
+    def __init__(self, *args, **kwargs):
+        if 'batchnorm' in kwargs:
+            super(FusedConv1dBNAbs, self).__init__(*args, **kwargs)
+        else:
+            super(FusedConv1dBNAbs, self).__init__(*args, batchnorm='NoAffine', **kwargs)
 
 
 class Eltwise(nn.Module):

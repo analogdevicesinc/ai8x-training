@@ -283,9 +283,19 @@ def main():
     # We can optionally resume from a checkpoint
     optimizer = None
     if args.resumed_checkpoint_path:
+        if args.qat:
+            checkpoint = torch.load(args.resumed_checkpoint_path,
+                                    map_location=lambda storage, loc: storage)
+            if checkpoint.get('epoch', None) >= args.start_qat_epoch:
+                ai8x.fuse_bn_layers(model)
         model, compression_scheduler, optimizer, start_epoch = apputils.load_checkpoint(
             model, args.resumed_checkpoint_path, model_device=args.device)
     elif args.load_model_path:
+        if args.qat:
+            checkpoint = torch.load(args.load_model_path,
+                                    map_location=lambda storage, loc: storage)
+            if checkpoint.get('epoch', None) >= args.start_qat_epoch:
+                ai8x.fuse_bn_layers(model)
         model = apputils.load_lean_checkpoint(model, args.load_model_path,
                                               model_device=args.device)
 
@@ -414,7 +424,12 @@ def main():
 
             # Re-initialize optimizer
             optimizer_state = optimizer.state_dict()
+            initial_lr = optimizer_state['param_groups'][0]['initial_lr']
             optimizer = create_optimizer(model, args)
+            # Load previous state, except parameter group 0, preserving initial_lr
+            param_group_0 = optimizer.state_dict()['param_groups'][0]
+            optimizer_state['param_groups'][0] = param_group_0
+            optimizer_state['param_groups'][0]['initial_lr'] = initial_lr
             optimizer.load_state_dict(optimizer_state)
 
             for _, val in compression_scheduler.policies.items():
