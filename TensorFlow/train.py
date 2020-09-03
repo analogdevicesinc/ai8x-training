@@ -253,14 +253,27 @@ if __name__ == '__main__':
     print("valid_labels shape:", valid_labels.shape)
     print("test_labels shape:", test_labels.shape)
 
+    # Shuffle data
+    pattern = np.arange(0, train_labels.size)
+    # print(pattern.shape)
+    np.random.shuffle(pattern)
+    train_images = train_images[pattern]
+    train_labels = train_labels[pattern]
+
+    pattern = np.arange(0, valid_labels.size)
+    # print(pattern.shape)
+    np.random.shuffle(pattern)
+    valid_images = valid_images[pattern]
+    valid_labels = valid_labels[pattern]
+
     # Normalize data to [-0.5, 0.5] range
     print('Normalize image to [-0.5,0.5] range')
     train_images = train_images/256.0
     valid_images = valid_images/256.0
     test_images = test_images/256.0
 
-    print("train_images min:", train_images.min())
-    print("train_image max:", train_images.max())
+    # print("train_images min:", train_images.min())
+    # print("train_image max:", train_images.max())
     # print("train_labels min:", train_labels.min())
     # print("train_labels max:", train_labels.max())
 
