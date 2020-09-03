@@ -68,7 +68,8 @@ def get_parser(model_names, dataset_names):
     parser.add_argument('--kernel-stats', action='store_true', default=False,
                         help='compute kernel statistics')
     parser.add_argument('--use-bias', action='store_true', default=False,
-                        help='use bias in convolution operations')
+                        help='for models that support both bias and no bias, set the '
+                             '`use bias` flag to true')
     parser.add_argument('--avg-pool-rounding', action='store_true', default=False,
                         help='when simulating, use "round()" in AvgPool operations '
                              '(default: use "floor()")')
