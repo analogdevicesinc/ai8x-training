@@ -212,7 +212,7 @@ $ source bin/activate
 
 The next step differs depending on whether the system uses Linux with CUDA 10.1, or any other setup.
 
-For TensorFlow with CUDA 10.1 on Linux:
+For TensorFlow with CUDA 10.1 or 10.2 on Linux:
 
 ```
 (ai8x-training) $ cd TensorFlow
