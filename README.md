@@ -219,7 +219,7 @@ For TensorFlow with CUDA 10.1 or 10.2 on Linux:
 (ai8x-training) $ pip3 install -r requirements_TF.txt
 ```
 
-For Pytorch with  CUDA 10.1 on Linux:
+For PyTorch with  CUDA 10.1 on Linux:
 
 ```shell
 (ai8x-training) $ pip3 install -r requirements-cu101.txt
