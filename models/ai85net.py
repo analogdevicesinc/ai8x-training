@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2019-2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -21,7 +21,7 @@ class AI85Net5(nn.Module):
     """
     def __init__(self, num_classes=10, num_channels=3, dimensions=(28, 28),
                  planes=60, pool=2, fc_inputs=12, bias=False):
-        super(AI85Net5, self).__init__()
+        super().__init__()
 
         # Limits
         assert planes + num_channels <= ai8x.dev.WEIGHT_INPUTS
@@ -85,7 +85,7 @@ class AI85NetExtraSmall(nn.Module):
     """
     def __init__(self, num_classes=10, num_channels=3, dimensions=(28, 28),
                  fc_inputs=8, bias=False):
-        super(AI85NetExtraSmall, self).__init__()
+        super().__init__()
 
         # AI84 Limits
         assert dimensions[0] == dimensions[1]  # Only square supported

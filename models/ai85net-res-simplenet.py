@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -28,7 +28,7 @@ class AI85ResidualSimpleNet(nn.Module):
             dimensions=(32, 32),  # pylint: disable=unused-argument
             bias=False,
     ):
-        super(AI85ResidualSimpleNet, self).__init__()
+        super().__init__()
 
         self.conv1 = ai8x.FusedConv2dReLU(num_channels, 16, 3, stride=1, padding=1, bias=bias)
         self.conv2 = ai8x.FusedConv2dReLU(16, 20, 3, stride=1, padding=1, bias=bias)
@@ -55,23 +55,23 @@ class AI85ResidualSimpleNet(nn.Module):
                                   wide=True)
 
     def forward(self, x):  # pylint: disable=arguments-differ
-        x = self.conv1(x)         # 16x32x32
-        x_res = self.conv2(x)     # 20x32x32
-        x = self.conv3(x_res)     # 20x32x32
-        x = self.resid1(x, x_res) # 20x32x32
-        x = self.conv4(x)         # 20x32x32
-        x_res = self.conv5(x)     # 20x16x16
-        x = self.conv6(x_res)     # 20x16x16
-        x = self.resid2(x, x_res) # 20x16x16
-        x = self.conv7(x)         # 44x16x16
-        x_res = self.conv8(x)     # 48x8x8
-        x = self.conv9(x_res)     # 48x8x8
-        x = self.resid3(x, x_res) # 48x8x8
-        x = self.conv10(x)        # 96x4x4
-        x = self.conv11(x)        # 512x2x2
-        x = self.conv12(x)        # 128x2x2
-        x = self.conv13(x)        # 128x1x1
-        x = self.conv14(x)        # num_classesx1x1
+        x = self.conv1(x)          # 16x32x32
+        x_res = self.conv2(x)      # 20x32x32
+        x = self.conv3(x_res)      # 20x32x32
+        x = self.resid1(x, x_res)  # 20x32x32
+        x = self.conv4(x)          # 20x32x32
+        x_res = self.conv5(x)      # 20x16x16
+        x = self.conv6(x_res)      # 20x16x16
+        x = self.resid2(x, x_res)  # 20x16x16
+        x = self.conv7(x)          # 44x16x16
+        x_res = self.conv8(x)      # 48x8x8
+        x = self.conv9(x_res)      # 48x8x8
+        x = self.resid3(x, x_res)  # 48x8x8
+        x = self.conv10(x)         # 96x4x4
+        x = self.conv11(x)         # 512x2x2
+        x = self.conv12(x)         # 128x2x2
+        x = self.conv13(x)         # 128x1x1
+        x = self.conv14(x)         # num_classesx1x1
         x = x.view(x.size(0), -1)
         return x
 

@@ -62,6 +62,7 @@ models, or with the provided sample models:
 
 import time
 import os
+import sys
 import traceback
 import logging
 from collections import OrderedDict
@@ -207,9 +208,9 @@ def main():
         if args.gpus is not None:
             try:
                 args.gpus = [int(s) for s in args.gpus.split(',')]
-            except ValueError:
+            except ValueError as exc:
                 raise ValueError('ERROR: Argument --gpus must be a comma-separated '
-                                 'list of integers only')
+                                 'list of integers only') from exc
             available_gpus = torch.cuda.device_count()
             for dev_id in args.gpus:
                 if dev_id >= available_gpus:
@@ -1222,7 +1223,7 @@ def check_pytorch_version():
               "  1. Deactivate the old environment\n"
               "  2. Install the new environment\n"
               "  3. Activate the new environment")
-        exit(1)
+        sys.exit(1)
 
 
 if __name__ == '__main__':

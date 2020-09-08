@@ -22,7 +22,7 @@ class Fire(nn.Module):
     """
     def __init__(self, in_planes, squeeze_planes, expand1x1_planes, expand3x3_planes,
                  bias=True):
-        super(Fire, self).__init__()
+        super().__init__()
         self.squeeze_layer = ai8x.FusedConv2dReLU(in_channels=in_planes,
                                                   out_channels=squeeze_planes, kernel_size=1,
                                                   bias=bias)

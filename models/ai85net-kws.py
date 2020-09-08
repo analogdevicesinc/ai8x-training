@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -21,7 +21,7 @@ class AI85Net20(nn.Module):
     """
     def __init__(self, num_classes=21, num_channels=1, dimensions=(64, 64),
                  fc_inputs=30, bias=False):
-        super(AI85Net20, self).__init__()
+        super().__init__()
 
         # AI84 Limits
         assert dimensions[0] == dimensions[1]  # Only square supported

@@ -24,8 +24,8 @@ def device(astring):
 
     try:
         num = int(s)
-    except ValueError:
-        raise argparse.ArgumentTypeError(astring, 'is not a supported device type')
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(astring, 'is not a supported device type') from exc
     if num in [84, 85, 87]:  # Die types
         dev = num
     elif num == 78000:  # Part numbers
