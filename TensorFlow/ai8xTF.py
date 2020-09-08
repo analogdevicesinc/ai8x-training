@@ -50,10 +50,10 @@ class Conv1D(keras.layers.Layer):  # pylint: disable=too-many-instance-attribute
         self.use_bias = use_bias
         self.output_shift = output_shift
         self.wide = wide
-		
+
         assert self.filters <= 1024
         assert not wide or activation is None
-		
+
         if pooling is not None:
             if pool_strides is None:
                 pool_strides = pool_size
@@ -266,7 +266,7 @@ class Conv2D(keras.layers.Layer):  # pylint: disable=too-many-instance-attribute
 
         assert self.filters <= 1024
         assert not wide or activation is None
-		
+
         if pooling is not None:
             if pool_strides is None:
                 pool_strides = pool_size
