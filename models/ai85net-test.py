@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2019-2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -22,7 +22,7 @@ class AI85NetWide(nn.Module):
     """
     def __init__(self, num_classes=10, num_channels=3, dimensions=(28, 28),
                  planes=128, pool=2, fc_inputs=12, bias=False):
-        super(AI85NetWide, self).__init__()
+        super().__init__()
 
         # Keep track of image dimensions so one constructor works for all image sizes
         dim = dimensions[0]
@@ -90,7 +90,7 @@ class AI85NetExpansion(nn.Module):
     """
     def __init__(self, num_classes=10, num_channels=3, dimensions=(28, 28),
                  planes=80, pool=2, fc_inputs=12, bias=False):
-        super(AI85NetExpansion, self).__init__()
+        super().__init__()
 
         # Keep track of image dimensions so one constructor works for all image sizes
         dim = dimensions[0]
@@ -148,7 +148,7 @@ class AI85Net6(nn.Module):
     """
     def __init__(self, num_classes=10, num_channels=3, dimensions=(28, 28),
                  planes=60, pool=2, fc_inputs=12, bias=False):
-        super(AI85Net6, self).__init__()
+        super().__init__()
 
         # AI85 Limits
         assert planes + num_channels <= ai8x.dev.WEIGHT_INPUTS
@@ -217,7 +217,7 @@ class AI85SqueezeNet(nn.Module):
     """
     def __init__(self, num_channels=3, num_classes=10, dimensions=(32, 32),
                  bias=False):
-        super(AI85SqueezeNet, self).__init__()
+        super().__init__()
         dim1 = dimensions[0]
         dim2 = dimensions[1]
         # 3x32x32

@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2019-2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -19,7 +19,7 @@ class AI85AfskNet(nn.Module):
     """
     def __init__(self, num_classes=2, num_channels=1, dimensions=(22, 1),
                  fc_inputs=16, bias=False):
-        super(AI85AfskNet, self).__init__()
+        super().__init__()
 
         dim1 = dimensions[0]
         self.mfcc_conv1 = ai8x.FusedConv1dReLU(num_channels, 64, 5, stride=1, padding=2, bias=bias)

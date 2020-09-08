@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -19,7 +19,7 @@ class AI85CatsDogsNet(nn.Module):
     """
     def __init__(self, num_classes=2, num_channels=3, dimensions=(64, 64),
                  fc_inputs=30, bias=False):
-        super(AI85CatsDogsNet, self).__init__()
+        super().__init__()
 
         # AI85 Limits
         assert dimensions[0] == dimensions[1]  # Only square supported

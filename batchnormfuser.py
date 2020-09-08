@@ -13,6 +13,7 @@ Script that is used for fusing/folding batchnorm layers onto conv2d layers.
 import argparse
 import torch
 
+
 def bn_fuser(state_dict):
     """
     Fuses the BN parameters and returns a new statedict
@@ -70,6 +71,7 @@ def bn_fuser(state_dict):
 
     return state_dict
 
+
 def main(args):
     """
     Main function
@@ -85,6 +87,7 @@ def main(args):
 
     torch.save(model_params, out_path)
     print(f'New checkpoint is saved to: {out_path}')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

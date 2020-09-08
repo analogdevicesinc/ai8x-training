@@ -60,7 +60,7 @@ class Quantize(nn.Module):
     Apply the custom autograd function
     """
     def __init__(self, num_bits=8):
-        super(Quantize, self).__init__()
+        super().__init__()
         self.num_bits = num_bits
 
     def forward(self, x):  # pylint: disable=arguments-differ
@@ -125,7 +125,7 @@ class Clamp(nn.Module):
     Clamp the output to the given range (typically, [-128, +127])
     """
     def __init__(self, min_val=None, max_val=None):
-        super(Clamp, self).__init__()
+        super().__init__()
         self.min_val = min_val
         self.max_val = max_val
 
@@ -240,7 +240,7 @@ class Conv2d(nn.Module):
             wide=False,
             batchnorm=None,
     ):
-        super(Conv2d, self).__init__()
+        super().__init__()
 
         assert not wide or activation is None
 
@@ -338,7 +338,7 @@ class FusedMaxPoolConv2d(Conv2d):
     AI8X - Fused 2D Max Pool, 2D Convolution and Activation ('ReLU', 'Abs', None)
     """
     def __init__(self, *args, **kwargs):
-        super(FusedMaxPoolConv2d, self).__init__(*args, pooling='Max', **kwargs)
+        super().__init__(*args, pooling='Max', **kwargs)
 
 
 class FusedMaxPoolConv2dReLU(FusedMaxPoolConv2d):
@@ -346,21 +346,23 @@ class FusedMaxPoolConv2dReLU(FusedMaxPoolConv2d):
     AI8X - Fused 2D Max Pool, 2D Convolution and ReLU
     """
     def __init__(self, *args, **kwargs):
-        super(FusedMaxPoolConv2dReLU, self).__init__(*args, activation='ReLU', **kwargs)
+        super().__init__(*args, activation='ReLU', **kwargs)
+
 
 class FusedMaxPoolConv2dBNReLU(FusedMaxPoolConv2dReLU):
     """
     AI8X - Fused 2D Max Pool, 2D Convolution, BatchNorm and ReLU
     """
     def __init__(self, *args, **kwargs):
-        super(FusedMaxPoolConv2dBNReLU, self).__init__(*args, batchnorm='NoAffine', **kwargs)
+        super().__init__(*args, batchnorm='NoAffine', **kwargs)
+
 
 class FusedMaxPoolConv2dAbs(FusedMaxPoolConv2d):
     """
     AI8X - Fused 2D Max Pool, 2D Convolution and Abs
     """
     def __init__(self, *args, **kwargs):
-        super(FusedMaxPoolConv2dAbs, self).__init__(*args, activation='Abs', **kwargs)
+        super().__init__(*args, activation='Abs', **kwargs)
 
 
 class MaxPool2d(FusedMaxPoolConv2d):
@@ -368,9 +370,8 @@ class MaxPool2d(FusedMaxPoolConv2d):
     AI8X - 2D Max Pool
     """
     def __init__(self, kernel_size, stride=None, **kwargs):
-        super(MaxPool2d, self).__init__(0, 0, None,
-                                        pool_size=kernel_size, pool_stride=stride,
-                                        activation=None, **kwargs)
+        super().__init__(0, 0, None, pool_size=kernel_size, pool_stride=stride,
+                         activation=None, **kwargs)
 
 
 class FusedAvgPoolConv2d(Conv2d):
@@ -378,7 +379,7 @@ class FusedAvgPoolConv2d(Conv2d):
     AI8X - Fused 2D Avg Pool, 2D Convolution and activation ('ReLU', 'Abs', None)
     """
     def __init__(self, *args, **kwargs):
-        super(FusedAvgPoolConv2d, self).__init__(*args, pooling='Avg', **kwargs)
+        super().__init__(*args, pooling='Avg', **kwargs)
 
 
 class FusedAvgPoolConv2dReLU(FusedAvgPoolConv2d):
@@ -386,7 +387,7 @@ class FusedAvgPoolConv2dReLU(FusedAvgPoolConv2d):
     AI8X - Fused 2D Avg Pool, 2D Convolution and ReLU
     """
     def __init__(self, *args, **kwargs):
-        super(FusedAvgPoolConv2dReLU, self).__init__(*args, activation='ReLU', **kwargs)
+        super().__init__(*args, activation='ReLU', **kwargs)
 
 
 class FusedAvgPoolConv2dAbs(FusedAvgPoolConv2d):
@@ -394,7 +395,7 @@ class FusedAvgPoolConv2dAbs(FusedAvgPoolConv2d):
     AI8X - Fused 2D Avg Pool, 2D Convolution and Abs
     """
     def __init__(self, *args, **kwargs):
-        super(FusedAvgPoolConv2dAbs, self).__init__(*args, activation='Abs', **kwargs)
+        super().__init__(*args, activation='Abs', **kwargs)
 
 
 class AvgPool2d(FusedAvgPoolConv2d):
@@ -402,9 +403,8 @@ class AvgPool2d(FusedAvgPoolConv2d):
     AI8X - 2D Avg Pool
     """
     def __init__(self, kernel_size, stride=None, **kwargs):
-        super(AvgPool2d, self).__init__(0, 0, None,
-                                        pool_size=kernel_size, pool_stride=stride,
-                                        activation=None, **kwargs)
+        super().__init__(0, 0, None, pool_size=kernel_size, pool_stride=stride,
+                         activation=None, **kwargs)
 
 
 class FusedConv2dReLU(Conv2d):
@@ -412,21 +412,23 @@ class FusedConv2dReLU(Conv2d):
     AI8X - Fused 2D Convolution and ReLU
     """
     def __init__(self, *args, **kwargs):
-        super(FusedConv2dReLU, self).__init__(*args, activation='ReLU', **kwargs)
+        super().__init__(*args, activation='ReLU', **kwargs)
+
 
 class FusedConv2dBNReLU(FusedConv2dReLU):
     """
     AI8X - Fused 2D Convolution and BatchNorm and ReLU
     """
     def __init__(self, *args, **kwargs):
-        super(FusedConv2dBNReLU, self).__init__(*args, batchnorm='NoAffine', **kwargs)
+        super().__init__(*args, batchnorm='NoAffine', **kwargs)
+
 
 class FusedConv2dAbs(Conv2d):
     """
     AI8X - Fused 2D Convolution and Abs
     """
     def __init__(self, *args, **kwargs):
-        super(FusedConv2dAbs, self).__init__(*args, activation='Abs', **kwargs)
+        super().__init__(*args, activation='Abs', **kwargs)
 
 
 class ConvTranspose2d(Conv2d):
@@ -435,7 +437,7 @@ class ConvTranspose2d(Conv2d):
     transposed 2D convolution and activation ('ReLU', 'Abs', None)
     """
     def __init__(self, *args, **kwargs):
-        super(ConvTranspose2d, self).__init__(*args, op='ConvTranspose2d', **kwargs)
+        super().__init__(*args, op='ConvTranspose2d', **kwargs)
 
 
 class FusedMaxPoolConvTranspose2d(ConvTranspose2d):
@@ -443,7 +445,7 @@ class FusedMaxPoolConvTranspose2d(ConvTranspose2d):
     AI8X - Fused 2D Max Pool, Transposed 2D Convolution and Activation ('ReLU', 'Abs', None)
     """
     def __init__(self, *args, **kwargs):
-        super(FusedMaxPoolConvTranspose2d, self).__init__(*args, pooling='Max', **kwargs)
+        super().__init__(*args, pooling='Max', **kwargs)
 
 
 class FusedMaxPoolConvTranspose2dReLU(FusedMaxPoolConvTranspose2d):
@@ -451,7 +453,7 @@ class FusedMaxPoolConvTranspose2dReLU(FusedMaxPoolConvTranspose2d):
     AI8X - Fused 2D Max Pool, Transposed 2D Convolution and ReLU
     """
     def __init__(self, *args, **kwargs):
-        super(FusedMaxPoolConvTranspose2dReLU, self).__init__(*args, activation='ReLU', **kwargs)
+        super().__init__(*args, activation='ReLU', **kwargs)
 
 
 class FusedMaxPoolConvTranspose2dAbs(FusedMaxPoolConvTranspose2d):
@@ -459,7 +461,7 @@ class FusedMaxPoolConvTranspose2dAbs(FusedMaxPoolConvTranspose2d):
     AI8X - Fused 2D Max Pool, Transposed 2D Convolution and Abs
     """
     def __init__(self, *args, **kwargs):
-        super(FusedMaxPoolConvTranspose2dAbs, self).__init__(*args, activation='Abs', **kwargs)
+        super().__init__(*args, activation='Abs', **kwargs)
 
 
 class FusedAvgPoolConvTranspose2d(ConvTranspose2d):
@@ -467,7 +469,7 @@ class FusedAvgPoolConvTranspose2d(ConvTranspose2d):
     AI8X - Fused 2D Avg Pool, Transposed 2D Convolution and activation ('ReLU', 'Abs', None)
     """
     def __init__(self, *args, **kwargs):
-        super(FusedAvgPoolConvTranspose2d, self).__init__(*args, pooling='Avg', **kwargs)
+        super().__init__(*args, pooling='Avg', **kwargs)
 
 
 class FusedAvgPoolConvTranspose2dReLU(FusedAvgPoolConvTranspose2d):
@@ -475,7 +477,7 @@ class FusedAvgPoolConvTranspose2dReLU(FusedAvgPoolConvTranspose2d):
     AI8X - Fused 2D Avg Pool, Transposed 2D Convolution and ReLU
     """
     def __init__(self, *args, **kwargs):
-        super(FusedAvgPoolConvTranspose2dReLU, self).__init__(*args, activation='ReLU', **kwargs)
+        super().__init__(*args, activation='ReLU', **kwargs)
 
 
 class FusedAvgPoolConvTranspose2dAbs(FusedAvgPoolConvTranspose2d):
@@ -483,7 +485,7 @@ class FusedAvgPoolConvTranspose2dAbs(FusedAvgPoolConvTranspose2d):
     AI8X - Fused 2D Avg Pool, Transposed 2D Convolution and Abs
     """
     def __init__(self, *args, **kwargs):
-        super(FusedAvgPoolConvTranspose2dAbs, self).__init__(*args, activation='Abs', **kwargs)
+        super().__init__(*args, activation='Abs', **kwargs)
 
 
 class FusedConvTranspose2dReLU(ConvTranspose2d):
@@ -491,7 +493,7 @@ class FusedConvTranspose2dReLU(ConvTranspose2d):
     AI8X - Fused Transposed 2D Convolution and ReLU
     """
     def __init__(self, *args, **kwargs):
-        super(FusedConvTranspose2dReLU, self).__init__(*args, activation='ReLU', **kwargs)
+        super().__init__(*args, activation='ReLU', **kwargs)
 
 
 class FusedConvTranspose2dAbs(ConvTranspose2d):
@@ -499,7 +501,7 @@ class FusedConvTranspose2dAbs(ConvTranspose2d):
     AI8X - Fused Transposed 2D Convolution and Abs
     """
     def __init__(self, *args, **kwargs):
-        super(FusedConvTranspose2dAbs, self).__init__(*args, activation='Abs', **kwargs)
+        super().__init__(*args, activation='Abs', **kwargs)
 
 
 class FusedSoftwareLinearReLU(nn.Module):
@@ -507,7 +509,7 @@ class FusedSoftwareLinearReLU(nn.Module):
     AI84 - Fused Linear and ReLU using Software
     """
     def __init__(self, in_features, out_features, bias=None, relu=True):
-        super(FusedSoftwareLinearReLU, self).__init__()
+        super().__init__()
 
         if dev.device != 84:
             print('WARNING: SoftwareLinear should be used on AI84 only')
@@ -538,7 +540,7 @@ class SoftwareLinear(FusedSoftwareLinearReLU):
     AI84 - Linear using Software
     """
     def __init__(self, in_features, out_features, **kwargs):
-        super(SoftwareLinear, self).__init__(in_features, out_features, relu=False, **kwargs)
+        super().__init__(in_features, out_features, relu=False, **kwargs)
 
 
 class Linear(nn.Module):
@@ -547,7 +549,7 @@ class Linear(nn.Module):
     """
     def __init__(self, in_features, out_features, bias=None,
                  activation=None, output_shift=0, wide=False):
-        super(Linear, self).__init__()
+        super().__init__()
 
         assert dev.device != 84
         assert in_features <= 1024
@@ -570,7 +572,7 @@ class FusedLinearReLU(Linear):
     AI85+ - Fused Linear and ReLU
     """
     def __init__(self, *args, **kwargs):
-        super(FusedLinearReLU, self).__init__(*args, activation='ReLU', **kwargs)
+        super().__init__(*args, activation='ReLU', **kwargs)
 
 
 class FusedLinearAbs(Linear):
@@ -578,7 +580,7 @@ class FusedLinearAbs(Linear):
     AI85+ - Fused Linear and Abs
     """
     def __init__(self, *args, **kwargs):
-        super(FusedLinearAbs, self).__init__(*args, activation='Abs', **kwargs)
+        super().__init__(*args, activation='Abs', **kwargs)
 
 
 class Conv1d(nn.Module):
@@ -601,7 +603,7 @@ class Conv1d(nn.Module):
             output_shift=0,
             wide=False,
     ):
-        super(Conv1d, self).__init__()
+        super().__init__()
 
         assert not wide or activation is None
 
@@ -657,7 +659,7 @@ class FusedMaxPoolConv1d(Conv1d):
     AI8X - Fused 1D Max Pool, 1D Convolution and Activation ('ReLU', 'Abs', None)
     """
     def __init__(self, *args, **kwargs):
-        super(FusedMaxPoolConv1d, self).__init__(*args, pooling='Max', **kwargs)
+        super().__init__(*args, pooling='Max', **kwargs)
 
 
 class FusedMaxPoolConv1dReLU(FusedMaxPoolConv1d):
@@ -665,7 +667,7 @@ class FusedMaxPoolConv1dReLU(FusedMaxPoolConv1d):
     AI8X - Fused 1D Max Pool, 1D Convolution and ReLU
     """
     def __init__(self, *args, **kwargs):
-        super(FusedMaxPoolConv1dReLU, self).__init__(*args, activation='ReLU', **kwargs)
+        super().__init__(*args, activation='ReLU', **kwargs)
 
 
 class FusedMaxPoolConv1dAbs(FusedMaxPoolConv1d):
@@ -673,7 +675,7 @@ class FusedMaxPoolConv1dAbs(FusedMaxPoolConv1d):
     AI8X - Fused 1D Max Pool, 1D Convolution and Abs
     """
     def __init__(self, *args, **kwargs):
-        super(FusedMaxPoolConv1dAbs, self).__init__(*args, activation='Abs', **kwargs)
+        super().__init__(*args, activation='Abs', **kwargs)
 
 
 class MaxPool1d(FusedMaxPoolConv1d):
@@ -681,9 +683,8 @@ class MaxPool1d(FusedMaxPoolConv1d):
     AI8X - 1D Max Pool
     """
     def __init__(self, kernel_size, stride=None, **kwargs):
-        super(MaxPool1d, self).__init__(0, 0, None,
-                                        pool_size=kernel_size, pool_stride=stride,
-                                        activation=None, **kwargs)
+        super().__init__(0, 0, None, pool_size=kernel_size, pool_stride=stride,
+                         activation=None, **kwargs)
 
 
 class FusedAvgPoolConv1d(Conv1d):
@@ -691,7 +692,7 @@ class FusedAvgPoolConv1d(Conv1d):
     AI8X - Fused 1D Avg Pool, 1D Convolution and activation ('ReLU', 'Abs', None)
     """
     def __init__(self, *args, **kwargs):
-        super(FusedAvgPoolConv1d, self).__init__(*args, pooling='Avg', **kwargs)
+        super().__init__(*args, pooling='Avg', **kwargs)
 
 
 class FusedAvgPoolConv1dReLU(FusedAvgPoolConv1d):
@@ -699,7 +700,7 @@ class FusedAvgPoolConv1dReLU(FusedAvgPoolConv1d):
     AI8X - Fused 1D Avg Pool, 1D Convolution and ReLU
     """
     def __init__(self, *args, **kwargs):
-        super(FusedAvgPoolConv1dReLU, self).__init__(*args, activation='ReLU', **kwargs)
+        super().__init__(*args, activation='ReLU', **kwargs)
 
 
 class FusedAvgPoolConv1dAbs(FusedAvgPoolConv1d):
@@ -707,7 +708,7 @@ class FusedAvgPoolConv1dAbs(FusedAvgPoolConv1d):
     AI8X - Fused 1D Avg Pool, 1D Convolution and Abs
     """
     def __init__(self, *args, **kwargs):
-        super(FusedAvgPoolConv1dAbs, self).__init__(*args, activation='Abs', **kwargs)
+        super().__init__(*args, activation='Abs', **kwargs)
 
 
 class AvgPool1d(FusedAvgPoolConv1d):
@@ -715,9 +716,8 @@ class AvgPool1d(FusedAvgPoolConv1d):
     AI8X - 1D Avg Pool
     """
     def __init__(self, kernel_size, stride=None, **kwargs):
-        super(AvgPool1d, self).__init__(0, 0, None,
-                                        pool_size=kernel_size, pool_stride=stride,
-                                        activation=None, **kwargs)
+        super().__init__(0, 0, None, pool_size=kernel_size, pool_stride=stride,
+                         activation=None, **kwargs)
 
 
 class FusedConv1dReLU(Conv1d):
@@ -725,7 +725,7 @@ class FusedConv1dReLU(Conv1d):
     AI8X - Fused 1D Convolution and ReLU
     """
     def __init__(self, *args, **kwargs):
-        super(FusedConv1dReLU, self).__init__(*args, activation='ReLU', **kwargs)
+        super().__init__(*args, activation='ReLU', **kwargs)
 
 
 class FusedConv1dAbs(Conv1d):
@@ -733,7 +733,7 @@ class FusedConv1dAbs(Conv1d):
     AI8X - Fused 1D Convolution and Abs
     """
     def __init__(self, *args, **kwargs):
-        super(FusedConv1dAbs, self).__init__(*args, activation='Abs', **kwargs)
+        super().__init__(*args, activation='Abs', **kwargs)
 
 
 class Eltwise(nn.Module):
@@ -741,7 +741,7 @@ class Eltwise(nn.Module):
     AI8X - Base Class for Elementwise Operation
     """
     def __init__(self, f):
-        super(Eltwise, self).__init__()
+        super().__init__()
         self.f = f
         if dev.simulate:
             bits = dev.ACTIVATION_BITS
@@ -763,7 +763,7 @@ class Add(Eltwise):
     AI8X - Elementwise Add Operation
     """
     def __init__(self):
-        super(Add, self).__init__(torch.add)
+        super().__init__(torch.add)
 
 
 class Sub(Eltwise):
@@ -779,7 +779,7 @@ class Sub(Eltwise):
         return torch.add(a, torch.neg(b))
 
     def __init__(self):
-        super(Sub, self).__init__(self.sub)
+        super().__init__(self.sub)
 
 
 class Xor(Eltwise):
@@ -799,7 +799,7 @@ class Xor(Eltwise):
         return torch.bitwise_or(a, b).div(256.).sub(.5)
 
     def __init__(self):
-        super(Xor, self).__init__(self.bitwise_xor)
+        super().__init__(self.bitwise_xor)
 
 
 class Or(Eltwise):
@@ -818,7 +818,7 @@ class Or(Eltwise):
         return torch.bitwise_xor(a, b).div(256.).sub(.5)
 
     def __init__(self):
-        super(Or, self).__init__(self.bitwise_or)
+        super().__init__(self.bitwise_or)
 
 
 class Device:
@@ -841,7 +841,7 @@ class DevAI84(Device):
     def __init__(self, simulate, round_avg):
         assert not round_avg
 
-        super(DevAI84, self).__init__(84, simulate, round_avg)
+        super().__init__(84, simulate, round_avg)
 
         self.WEIGHT_BITS = 8
         self.DATA_BITS = 8
@@ -863,7 +863,7 @@ class DevAI85(Device):
     Implementation limits for AI85
     """
     def __init__(self, simulate, round_avg):
-        super(DevAI85, self).__init__(85, simulate, round_avg)
+        super().__init__(85, simulate, round_avg)
 
         self.WEIGHT_BITS = 8
         self.DATA_BITS = 8
