@@ -213,8 +213,8 @@ if __name__ == '__main__':
 
                     class_names = ds.get_classnames()   # type: ignore[attr-defined] # noqa: F821
                     print('Class Names:', class_names)
-                except AttributeError:
-                    raise RuntimeError("cannot load" + model_dataset)
+                except AttributeError as e:
+                    raise RuntimeError("cannot load" + model_dataset) from e
                 break
 
     # Dynamically load model
@@ -231,12 +231,12 @@ if __name__ == '__main__':
                             if not line.startswith("model"):
                                 continue
                             print(line.rstrip())
-                            for l in fin:
-                                print(l.rstrip())
+                            for ln in fin:
+                                print(ln.rstrip())
                     print('-' * 50)
 
-                except AttributeError:
-                    raise RuntimeError("cannot load" + cnn_model)
+                except AttributeError as e:
+                    raise RuntimeError("cannot load" + cnn_model) from e
                 break
 
     print('Model:', cnn_model)

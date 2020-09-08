@@ -116,8 +116,8 @@ if __name__ == '__main__':
 
                     class_names = ds.get_classnames()  # type: ignore[attr-defined] # noqa: F821
                     print('Class Names:', class_names)
-                except AttributeError:
-                    raise RuntimeError("cannot load" + model_dataset)
+                except AttributeError as e:
+                    raise RuntimeError("cannot load" + model_dataset) from e
                 break
 
     print('Dataset:', ds)

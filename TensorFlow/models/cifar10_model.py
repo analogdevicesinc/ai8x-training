@@ -45,10 +45,11 @@ model = tf.keras.models.Sequential([
     ai8xTF.FusedDense(10, wide=True, use_bias=False),
 ])
 
+
 # Create a custom learning rate
 def lr_schedule_custom(epoch):
-   
-    #Returns a custom learning rate that decreases as epochs progress.
+
+    # Returns a custom learning rate that decreases as epochs progress.
     learning_rate = 0.0003
     if epoch > 40:
         learning_rate = 0.0001
@@ -59,6 +60,7 @@ def lr_schedule_custom(epoch):
 
     print('LR:', learning_rate)
     return learning_rate
+
 
 lr_schedule = tf.keras.callbacks.LearningRateScheduler(lr_schedule_custom)
 """

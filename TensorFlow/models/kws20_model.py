@@ -22,7 +22,7 @@ print("regularizer: ", regularizer_rate)
 model = tf.keras.models.Sequential([
     # Need to specify the input shape if you want to show it in model summary
     tf.keras.Input(shape=(128, 128)),
-    #tf.keras.layers.Dropout(0.25),
+    # tf.keras.layers.Dropout(0.25),
     ai8xTF.FusedConv1DReLU(
         filters=100,
         kernel_size=1,
@@ -98,7 +98,7 @@ model = tf.keras.models.Sequential([
         kernel_regularizer=regularizer,
         activity_regularizer=activity_regularizer,
         use_bias=False),
-    #tf.keras.layers.Dropout(0.25),
+    # tf.keras.layers.Dropout(0.25),
     tf.keras.layers.Flatten(),
     ai8xTF.FusedDense(
         21, wide=True,

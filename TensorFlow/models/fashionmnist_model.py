@@ -11,7 +11,7 @@ fashion mnist network for AI85/AI86
 """
 import tensorflow as tf
 # AI8xTF sub-classes
-import ai8xTF
+import ai8xTF   # pylint: disable=import-error
 
 # create a functional model
 input_layer = tf.keras.Input(shape=(28, 28))

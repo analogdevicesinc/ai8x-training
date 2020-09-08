@@ -37,7 +37,7 @@ class Conv1D(keras.layers.Layer):  # pylint: disable=too-many-instance-attribute
                  output_shift=0,
                  wide=False,
                  **kwargs):
-        super(Conv1D, self).__init__()
+        super().__init__()
 
         self.filters = filters
         self.kernel_size = kernel_size
@@ -50,10 +50,10 @@ class Conv1D(keras.layers.Layer):  # pylint: disable=too-many-instance-attribute
         self.use_bias = use_bias
         self.output_shift = output_shift
         self.wide = wide
-		
+
         assert self.filters <= 1024
         assert not wide or activation is None
-		
+
         if pooling is not None:
             if pool_strides is None:
                 pool_strides = pool_size
@@ -105,12 +105,12 @@ class Conv1D(keras.layers.Layer):  # pylint: disable=too-many-instance-attribute
     def call(self, x):  # pylint: disable=arguments-differ
         if self.pool is not None:
             x = self.clamp_pool(self.pool(x))
-            # print('PoolOutput:%s'%(x.shape))
+            print('PoolOutput:%s' % (x.shape))
         if self.conv1d is not None:
             x = self.zeropadding(x)
             x = self.conv1d(x)
             x = self.clamp(x)
-            # print('Conv&PaddingOutput:%s'%(x.shape))
+            print('Conv&PaddingOutput:%s' % (x.shape))
 
         return x
 
@@ -138,7 +138,7 @@ class FusedConv1D(Conv1D):
 
     def __init__(self, *args, **kwargs):
         check_if_pooling_arg(**kwargs)
-        super(FusedConv1D, self).__init__(*args, activation=None, **kwargs)
+        super().__init__(*args, activation=None, **kwargs)
 
 
 class FusedConv1DReLU(Conv1D):
@@ -148,7 +148,7 @@ class FusedConv1DReLU(Conv1D):
 
     def __init__(self, *args, **kwargs):
         check_if_pooling_arg(**kwargs)
-        super(FusedConv1DReLU, self).__init__(
+        super().__init__(
             *args, activation='relu', **kwargs)
 
 
@@ -158,7 +158,7 @@ class FusedMaxPoolConv1D(Conv1D):
     """
 
     def __init__(self, *args, **kwargs):
-        super(FusedMaxPoolConv1D, self).__init__(
+        super().__init__(
             *args, pooling='Max', **kwargs)
 
 
@@ -168,7 +168,7 @@ class FusedMaxPoolConv1DReLU(Conv1D):
     """
 
     def __init__(self, *args, **kwargs):
-        super(FusedMaxPoolConv1DReLU, self).__init__(
+        super().__init__(
             *args, pooling='Max', activation='relu', **kwargs)
 
 
@@ -179,7 +179,7 @@ class MaxPool1D(Conv1D):
 
     def __init__(self, pool_size, pool_strides=None, **kwargs):
         check_if_conv_arg(**kwargs)
-        super(MaxPool1D, self).__init__(
+        super().__init__(
             0,
             None,
             pool_size=pool_size,
@@ -195,7 +195,7 @@ class FusedAvgPoolConv1D(Conv1D):
     """
 
     def __init__(self, *args, **kwargs):
-        super(FusedAvgPoolConv1D, self).__init__(
+        super().__init__(
             *args, pooling='Avg', **kwargs)
 
 
@@ -205,7 +205,7 @@ class FusedAvgPoolConv1DReLU(Conv1D):
     """
 
     def __init__(self, *args, **kwargs):
-        super(FusedAvgPoolConv1DReLU, self).__init__(
+        super().__init__(
             *args, activation='relu', pooling='Avg', **kwargs)
 
 
@@ -216,7 +216,7 @@ class AvgPool1D(Conv1D):
 
     def __init__(self, pool_size, pool_strides=None, **kwargs):
         check_if_conv_arg(**kwargs)
-        super(AvgPool1D, self).__init__(
+        super().__init__(
             0,
             None,
             pool_size=pool_size,
@@ -249,7 +249,7 @@ class Conv2D(keras.layers.Layer):  # pylint: disable=too-many-instance-attribute
                  output_shift=0,
                  wide=False,
                  **kwargs):
-        super(Conv2D, self).__init__()
+        super().__init__()
 
         self.filters = filters
         self.kernel_size = kernel_size
@@ -266,7 +266,7 @@ class Conv2D(keras.layers.Layer):  # pylint: disable=too-many-instance-attribute
 
         assert self.filters <= 1024
         assert not wide or activation is None
-		
+
         if pooling is not None:
             if pool_strides is None:
                 pool_strides = pool_size
@@ -403,7 +403,7 @@ class FusedConv2D(Conv2D):
 
     def __init__(self, *args, **kwargs):
         check_if_pooling_arg(**kwargs)
-        super(FusedConv2D, self).__init__(*args, activation=None, **kwargs)
+        super().__init__(*args, activation=None, **kwargs)
 
 
 class FusedConv2DReLU(Conv2D):
@@ -413,7 +413,7 @@ class FusedConv2DReLU(Conv2D):
 
     def __init__(self, *args, **kwargs):
         check_if_pooling_arg(**kwargs)
-        super(FusedConv2DReLU, self).__init__(
+        super().__init__(
             *args, activation='relu', **kwargs)
 
 
@@ -423,7 +423,7 @@ class FusedMaxPoolConv2D(Conv2D):
     """
 
     def __init__(self, *args, **kwargs):
-        super(FusedMaxPoolConv2D, self).__init__(
+        super().__init__(
             *args, pooling='Max', **kwargs)
 
 
@@ -433,7 +433,7 @@ class FusedMaxPoolConv2DReLU(Conv2D):
     """
 
     def __init__(self, *args, **kwargs):
-        super(FusedMaxPoolConv2DReLU, self).__init__(
+        super().__init__(
             *args, activation='relu', pooling='Max', **kwargs)
 
 
@@ -444,7 +444,7 @@ class MaxPool2D(Conv2D):
 
     def __init__(self, pool_size, pool_strides=None, **kwargs):
         check_if_conv_arg(**kwargs)
-        super(MaxPool2D, self).__init__(
+        super().__init__(
             0,
             None,
             pool_size=pool_size,
@@ -460,7 +460,7 @@ class FusedAvgPoolConv2D(Conv2D):
     """
 
     def __init__(self, *args, **kwargs):
-        super(FusedAvgPoolConv2D, self).__init__(
+        super().__init__(
             *args, pooling='Avg', **kwargs)
 
 
@@ -470,7 +470,7 @@ class FusedAvgPoolConv2DReLU(Conv2D):
     """
 
     def __init__(self, *args, **kwargs):
-        super(FusedAvgPoolConv2DReLU, self).__init__(
+        super().__init__(
             *args, activation='relu', pooling='Avg', **kwargs)
 
 
@@ -481,7 +481,7 @@ class AvgPool2D(Conv2D):
 
     def __init__(self, pool_size, pool_strides=None, **kwargs):
         check_if_conv_arg(**kwargs)
-        super(AvgPool2D, self).__init__(
+        super().__init__(
             0,
             None,
             pool_size=pool_size,
@@ -501,7 +501,7 @@ class FusedConv2DTranspose(Conv2D):
 
     def __init__(self, *args, **kwargs):
         check_if_pooling_arg(**kwargs)
-        super(FusedConv2DTranspose, self).__init__(
+        super().__init__(
             *args, activation=None, op='ConvTranspose2d', **kwargs)
 
 
@@ -512,7 +512,7 @@ class FusedConv2DTransposeReLU(Conv2D):
 
     def __init__(self, *args, **kwargs):
         check_if_pooling_arg(**kwargs)
-        super(FusedConv2DTransposeReLU, self).__init__(
+        super().__init__(
             *args, activation='relu', op='ConvTranspose2d', **kwargs)
 
 
@@ -522,7 +522,7 @@ class FusedMaxPoolConv2DTranspose(Conv2D):
     """
 
     def __init__(self, *args, **kwargs):
-        super(FusedMaxPoolConv2DTranspose, self).__init__(
+        super().__init__(
             *args, pooling='Max', op='ConvTranspose2d', **kwargs)
 
 
@@ -532,7 +532,7 @@ class FusedMaxPoolConv2DTransposeReLU(Conv2D):
     """
 
     def __init__(self, *args, **kwargs):
-        super(FusedMaxPoolConv2DTransposeReLU, self).__init__(
+        super().__init__(
             *args,
             activation='relu',
             pooling='Max',
@@ -546,7 +546,7 @@ class FusedAvgPoolConv2DTranspose(Conv2D):
     """
 
     def __init__(self, *args, **kwargs):
-        super(FusedAvgPoolConv2DTranspose, self).__init__(
+        super().__init__(
             *args, pooling='Avg', op='ConvTranspose2d', **kwargs)
 
 
@@ -556,7 +556,7 @@ class FusedAvgPoolConv2DTransposeReLU(Conv2D):
     """
 
     def __init__(self, *args, **kwargs):
-        super(FusedAvgPoolConv2DTransposeReLU, self).__init__(
+        super().__init__(
             *args,
             activation='relu',
             op='ConvTranspose2d',
@@ -571,7 +571,7 @@ def check_if_pooling_arg(**kwargs):
     """
     AI8X - check if no pooling argument exists if the layer has pooling
     """
-    for key, value in kwargs.items():
+    for key, _ in kwargs.items():
         if key in {'pool_size', 'pool_stirdes'}:
             raise ValueError('Pooling arg without pooling')
 
@@ -580,7 +580,7 @@ def check_if_conv_arg(**kwargs):
     """
     AI8X - Check if conv arg is used in a pooling layer
     """
-    for key, value in kwargs.items():
+    for key, _ in kwargs.items():
         if key in {'kernel_size', 'strides', 'padding_size'}:
             raise ValueError('Conv arg without Conv layer')
 
@@ -598,7 +598,7 @@ class Dense(keras.layers.Layer):
                  output_shift=0,
                  wide=False,
                  **kwargs):
-        super(Dense, self).__init__()
+        super().__init__()
 
         assert units <= 1024  # output space dimension
         assert not wide or activation is None
@@ -638,7 +638,7 @@ class Clamp(keras.layers.Layer):
     """
 
     def __init__(self, min_val=None, max_val=None):
-        super(Clamp, self).__init__()
+        super().__init__()
         self.min_val = min_val
         self.max_val = max_val
 
@@ -652,7 +652,8 @@ class Clamp(keras.layers.Layer):
             "max_val": self.max_val
             }
 
-def quantize_clamp(wide, output_shift):
+
+def quantize_clamp(wide, output_shift):  # pylint: disable=unused-argument
     """
     Return new Quantization and Clamp objects.
     """
@@ -696,7 +697,7 @@ class FusedDenseReLU(Dense):
     """
 
     def __init__(self, *args, **kwargs):
-        super(FusedDenseReLU, self).__init__(
+        super().__init__(
             *args, activation='relu', **kwargs)
 
 
@@ -706,7 +707,7 @@ class FusedDense(Dense):
     """
 
     def __init__(self, *args, **kwargs):
-        super(FusedDense, self).__init__(*args, activation=None, **kwargs)
+        super().__init__(*args, activation=None, **kwargs)
 
 
 class Empty(keras.layers.Layer):
@@ -740,7 +741,7 @@ class DevAI84(Device):
 
     def __init__(self, simulate, round_avg):
         assert not round_avg
-        super(DevAI84, self).__init__(84, simulate, round_avg)
+        super().__init__(84, simulate, round_avg)
 
         self.WEIGHT_BITS = 8
         self.DATA_BITS = 8
@@ -763,7 +764,7 @@ class DevAI85(Device):
     """
 
     def __init__(self, simulate, round_avg):
-        super(DevAI85, self).__init__(85, simulate, round_avg)
+        super().__init__(85, simulate, round_avg)
 
         self.WEIGHT_BITS = 8
         self.DATA_BITS = 8
