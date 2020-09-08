@@ -19,13 +19,15 @@ class AI85AfskNet(nn.Module):
     """
     def __init__(self, num_classes=2, num_channels=1, dimensions=(22, 1),
                  fc_inputs=16, bias=False, **kwargs):
-        super(AI85AfskNet, self).__init__()
+        super().__init__()
 
         dim1 = dimensions[0]
-        self.mfcc_conv1 = ai8x.FusedConv1dReLU(num_channels, 64, 5, stride=1, padding=2, bias=bias, **kwargs)
+        self.mfcc_conv1 = ai8x.FusedConv1dReLU(num_channels, 64, 5, stride=1,
+                                               padding=2, bias=bias, **kwargs)
         self.dropout1 = nn.Dropout(0.2)
         self.mfcc_conv2 = ai8x.FusedConv1dReLU(64, 32, 5, stride=1, padding=2, bias=bias, **kwargs)
-        self.mfcc_conv4 = ai8x.FusedConv1dReLU(32, fc_inputs, 5, stride=1, padding=2, bias=bias, **kwargs)
+        self.mfcc_conv4 = ai8x.FusedConv1dReLU(32, fc_inputs, 5, stride=1,
+                                               padding=2, bias=bias, **kwargs)
         self.fc = ai8x.Linear(fc_inputs * dim1, num_classes, bias=bias)
 
         for m in self.modules():

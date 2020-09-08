@@ -42,7 +42,7 @@ def confusion_matrix(cm, labels, normalize=False):
 
     strlabels = map(str, labels)
     classes = [re.sub(r'([a-z](?=[A-Z])|[A-Z](?=[A-Z][a-z]))', r'\1 ', x) for x in strlabels]
-    classes = ['\n'.join(wrap(l, 40)) for l in classes]
+    classes = ['\n'.join(wrap(cl, 40)) for cl in classes]
 
     tick_marks = np.arange(len(classes))
 

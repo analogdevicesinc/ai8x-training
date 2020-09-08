@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -29,7 +29,7 @@ class AI85ResidualSimpleNet(nn.Module):
             bias=False,
             **kwargs
     ):
-        super(AI85ResidualSimpleNet, self).__init__()
+        super().__init__()
 
         self.conv1 = ai8x.FusedConv2dReLU(num_channels, 16, 3, stride=1, padding=1, bias=bias,
                                           **kwargs)

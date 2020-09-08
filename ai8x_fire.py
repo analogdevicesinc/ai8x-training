@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2019-2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -22,7 +22,7 @@ class Fire(nn.Module):
     """
     def __init__(self, in_planes, squeeze_planes, expand1x1_planes, expand3x3_planes,
                  bias=True, **kwargs):
-        super(Fire, self).__init__()
+        super().__init__()
         self.squeeze_layer = ai8x.FusedConv2dReLU(in_channels=in_planes,
                                                   out_channels=squeeze_planes, kernel_size=1,
                                                   bias=bias, **kwargs)

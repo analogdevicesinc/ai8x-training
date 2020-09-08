@@ -208,9 +208,9 @@ def main():
         if args.gpus is not None:
             try:
                 args.gpus = [int(s) for s in args.gpus.split(',')]
-            except ValueError:
+            except ValueError as exc:
                 raise ValueError('ERROR: Argument --gpus must be a comma-separated '
-                                 'list of integers only')
+                                 'list of integers only') from exc
             available_gpus = torch.cuda.device_count()
             for dev_id in args.gpus:
                 if dev_id >= available_gpus:

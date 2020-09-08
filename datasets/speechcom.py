@@ -1,8 +1,9 @@
 ###################################################################################################
 #
-# Copyright (C) 2018-2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
 #
-# Maxim Confidential
+# Maxim Integrated Products, Inc. Default Copyright Notice:
+# https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
 #
 ###################################################################################################
 """
@@ -21,6 +22,7 @@ import torch
 from torch.utils.model_zoo import tqdm
 from torchvision import transforms
 from PIL import Image
+from six.moves import urllib
 
 import ai8x
 
@@ -137,9 +139,9 @@ class SpeechCom(torch.utils.data.Dataset):
             test_images = torch.from_numpy(np.array(test_images))
 
             label_dict = dict(zip(labels, range(35)))
-            train_labels = torch.from_numpy(np.array([label_dict[l] for l in train_labels]))
-            val_labels = torch.from_numpy(np.array([label_dict[l] for l in val_labels]))
-            test_labels = torch.from_numpy(np.array([label_dict[l] for l in test_labels]))
+            train_labels = torch.from_numpy(np.array([label_dict[ll] for ll in train_labels]))
+            val_labels = torch.from_numpy(np.array([label_dict[ll] for ll in val_labels]))
+            test_labels = torch.from_numpy(np.array([label_dict[ll] for ll in test_labels]))
 
             train_set = (train_images, train_labels)
             val_set = (val_images, val_labels)
@@ -189,8 +191,6 @@ class SpeechCom(torch.utils.data.Dataset):
         return bar_update
 
     def __download_url(self, url, root, filename=None, md5=None):
-        from six.moves import urllib
-
         root = os.path.expanduser(root)
         if not filename:
             filename = os.path.basename(url)

@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -11,6 +11,7 @@ Keyword spotting network for AI85/AI86
 """
 import torch.nn as nn
 import ai8x
+
 
 class AI85KWS20Netv2(nn.Module):
     """
@@ -26,36 +27,33 @@ class AI85KWS20Netv2(nn.Module):
             bias=False,
             **kwargs
     ):
-        super(AI85KWS20Netv2, self).__init__()
-############# T: 128 F :128
+        super().__init__()
+        # T: 128 F :128
         self.conv1 = ai8x.FusedConv1dReLU(num_channels, 100, 1, stride=1, padding=0,
                                           bias=bias, **kwargs)
-############ T:  128 F: 100
+        # T:  128 F: 100
         self.conv2 = ai8x.FusedConv1dReLU(100, 48, 3, stride=1, padding=0,
                                           bias=bias, **kwargs)
-###########  T: 126 F : 48
+        # T: 126 F : 48
         self.conv3 = ai8x.FusedMaxPoolConv1dReLU(48, 96, 3, stride=1, padding=1,
                                                  bias=bias, **kwargs)
-##########   T: 62 F : 96
+        # T: 62 F : 96
         self.conv4 = ai8x.FusedConv1dReLU(96, 128, 3, stride=1, padding=0,
                                           bias=bias, **kwargs)
-##########  T : 60 F : 128
+        # T : 60 F : 128
         self.conv5 = ai8x.FusedMaxPoolConv1dReLU(128, 160, 3, stride=1, padding=1,
                                                  bias=bias, **kwargs)
-#########   T: 30 F : 160
+        # T: 30 F : 160
         self.conv6 = ai8x.FusedConv1dReLU(160, 192, 3, stride=1, padding=0,
                                           bias=bias, **kwargs)
-#########   T: 28 F : 192
+        # T: 28 F : 192
         self.conv7 = ai8x.FusedAvgPoolConv1dReLU(192, 192, 3, stride=1, padding=1,
                                                  bias=bias, **kwargs)
-##########  T : 14 F: 256
-
+        # T : 14 F: 256
         self.conv8 = ai8x.FusedConv1dReLU(192, 32, 3, stride=1, padding=0,
                                           bias=bias, **kwargs)
-##########  T: 12 F : 32
-
+        # T: 12 F : 32
         self.fc = ai8x.Linear(32 * 12, num_classes, bias=bias, wide=True, **kwargs)
-
 
     def forward(self, x):  # pylint: disable=arguments-differ
         # Run CNN

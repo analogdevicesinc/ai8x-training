@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -27,7 +27,7 @@ class AI85FaceIDNet(nn.Module):
             bias=True,
             **kwargs
     ):
-        super(AI85FaceIDNet, self).__init__()
+        super().__init__()
 
         self.conv1 = ai8x.FusedConv2dReLU(num_channels, 16, 3, padding=1,
                                           bias=False, **kwargs)
