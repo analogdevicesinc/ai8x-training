@@ -11,7 +11,7 @@ Keyword spotting network for AI85/AI86
 """
 import tensorflow as tf
 # AI8xTF sub-classes
-import ai8xTF
+import ai8xTF  # pylint: disable=import-error
 
 regularizer_rate = 0.0001
 regularizer = tf.keras.regularizers.l2(regularizer_rate)

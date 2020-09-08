@@ -11,7 +11,7 @@ cifar10 network for AI85/AI86
 """
 import tensorflow as tf
 # AI8xTF sub-classes
-import ai8xTF
+import ai8xTF   # pylint: disable=import-error
 
 model = tf.keras.models.Sequential([
     tf.keras.Input(shape=(32, 32, 3)),
@@ -48,8 +48,9 @@ model = tf.keras.models.Sequential([
 
 # Create a custom learning rate
 def lr_schedule_custom(epoch):
-
-    # Returns a custom learning rate that decreases as epochs progress.
+    """
+    Returns a custom learning rate that decreases as epochs progress.
+    """
     learning_rate = 0.0003
     if epoch > 40:
         learning_rate = 0.0001
