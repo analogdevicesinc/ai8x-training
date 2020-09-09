@@ -1,10 +1,10 @@
-# TensorFlow 2.3.0 Support
+# TensorFlow 2.3.0 Support with Keras API
 
 
 
 ## Overview
 
-The ML models created and trained using TensorFlow 2/Keras API can be ported and executed on MAX78000. Different types of Keras models with TensorFlow sequential, functional and sub-classing API are supported. The following development approach has to be used:
+This document describes the modeling of networks using **TensorFlow 2 Keras API**. The ML models created and trained can be ported to and executed on MAX78000. Different types of Keras models with TensorFlow  are supported, including high-level sequential, functional and sub-classing API . The following development approach has to be used:
 
 1. Create Keras model using supported MAX78000 TF sub-classes which reflect hardware behavior and limit operations
 2. Train model and store the model graph + weights into a **saved_model.pb** file
@@ -32,44 +32,38 @@ export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/cuda-10.1/extras/CUPTI/lib64
 
 
 
-## Supported MAX78000 TensorFlow Subclasses:
+## Supported MAX78000 TensorFlow Keras Subclasses:
 
 **ai85TF.py** includes a set of customized TensorFlow 2 Keras subclasses to be used by any model that is designed to run on MAX78000. 
 
 
 
-| Name                            | Description/Keras Equivalent                                 |
-| ------------------------------- | ------------------------------------------------------------ |
-| Conv1D                          | Generic Conv1D, padding_size=0                               |
-| FusedConv1D                     | Conv1D with activation as None, padding_size=0               |
-| FusedConv1DReLU                 | Conv1D with activation as 'relu', padding_size=0             |
-| FusedMaxPoolConv1D              | MaxPool1D, followed by Conv1D with activation as None, padding_size=0 |
-| FusedMaxPoolConv1DReLU          | MaxPool1D, followed by Conv1D with activation as 'relu', padding_size=0 |
-| FusedAvgPoolConv1D              | AveragePooling1D, followed by Conv1D with activation as None, padding_size=0 |
-| FusedAvgPoolConv1DReLU          | AveragePooling1D followed by Conv1D with activation as 'relu', padding_size=0 |
-| MaxPool1D                       | MaxPool1D                                                    |
-| AvgPool1D                       | AveragePooling1D                                             |
-|                                 |                                                              |
-| Conv2D                          | Generic Conv2D, padding_size=0                               |
-| FusedConv2D                     | Conv2D with activation as None, padding_size=0               |
-| FusedConv2DReLU                 | Conv2D with activation as 'relu', padding_size=0             |
-| FusedMaxPoolConv2D              | MaxPool2D, followed by Conv2D with activation as None, padding_size=0 |
-| FusedMaxPoolConv2DReLU          | MaxPool2D, followed by Conv2D with activation as 'relu', padding_size=0 |
-| FusedAvgPoolConv2D              | AveragePooling2D, followed by Conv2D with activation as None, padding_size=0 |
-| FusedAvgPoolConv2DReLU          | AveragePooling2D followed by Conv2D with activation as 'relu', padding_size=0 |
-| MaxPool2D                       | MaxPool2D                                                    |
-| AvgPool2D                       | AveragePooling2D                                             |
-| FusedConv2DTranspose            | Conv2DTranspose with activation as None, padding_size=0      |
-| FusedConv2DTransposeReLU        | Conv2DTranspose with activation as 'relu', padding_size=0    |
-| FusedMaxPoolConv2DTranspose     | MaxPool2D, followed by Conv2DTranspose with activation as 'relu', padding_size=0 |
-| FusedMaxPoolConv2DTransposeReLU | MaxPool2D, followed by Conv2DTranspose with activation as 'relu', padding_size=0 |
-| FusedAvgPoolConv2DTranspose     | AveragePooling2D, followed by Conv2DTranspose with activation as None, padding_size=0 |
-| FusedAvgPoolConv2DTransposeReLU | AveragePooling2D followed by Conv2DTranspose with activation as 'relu', padding_size=0 |
-|                                 |                                                              |
-| Dense                           | Generic Dense                                                |
-| FusedDense                      | Dense with activation as None                                |
-| FusedDenseReLU                  | Dense with activation as 'relu'                              |
-|                                 |                                                              |
+| Name                   | Description/Keras Equivalent                                 |
+| ---------------------- | ------------------------------------------------------------ |
+| Conv1D                 | Generic Conv1D, padding_size=0                               |
+| FusedConv1D            | Conv1D with activation as None, padding_size=0               |
+| FusedConv1DReLU        | Conv1D with activation as 'relu', padding_size=0             |
+| FusedMaxPoolConv1D     | MaxPool1D, followed by Conv1D with activation as None, padding_size=0 |
+| FusedMaxPoolConv1DReLU | MaxPool1D, followed by Conv1D with activation as 'relu', padding_size=0 |
+| FusedAvgPoolConv1D     | AveragePooling1D, followed by Conv1D with activation as None, padding_size=0 |
+| FusedAvgPoolConv1DReLU | AveragePooling1D followed by Conv1D with activation as 'relu', padding_size=0 |
+| MaxPool1D              | MaxPool1D                                                    |
+| AvgPool1D              | AveragePooling1D                                             |
+|                        |                                                              |
+| Conv2D                 | Generic Conv2D, padding_size=0                               |
+| FusedConv2D            | Conv2D with activation as None, padding_size=0               |
+| FusedConv2DReLU        | Conv2D with activation as 'relu', padding_size=0             |
+| FusedMaxPoolConv2D     | MaxPool2D, followed by Conv2D with activation as None, padding_size=0 |
+| FusedMaxPoolConv2DReLU | MaxPool2D, followed by Conv2D with activation as 'relu', padding_size=0 |
+| FusedAvgPoolConv2D     | AveragePooling2D, followed by Conv2D with activation as None, padding_size=0 |
+| FusedAvgPoolConv2DReLU | AveragePooling2D followed by Conv2D with activation as 'relu', padding_size=0 |
+| MaxPool2D              | MaxPool2D                                                    |
+| AvgPool2D              | AveragePooling2D                                             |
+|                        |                                                              |
+| Dense                  | Generic Dense                                                |
+| FusedDense             | Dense with activation as None                                |
+| FusedDenseReLU         | Dense with activation as 'relu'                              |
+|                        |                                                              |
 
 ### Limitations of supported operations:
 
