@@ -32,3 +32,4 @@
 /weights_sparsity.csv
 __pycache__
 /TensorFlow/logs
+/TensorFlow/export
