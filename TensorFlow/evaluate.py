@@ -7,7 +7,8 @@
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
 #
 ###################################################################################################
-"""evaluate an onnex model with the model test dataset
+"""
+Evaluate an ONNX model with the model test dataset
 """
 from datetime import datetime
 from pydoc import locate

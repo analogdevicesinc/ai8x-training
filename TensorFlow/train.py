@@ -7,7 +7,8 @@
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
 #
 ###################################################################################################
-"""train a keras sequential model
+"""
+Train a Keras sequential model
 """
 from datetime import datetime
 from pydoc import locate
