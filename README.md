@@ -228,7 +228,7 @@ For TensorFlow (CUDA or CPU, all operating systems):
 
 ```shell
 (ai8x-training) $ cd TensorFlow
-(ai8x-training) $ pip3 install -r requirements_TF.txt
+(ai8x-training) $ pip3 install -r requirements_tf.txt
 ```
 
 ##### Repository Branches

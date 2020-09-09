@@ -29,6 +29,6 @@
 /sensitivity.csv
 /sensitivity.png
 /share
-/tensorflow
 /weights_sparsity.csv
 __pycache__
+/TensorFlow/logs
