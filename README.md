@@ -4,7 +4,7 @@
 
 # MAX78000 Network Loader and RTL Simulation Generator
 
-_August 28, 2020_
+_September 9, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A [PDF copy of this file](README.pdf) is available in this repository. The GitHub rendering of this document does not show the formulas or the clickable table of contents._
@@ -210,14 +210,7 @@ $ source bin/activate
 (ai8x-training) $ pip3 install -U pip setuptools
 ```
 
-The next step differs depending on whether the system uses Linux with CUDA 10.1, or any other setup.
-
-For TensorFlow with CUDA 10.1 or 10.2 on Linux:
-
-```
-(ai8x-training) $ cd TensorFlow
-(ai8x-training) $ pip3 install -r requirements_TF.txt
-```
+The next step differs depending on the CUDA version and whether PyTorch to TensorFlow is used.
 
 For PyTorch with CUDA 10.1 on Linux:
 
@@ -225,10 +218,17 @@ For PyTorch with CUDA 10.1 on Linux:
 (ai8x-training) $ pip3 install -r requirements-cu101.txt
 ```
 
-For all other systems, including CUDA 10.2 on Linux:
+For all other PyTorch setups, including CUDA 10.2 on Linux, and other operating systems:
 
 ```shell
 (ai8x-training) $ pip3 install -r requirements.txt
+```
+
+For TensorFlow (CUDA or CPU, all operating systems):
+
+```shell
+(ai8x-training) $ cd TensorFlow
+(ai8x-training) $ pip3 install -r requirements_TF.txt
 ```
 
 ##### Repository Branches
