@@ -10,7 +10,7 @@ This document describes the modeling of networks using **TensorFlow 2 Keras API*
 
 1. Create the Keras model using supported MAX78000 TensorFlow sub-classes which reflect hardware behavior and limit operations.
 2. Train the model and store the model graph and weights into a **saved_model.pb** file.
-3. Use the Tensorflow to ONNX converter (**tf2onnx.convert**) to create an ONNX framework model from **saved_model.pb**.
+3. Use the Tensorflow to ONNX converter (**convert.py**) to create an ONNX framework model from **saved_model.pb**.
 4. Quantize the ONNX model weights and feed to MAX78000 synthesis tool (_ai8xizer_) to generate C code.
 5. Compile the generated C code, and load into MAX78000 to verify.
 
@@ -110,8 +110,8 @@ train_rock.sh
 Example (`train_mnist.sh`):
 
 ```bash
-python train.py --epochs 100 --batch_size 256 --optimizer Adam --lr 0.001 --model mnist_model --dataset mnist --save-sample 1
-python -m tf2onnx.convert --saved-model export/mnist --opset 10 --output export/mnist/saved_model.onnx
+./train.py --epochs 100 --batch_size 256 --optimizer Adam --lr 0.001 --model mnist_model --dataset mnist --save-sample 1
+./convert.py --saved-model export/mnist --opset 10 --output export/mnist/saved_model.onnx
 ```
 
 The script automatically downloads the corresponding dataset, processes and copies the data into `data/` if needed, and starts training. Training progress and results, including checkpoints and a sample prediction for one test data sample in HWC format will be stored in log files inside the `logs/` directory. The model graph and weights are stored as `saved_model.pb` inside the `logs/` directory, as well as in the `export/` directory. 
@@ -228,7 +228,7 @@ model = tf.keras.models.Sequential([
 To train the MNIST model, execute following script:
 
 ```bash
-$ bash train_mnist.sh
+$ ./train_mnist.sh
 ```
 
 Training progress, accuracy results and confusion table are reported and stored in a log file:
@@ -347,7 +347,7 @@ model = tf.keras.Model(inputs=[input_layer], outputs=[output_layer])
 To train the FashionMNIST model, execute following script:
 
 ```bash
-$ bash train_fashionmnist.sh
+$ ./train_fashionmnist.sh
 ```
 
 Training progress, accuracy results and confusion table are reported and stored in a log file:
@@ -462,7 +462,7 @@ model = tf.keras.models.Sequential([
 To train the CIFAR10 model execute following script:
 
 ```bash
-$ bash train_cifar10.sh
+$ ./train_cifar10.sh
 ```
 
 Training progress, accuracy results and confusion table are reported and stored in a log file:
@@ -569,7 +569,7 @@ model = tf.keras.models.Sequential([
 To train the CIFAR100 model execute following script:
 
 ```bash
-$ bash train_cifar100.sh
+$ ./train_cifar100.sh
 ```
 
 Training progress, accuracy results and confusion table are reported and stored in a log file:
@@ -747,7 +747,7 @@ model = tf.keras.models.Sequential([
 To train the KWS20 model execute the following script:
 
 ```bash
-$ bash train_kws20.sh
+$ ./train_kws20.sh
 ```
 
 Training progress, accuracy results and confusion table are reported and stored in a log file:
@@ -901,7 +901,7 @@ model = tf.keras.models.Sequential([
 To train the RPS model, execute the following script:
 
 ```bash
-$ bash train_rock.sh
+$ ./train_rock.sh
 ```
 
 Training progress, accuracy results and confusion table are reported and stored in a log file:
@@ -977,13 +977,13 @@ The synthesis script quantizes the weights from the provided ONNX file internall
 After quantization, the dequantized model can be evaluated and compared with the unquantized model (MNIST example) :
 
 ```bash
-$ bash evaluate_mnist.sh
+$ ./evaluate_mnist.sh
 ```
 
 Alternatively, the user can evaluate all of the model examples by running a bash script:
 
 ```bash
-$ bash evaluate_ALL.sh
+$ ./evaluate_all.sh
 ```
 
 
@@ -1017,7 +1017,7 @@ Generated C code is stored in the `ai8x-synthesis/tensorflow/tf-mnist/` director
 To generate MAX78000 C source code for all TensorFlow examples, execute following script:
 
 ```bash
-$ (ai8x-synthesis) bash gen-tf-demos-max78000.sh
+$ (ai8x-synthesis) ./gen-tf-demos-max78000.sh
 ```
 
 
