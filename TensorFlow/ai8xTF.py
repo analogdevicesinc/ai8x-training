@@ -105,12 +105,12 @@ class Conv1D(keras.layers.Layer):  # pylint: disable=too-many-instance-attribute
     def call(self, x):  # pylint: disable=arguments-differ
         if self.pool is not None:
             x = self.clamp_pool(self.pool(x))
-            print('PoolOutput:%s' % (x.shape))
+            # print('PoolOutput:%s' % (x.shape))
         if self.conv1d is not None:
             x = self.zeropadding(x)
             x = self.conv1d(x)
             x = self.clamp(x)
-            print('Conv&PaddingOutput:%s' % (x.shape))
+            # print('Conv&PaddingOutput:%s' % (x.shape))
 
         return x
 
