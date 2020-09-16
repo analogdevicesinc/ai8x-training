@@ -1,0 +1,4 @@
+[flake8]
+max-line-length = 99
+per-file-ignores =
+    range_linear_ai84.py:E501,E128
