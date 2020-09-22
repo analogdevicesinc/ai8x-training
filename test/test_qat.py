@@ -13,15 +13,17 @@ import copy
 import sys
 import torch
 sys.path.insert(0, '..')
-import ai8x # pylint: disable=import-error, wrong-import-position
+# pylint: disable=import-error, wrong-import-position
+import ai8x  # noqa E402
+# pylint: enable=import-error, wrong-import-position
 
 
 def create_input_data(num_channels):
     '''
     Creates random data
     '''
-    inp = (2.0 * torch.rand(1, num_channels, 8, 8) - 1.0) # pylint: disable=no-member
-    inp_int = torch.clamp(torch.round(128 * inp), min=-128, max=127.) # pylint: disable=no-member
+    inp = (2.0 * torch.rand(1, num_channels, 8, 8) - 1.0)  # pylint: disable=no-member
+    inp_int = torch.clamp(torch.round(128 * inp), min=-128, max=127.)  # pylint: disable=no-member
     inp = inp_int / 128.
 
     return inp, inp_int
@@ -39,10 +41,13 @@ def create_conv2d_layer(in_channels, out_channels, kernel_size, wide, activation
                            wide=wide,
                            activation=activation)
 
-    fp_layer.op.weight = torch.nn.Parameter((2.0 * torch.rand(out_channels, in_channels, # pylint: disable=no-member
-                                                              kernel_size, kernel_size)
-                                             - 1.0))
-    return  fp_layer
+    fp_layer.op.weight = torch.nn.Parameter(
+        (2.0 * torch.rand(out_channels,  # pylint: disable=no-member
+                          in_channels,
+                          kernel_size,
+                          kernel_size) - 1.0)
+    )
+    return fp_layer
 
 
 def quantize_fp_layer(fp_layer, wide, activation, num_bits):
@@ -63,6 +68,7 @@ def quantize_fp_layer(fp_layer, wide, activation, num_bits):
                              quantize_activation=True)
     q_fp_layer.op.weight = copy.deepcopy(fp_layer.op.weight)
     return q_fp_layer
+
 
 def quantize_layer(q_fp_layer, wide, activation, num_bits):
     '''
@@ -90,7 +96,9 @@ def quantize_layer(q_fp_layer, wide, activation, num_bits):
                                                                 q_fp_layer.op.weight))
     q_int_weight = (2**(num_bits-1)) * weight
 
-    q_int_layer.output_shift = torch.nn.Parameter(-torch.log2(weight_scale)) # pylint: disable=no-member
+    q_int_layer.output_shift = torch.nn.Parameter(
+        -torch.log2(weight_scale)  # pylint: disable=no-member
+    )
     q_int_layer.op.weight = torch.nn.Parameter(q_int_weight)
     return q_int_layer
 
