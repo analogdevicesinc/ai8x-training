@@ -4,7 +4,7 @@
 
 # MAX78000 Network Loader and RTL Simulation Generator
 
-_September 9, 2020_
+_September 22, 2020_
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A [PDF copy of this file](README.pdf) is available in this repository. The GitHub rendering of this document does not show the formulas or the clickable table of contents._
@@ -207,7 +207,7 @@ $ git submodule update --init
 $ pyenv local 3.6.9
 $ python3 -m venv .
 $ source bin/activate
-(ai8x-training) $ pip3 install -U pip setuptools
+(ai8x-training) $ pip3 install -U pip wheel setuptools
 ```
 
 The next step differs depending on the CUDA version and whether PyTorch to TensorFlow is used.
