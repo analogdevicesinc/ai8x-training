@@ -420,7 +420,7 @@ def main():
             ai8x.fuse_bn_layers(model)
 
             # Switch model from unquantized to quantized for QAT
-            ai8x.enable_output_shift(model)
+            ai8x.enable_output_shift(model, args.qat_num_bits, 8)
 
             # Re-initialize optimizer
             optimizer_state = optimizer.state_dict()

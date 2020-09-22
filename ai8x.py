@@ -40,22 +40,23 @@ class QuantizationFunction(Function):
     The backward pass is straight through.
     """
     @staticmethod
-    def forward(ctx, x, bits=None):  # pylint: disable=arguments-differ
+    def forward(ctx, x, bits=None, extra_bit_shift=None):  # pylint: disable=arguments-differ
         if dev.simulate:
             if bits > 1:
-                return x.add(.5).div(2**(bits-1)).add(.5).floor()
+                return x.add(.5).div(2**(bits+extra_bit_shift-1)).add(.5).floor()
             if bits < 1:
-                return x.mul(2**(1-bits)).add(.5).floor()
+                return x.mul(2**(1-bits-extra_bit_shift)).add(.5).floor()
             return x.add(.5).floor()
 
-        factor = 2**(bits-1)
-        return x.mul(factor).round().div(factor)
+        factor1 = 2**(bits-extra_bit_shift-1)
+        factor2 = 2**(bits-1)
+        return x.mul(factor1).add(.5).floor().div(factor2)
 
     @staticmethod
     def backward(ctx, x):  # pylint: disable=arguments-differ
         # Straight through - return as many input gradients as there were arguments;
         # gradients of non-Tensor arguments to forward must be None.
-        return x, None
+        return x, None, None
 
 
 class Quantize(nn.Module):
@@ -63,12 +64,13 @@ class Quantize(nn.Module):
     Post-activation integer quantization module
     Apply the custom autograd function
     """
-    def __init__(self, num_bits=8):
+    def __init__(self, num_bits=8, num_extra_bit_shift=0):
         super().__init__()
         self.num_bits = num_bits
+        self.num_extra_bit_shift = num_extra_bit_shift
 
     def forward(self, x):  # pylint: disable=arguments-differ
-        return QuantizationFunction.apply(x, self.num_bits)
+        return QuantizationFunction.apply(x, self.num_bits, self.num_extra_bit_shift)
 
 
 class FloorFunction(Function):
@@ -137,6 +139,44 @@ class Clamp(nn.Module):
         return x.clamp(min=self.min_val, max=self.max_val)
 
 
+class ScaleFunction(Function):
+    """
+    Custom AI8X autograd function
+    The forward pass returns the integer floor value of the x scaled with input s
+    The backward pass is straight through
+    """
+    @staticmethod
+    def forward(ctx, x, s):  # pylint: disable=arguments-differ
+        ctx.save_for_backward(s)
+        if s < 1.:
+            if dev.simulate:
+                return (x*s).floor()
+
+            factor = 2**(2*(dev.DATA_BITS - 1))
+            return (x*s*factor).floor().div(factor)
+        return x*s
+
+    @staticmethod
+    def backward(ctx, x):  # pylint: disable=arguments-differ
+        s, = ctx.saved_tensors
+        return x/s, None
+
+
+class Scaler(nn.Module):
+    """
+    Scaler module that considers integer quantization
+    Apply the custom autograd function
+    """
+    def __init__(self, quantized=False):
+        super().__init__()
+        self.quantized = quantized
+
+    def forward(self, x, s):  # pylint: disable=arguments-differ
+        if self.quantized:
+            return ScaleFunction.apply(x, s)
+        return s*x
+
+
 def quantize_clamp(wide, quantize_activation=False):
     """
     Return new Quantization and Clamp objects.
@@ -149,7 +189,7 @@ def quantize_clamp(wide, quantize_activation=False):
                 max_val=2**(dev.ACTIVATION_BITS-1)-1,
             )
         else:
-            quantize = Quantize(num_bits=dev.DATA_BITS + 1)
+            quantize = Quantize(num_bits=dev.DATA_BITS, num_extra_bit_shift=1)
             clamp = Clamp(
                 min_val=-(2**(dev.FULL_ACC_BITS-1)),
                 max_val=2**(dev.FULL_ACC_BITS-1)-1,
@@ -159,7 +199,7 @@ def quantize_clamp(wide, quantize_activation=False):
             if not wide:
                 quantize = Quantize(num_bits=dev.ACTIVATION_BITS)
             else:
-                quantize = Quantize(num_bits=dev.DATA_BITS + 1)
+                quantize = Quantize(num_bits=dev.DATA_BITS, num_extra_bit_shift=1)
         else:
             quantize = Empty()
         if not wide:
@@ -316,13 +356,13 @@ class QuantizationAwareModule(nn.Module):
 
         if self.adjust_output_shift:
             self.calc_out_shift = OutputShift()
-            self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(weight_bits)
-            self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(bias_bits)
+            self.scale = Scaler(False)
         else:
             self.calc_out_shift = OutputShiftSqueeze()
-            self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(None)
-            self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(None)
+            self.scale = Scaler(True)
 
+        self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(weight_bits)
+        self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(bias_bits)
         self.calc_weight_scale = WeightScale() if not dev.simulate else One()
         self.calc_out_scale = OutputScale()
         self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
@@ -353,7 +393,7 @@ class QuantizationAwareModule(nn.Module):
                           self.op.dilation, self.op.groups)
             if self.bn is not None:
                 x = self.bn(x)
-            x = self.clamp(self.quantize(self.activate(out_scale * x)))
+            x = self.clamp(self.quantize(self.activate(self.scale(x, out_scale))))
         return x
 
 
@@ -1174,6 +1214,7 @@ def set_device(
         device,
         simulate,
         round_avg,
+        verbose=True,
 ):
     """
     Change implementation configuration to match the `device` input value and
@@ -1181,7 +1222,8 @@ def set_device(
     """
     global dev  # pylint: disable=global-statement
 
-    print(f'Configuring device: {devices.partnum(device)}, simulate={simulate}.')
+    if verbose:
+        print(f'Configuring device: {devices.partnum(device)}, simulate={simulate}.')
 
     if device == 84:
         dev = DevAI84(simulate, round_avg)
@@ -1207,7 +1249,7 @@ class QuantizeONNX(nn.Module):
         return x.mul(factor).round().div(factor)
 
 
-def enable_output_shift(m):
+def enable_output_shift(m, qat_weight_bits, qat_bias_bits):
     """
     Modify model `m` to enable adjustment/learning of the output shift.
     """
@@ -1217,6 +1259,11 @@ def enable_output_shift(m):
             if isinstance(target_attr, QuantizationAwareModule):
                 target_attr.adjust_output_shift = True
                 target_attr.calc_out_shift = OutputShift()
+                target_attr.scaler = Scaler(True)
+                target_attr.qat_weight_bits = qat_weight_bits
+                target_attr.weight_bits = nn.Parameter(torch.Tensor([target_attr.qat_weight_bits]),
+                                                       requires_grad=False)
+                target_attr.qat_bias_bits = qat_bias_bits
                 target_attr.quantize_weight, target_attr.clamp_weight = \
                     quantize_clamp_parameters(target_attr.qat_weight_bits)
                 target_attr.quantize_bias, target_attr.clamp_bias = \
