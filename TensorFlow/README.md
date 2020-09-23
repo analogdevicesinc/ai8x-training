@@ -1032,6 +1032,16 @@ $ (ai8x-synthesis) ./gen-tf-demos-max78000.sh
 
 
 
+## Deployment on Hardware
+
+After synthesis, the generated C code will be stored in the  `ai8x-synthesis/tensorflow/` directory with the project name.
+
+The project folder needs to be copied to the  `ai8x-synthesis/sdk/Examples/MAX78000/CNN/` folder and can be compiled and flashed using SDK tools as instructed in [2]
+
+
+
 ## References
 
 [1]  ai8x-training/README.md
+
+[2] Getting Started with the MAX78000 Evaluation Kit (EV Kit), SDK documentation
