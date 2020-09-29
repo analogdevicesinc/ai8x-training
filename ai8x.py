@@ -1260,7 +1260,10 @@ def enable_output_shift(m, qat_weight_bits, qat_bias_bits):
                 target_attr.adjust_output_shift = True
                 target_attr.calc_out_shift = OutputShift()
                 target_attr.scaler = Scaler(True)
-                target_attr.qat_weight_bits = qat_weight_bits
+                if qat_weight_bits is not None:
+                    target_attr.qat_weight_bits = qat_weight_bits
+                if target_attr.qat_weight_bits is None:
+                    target_attr.qat_weight_bits = 8
                 target_attr.weight_bits = nn.Parameter(torch.Tensor([target_attr.qat_weight_bits]),
                                                        requires_grad=False)
                 target_attr.qat_bias_bits = qat_bias_bits
