@@ -33,6 +33,9 @@ class VGGFace2Dataset(data.Dataset):
             resample_img_per_subj=1,
     ):
         data_folder = os.path.join(root_dir, d_type)
+        assert os.path.isdir(data_folder), (f'No dataset at {data_folder}.'
+                                            ' Follow the steps at datasets/face_id/README.')
+
         data_file_list = sorted([d for d in os.listdir(data_folder) if d.startswith('whole_set')])
 
         self.sid_list = []
