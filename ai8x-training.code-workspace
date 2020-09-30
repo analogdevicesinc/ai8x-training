@@ -5,7 +5,7 @@
 		}
 	],
 	"settings": {
-		"python.pythonPath": "C:\\Users\\osman.okman\\AppData\\Local\\Continuum\\anaconda3\\envs\\ai8x-training\\python.exe",
+		"python.pythonPath": "./bin/python3",
 		"python.linting.flake8Enabled": true,
 		"python.linting.pylintArgs": [
 			"--rcfile=.pylintrc"

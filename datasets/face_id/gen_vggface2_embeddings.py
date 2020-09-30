@@ -138,13 +138,18 @@ def main(source_path, dest_path):  # pylint: disable=too-many-locals
 
 def parse_args():
     """Parses command line arguments"""
-    parser = argparse.ArgumentParser(description='Generate VGG-Face-2 dataset to train/test \
+    data_folder = os.path.abspath(__file__)
+    for _ in range(3):
+        data_folder = os.path.dirname(data_folder)
+    data_folder = os.path.join(data_folder, 'data')
+
+    parser = argparse.ArgumentParser(description='Generate VGGFace-2 dataset to train/test \
                                                   FaceID model.')
     parser.add_argument('-r', '--raw', dest='raw_data_path', type=str,
-                        default='../../data/VGGFace-2/raw',
+                        default=os.path.join(data_folder, 'VGGFace-2', 'raw'),
                         help='Path to raw VGG-Face-2 dataset folder.')
     parser.add_argument('-d', '--dest', dest='dest_data_path', type=str,
-                        default='../../data/VGGFace-2/processed',
+                        default=os.path.join(data_folder, 'VGGFace-2'),
                         help='Folder path to store processed data')
     parser.add_argument('--type', dest='data_type', type=str, required=True,
                         help='Data type to generate (train/test)')

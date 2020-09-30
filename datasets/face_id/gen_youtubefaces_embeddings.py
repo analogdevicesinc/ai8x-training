@@ -84,7 +84,7 @@ def generate_image(img, box, count):  # pylint: disable=too-many-locals
     return new_img, new_box, img, box
 
 
-def main(source_path, dest_path):  # pylint: disable=too-many-locals, too-many-statements
+def main(source_path, dest_path):  # pylint: disable=too-many-locals, too-many-statements, too-many-branches
     """
     Main function to iterate over the images in the raw data and generate data samples
     to train/test FaceID model.
@@ -142,10 +142,14 @@ def main(source_path, dest_path):  # pylint: disable=too-many-locals, too-many-s
 
                             if subj_name not in embedding_dict:
                                 embedding_dict[subj_name] = {}
-                                os.mkdir(os.path.join(dest_path, subj_name))
+                                subj_path = os.path.join(dest_path, subj_name)
+                                if not os.path.exists(subj_path):
+                                    os.mkdir(subj_path)
                             if video_no not in embedding_dict[subj_name]:
                                 embedding_dict[subj_name][video_no] = {}
-                                os.mkdir(os.path.join(dest_path, subj_name, video_no))
+                                video_path = os.path.join(dest_path, subj_name, video_no)
+                                if not os.path.exists(video_path):
+                                    os.mkdir(video_path)
 
                             embedding_dict[subj_name][video_no][file_name] = embedding.tolist()
                             x_aligned_int = x_aligned.cpu().numpy()
@@ -182,13 +186,18 @@ def main(source_path, dest_path):  # pylint: disable=too-many-locals, too-many-s
 
 def parse_args():
     """Parses command line arguments"""
+    data_folder = os.path.abspath(__file__)
+    for _ in range(3):
+        data_folder = os.path.dirname(data_folder)
+    data_folder = os.path.join(data_folder, 'data')
+
     parser = argparse.ArgumentParser(description='Generate YouTubeFaces dataset to train/test \
                                                   FaceID model.')
     parser.add_argument('-r', '--raw', dest='raw_data_path', type=str,
-                        default='../../data/YouTubeFaces/raw',
+                        default=os.path.join(data_folder, 'YouTubeFaces', 'raw'),
                         help='Path to raw YouTubeFaces dataset folder.')
     parser.add_argument('-d', '--dest', dest='dest_data_path', type=str,
-                        default='../../data/YouTubeFaces/processed',
+                        default=os.path.join(data_folder, 'YouTubeFaces'),
                         help='Folder path to store processed data')
     parser.add_argument('--type', dest='data_type', type=str, required=True,
                         help='Data type to generate (train/test)')

@@ -53,7 +53,7 @@ def main(data_path):  # pylint: disable=too-many-locals
         if subj not in dataset:
             dataset[subj] = {}
 
-        subj_path = os.path.join(data_path, subj)
+        subj_path = os.path.join(data_path, 'temp', subj)
         if not os.path.isdir(subj_path):
             continue
 
@@ -67,7 +67,7 @@ def main(data_path):  # pylint: disable=too-many-locals
             embeddings = json.load(file)
 
         for img_name, emb in embeddings.items():
-            img_path = os.path.join(data_path, subj, img_name)
+            img_path = os.path.join(subj_path, img_name)
             img = np.load(img_path).transpose([2, 0, 1])
 
             if img.shape == img_size:
@@ -82,8 +82,12 @@ def parse_args():
     """Parses command line arguments"""
     parser = argparse.ArgumentParser(description='Merge VGGFace-2 data samples to effectively use\
                                                   during training/testing FaceID model.')
+    default_data_path = os.path.abspath(__file__)
+    for _ in range(3):
+        default_data_path = os.path.dirname(default_data_path)
+    default_data_path = os.path.join(default_data_path, 'data', 'VGGFace-2')
     parser.add_argument('-p', '--data_path', dest='data_path', type=str,
-                        default='../../data/VGGFace-2/processed',
+                        default=default_data_path,
                         help='Folder path to processed data')
     parser.add_argument('--type', dest='data_type', type=str, required=True,
                         help='Data type to generate (train/test)')

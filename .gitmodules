@@ -4,4 +4,4 @@
 	branch = pytorch-1.5
 [submodule "datasets/face_id/facenet_pytorch"]
 	path = datasets/face_id/facenet_pytorch
-	url = https://github.com/ermanok/facenet-pytorch.git
+	url = https://github.com/MaximIntegratedAI/facenet-pytorch.git

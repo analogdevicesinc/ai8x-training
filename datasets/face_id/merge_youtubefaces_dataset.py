@@ -77,8 +77,12 @@ def parse_args():
     """Parses command line arguments"""
     parser = argparse.ArgumentParser(description='Merge YouTubeFaces data samples to effectively\
                                                   use during training/testing FaceID model.')
+    default_data_path = os.path.abspath(__file__)
+    for _ in range(3):
+        default_data_path = os.path.dirname(default_data_path)
+    default_data_path = os.path.join(default_data_path, 'data', 'YouTubeFaces')
     parser.add_argument('-p', '--data_path', dest='data_path', type=str,
-                        default='../../data/YouTubeFaces/processed',
+                        default=default_data_path,
                         help='Folder path to processed data')
     parser.add_argument('--type', dest='data_type', type=str, required=True,
                         help='Data type to generate (train/test)')
