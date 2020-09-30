@@ -456,9 +456,15 @@ class Conv2d(QuantizationAwareModule):
             else:
                 raise ValueError('pool_stride must be int or tuple')
 
-            assert stride == 1
+            if op == 'ConvTranspose2d':
+                assert stride == 2
+            else:
+                assert stride == 1
         else:
-            assert 0 < stride <= 3
+            if op == 'ConvTranspose2d':
+                assert stride == 2
+            else:
+                assert 0 < stride <= 3
 
         assert 0 <= padding <= 2
 
@@ -493,11 +499,17 @@ class Conv2d(QuantizationAwareModule):
                 assert dev.device != 84
                 opn = nn.ConvTranspose2d(in_channels, out_channels,
                                          kernel_size=kernel_size, stride=stride,
+                                         output_padding=1,
                                          padding=padding, bias=bias)
             else:
                 raise ValueError('Unsupported operation')
         else:
             opn = None
+
+        if op == 'ConvTranspose2d':
+            func = nn.functional.conv_transpose2d
+        else:
+            func = nn.functional.conv2d
 
         super().__init__(
             pooling,
@@ -508,7 +520,7 @@ class Conv2d(QuantizationAwareModule):
             quantize_activation,
             pool,
             opn,
-            nn.functional.conv2d,
+            func,
             bn,
         )
 
