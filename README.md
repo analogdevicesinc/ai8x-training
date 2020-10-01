@@ -1,17 +1,21 @@
 
 
-# MAX78000 Model Training and Quantization
+# MAX78000 Model Training and Synthesis 
 
-# MAX78000 Network Loader and RTL Simulation Generator
+_October 1, 2020_
 
-_September 22, 2020_
+The Maxim Integrated AI project is comprised of four repositories:
+
+1. **Start here**: [Top Level Documentation](https://github.com/MaximIntegratedAI/MaximAI_Documentation)
+2. The software development kit (SDK), which contains drivers and example programs ready to run on the Evaluation Kit:
+    [MAX78000_SDK](https://github.com/MaximIntegratedAI/MAX78000_SDK)
+3. The training repository, which is used for deep learning *model development and training*:
+    [ai8x-training](https://github.com/MaximIntegratedAI/ai8x-training) **(described in this document)**
+4. The synthesis repository, which is used to *convert a trained model into C code* using the “izer” tool:
+    [ai8x-synthesis](https://github.com/MaximIntegratedAI/ai8x-synthesis) **(described in this document)**
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
 See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A [PDF copy of this file](README.pdf) is available in this repository. The GitHub rendering of this document does not show the formulas or the clickable table of contents._
-
-This software consists of two related projects:
-1. MAX78000 Model Training and Quantization
-2. MAX78000 Network Loader and RTL Simulation Generator
 
 ---
 
@@ -651,7 +655,7 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
 
   * Kernel sizes must be 3×3.
   * Padding can be 0, 1, or 2.
-  * Stride is fixed to 2.
+  * Stride is fixed to 2. Output padding is fixed to 1.
 
 * A programmable layer-specific shift operator is available at the output of a convolution.
 
