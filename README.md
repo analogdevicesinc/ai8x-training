@@ -1,8 +1,6 @@
-
-
 # MAX78000 Model Training and Synthesis 
 
-_October 1, 2020_
+_October 5, 2020_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -1751,7 +1749,7 @@ To run another inference, ensure all groups are disabled (stopping the state mac
 
 #### Softmax, and Data unload in C
 
-`ai8xize.py` can generate a custom `cnn_unload()` function using the command line switch `--unload`. The `--softmax` switch additionally inserts a call to a software Softmax function that is provided in the `device-ai8x` folder. To use the provided software Softmax on MAX78000/MAX78002, the last layer output should be 32-bit wide (`output_width: 32`).
+`ai8xize.py` can generate a custom `cnn_unload()` function using the command line switch `--unload`. The `--softmax` switch additionally inserts a call to a software Softmax function that is provided in the `assets/device-ai8x` folder. To use the provided software Softmax on MAX78000/MAX78002, the last layer output should be 32-bit wide (`output_width: 32`).
 
 The software Softmax function is optimized for processing time and it quantizes the input.
 
