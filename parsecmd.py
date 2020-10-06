@@ -78,7 +78,7 @@ def get_parser(model_names, dataset_names):
     qat_args = parser.add_argument_group('Quantization Arguments')
     qat_args.add_argument('--disable-qat', dest='qat', action='store_false', default=True,
                           help='disable quantization-aware training')
-    qat_args.add_argument('--qat-num-bits', type=int,
+    qat_args.add_argument('--qat-num-bits', type=int, default=8,
                           help='override all weight bits for quantization aware training')
     qat_args.add_argument('--qat-start-epoch', '--start-qat-epoch', type=int, default=10,
                           dest='start_qat_epoch',

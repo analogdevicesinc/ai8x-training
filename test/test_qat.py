@@ -65,6 +65,7 @@ def quantize_fp_layer(fp_layer, wide, activation, num_bits):
                              wide=wide,
                              activation=activation,
                              weight_bits=num_bits,
+                             bias_bits=8,
                              quantize_activation=True)
     q_fp_layer.op.weight = copy.deepcopy(fp_layer.op.weight)
     return q_fp_layer
@@ -85,6 +86,7 @@ def quantize_layer(q_fp_layer, wide, activation, num_bits):
                               wide=wide,
                               activation=activation,
                               weight_bits=num_bits,
+                              bias_bits=8,
                               quantize_activation=True)
 
     out_shift = q_fp_layer.calc_out_shift(q_fp_layer.op.weight.detach(),

@@ -244,9 +244,9 @@ def quantize_clamp_parameters(bits):
     """
     Return new Quantization and Clamp objects for parameter
     """
-    if dev.simulate or bits is None:
+    if dev.simulate or bits == 0:
         clamp = Empty()
-        if bits is not None:
+        if bits != 0:
             quantize = Quantize(num_bits=bits-dev.DATA_BITS+1)
         else:
             quantize = Empty()
@@ -347,32 +347,53 @@ class QuantizationAwareModule(nn.Module):
         assert weight_bits in [None, 1, 2, 4, 8], f'Weight bits cannot be {weight_bits}'
         assert bias_bits in [None, 8], f'Bias bits cannot be {bias_bits}'
 
-        self.adjust_output_shift = not dev.simulate \
-            and (weight_bits is not None or bias_bits is not None)
-        self.output_shift = nn.Parameter(torch.Tensor([0.]), requires_grad=False)
-        self.qat_weight_bits = weight_bits if weight_bits is not None else 8
-        self.qat_bias_bits = bias_bits if bias_bits is not None else 8
-        self.weight_bits = nn.Parameter(torch.Tensor([self.qat_weight_bits]), requires_grad=False)
-
-        if self.adjust_output_shift:
-            self.calc_out_shift = OutputShift()
-            self.scale = Scaler(False)
-        else:
-            self.calc_out_shift = OutputShiftSqueeze()
-            self.scale = Scaler(True)
-
-        self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(weight_bits)
-        self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(bias_bits)
-        self.calc_weight_scale = WeightScale() if not dev.simulate else One()
-        self.calc_out_scale = OutputScale()
-        self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
-        self.quantize, self.clamp = quantize_clamp(wide, quantize_activation)
         self.activate = get_activation(activation)
+        self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
+        self.wide = wide
 
         self.pool = pool
         self.op = op
         self.func = func
         self.bn = bn
+
+        self.output_shift = nn.Parameter(torch.Tensor([0.]), requires_grad=False)
+        self.init_module(weight_bits, bias_bits, quantize_activation)
+
+    def init_module(self, weight_bits, bias_bits, quantize_activation):
+        """Initialize model parameters"""
+        if weight_bits is None and bias_bits is None and not quantize_activation:
+            self.weight_bits = nn.Parameter(torch.Tensor([0]), requires_grad=False)
+            self.bias_bits = nn.Parameter(torch.Tensor([0]), requires_grad=False)
+            self.quantize_activation = nn.Parameter(torch.Tensor([False]), requires_grad=False)
+            self.adjust_output_shift = nn.Parameter(torch.Tensor([False]), requires_grad=False)
+        elif weight_bits in [1, 2, 4, 8] and bias_bits == 8 and quantize_activation:
+            self.weight_bits = nn.Parameter(torch.Tensor([weight_bits]), requires_grad=False)
+            self.bias_bits = nn.Parameter(torch.Tensor([bias_bits]), requires_grad=False)
+            self.quantize_activation = nn.Parameter(torch.Tensor([True]), requires_grad=False)
+            self.adjust_output_shift = nn.Parameter(torch.Tensor([not dev.simulate]),
+                                                    requires_grad=False)
+        else:
+            assert False, f'Undefined mode with weight_bits: {weight_bits}, ' \
+                          f'bias_bits: {bias_bits}, ' \
+                          f'quantize_activation: {quantize_activation}'
+
+        self.set_functions()
+
+    def set_functions(self):
+        """Set functions to be used wrt the model parameters"""
+        if self.adjust_output_shift.detach():
+            self.calc_out_shift = OutputShift()  #pylint: disable=attribute-defined-outside-init
+            self.scale = Scaler(False)  #pylint: disable=attribute-defined-outside-init
+            self.calc_weight_scale = WeightScale()  #pylint: disable=attribute-defined-outside-init
+        else:
+            self.calc_out_shift = OutputShiftSqueeze()  #pylint: disable=attribute-defined-outside-init
+            self.scale = Scaler(True)  #pylint: disable=attribute-defined-outside-init
+            self.calc_weight_scale = One()  #pylint: disable=attribute-defined-outside-init
+        self.calc_out_scale = OutputScale()  #pylint: disable=attribute-defined-outside-init
+
+        self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(self.weight_bits.detach().item())  # pylint: disable=line-too-long, attribute-defined-outside-init
+        self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(self.bias_bits.detach().item())  # pylint: disable=line-too-long, attribute-defined-outside-init
+        self.quantize, self.clamp = quantize_clamp(self.wide, self.quantize_activation.detach().item())  # pylint: disable=line-too-long, attribute-defined-outside-init
 
     def forward(self, x):  # pylint: disable=arguments-differ
         if self.pool is not None:
@@ -1260,32 +1281,33 @@ class QuantizeONNX(nn.Module):
         factor = 2**(self.num_bits-1)
         return x.mul(factor).round().div(factor)
 
-
-def enable_output_shift(m, qat_weight_bits, qat_bias_bits):
+def initiate_qat(m, qat_weight_bits, qat_bias_bits):
     """
-    Modify model `m` to enable adjustment/learning of the output shift.
+    Modify model `m` to start quantization aware training.
     """
-    def _enable_output_shift(m):
+    def _initiate_qat(m):
         for attr_str in dir(m):
             target_attr = getattr(m, attr_str)
             if isinstance(target_attr, QuantizationAwareModule):
-                target_attr.adjust_output_shift = True
-                target_attr.calc_out_shift = OutputShift()
-                target_attr.scaler = Scaler(True)
-                if qat_weight_bits is not None:
-                    target_attr.qat_weight_bits = qat_weight_bits
-                if target_attr.qat_weight_bits is None:
-                    target_attr.qat_weight_bits = 8
-                target_attr.weight_bits = nn.Parameter(torch.Tensor([target_attr.qat_weight_bits]),
-                                                       requires_grad=False)
-                target_attr.qat_bias_bits = qat_bias_bits
-                target_attr.quantize_weight, target_attr.clamp_weight = \
-                    quantize_clamp_parameters(target_attr.qat_weight_bits)
-                target_attr.quantize_bias, target_attr.clamp_bias = \
-                    quantize_clamp_parameters(target_attr.qat_bias_bits)
+                target_attr.init_module(qat_weight_bits, qat_bias_bits, True)
                 setattr(m, attr_str, target_attr)
 
-    m.apply(_enable_output_shift)
+    m.apply(_initiate_qat)
+
+
+def update_model(m):
+    """
+    Update model `m` with the current parameters.
+    It is used to update model functions after loading a checkpoint file.
+    """
+    def _update_model(m):
+        for attr_str in dir(m):
+            target_attr = getattr(m, attr_str)
+            if isinstance(target_attr, QuantizationAwareModule):
+                target_attr.set_functions()
+                setattr(m, attr_str, target_attr)
+
+    m.apply(_update_model)
 
 
 def fuse_bn_layers(m):

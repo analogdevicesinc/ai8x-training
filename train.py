@@ -246,8 +246,7 @@ def main():
     if args.regression and args.display_embedding:
         raise ValueError('ERROR: Argument --embedding cannot be used with regression')
 
-    model = create_model(supported_models, dimensions,
-                         args.qat and (args.evaluate or args.start_qat_epoch == 0), args)
+    model = create_model(supported_models, dimensions, args)
 
     # if args.add_logsoftmax:
     #     model = nn.Sequential(model, nn.LogSoftmax(dim=1))
@@ -290,6 +289,7 @@ def main():
                 ai8x.fuse_bn_layers(model)
         model, compression_scheduler, optimizer, start_epoch = apputils.load_checkpoint(
             model, args.resumed_checkpoint_path, model_device=args.device)
+        ai8x.update_model(model)
     elif args.load_model_path:
         if args.qat:
             checkpoint = torch.load(args.load_model_path,
@@ -298,6 +298,7 @@ def main():
                 ai8x.fuse_bn_layers(model)
         model = apputils.load_lean_checkpoint(model, args.load_model_path,
                                               model_device=args.device)
+        ai8x.update_model(model)
 
     if args.reset_optimizer:
         start_epoch = 0
@@ -392,7 +393,7 @@ def main():
 
     args.kd_policy = None
     if args.kd_teacher:
-        teacher = create_model(supported_models, dimensions, False, args)
+        teacher = create_model(supported_models, dimensions, args)
         if args.kd_resume:
             teacher = apputils.load_lean_checkpoint(teacher, args.kd_resume)
         dlw = distiller.DistillationLossWeights(args.kd_distill_wt, args.kd_student_wt,
@@ -420,21 +421,7 @@ def main():
             ai8x.fuse_bn_layers(model)
 
             # Switch model from unquantized to quantized for QAT
-            ai8x.enable_output_shift(model, args.qat_num_bits, 8)
-
-            # Re-initialize optimizer
-            optimizer_state = optimizer.state_dict()
-            initial_lr = optimizer_state['param_groups'][0]['initial_lr']
-            optimizer = create_optimizer(model, args)
-            # Load previous state, except parameter group 0, preserving initial_lr
-            param_group_0 = optimizer.state_dict()['param_groups'][0]
-            optimizer_state['param_groups'][0] = param_group_0
-            optimizer_state['param_groups'][0]['initial_lr'] = initial_lr
-            optimizer.load_state_dict(optimizer_state)
-
-            for _, val in compression_scheduler.policies.items():
-                if isinstance(val[0], distiller.policy.LRPolicy):
-                    val[0].lr_scheduler.optimizer = optimizer
+            ai8x.initiate_qat(model, args.qat_num_bits, 8)
 
             # Model is re-transferred to GPU in case parameters were added
             model.to(args.device)
@@ -497,7 +484,7 @@ OVERALL_LOSS_KEY = 'Overall Loss'
 OBJECTIVE_LOSS_KEY = 'Objective Loss'
 
 
-def create_model(supported_models, dimensions, is_quantized, args):
+def create_model(supported_models, dimensions, args):
     """Create the model"""
     module = next(item for item in supported_models if item['name'] == args.cnn)
 
@@ -511,9 +498,9 @@ def create_model(supported_models, dimensions, is_quantized, args):
     if not Model:
         raise RuntimeError("Model " + args.cnn + " not found\n")
 
-    # Set model paramaters for Quantization Aware Training
-    if is_quantized:
-        weight_bits = args.qat_num_bits
+    # Set model paramaters
+    if args.act_mode_8bit:
+        weight_bits = 8
         bias_bits = 8
         quantize_activation = True
     else:
