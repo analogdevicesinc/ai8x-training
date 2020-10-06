@@ -347,6 +347,17 @@ class QuantizationAwareModule(nn.Module):
         assert weight_bits in [None, 1, 2, 4, 8], f'Weight bits cannot be {weight_bits}'
         assert bias_bits in [None, 8], f'Bias bits cannot be {bias_bits}'
 
+        self.quantize = None
+        self.clamp = None
+        self.quantize_bias = None
+        self.clamp_bias = None
+        self.calc_out_shift = None
+        self.scale = None
+        self.calc_weight_scale = None
+        self.calc_out_scale = None
+        self.quantize_weight = None
+        self.clamp_weight = None
+
         self.activate = get_activation(activation)
         self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
         self.wide = wide
@@ -382,18 +393,21 @@ class QuantizationAwareModule(nn.Module):
     def set_functions(self):
         """Set functions to be used wrt the model parameters"""
         if self.adjust_output_shift.detach():
-            self.calc_out_shift = OutputShift()  #pylint: disable=attribute-defined-outside-init
-            self.scale = Scaler(False)  #pylint: disable=attribute-defined-outside-init
-            self.calc_weight_scale = WeightScale()  #pylint: disable=attribute-defined-outside-init
+            self.calc_out_shift = OutputShift()
+            self.scale = Scaler(False)
+            self.calc_weight_scale = WeightScale()
         else:
-            self.calc_out_shift = OutputShiftSqueeze()  #pylint: disable=attribute-defined-outside-init
-            self.scale = Scaler(True)  #pylint: disable=attribute-defined-outside-init
-            self.calc_weight_scale = One()  #pylint: disable=attribute-defined-outside-init
-        self.calc_out_scale = OutputScale()  #pylint: disable=attribute-defined-outside-init
+            self.calc_out_shift = OutputShiftSqueeze()
+            self.scale = Scaler(True)
+            self.calc_weight_scale = One()
+        self.calc_out_scale = OutputScale()
 
-        self.quantize_weight, self.clamp_weight = quantize_clamp_parameters(self.weight_bits.detach().item())  # pylint: disable=line-too-long, attribute-defined-outside-init
-        self.quantize_bias, self.clamp_bias = quantize_clamp_parameters(self.bias_bits.detach().item())  # pylint: disable=line-too-long, attribute-defined-outside-init
-        self.quantize, self.clamp = quantize_clamp(self.wide, self.quantize_activation.detach().item())  # pylint: disable=line-too-long, attribute-defined-outside-init
+        self.quantize_weight, self.clamp_weight = \
+            quantize_clamp_parameters(self.weight_bits.detach().item())
+        self.quantize_bias, self.clamp_bias = \
+            quantize_clamp_parameters(self.bias_bits.detach().item())
+        self.quantize, self.clamp = \
+            quantize_clamp(self.wide, self.quantize_activation.detach().item())
 
     def forward(self, x):  # pylint: disable=arguments-differ
         if self.pool is not None:
@@ -1280,6 +1294,7 @@ class QuantizeONNX(nn.Module):
     def forward(self, x):  # pylint: disable=arguments-differ
         factor = 2**(self.num_bits-1)
         return x.mul(factor).round().div(factor)
+
 
 def initiate_qat(m, qat_weight_bits, qat_bias_bits):
     """
