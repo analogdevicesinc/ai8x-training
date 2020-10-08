@@ -353,8 +353,10 @@ class Conv2D(keras.layers.Layer):  # pylint: disable=too-many-instance-attribute
                     filters=filters,
                     kernel_size=kernel_size,
                     strides=strides,
-                    padding='valid',
-                    output_padding=None,
+                    #padding='valid',
+                    padding='same',
+                    #output_padding=None,
+                    output_padding=1,
                     activation=activation,
                     use_bias=use_bias,
                     **kwargs)
