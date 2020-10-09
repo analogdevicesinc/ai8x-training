@@ -86,7 +86,8 @@ print('Test Input', test_input)
 k1 = np.array([-0.1, 0.1, -0.2, 0.2, -0.3, 0.3, -0.4, 0.4, -0.5])
 k1 = clamp(np.floor(k1*128+0.5))/128.0
 
-d1 = np.linspace(-0.9, 0.9, num=495, dtype=np.float32)
+#d1 = np.linspace(-0.9, 0.9, num=495, dtype=np.float32)
+d1 = np.linspace(-0.9, 0.9, num=180, dtype=np.float32)
 d1 = clamp(np.floor(d1*128+0.5))/128.0
 
 init_bias = np.array([-0.01, 0.01])
@@ -101,7 +102,7 @@ conv1 = ai8xTF.FusedConv2DTranspose(
     filters=1,
     kernel_size=3,
     strides=2,
-    padding_size=1,
+    #padding_size=1,
     use_bias=False,
     kernel_initializer=tf.keras.initializers.constant(k1)
     )(reshape)
