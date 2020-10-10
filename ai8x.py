@@ -29,7 +29,7 @@ class normalize:
     def __call__(self, img):
         if self.args.act_mode_8bit:
             return img.sub(0.5).mul(256.).round().clamp(min=-128, max=127)
-        return img.sub(0.5)
+        return img.sub(0.5).mul(256.).round().clamp(min=-128, max=127).div(256.)
 
 
 class QuantizationFunction(Function):
