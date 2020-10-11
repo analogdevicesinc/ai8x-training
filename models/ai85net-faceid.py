@@ -45,6 +45,7 @@ class AI85FaceIDNet(nn.Module):
         self.avgpool = ai8x.AvgPool2d((5, 3))
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)
