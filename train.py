@@ -309,6 +309,9 @@ def main():
         model = apputils.load_lean_checkpoint(model, args.load_model_path,
                                               model_device=args.device)
 
+    if not args.load_serialized and args.gpus != -1 and torch.cuda.device_count() > 1:
+        model = torch.nn.DataParallel(model, device_ids=args.gpus).to(args.device)
+
     if args.reset_optimizer:
         start_epoch = 0
         if optimizer is not None:
