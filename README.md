@@ -2,7 +2,7 @@
 
 # MAX78000 Model Training and Synthesis 
 
-_October 5, 2020_
+_October 12, 2020_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -52,14 +52,17 @@ where “....” is the project root, for example `~/Documents/Source/AI`.
 
 ### Prerequisites
 
-This software currently supports Ubuntu 18.04 LTS (Ubuntu 20.04 LTS is not yet supported by CUDA). The server version is sufficient, see https://ubuntu.com/download/server. *Note: The Windows Subsystem for Linux (WSL) currently does <u>not</u> support CUDA.*
+This software currently supports Ubuntu 18.04 LTS.
+*Note: Ubuntu 20.04 LTS works, but requires CUDA 11 which is not yet officially supported by PyTorch.*
+The server version is sufficient, see https://ubuntu.com/download/server.
+*Note: The Windows Subsystem for Linux (WSL) currently does <u>not</u> support CUDA.*
 
 When going beyond simple tests, model training requires CUDA hardware acceleration (the network loader does not require CUDA).
 
-Install CUDA 10.1 or CUDA 10.2:
+On Ubuntu 18.04 LTS, install CUDA 10.2. On Ubuntu 20.04 LTS, install CUDA 11.1.
 https://developer.nvidia.com/cuda-toolkit-archive
 
-*Note: When using multiple GPUs, the software will automatically use all available GPUs and distribute the workload. To prevent this, either use the `--gpus` command line argument, or set the `CUDA_VISIBLE_DEVICES` environment variable.*
+*Note: When using multiple GPUs, the software will automatically use all available GPUs and distribute the workload. To prevent this, set the `CUDA_VISIBLE_DEVICES` environment variable. Use the `--gpus` command line argument to set the default GPU.*
 
 #### Shared (Multi-User) and Remote Systems
 
@@ -102,7 +105,7 @@ On macOS (no CUDA support available):
 $ brew install pyenv pyenv-virtualenv libomp libsndfile
 ```
 
-On Ubuntu 18.04 LTS:
+On Ubuntu 18.04 LTS/20.04 LTS:
 
 ```shell
 $ sudo apt-get install -y make build-essential libssl-dev zlib1g-dev \
@@ -222,7 +225,7 @@ For CUDA 10.1 on Linux:
 (ai8x-training) $ pip3 install -r requirements-cu101.txt
 ```
 
-For all other systems, including CUDA 10.2 on Linux:
+For all other systems, including CUDA 10.2 and CUDA 11.1 on Linux:
 
 ```shell
 (ai8x-training) $ pip3 install -r requirements.txt
@@ -238,7 +241,7 @@ By default, the `master` branch is checked out. This branch has been tested more
 
 ##### Updating the Project
 
-Major upgrades (such as updating from PyTorch 1.3.1 to PyTorch 1.5) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#Upstream Code). 
+Major upgrades (such as updating from PyTorch 1.3.1 to PyTorch 1.5.1) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#Upstream Code). 
 
 For minor updates, pull the latest code and install the updated wheels:
 
@@ -282,7 +285,7 @@ By default, the `master` branch is checked out. This branch has been tested more
 
 ##### Updating the Project
 
-Major upgrades (such as updating from PyTorch 1.3.1 to PyTorch 1.5) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#Upstream Code). 
+Major upgrades (such as updating from PyTorch 1.3.1 to PyTorch 1.5.1) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#Upstream Code). 
 
 To pull the latest code and install the updated wheels, use:
 
