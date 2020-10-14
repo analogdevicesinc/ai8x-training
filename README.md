@@ -1,6 +1,4 @@
-
-
-# MAX78000 Model Training and Synthesis 
+# MAX78000 Model Training and Synthesis
 
 _October 14, 2020_
 
