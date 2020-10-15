@@ -56,6 +56,7 @@ class AI85KWS20Netv2(nn.Module):
         self.fc = ai8x.Linear(32 * 12, num_classes, bias=bias, wide=True, **kwargs)
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         # Run CNN
         x = self.conv1(x)
         x = self.conv2(x)

@@ -61,6 +61,7 @@ class AI85Net5(nn.Module):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)
@@ -117,6 +118,7 @@ class AI85NetExtraSmall(nn.Module):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)

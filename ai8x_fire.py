@@ -34,6 +34,7 @@ class Fire(nn.Module):
                                                     padding=1, bias=bias, **kwargs)
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         x = self.squeeze_layer(x)
         return torch.cat([
             self.expand1x1_layer(x),

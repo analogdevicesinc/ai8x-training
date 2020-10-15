@@ -90,6 +90,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
 import torchnet.meter as tnt
+import examples.auto_compression.amc as adc
 import distiller
 import distiller.apputils as apputils
 import distiller.model_summaries as model_summaries
@@ -100,7 +101,6 @@ from distiller.data_loggers.collector import SummaryActivationStatsCollector, \
     collectors_context
 from distiller.quantization.range_linear import PostTrainLinearQuantizer
 # pylint: enable=no-name-in-module
-import examples.auto_compression.amc as adc
 import ai8x
 import datasets
 import nnplot

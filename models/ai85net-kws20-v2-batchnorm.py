@@ -58,6 +58,7 @@ class AI85KWS20Netv2Batchnorm(nn.Module):
         # T: 1 F : 256
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         # Run CNN
         x = self.conv1(x)
         x = self.conv2(x)

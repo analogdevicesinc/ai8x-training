@@ -40,7 +40,8 @@ class QuantizationFunction(Function):
     The backward pass is straight through.
     """
     @staticmethod
-    def forward(ctx, x, bits=None, extra_bit_shift=None):  # pylint: disable=arguments-differ
+    def forward(_, x, bits=None, extra_bit_shift=None):  # pylint: disable=arguments-differ
+        """Forward prop"""
         if dev.simulate:
             if bits > 1:
                 return x.add(.5).div(2**(bits+extra_bit_shift-1)).add(.5).floor()
@@ -53,7 +54,8 @@ class QuantizationFunction(Function):
         return x.mul(factor1).add(.5).floor().div(factor2)
 
     @staticmethod
-    def backward(ctx, x):  # pylint: disable=arguments-differ
+    def backward(_, x):  # pylint: disable=arguments-differ
+        """Backprop"""
         # Straight through - return as many input gradients as there were arguments;
         # gradients of non-Tensor arguments to forward must be None.
         return x, None, None
@@ -70,6 +72,7 @@ class Quantize(nn.Module):
         self.num_extra_bit_shift = num_extra_bit_shift
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         return QuantizationFunction.apply(x, self.num_bits, self.num_extra_bit_shift)
 
 
@@ -80,11 +83,13 @@ class FloorFunction(Function):
     The backward pass is straight through.
     """
     @staticmethod
-    def forward(ctx, x):  # pylint: disable=arguments-differ
+    def forward(_, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         return x.floor()
 
     @staticmethod
-    def backward(ctx, x):  # pylint: disable=arguments-differ
+    def backward(_, x):  # pylint: disable=arguments-differ
+        """Backprop"""
         # Straight through - return as many input gradients as there were arguments;
         # gradients of non-Tensor arguments to forward must be None.
         return x
@@ -95,7 +100,8 @@ class Floor(nn.Module):
     Post-pooling integer quantization module
     Apply the custom autograd function
     """
-    def forward(self, x):  # pylint: disable=arguments-differ
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
         return FloorFunction.apply(x)
 
 
@@ -106,11 +112,13 @@ class RoundFunction(Function):
     The backward pass is straight through.
     """
     @staticmethod
-    def forward(ctx, x):  # pylint: disable=arguments-differ
+    def forward(_, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         return x.round()
 
     @staticmethod
-    def backward(ctx, x):  # pylint: disable=arguments-differ
+    def backward(_, x):  # pylint: disable=arguments-differ
+        """Backprop"""
         # Straight through - return as many input gradients as there were arguments;
         # gradients of non-Tensor arguments to forward must be None.
         return x
@@ -121,7 +129,8 @@ class Round(nn.Module):
     Post-pooling integer quantization module
     Apply the custom autograd function
     """
-    def forward(self, x):  # pylint: disable=arguments-differ
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
         return RoundFunction.apply(x)
 
 
@@ -136,6 +145,7 @@ class Clamp(nn.Module):
         self.max_val = max_val
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         return x.clamp(min=self.min_val, max=self.max_val)
 
 
@@ -147,6 +157,7 @@ class ScaleFunction(Function):
     """
     @staticmethod
     def forward(ctx, x, s):  # pylint: disable=arguments-differ
+        """Forward prop"""
         ctx.save_for_backward(s)
         if s < 1.:
             if dev.simulate:
@@ -158,6 +169,7 @@ class ScaleFunction(Function):
 
     @staticmethod
     def backward(ctx, x):  # pylint: disable=arguments-differ
+        """Backprop"""
         s, = ctx.saved_tensors
         return x/s, None
 
@@ -172,6 +184,7 @@ class Scaler(nn.Module):
         self.quantized = quantized
 
     def forward(self, x, s):  # pylint: disable=arguments-differ
+        """Forward prop"""
         if self.quantized:
             return ScaleFunction.apply(x, s)
         return s*x
@@ -261,7 +274,8 @@ class OutputShiftSqueeze(nn.Module):
     """
     Return output_shift when not using quantization-aware training.
     """
-    def forward(self, _, x):  # pylint: disable=arguments-differ
+    def forward(self, _, x):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
         return x.squeeze(0)
 
 
@@ -269,7 +283,8 @@ class OutputShift(nn.Module):
     """
     Calculate the clamped output shift when adjusting during quantization-aware training.
     """
-    def forward(self, x, _):  # pylint: disable=arguments-differ
+    def forward(self, x, _):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
         return -(1./x.abs().max()).log2().ceil().clamp(min=-15., max=15.)
 
 
@@ -277,7 +292,8 @@ class One(nn.Module):
     """
     Return 1.
     """
-    def forward(self, _):  # pylint: disable=arguments-differ
+    def forward(self, _):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
         return 1.
 
 
@@ -285,7 +301,8 @@ class WeightScale(nn.Module):
     """
     Calculate the weight scale (square root of the output shift)
     """
-    def forward(self, x):  # pylint: disable=arguments-differ
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
         return 2.**(-x)
 
 
@@ -293,7 +310,8 @@ class OutputScale(nn.Module):
     """
     Calculate the output scale (square of the output shift)
     """
-    def forward(self, x):  # pylint: disable=arguments-differ
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
         return 2.**x
 
 
@@ -301,7 +319,8 @@ class Abs(nn.Module):
     """
     Return abs(x)
     """
-    def forward(self, x):  # pylint: disable=arguments-differ
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
         return torch.abs_(x)  # abs_() is the in-place version
 
 
@@ -309,7 +328,8 @@ class Empty(nn.Module):
     """
     Do nothing
     """
-    def forward(self, x):  # pylint: disable=arguments-differ
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
         return x
 
 
@@ -410,6 +430,7 @@ class QuantizationAwareModule(nn.Module):
             quantize_clamp(self.wide, self.quantize_activation.detach().item())
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         if self.pool is not None:
             x = self.clamp_pool(self.quantize_pool(self.pool(x)))
         if self.op is not None:
@@ -789,6 +810,7 @@ class FusedSoftwareLinearReLU(nn.Module):
             self.activate = Empty()
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         x = self.op(x)
         x = self.clamp(self.quantize(self.activate(x)))
         return x
@@ -1119,6 +1141,7 @@ class Eltwise(nn.Module):
             self.clamp = Clamp(min_val=-1., max_val=127./128.)
 
     def forward(self, *x):
+        """Forward prop"""
         y = x[0]
         for i in range(1, len(x)):
             y = self.f(y, x[i])
@@ -1292,6 +1315,7 @@ class QuantizeONNX(nn.Module):
         self.num_bits = num_bits
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         factor = 2**(self.num_bits-1)
         return x.mul(factor).round().div(factor)
 

@@ -57,6 +57,7 @@ class AI85ResidualSimpleNet(nn.Module):
                                   wide=True, **kwargs)
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         x = self.conv1(x)          # 16x32x32
         x_res = self.conv2(x)      # 20x32x32
         x = self.conv3(x_res)      # 20x32x32

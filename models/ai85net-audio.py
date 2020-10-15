@@ -73,6 +73,7 @@ class AI85AudioNet(nn.Module):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         # Save input sample for CNN generation
         # import numpy as np
         # a = x.cpu().numpy().squeeze().astype('int64')
