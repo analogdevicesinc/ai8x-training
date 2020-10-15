@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_October 14, 2020_
+_October 15, 2020_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -1955,6 +1955,8 @@ $ docker run -e RUN_LOCAL=true -e VALIDATE_MARKDOWN=false -e VALIDATE_PYTHON_BLA
 ### Submitting Changes
 
 Do not try to push any changes into the master branch. Instead, create a fork and submit a pull request against the `develop` branch. The easiest way to do this is using a [graphical client](#Recommended-Software) such as Fork or GitHub Desktop.
+
+*Note: After creating the fork, you must re-enable actions in the “Actions” tab of the repository on GitHub.*
 
 The following document has more information:
 https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/CONTRIBUTING.md
