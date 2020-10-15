@@ -10,4 +10,3 @@ quantizers:
     # NONE, AVG, N_STD
     clip_acts: AVG
     no_clip_layers: fc
-

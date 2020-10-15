@@ -64,6 +64,7 @@ class AI85KWS20Net(nn.Module):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         # Run CNN
         x = self.voice_conv1(x)
         x = self.voice_conv2(x)

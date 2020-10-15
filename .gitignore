@@ -32,3 +32,5 @@
 /tensorflow
 /weights_sparsity.csv
 __pycache__
+/super-linter.log
+/super-linter.report

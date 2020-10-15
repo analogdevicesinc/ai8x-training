@@ -10,15 +10,15 @@ pruners:
 
 extensions:
   net_thinner:
-      class: 'FilterRemover'
-      thinning_func_str: remove_channels
-      arch: 'ai84net5'
-      dataset: 'FashionMNIST'
+    class: 'FilterRemover'
+    thinning_func_str: remove_channels
+    arch: 'ai84net5'
+    dataset: 'FashionMNIST'
 
 lr_schedulers:
-   exp_finetuning_lr:
-     class: ExponentialLR
-     gamma: 0.95
+  exp_finetuning_lr:
+    class: ExponentialLR
+    gamma: 0.95
 
 policies:
   - pruner:
@@ -30,4 +30,3 @@ policies:
     starting_epoch: 210
     ending_epoch: 300
     frequency: 1
-

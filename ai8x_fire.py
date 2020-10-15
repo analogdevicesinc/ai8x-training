@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2019-2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -34,6 +34,7 @@ class Fire(nn.Module):
                                                     padding=1, bias=bias)
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         x = self.squeeze_layer(x)
         return torch.cat([
             self.expand1x1_layer(x),

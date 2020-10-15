@@ -17,7 +17,7 @@ import numpy as np
 import scipy.ndimage
 from matplotlib.image import imread
 import torch
-from facenet_pytorch import MTCNN, InceptionResnetV1
+from facenet_pytorch import MTCNN, InceptionResnetV1  # pylint: disable=no-name-in-module
 
 
 def generate_image(img, box, count):  # pylint: disable=too-many-locals
@@ -93,7 +93,7 @@ def main(source_path, dest_path):  # pylint: disable=too-many-locals
     to train/test FaceID model.
     """
 
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')  # pylint: disable=no-member
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     print('Running on device: {}'.format(device))
 
     mtcnn = MTCNN(
@@ -106,7 +106,7 @@ def main(source_path, dest_path):  # pylint: disable=too-many-locals
 
     data_dir_list = os.listdir(source_path)
     for i, folder in enumerate(data_dir_list):
-        if i%10 == 0:
+        if i % 10 == 0:
             print('%d of %d' % (i, len(data_dir_list)))
         folder_path = os.path.join(source_path, folder)
         prcssd_folder_path = os.path.join(dest_path, folder)
