@@ -215,7 +215,7 @@ $ source bin/activate
 (ai8x-training) $ pip3 install -U pip wheel setuptools
 ```
 
-The next step differs depending on the CUDA version and whether PyTorch to TensorFlow is used.
+The next step differs depending on the CUDA version and whether PyTorch or TensorFlow is used.
 
 For PyTorch with CUDA 10.1 on Linux:
 
@@ -223,7 +223,7 @@ For PyTorch with CUDA 10.1 on Linux:
 (ai8x-training) $ pip3 install -r requirements-cu101.txt
 ```
 
-For all other PyTorch setups, including CUDA 10.2 on Linux, and other operating systems:
+For all other PyTorch setups, including CUDA 10.2  and CUDA 11.1 on Linux:
 
 ```shell
 (ai8x-training) $ pip3 install -r requirements.txt
