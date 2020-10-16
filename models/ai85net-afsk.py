@@ -33,6 +33,7 @@ class AI85AfskNet(nn.Module):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         x = self.mfcc_conv1(x)
         x = self.dropout1(x)
         x = self.mfcc_conv2(x)

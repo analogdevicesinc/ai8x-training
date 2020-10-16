@@ -1,0 +1,18 @@
+# This is a basic workflow to thow an error if a pull request targets the main and historic branches
+
+name: No Pull Requests to Main and Historic Branches
+
+# Triggers the workflow pull request events but only for certain branches
+on:
+  pull_request:
+    branches: [ master, main, develop-historic ]
+
+jobs:
+  No_Pull_Requests_to_Main:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Run a one-line script
+      run: |
+        echo Pull requests to the main and historic branches are not allowed in this repository.
+        exit 1     

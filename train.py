@@ -90,6 +90,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
 import torchnet.meter as tnt
+import examples.auto_compression.amc as adc
 import distiller
 import distiller.apputils as apputils
 import distiller.model_summaries as model_summaries
@@ -100,7 +101,6 @@ from distiller.data_loggers.collector import SummaryActivationStatsCollector, \
     collectors_context
 from distiller.quantization.range_linear import PostTrainLinearQuantizer
 # pylint: enable=no-name-in-module
-import examples.auto_compression.amc as adc
 import ai8x
 import datasets
 import nnplot
@@ -308,6 +308,9 @@ def main():
     elif args.load_model_path:
         model = apputils.load_lean_checkpoint(model, args.load_model_path,
                                               model_device=args.device)
+
+    if not args.load_serialized and args.gpus != -1 and torch.cuda.device_count() > 1:
+        model = torch.nn.DataParallel(model, device_ids=args.gpus).to(args.device)
 
     if args.reset_optimizer:
         start_epoch = 0

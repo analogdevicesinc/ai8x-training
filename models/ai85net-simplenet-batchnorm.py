@@ -52,6 +52,7 @@ class AI85SimpleNetBatchNorm(nn.Module):
                                   wide=True)
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)

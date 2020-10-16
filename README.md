@@ -1,8 +1,6 @@
+# MAX78000 Model Training and Synthesis
 
-
-# MAX78000 Model Training and Synthesis 
-
-_October 5, 2020_
+_October 15, 2020_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -52,14 +50,17 @@ where “....” is the project root, for example `~/Documents/Source/AI`.
 
 ### Prerequisites
 
-This software currently supports Ubuntu 18.04 LTS (Ubuntu 20.04 LTS is not yet supported by CUDA). The server version is sufficient, see https://ubuntu.com/download/server. *Note: The Windows Subsystem for Linux (WSL) currently does <u>not</u> support CUDA.*
+This software currently supports Ubuntu 18.04 LTS.
+*Note: Ubuntu 20.04 LTS works, but requires CUDA 11 which is not yet officially supported by PyTorch.*
+The server version is sufficient, see https://ubuntu.com/download/server.
+*Note: The Windows Subsystem for Linux (WSL) currently does <u>not</u> support CUDA.*
 
 When going beyond simple tests, model training requires CUDA hardware acceleration (the network loader does not require CUDA).
 
-Install CUDA 10.1 or CUDA 10.2:
+On Ubuntu 18.04 LTS, install CUDA 10.2. On Ubuntu 20.04 LTS, install CUDA 11.1.
 https://developer.nvidia.com/cuda-toolkit-archive
 
-*Note: When using multiple GPUs, the software will automatically use all available GPUs and distribute the workload. To prevent this, either use the `--gpus` command line argument, or set the `CUDA_VISIBLE_DEVICES` environment variable.*
+*Note: When using multiple GPUs, the software will automatically use all available GPUs and distribute the workload. To prevent this, set the `CUDA_VISIBLE_DEVICES` environment variable. Use the `--gpus` command line argument to set the default GPU.*
 
 #### Shared (Multi-User) and Remote Systems
 
@@ -102,7 +103,7 @@ On macOS (no CUDA support available):
 $ brew install pyenv pyenv-virtualenv libomp libsndfile
 ```
 
-On Ubuntu 18.04 LTS:
+On Ubuntu 18.04 LTS/20.04 LTS:
 
 ```shell
 $ sudo apt-get install -y make build-essential libssl-dev zlib1g-dev \
@@ -245,7 +246,7 @@ By default, the `master` branch is checked out. This branch has been tested more
 
 ##### Updating the Project
 
-Major upgrades (such as updating from PyTorch 1.3.1 to PyTorch 1.5) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#Upstream Code). 
+Major upgrades (such as updating from PyTorch 1.3.1 to PyTorch 1.5.1) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#Upstream Code). 
 
 For minor updates, pull the latest code and install the updated wheels:
 
@@ -289,7 +290,7 @@ By default, the `master` branch is checked out. This branch has been tested more
 
 ##### Updating the Project
 
-Major upgrades (such as updating from PyTorch 1.3.1 to PyTorch 1.5) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#Upstream Code). 
+Major upgrades (such as updating from PyTorch 1.3.1 to PyTorch 1.5.1) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#Upstream Code). 
 
 To pull the latest code and install the updated wheels, use:
 
@@ -1942,20 +1943,30 @@ Total: 2 KiB (4 instances of 128 × 32)
 
 ### Linting
 
-Both projects are set up for `flake8`, `pylint`, and `mypy`. The line width is related to 100 (instead of the default of 80), and the number of lines per module was increased; configuration files are included in the projects.
+Both projects are set up for `flake8` and `pylint` to lint Python code. The line width is related to 100 (instead of the default of 80), and the number of lines per module was increased; configuration files are included in the projects. Shell code is linted by `shellcheck`, and YAML files by `yamllint`.
 Code should not generate any warnings in any of the tools (some of the components in the `ai8x-training` project will create warnings as they are based on third-party code).
 
-`flake8`, `pylint` and `mypy` need to be installed into both virtual environments:
+`flake8` and `pylint` need to be installed into both virtual environments:
 
 ```shell
 (ai8x-synthesis) $ pip3 install flake8 pylint mypy
+```
+
+The GitHub projects use the [GitHub Super-Linter](https://github.com/github/super-linter) to automatically verify push operations and pull requests. The Super-Linter can be installed locally, see [installation instructions](https://github.com/github/super-linter/blob/master/docs/run-linter-locally.md).
+To run locally, create a clean copy of the repository and run the following command from the project directory (i.e., `ai8x-training` or `ai8x-synthesis`): 
+
+```shell
+$ docker run -e RUN_LOCAL=true -e VALIDATE_MARKDOWN=false -e VALIDATE_PYTHON_BLACK=false -e VALIDATE_ANSIBLE=false -e VALIDATE_EDITORCONFIG=false -e FILTER_REGEX_EXCLUDE="attic/.*|inspect_ckpt.py" -v `pwd`:/tmp/lint github/super-linter
 ```
 
 ### Submitting Changes
 
 Do not try to push any changes into the master branch. Instead, create a fork and submit a pull request against the `develop` branch. The easiest way to do this is using a [graphical client](#Recommended-Software) such as Fork or GitHub Desktop.
 
+*Note: After creating the fork, you must re-enable actions in the “Actions” tab of the repository on GitHub.*
+
 The following document has more information:
 https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/CONTRIBUTING.md
 
 ---
+
