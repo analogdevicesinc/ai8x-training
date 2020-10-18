@@ -76,13 +76,9 @@ def get_parser(model_names, dataset_names):
                              '(default: use "floor()")')
 
     qat_args = parser.add_argument_group('Quantization Arguments')
-    qat_args.add_argument('--disable-qat', dest='qat', action='store_false', default=True,
-                          help='disable quantization-aware training')
-    qat_args.add_argument('--qat-num-bits', type=int, default=8,
-                          help='override all weight bits for quantization aware training')
-    qat_args.add_argument('--qat-start-epoch', '--start-qat-epoch', type=int, default=10,
-                          dest='start_qat_epoch',
-                          help='epoch to quantize model for quantization-aware training')
+    qat_args.add_argument('--qat-policy', dest='qat_policy', default=None,
+                          help='path to YAML file that defines the '
+                               'QAT (quantization-aware training) policy')
 
     optimizer_args = parser.add_argument_group('Optimizer Arguments')
     optimizer_args.add_argument('--optimizer', default='SGD',

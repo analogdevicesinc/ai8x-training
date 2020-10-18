@@ -1320,7 +1320,7 @@ class QuantizeONNX(nn.Module):
         return x.mul(factor).round().div(factor)
 
 
-def initiate_qat(m, qat_weight_bits, qat_bias_bits):
+def initiate_qat(m, qat_policy):
     """
     Modify model `m` to start quantization aware training.
     """
@@ -1328,7 +1328,12 @@ def initiate_qat(m, qat_weight_bits, qat_bias_bits):
         for attr_str in dir(m):
             target_attr = getattr(m, attr_str)
             if isinstance(target_attr, QuantizationAwareModule):
-                target_attr.init_module(qat_weight_bits, qat_bias_bits, True)
+                target_attr.init_module(qat_policy['bits_weights'], 8, True)
+                if 'overrides' in qat_policy:
+                    if attr_str in qat_policy['overrides']:
+                        target_attr.init_module(qat_policy['overrides'][attr_str]['bits_weights'],
+                                                8, True)
+
                 setattr(m, attr_str, target_attr)
 
     m.apply(_initiate_qat)

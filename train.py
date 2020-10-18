@@ -106,6 +106,7 @@ import datasets
 import nnplot
 import parsecmd
 import sample
+import parse_qat_yaml
 # from range_linear_ai84 import PostTrainLinearQuantizerAI84
 
 
@@ -275,26 +276,29 @@ def main():
         tflogger = None
         all_tbloggers = []
 
-    # capture thresholds for early-exit training
+    # Capture thresholds for early-exit training
     if args.earlyexit_thresholds:
         msglogger.info('=> using early-exit threshold values of %s', args.earlyexit_thresholds)
+
+    # Get policy for quantization aware training
+    qat_policy = parse_qat_yaml.parse(args.qat_policy) if args.qat_policy else None
 
     # We can optionally resume from a checkpoint
     optimizer = None
     if args.resumed_checkpoint_path:
-        if args.qat:
+        if qat_policy is not None:
             checkpoint = torch.load(args.resumed_checkpoint_path,
                                     map_location=lambda storage, loc: storage)
-            if checkpoint.get('epoch', None) >= args.start_qat_epoch:
+            if checkpoint.get('epoch', None) >= qat_policy['start_epoch']:
                 ai8x.fuse_bn_layers(model)
         model, compression_scheduler, optimizer, start_epoch = apputils.load_checkpoint(
             model, args.resumed_checkpoint_path, model_device=args.device)
         ai8x.update_model(model)
     elif args.load_model_path:
-        if args.qat:
+        if qat_policy is not None:
             checkpoint = torch.load(args.load_model_path,
                                     map_location=lambda storage, loc: storage)
-            if checkpoint.get('epoch', None) >= args.start_qat_epoch:
+            if checkpoint.get('epoch', None) >= qat_policy['start_epoch']:
                 ai8x.fuse_bn_layers(model)
         model = apputils.load_lean_checkpoint(model, args.load_model_path,
                                               model_device=args.device)
@@ -419,12 +423,12 @@ def main():
 
     vloss = 10**6
     for epoch in range(start_epoch, ending_epoch):
-        if args.qat and epoch > 0 and epoch == args.start_qat_epoch:
+        if qat_policy is not None and epoch > 0 and epoch == qat_policy['start_epoch']:
             # Fuse the BN parameters into conv layers before Quantization Aware Training (QAT)
             ai8x.fuse_bn_layers(model)
 
             # Switch model from unquantized to quantized for QAT
-            ai8x.initiate_qat(model, args.qat_num_bits, 8)
+            ai8x.initiate_qat(model, qat_policy)
 
             # Model is re-transferred to GPU in case parameters were added
             model.to(args.device)
