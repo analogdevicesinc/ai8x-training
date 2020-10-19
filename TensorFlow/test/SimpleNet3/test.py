@@ -102,7 +102,7 @@ conv1 = ai8xTF.FusedConv2DTranspose(
     filters=1,
     kernel_size=3,
     strides=2,
-    #padding_size=1,
+    # padding_size=1,
     use_bias=False,
     kernel_initializer=tf.keras.initializers.constant(k1)
     )(reshape)
