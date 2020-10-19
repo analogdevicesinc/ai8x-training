@@ -739,7 +739,7 @@ class Empty(keras.layers.Layer):
     Do nothing
     """
 
-    def call(self, x):  # pylint: disable=arguments-differ
+    def call(self, x):  # pylint: disable=arguments-differ,no-self-use
         """
         call function
         """

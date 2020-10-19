@@ -12,13 +12,13 @@ import os
 import sys
 import tensorflow as tf
 import numpy as np
-sys.path.append(os.path.join('..','..'))
+sys.path.append(os.path.join('..', '..'))
 import ai8xTF  # pylint: disable=import-error,wrong-import-order,wrong-import-position  # noqa:E402
 
 ai8xTF.set_device(85, False, 10)
 
 
-# create a class for logging screen to file 
+# create a class for logging screen to file
 # make sure to change verbose=2 in fit and evaluate
 class Logger():
     """

@@ -86,7 +86,7 @@ print('Test Input', test_input)
 k1 = np.array([-0.1, 0.1, -0.2, 0.2, -0.3, 0.3, -0.4, 0.4, -0.5])
 k1 = clamp(np.floor(k1*128+0.5))/128.0
 
-#d1 = np.linspace(-0.9, 0.9, num=495, dtype=np.float32)
+# d1 = np.linspace(-0.9, 0.9, num=495, dtype=np.float32)
 d1 = np.linspace(-0.9, 0.9, num=180, dtype=np.float32)
 d1 = clamp(np.floor(d1*128+0.5))/128.0
 
