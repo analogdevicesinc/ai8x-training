@@ -18,7 +18,7 @@ import ai8xTF  # pylint: disable=import-error,wrong-import-order,wrong-import-po
 ai8xTF.set_device(85, False, 10)
 
 
-# create a class for logging screen to file
+# create a class for logging screen to file 
 # make sure to change verbose=2 in fit and evaluate
 class Logger():
     """
