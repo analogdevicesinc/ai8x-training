@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_October 15, 2020_
+_October 16, 2020_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -231,13 +231,21 @@ For all other systems, including CUDA 10.2 and CUDA 11.1 on Linux:
 
 ##### Repository Branches
 
-By default, the `master` branch is checked out. This branch has been tested more rigorously than the `develop` branch. `develop`, on the other hand, contains the latest improvements to the project. To switch to `develop`, use the following command:
+By default, the main branch is checked out. This branch has been tested more rigorously than the `develop` branch. `develop`, on the other hand, contains the latest improvements to the project. To switch to `develop`, use the following command:
 
 ```shell
 (ai8x-training) $ git checkout develop
 ```
 
-##### Updating the Project
+##### Updates
+
+After additional testing, `develop` is merged into the main branch at regular intervals.
+
+For all non-trivial merges, a “Release” tag is created on GitHub. GitHub offers email alerts for all activity in a project, or for new releases only. Subscribing to releases only substantially reduces email traffic.
+
+*Note: Each “Release” automatically creates a code archive. It is recommended to use a git client to access (pull from) the main branch of the repository using a git client instead of downloading the archives.*
+
+In addition to code updated in the repository itself, submodules and Python libraries may have been updated as well.
 
 Major upgrades (such as updating from PyTorch 1.3.1 to PyTorch 1.5.1) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#Upstream Code). 
 
@@ -273,26 +281,9 @@ $ source bin/activate
 (ai8x-synthesis) $ pip3 install -r requirements.txt
 ```
 
-##### Repository Branches
+##### Repository Branches and Updates
 
-By default, the `master` branch is checked out. This branch has been tested more rigorously than the `develop` branch. `develop`, on the other hand, contains the latest improvements to the project. To switch to `develop`, use the following command:
-
-```shell
-(ai8x-synthesis) $ git checkout develop
-```
-
-##### Updating the Project
-
-Major upgrades (such as updating from PyTorch 1.3.1 to PyTorch 1.5.1) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#Upstream Code). 
-
-To pull the latest code and install the updated wheels, use:
-
-```shell
-(ai8x-synthesis) $ git pull
-(ai8x-synthesis) $ git submodule update --init
-(ai8x-synthesis) $ pip3 install -U pip setuptools
-(ai8x-synthesis) $ pip3 install -U -r requirements.txt
-```
+Branches and updates for `ai8x-synthesis` are handled similarly to the [`ai8x-training`](#Repository Branches) project.
 
 ### Embedded Software Development Kit (SDK)
 
@@ -746,8 +737,7 @@ The following table describes the most important command line arguments for `tra
 | `--lr`, `--learning-rate`  | Set initial learning rate                                    | `--lr 0.001`                    |
 | `--deterministic`          | Seed random number generators with fixed values              |                                 |
 | `--resume-from`            | Resume from previous checkpoint                              | `--resume-from chk.pth.tar`     |
-| `--disable-qat`            | Disable Quantization Aware Training (“QAT”)                  |                                 |
-| `--qat-start-epoch`        | Begin learning QAT parameters at this epoch (default: 10)    | `--qat-start-epoch 2`           |
+| `--qat-policy`             | Define QAT parameters in YAML file                           | `--qat-policy qat_policy.yaml`  |
 | *Display and statistics*   |                                                              |                                 |
 | `--confusion`              | Display the confusion matrix                                 |                                 |
 | `--param-hist`             | Collect parameter statistics                                 |                                 |
@@ -864,11 +854,9 @@ When using the `-8` command line switch, all module outputs are quantized to 8-b
 
 ##### Weights: Quantization Aware Training
 
-After `--qat-start-epoch` epochs (10 by default), training will learn an additional parameter that corresponds to a shift of the final sum of products.
+After `start_epoch` epochs (parsed from the YAML file specified by `--qat-policy`), training will learn an additional parameter that corresponds to a shift of the final sum of products.
 
 By default, weights are quantized to 8-bits. The custom modules in `ai8x.py` have an optional `weight_bits=` parameter that can be used to reduce the number of bits available for weights on a per-layer basis.
-
-*Note: This feature can be disabled using the `--disable-qat` command line argument.* 
 
 #### Batch Normalization
 
@@ -1097,16 +1085,16 @@ The following table describes the most important command line arguments for `ai8
 | ------------------------ | ------------------------------------------------------------ | ------------------------------- |
 | `--help`                 | Complete list of arguments                                   |                                 |
 | *Device selection*       |                                                              |                                 |
-| `--device`               | Set device (default: AI84)                                     | `--device MAX78000`                   |
+| `--device`               | Set device (default: AI84)                                   | `--device MAX78000`             |
 | *Hardware features*      |                                                              |                                 |
 | `--avg-pool-rounding`    | Round average pooling results                                |                                 |
 | `--simple1b`             | Use simple XOR instead of 1-bit multiplication               |                                 |
 | *Embedded code*          |                                                              |                                 |
-| `-e`, `--embedded-code`  | Generate embedded code for device                            |                                 |
 | `--config-file`          | YAML configuration file containing layer configuration       | `--config-file cfg.yaml`        |
 | `--checkpoint-file`      | Checkpoint file containing quantized weights                 | `--checkpoint-file chk.pth.tar` |
 | `--display-checkpoint`   | Show parsed checkpoint data                                  |                                 |
 | `--prefix`               | Set test name prefix                                         | `--prefix mnist`                |
+| `--board-name`           | Set the target board (default: `EvKit_V1`)                   | `--board-name FTHR_RevA`        |
 | *Code generation*        |                                                              |                                 |
 | `--compact-data`         | Use *memcpy* to load input data in order to save code space  |                                 |
 | `--compact-weights`      | Use *memcpy* to load weights in order to save code space     |                                 |
@@ -1213,7 +1201,7 @@ layers:
 To generate an embedded MAX78000 demo in the `demos/ai85-mnist/` folder, use the following command line:
 
 ```shell
-(ai8x-synthesize) $ ./ai8xize.py --verbose -L --top-level cnn --test-dir demos --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000 --compact-data --mexpress --softmax --embedded-code
+(ai8x-synthesize) $ ./ai8xize.py --verbose --log --test-dir demos --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000 --compact-data --mexpress --softmax
 ```
 
 Running this command will combine the network described above with a fully connected software classification layer. The generated code will include all loading, unloading, and configuration steps.
@@ -1221,7 +1209,7 @@ Running this command will combine the network described above with a fully conne
 To generate an RTL simulation for the same network and sample data in the directory `tests/ai85-mnist-....` (where .... is an autogenerated string based on the network topology), use:
 
 ```shell
-(ai8x-synthesize) $ ./ai8xize.py --verbose --autogen rtlsim --top-level cnn -L --test-dir rtlsim --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000
+(ai8x-synthesize) $ ./ai8xize.py --rtl --verbose --autogen rtlsim --log --test-dir rtlsim --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000
 ```
 
 ### Network Loader Configuration Language
