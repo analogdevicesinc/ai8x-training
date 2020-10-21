@@ -29,10 +29,10 @@ Command line parser for the Training/Quantization software.
 
 import argparse
 
+from examples.auto_compression.amc import amc_args as adc
 import distiller
 import distiller.quantization
 from distiller.utils import float_range_argparse_checker as float_range
-from examples.auto_compression.amc import amc_args as adc
 from devices import device
 
 

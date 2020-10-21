@@ -12,7 +12,7 @@ import os
 import sys
 import tensorflow as tf
 import numpy as np
-sys.path.append(os.path.join('..','..'))
+sys.path.append(os.path.join('..', '..'))
 import ai8xTF  # pylint: disable=import-error,wrong-import-order,wrong-import-position  # noqa:E402
 
 ai8xTF.set_device(85, False, 10)
@@ -97,7 +97,7 @@ conv1 = ai8xTF.FusedConv2DTranspose(
     filters=2,
     kernel_size=3,
     strides=2,
-    #padding_size=1,
+    # padding_size=1,
     use_bias=False,
     kernel_initializer=tf.keras.initializers.constant(k1)
     )(reshape)

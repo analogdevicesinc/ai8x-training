@@ -5,8 +5,8 @@ lr_schedulers:
     gamma: 0.5
 
 policies:
-    - lr_scheduler:
-        instance_name: training_lr
-      starting_epoch: 0
-      ending_epoch: 150
-      frequency: 1
+  - lr_scheduler:
+      instance_name: training_lr
+    starting_epoch: 0
+    ending_epoch: 150
+    frequency: 1

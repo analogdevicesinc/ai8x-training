@@ -29,7 +29,9 @@
 /sensitivity.csv
 /sensitivity.png
 /share
+/tensorflow
+/TensorFlow
 /weights_sparsity.csv
 __pycache__
-/TensorFlow/logs
-/TensorFlow/export
+/super-linter.log
+/super-linter.report

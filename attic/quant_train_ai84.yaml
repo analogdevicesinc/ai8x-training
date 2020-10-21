@@ -2,7 +2,8 @@ quantizers:
   linear_quantizer:
     class: QuantAwareTrainRangeLinearQuantizerAI84
     bits_weights: 8
-    ema_decay: 0.999   # Decay value for exponential moving average tracking of activation ranges
+    # Decay value for exponential moving average tracking of activation ranges
+    ema_decay: 0.999
     bits_activations: 8
     # bits_parameters: 8
     # bits_accum: 32
@@ -22,14 +23,13 @@ lr_schedulers:
     gamma: 0.1
 
 policies:
-    - lr_scheduler:
-        instance_name: training_lr
-      starting_epoch: 0
-      ending_epoch: 200
-      frequency: 1
-    - quantizer:
-        instance_name: linear_quantizer
-      starting_epoch: 0
-      ending_epoch: 300
-      frequency: 1
-
+  - lr_scheduler:
+      instance_name: training_lr
+    starting_epoch: 0
+    ending_epoch: 200
+    frequency: 1
+  - quantizer:
+      instance_name: linear_quantizer
+    starting_epoch: 0
+    ending_epoch: 300
+    frequency: 1

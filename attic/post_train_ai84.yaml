@@ -21,4 +21,3 @@ quantizers:
         bits_weights: 8
         bits_bias: 8
         scale_approx_mult_bits: null
-

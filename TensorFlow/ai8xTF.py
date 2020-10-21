@@ -103,6 +103,9 @@ class Conv1D(keras.layers.Layer):  # pylint: disable=too-many-instance-attribute
         self.quantize, self.clamp = quantize_clamp(wide, output_shift)
 
     def call(self, x):  # pylint: disable=arguments-differ
+        """
+        call function
+        """
         if self.pool is not None:
             x = self.clamp_pool(self.pool(x))
             # print('PoolOutput:%s' % (x.shape))
@@ -115,6 +118,9 @@ class Conv1D(keras.layers.Layer):  # pylint: disable=too-many-instance-attribute
         return x
 
     def get_config(self):
+        """
+        get configuration
+        """
         return {
             "name": self.__class__.__name__,
             "filters": self.filters,
@@ -367,6 +373,9 @@ class Conv2D(keras.layers.Layer):  # pylint: disable=too-many-instance-attribute
         self.quantize, self.clamp = quantize_clamp(wide, output_shift)
 
     def call(self, x):  # pylint: disable=arguments-differ
+        """
+        call function
+        """
         if self.pool is not None:
             x = self.clamp_pool(self.pool(x))
             # print('PoolOutput:%s'%(x.shape))
@@ -379,6 +388,9 @@ class Conv2D(keras.layers.Layer):  # pylint: disable=too-many-instance-attribute
         return x
 
     def get_config(self):
+        """
+        get configuration
+        """
         return {
             "name": self.__class__.__name__,
             "filters": self.filters,
@@ -614,6 +626,9 @@ class Dense(keras.layers.Layer):
         self.quantize, self.clamp = quantize_clamp(wide, output_shift)
 
     def call(self, x):  # pylint: disable=arguments-differ
+        """
+        call function
+        """
         x = self.Dense(x)
         x = self.clamp(x)
         # print(x.shape)
@@ -621,6 +636,9 @@ class Dense(keras.layers.Layer):
         return x
 
     def get_config(self):
+        """
+        get configuration
+        """
         return {
             "name": self.__class__.__name__,
             "units": self.units,
@@ -643,9 +661,15 @@ class Clamp(keras.layers.Layer):
         self.max_val = max_val
 
     def call(self, x, training=None):  # pylint: disable=unused-argument, arguments-differ
+        """
+        call function
+        """
         return tf.clip_by_value(x, self.min_val, self.max_val)
 
     def get_config(self):
+        """
+        get configuration
+        """
         return {
             "name": self.__class__.__name__,
             "min_val": self.min_val,
@@ -715,8 +739,11 @@ class Empty(keras.layers.Layer):
     Do nothing
     """
 
-    def call(self, x):  # pylint: disable=arguments-differ
-        return x
+    def call(self, x):  # pylint: disable=arguments-differ,no-self-use
+        """
+        call function
+        """
+        return x  # pylint: disable=no-self-use
 
 
 # ------------------------------- Device Selection

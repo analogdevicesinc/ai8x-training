@@ -17,7 +17,7 @@ import numpy as np
 import scipy.ndimage
 from matplotlib.image import imread
 import torch
-from facenet_pytorch import MTCNN, InceptionResnetV1
+from facenet_pytorch import MTCNN, InceptionResnetV1  # pylint: disable=no-name-in-module
 
 
 def generate_image(img, box, count):  # pylint: disable=too-many-locals
@@ -84,7 +84,7 @@ def generate_image(img, box, count):  # pylint: disable=too-many-locals
     return new_img, new_box, img, box
 
 
-def main(source_path, dest_path):  # pylint: disable=too-many-locals, too-many-statements, too-many-branches
+def main(source_path, dest_path):
     """
     Main function to iterate over the images in the raw data and generate data samples
     to train/test FaceID model.
@@ -101,7 +101,7 @@ def main(source_path, dest_path):  # pylint: disable=too-many-locals, too-many-s
     target_im_shape = (160, 120)
 
     # set device
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')  # pylint: disable=no-member
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     print('Running on device: {}'.format(device))
 
     # create models

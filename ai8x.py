@@ -40,7 +40,8 @@ class QuantizationFunction(Function):
     The backward pass is straight through.
     """
     @staticmethod
-    def forward(ctx, x, bits=None):  # pylint: disable=arguments-differ
+    def forward(_, x, bits=None):  # pylint: disable=arguments-differ
+        """Forward prop"""
         if bits > 1:
             return x.add(.5).div(2**(bits-1)).add(.5).floor()
         if bits < 1:
@@ -48,7 +49,8 @@ class QuantizationFunction(Function):
         return x.add(.5).floor()
 
     @staticmethod
-    def backward(ctx, x):  # pylint: disable=arguments-differ
+    def backward(_, x):  # pylint: disable=arguments-differ
+        """Backprop"""
         # Straight through - return as many input gradients as there were arguments;
         # gradients of non-Tensor arguments to forward must be None.
         return x, None
@@ -64,6 +66,7 @@ class Quantize(nn.Module):
         self.num_bits = num_bits
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         return QuantizationFunction.apply(x, self.num_bits)
 
 
@@ -74,11 +77,13 @@ class FloorFunction(Function):
     The backward pass is straight through.
     """
     @staticmethod
-    def forward(ctx, x):  # pylint: disable=arguments-differ
+    def forward(_, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         return x.floor()
 
     @staticmethod
-    def backward(ctx, x):  # pylint: disable=arguments-differ
+    def backward(_, x):  # pylint: disable=arguments-differ
+        """Backprop"""
         # Straight through - return as many input gradients as there were arguments;
         # gradients of non-Tensor arguments to forward must be None.
         return x
@@ -89,7 +94,8 @@ class Floor(nn.Module):
     Post-pooling integer quantization module
     Apply the custom autograd function
     """
-    def forward(self, x):  # pylint: disable=arguments-differ
+    def forward(self, x):  # pylint: disable=arguments-differ,no-self-use
+        """Forward prop"""
         return FloorFunction.apply(x)
 
 
@@ -100,11 +106,13 @@ class RoundFunction(Function):
     The backward pass is straight through.
     """
     @staticmethod
-    def forward(ctx, x):  # pylint: disable=arguments-differ
+    def forward(_, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         return x.round()
 
     @staticmethod
-    def backward(ctx, x):  # pylint: disable=arguments-differ
+    def backward(_, x):  # pylint: disable=arguments-differ
+        """Backprop"""
         # Straight through - return as many input gradients as there were arguments;
         # gradients of non-Tensor arguments to forward must be None.
         return x
@@ -115,7 +123,8 @@ class Round(nn.Module):
     Post-pooling integer quantization module
     Apply the custom autograd function
     """
-    def forward(self, x):  # pylint: disable=arguments-differ
+    def forward(self, x):  # pylint: disable=arguments-differ,no-self-use
+        """Forward prop"""
         return RoundFunction.apply(x)
 
 
@@ -130,6 +139,7 @@ class Clamp(nn.Module):
         self.max_val = max_val
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         return x.clamp(min=self.min_val, max=self.max_val)
 
 
@@ -194,7 +204,8 @@ class Abs(nn.Module):
     """
     Return abs(x)
     """
-    def forward(self, x):  # pylint: disable=arguments-differ
+    def forward(self, x):  # pylint: disable=arguments-differ,no-self-use
+        """Forward prop"""
         return torch.abs_(x)  # abs_() is the in-place version
 
 
@@ -202,7 +213,8 @@ class Empty(nn.Module):
     """
     Do nothing
     """
-    def forward(self, x):  # pylint: disable=arguments-differ
+    def forward(self, x):  # pylint: disable=arguments-differ,no-self-use
+        """Forward prop"""
         return x
 
 
@@ -330,6 +342,7 @@ class Conv2d(nn.Module):
         self.activate = get_activation(activation)
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         if self.pool is not None:
             x = self.clamp_pool(self.quantize_pool(self.pool(x)))
         if self.conv2d is not None:
@@ -537,6 +550,7 @@ class FusedSoftwareLinearReLU(nn.Module):
             self.activate = Empty()
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         x = self.linear(x)
         x = self.clamp(self.quantize(self.activate(x)))
         return x
@@ -569,6 +583,7 @@ class Linear(nn.Module):
         self.activate = get_activation(activation)
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         x = self.linear(x)
         x = self.clamp(self.quantize(self.activate(x)))
         return x
@@ -653,6 +668,7 @@ class Conv1d(nn.Module):
         self.activate = get_activation(activation)
 
     def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
         if self.pool is not None:
             x = self.clamp_pool(self.quantize_pool(self.pool(x)))
         if self.conv1d is not None:
@@ -757,6 +773,7 @@ class Eltwise(nn.Module):
             self.clamp = Clamp(min_val=-1., max_val=1.)
 
     def forward(self, *x):
+        """Forward prop"""
         y = x[0]
         for i in range(1, len(x)):
             y = self.f(y, x[i])
