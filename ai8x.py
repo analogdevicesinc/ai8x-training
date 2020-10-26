@@ -190,6 +190,26 @@ class Scaler(nn.Module):
         return s*x
 
 
+class RoundQat(nn.Module):
+    """
+    Round function for AvgPool in QAT mode
+    """
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
+        factor = 2**(dev.ACTIVATION_BITS - 1)
+        return x.mul(factor).round().div(factor)
+
+
+class FloorQat(nn.Module):
+    """
+    Floor function for AvgPool in QAT mode
+    """
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
+        factor = 2**(dev.ACTIVATION_BITS - 1)
+        return x.mul(factor).floor().div(factor)
+
+
 def quantize_clamp(wide, quantize_activation=False):
     """
     Return new Quantization and Clamp objects.
@@ -229,7 +249,7 @@ def quantize_clamp(wide, quantize_activation=False):
     return quantize, clamp
 
 
-def quantize_clamp_pool(pooling):
+def quantize_clamp_pool(pooling, quantize_activation=False):
     """
     Return new Quantization and Clamp objects for pooling.
     """
@@ -246,6 +266,8 @@ def quantize_clamp_pool(pooling):
     else:
         quantize = Empty()
         if pooling == 'Avg':
+            if quantize_activation:
+                quantize = RoundQat() if dev.round_avg else FloorQat()
             clamp = Clamp(min_val=-1., max_val=127./128.)
         else:  # Max, None
             clamp = Empty()
@@ -377,15 +399,17 @@ class QuantizationAwareModule(nn.Module):
         self.calc_out_scale = None
         self.quantize_weight = None
         self.clamp_weight = None
+        self.quantize_pool = None
+        self.clamp_pool = None
 
         self.activate = get_activation(activation)
-        self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
         self.wide = wide
 
         self.pool = pool
         self.op = op
         self.func = func
         self.bn = bn
+        self.pooling = pooling
 
         self.output_shift = nn.Parameter(torch.Tensor([0.]), requires_grad=False)
         self.init_module(weight_bits, bias_bits, quantize_activation)
@@ -428,6 +452,8 @@ class QuantizationAwareModule(nn.Module):
             quantize_clamp_parameters(self.bias_bits.detach().item())
         self.quantize, self.clamp = \
             quantize_clamp(self.wide, self.quantize_activation.detach().item())
+        self.quantize_pool, self.clamp_pool = \
+            quantize_clamp_pool(self.pooling, self.quantize_activation.detach().item())
 
     def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
