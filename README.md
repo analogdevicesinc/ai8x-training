@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_October 15, 2020_
+_November 3, 2020_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -51,7 +51,7 @@ where “....” is the project root, for example `~/Documents/Source/AI`.
 ### Prerequisites
 
 This software currently supports Ubuntu 18.04 LTS.
-*Note: Ubuntu 20.04 LTS works, but requires CUDA 11 which is not yet officially supported by PyTorch.*
+*Note: Ubuntu 20.04 LTS works, but requires CUDA 11 which is not officially supported by PyTorch 1.5.1.*
 The server version is sufficient, see https://ubuntu.com/download/server.
 *Note: The Windows Subsystem for Linux (WSL) currently does <u>not</u> support CUDA.*
 
@@ -231,13 +231,21 @@ For all other systems, including CUDA 10.2 and CUDA 11.1 on Linux:
 
 ##### Repository Branches
 
-By default, the `master` branch is checked out. This branch has been tested more rigorously than the `develop` branch. `develop`, on the other hand, contains the latest improvements to the project. To switch to `develop`, use the following command:
+By default, the main branch is checked out. This branch has been tested more rigorously than the `develop` branch. `develop`, on the other hand, contains the latest improvements to the project. To switch to `develop`, use the following command:
 
 ```shell
 (ai8x-training) $ git checkout develop
 ```
 
-##### Updating the Project
+##### Updates
+
+After additional testing, `develop` is merged into the main branch at regular intervals.
+
+After a small delay of typically a day, a “Release” tag is created on GitHub for all non-trivial merges into the main branch. GitHub offers email alerts for all activity in a project, or for new releases only. Subscribing to releases only substantially reduces email traffic.
+
+*Note: Each “Release” automatically creates a code archive. It is recommended to use a git client to access (pull from) the main branch of the repository using a git client instead of downloading the archives.*
+
+In addition to code updated in the repository itself, submodules and Python libraries may have been updated as well.
 
 Major upgrades (such as updating from PyTorch 1.3.1 to PyTorch 1.5.1) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#Upstream Code). 
 
@@ -273,26 +281,9 @@ $ source bin/activate
 (ai8x-synthesis) $ pip3 install -r requirements.txt
 ```
 
-##### Repository Branches
+##### Repository Branches and Updates
 
-By default, the `master` branch is checked out. This branch has been tested more rigorously than the `develop` branch. `develop`, on the other hand, contains the latest improvements to the project. To switch to `develop`, use the following command:
-
-```shell
-(ai8x-synthesis) $ git checkout develop
-```
-
-##### Updating the Project
-
-Major upgrades (such as updating from PyTorch 1.3.1 to PyTorch 1.5.1) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#Upstream Code). 
-
-To pull the latest code and install the updated wheels, use:
-
-```shell
-(ai8x-synthesis) $ git pull
-(ai8x-synthesis) $ git submodule update --init
-(ai8x-synthesis) $ pip3 install -U pip setuptools
-(ai8x-synthesis) $ pip3 install -U -r requirements.txt
-```
+Branches and updates for `ai8x-synthesis` are handled similarly to the [`ai8x-training`](#Repository Branches) project.
 
 ### Embedded Software Development Kit (SDK)
 
@@ -730,38 +721,38 @@ To train the FP32 model for MNIST on MAX78000, run `train_mnist.sh` in the `ai8x
 
 The following table describes the most important command line arguments for `train.py`. Use `--help` for a complete list.
 
-| Argument                  | Description                                                  | Example                         |
-| ------------------------- | ------------------------------------------------------------ | ------------------------------- |
-| `--help`                  | Complete list of arguments                                   |                                 |
-| *Device selection*        |                                                              |                                 |
-| `--device`                | Set device (default: AI84)                                   | `--device MAX78000`             |
-| *Model and dataset*       |                                                              |                                 |
-| `-a`, `--arch`            | Set model (collected from models folder)                     | `--model ai85net5`              |
-| `--dataset`               | Set dataset (collected from datasets folder)                 | `--dataset MNIST`               |
-| `--data`                  | Path to dataset (default: data)                              | `--data /data/ml`               |
-| *Training*                |                                                              |                                 |
-| `--epochs`                | Number of epochs to train (default: 90)                      | `--epochs 100`                  |
-| `-b`, `--batch-size`      | Mini-batch size (default: 256)                               | `--batch-size 512`              |
-| `--compress`              | Set compression and learning rate schedule                   | `--compress schedule.yaml`      |
-| `--lr`, `--learning-rate` | Set initial learning rate                                    | `--lr 0.001`                    |
-| `--deterministic`         | Seed random number generators with fixed values              |                                 |
-| `--resume-from`           | Resume from previous checkpoint                              | `--resume-from chk.pth.tar`     |
-| *Display and statistics*  |                                                              |                                 |
-| `--confusion`             | Display the confusion matrix                                 |                                 |
-| `--param-hist`            | Collect parameter statistics                                 |                                 |
-| `--pr-curves`             | Generate precision-recall curves                             |                                 |
-| `--embedding`             | Display embedding (using projector)                          |                                 |
-| *Hardware*                |                                                              |                                 |
-| `--use-bias`              | The `bias=True` parameter is passed to the model. The effect of this parameter is model dependent (the parameter is either ignored, effective for some operations, or all operations). |                                 |
-| `--avg-pool-rounding`     | Use rounding for AvgPool                                     |                                 |
-| *Evaluation*              |                                                              |                                 |
-| `-e`, `--evaluate`        | Evaluate previously trained model                            |                                 |
-| `--8-bit-mode`, `-8`      | Simluate quantized operation for hardware device (8-bit data) |                                 |
-| `--exp-load-weights-from` | Load weights from file                                       |                                 |
-| *Export*                  |                                                              |                                 |
-| `--summary onnx`          | Export trained model (default: to model.onnx)                |                                 |
-| `--summary-filename`      | Change the file name for the exported model                  | `--summary-filename mnist.onnx` |
-| `--save-sample`           | Save data[index] from the test set to a NumPy pickle for use as sample data | `--save-sample 10`              |
+| Argument                   | Description                                                  | Example                         |
+| -------------------------- | ------------------------------------------------------------ | ------------------------------- |
+| `--help`                   | Complete list of arguments                                   |                                 |
+| *Device selection*         |                                                              |                                 |
+| `--device`                 | Set device (default: AI84)                                   | `--device MAX78000`             |
+| *Model and dataset*        |                                                              |                                 |
+| `-a`, `--arch`             | Set model (collected from models folder)                     | `--model ai85net5`              |
+| `--dataset`                | Set dataset (collected from datasets folder)                 | `--dataset MNIST`               |
+| `--data`                   | Path to dataset (default: data)                              | `--data /data/ml`               |
+| *Training*                 |                                                              |                                 |
+| `--epochs`                 | Number of epochs to train (default: 90)                      | `--epochs 100`                  |
+| `-b`, `--batch-size`       | Mini-batch size (default: 256)                               | `--batch-size 512`              |
+| `--compress`               | Set compression and learning rate schedule                   | `--compress schedule.yaml`      |
+| `--lr`, `--learning-rate`  | Set initial learning rate                                    | `--lr 0.001`                    |
+| `--deterministic`          | Seed random number generators with fixed values              |                                 |
+| `--resume-from`            | Resume from previous checkpoint                              | `--resume-from chk.pth.tar`     |
+| *Display and statistics*   |                                                              |                                 |
+| `--confusion`              | Display the confusion matrix                                 |                                 |
+| `--param-hist`             | Collect parameter statistics                                 |                                 |
+| `--pr-curves`              | Generate precision-recall curves                             |                                 |
+| `--embedding`              | Display embedding (using projector)                          |                                 |
+| *Hardware*                 |                                                              |                                 |
+| `--use-bias`               | The `bias=True` parameter is passed to the model. The effect of this parameter is model dependent (the parameter is either ignored, effective for some operations, or all operations). |                                 |
+| `--avg-pool-rounding`      | Use rounding for AvgPool                                     |                                 |
+| *Evaluation*               |                                                              |                                 |
+| `-e`, `--evaluate`         | Evaluate previously trained model                            |                                 |
+| `--8-bit-mode`, `-8`       | Simluate quantized operation for hardware device (8-bit data) |                                 |
+| `--exp-load-weights-from`  | Load weights from file                                       |                                 |
+| *Export*                   |                                                              |                                 |
+| `--summary onnx`           | Export trained model to ONNX (default name: to model.onnx)   |                                 |
+| `--summary-filename`       | Change the file name for the exported model                  | `--summary-filename mnist.onnx` |
+| `--save-sample`            | Save data[index] from the test set to a NumPy pickle for use as sample data | `--save-sample 10`              |
 
 ### Observing GPU Resources
 
@@ -837,7 +828,7 @@ The following modules are predefined:
 
 #### Dropout
 
-`torch.nn.Dropout` is not used during inference, and can therefore be used for training without problems.
+Dropout modules such as `torch.nn.Dropout()` and `torch.nn.Dropout2d()`are automatically disabled during inference, and can therefore be used for training without affecting inference.
 
 #### view and reshape
 
@@ -859,7 +850,7 @@ When using the `-8` command line switch, all module outputs are quantized to 8-b
 
 #### Batch Normalization
 
-Batch normalization after `Conv2d` layers is supported using “fusing”. The fusing operation merges the effect of batch normalization layers into the parameters of the preceding convolutional layer. For detailed information about batch normalization fusing/folding, see Section 3.2 of the following paper: https://arxiv.org/pdf/1712.05877.pdf.
+Batch normalization after `Conv1d` and  `Conv2d` layers is supported using “fusing”. The fusing operation merges the effect of batch normalization layers into the parameters of the preceding convolutional layer. For detailed information about batch normalization fusing/folding, see Section 3.2 of the following paper: https://arxiv.org/pdf/1712.05877.pdf.
 
 After fusing/folding, the network will not contain any batchnorm layers. The effects of batch normalization will instead be expressed by modified weights and biases of the preceding convolutional layer. If the trained network contains batchnorm layers, the `batchnormfuser.py` script (see [BatchNorm Fusing](#BatchNorm-Fusing)) should be called before `quantize.py` to fuse the batchnorm layers. To be able perform folding/fusing by running `batchnormfuser.py`, a second model architecture should be defined without batchnorm layers. This architecture should be exactly the same as the input model architecture, except for the removal of all batchnorm layers.
 
@@ -978,6 +969,7 @@ The `quantize.py` software has the following important command line arguments:
 | *Weight quantization* |                                                              |                 |
 | `-c`, `--config-file` | YAML file with weight quantization information<br />(default: 8-bit for all layers) | `-c mnist.yaml` |
 | `--clip-method`       | Clipping method — either STDDEV, AVG, AVGMAX or SCALE (default) |                 |
+| `--scale` | Sets scale for the SCALE clipping method | `--scale 0.85` |
 
 *Note: The syntax for the optional YAML file is described below. The same file can be used for both `quantize.py` and `ai8xize.py`.*
 
@@ -1006,10 +998,6 @@ https://github.com/ARM-software/ML-KWS-for-MCU/blob/master/Deployment/Quant_guid
 or Distiller’s approach (installed with this software).
 
 Further, a quantized network can be refined using post-quantization training (see Distiller).
-
-The software also includes an `AI84RangeLinear.py` training quantizer that plugs into the Distiller framework for quantization-aware training. However, it needs work as its performance is not good enough yet and the Distiller source needs to be patched to enable it (add `from range_linear_ai84 import QuantAwareTrainRangeLinearQuantizerAI84` to `distiller/config.py` and remove `False and` from `if False and args.ai84` in `train.py`).
-
-Note that MAX78000/MAX78002 does have a configurable per-layer output shift. The addition of this shift value allows easier quantization, since fractional bits can be used if weights do not span the full 8-bit range (many quantization approaches require a weight scale or output shift).
 
 In all cases, ensure that the quantizer writes out a checkpoint file that the Network Loader can read.
 
@@ -1079,16 +1067,16 @@ The following table describes the most important command line arguments for `ai8
 | ------------------------ | ------------------------------------------------------------ | ------------------------------- |
 | `--help`                 | Complete list of arguments                                   |                                 |
 | *Device selection*       |                                                              |                                 |
-| `--device`               | Set device (default: AI84)                                     | `--device MAX78000`                   |
+| `--device`               | Set device (default: AI84)                                   | `--device MAX78000`             |
 | *Hardware features*      |                                                              |                                 |
 | `--avg-pool-rounding`    | Round average pooling results                                |                                 |
 | `--simple1b`             | Use simple XOR instead of 1-bit multiplication               |                                 |
 | *Embedded code*          |                                                              |                                 |
-| `-e`, `--embedded-code`  | Generate embedded code for device                            |                                 |
 | `--config-file`          | YAML configuration file containing layer configuration       | `--config-file cfg.yaml`        |
 | `--checkpoint-file`      | Checkpoint file containing quantized weights                 | `--checkpoint-file chk.pth.tar` |
 | `--display-checkpoint`   | Show parsed checkpoint data                                  |                                 |
 | `--prefix`               | Set test name prefix                                         | `--prefix mnist`                |
+| `--board-name`           | Set the target board (default: `EvKit_V1`)                   | `--board-name FTHR_RevA`        |
 | *Code generation*        |                                                              |                                 |
 | `--compact-data`         | Use *memcpy* to load input data in order to save code space  |                                 |
 | `--compact-weights`      | Use *memcpy* to load weights in order to save code space     |                                 |
@@ -1109,8 +1097,6 @@ The following table describes the most important command line arguments for `ai8
 | *RISC-V*                 |                                                              |                                 |
 | `--riscv`                | Use RISC-V processor                                         |                                 |
 | `--riscv-debug`          | Use RISC-V processor and enable the RISC-V JTAG              |                                 |
-| `--riscv-flash`          | Move kernel/input to Flash (implies --riscv)                 |                                 |
-| `--riscv-cache`          | Enable RISC-V cache (implies --riscv and --riscv-flash)      |                                 |
 | `--riscv-exclusive`      | Use exclusive SRAM access for RISC-V (implies --riscv)       |                                 |
 | *Debug and logging*      |                                                              |                                 |
 | `-v`, `--verbose`        | Verbose output                                               |                                 |
@@ -1195,7 +1181,7 @@ layers:
 To generate an embedded MAX78000 demo in the `demos/ai85-mnist/` folder, use the following command line:
 
 ```shell
-(ai8x-synthesize) $ ./ai8xize.py --verbose -L --top-level cnn --test-dir demos --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000 --compact-data --mexpress --softmax --embedded-code
+(ai8x-synthesize) $ ./ai8xize.py --verbose --log --test-dir demos --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000 --compact-data --mexpress --softmax
 ```
 
 Running this command will combine the network described above with a fully connected software classification layer. The generated code will include all loading, unloading, and configuration steps.
@@ -1203,7 +1189,7 @@ Running this command will combine the network described above with a fully conne
 To generate an RTL simulation for the same network and sample data in the directory `tests/ai85-mnist-....` (where .... is an autogenerated string based on the network topology), use:
 
 ```shell
-(ai8x-synthesize) $ ./ai8xize.py --verbose --autogen rtlsim --top-level cnn -L --test-dir rtlsim --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000
+(ai8x-synthesize) $ ./ai8xize.py --rtl --verbose --autogen rtlsim --log --test-dir rtlsim --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000
 ```
 
 ### Network Loader Configuration Language
@@ -1347,7 +1333,7 @@ Example:
 
 ##### `output_shift` (Optional)
 
-When `output_width` is 8, the 32-bit intermediate result can be shifted left or right before reduction to 8-bit. The value specified here is cumulative with the value generated from `quantization`.
+When `output_width` is 8, the 32-bit intermediate result can be shifted left or right before reduction to 8-bit. The value specified here is cumulative with the value generated from `quantization`. Note that `output_shift` is not supported for passthrough layers.
 
 The 32-bit intermediate result is multiplied by $2^{totalshift}$, where the total shift count must be within the range $[-15, +15]$, resulting in a factor of $[2^{–15}, 2^{15}]$ or $[0.0000305176$ to $32768]$.
 
@@ -1760,7 +1746,7 @@ Total: 512 KiB (16 instances of 8192 × 32)
 | 0         | 1            | 0x50408000 - 0x5040FFFF |
 | 0         | 2            | 0x50410000 - 0x50417FFF |
 | 0         | 3            | 0x50418000 - 0x5041FFFF |
-| 0         | 0            | 0x50800000 - 0x50807FFF |
+| 1         | 0            | 0x50800000 - 0x50807FFF |
 | 1         | 1            | 0x50808000 - 0x5080FFFF |
 | 1         | 2            | 0x50810000 - 0x50817FFF |
 | 1         | 3            | 0x50818000 - 0x5081FFFF |
@@ -1949,7 +1935,7 @@ The GitHub projects use the [GitHub Super-Linter](https://github.com/github/supe
 To run locally, create a clean copy of the repository and run the following command from the project directory (i.e., `ai8x-training` or `ai8x-synthesis`): 
 
 ```shell
-$ docker run -e RUN_LOCAL=true -e VALIDATE_MARKDOWN=false -e VALIDATE_PYTHON_BLACK=false -e VALIDATE_ANSIBLE=false -e VALIDATE_EDITORCONFIG=false -e FILTER_REGEX_EXCLUDE="attic/.*|inspect_ckpt.py" -v `pwd`:/tmp/lint github/super-linter
+$ docker run --rm -e RUN_LOCAL=true -e VALIDATE_MARKDOWN=false -e VALIDATE_PYTHON_BLACK=false -e VALIDATE_PYTHON_ISORT=false -e VALIDATE_ANSIBLE=false -e VALIDATE_EDITORCONFIG=false -e FILTER_REGEX_EXCLUDE="attic/.*|inspect_ckpt.py" -v `pwd`:/tmp/lint github/super-linter
 ```
 
 ### Submitting Changes
