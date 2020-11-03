@@ -27,4 +27,5 @@ jobs:
           VALIDATE_EDITORCONFIG: false
           VALIDATE_MARKDOWN: false
           VALIDATE_PYTHON_BLACK: false
+          VALIDATE_PYTHON_ISORT: false
           FILTER_REGEX_EXCLUDE: inspect_ckpt.py|attic/.*
