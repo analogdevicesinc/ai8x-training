@@ -54,7 +54,7 @@ class AI85Net5(nn.Module):
         dim //= pool  # pooling, padding 0 -> 4x4
         # padding 1 -> no change in dimensions
 
-        self.fc = ai8x.Linear(fc_inputs*dim*dim, num_classes, bias=True, wide=True)
+        self.fc = ai8x.Linear(fc_inputs*dim*dim, num_classes, bias=True, wide=True, **kwargs)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -111,7 +111,7 @@ class AI85NetExtraSmall(nn.Module):
         dim //= 4  # pooling, padding 0 -> 8x4x4
         # padding 1 -> 8x4x4
 
-        self.fc = ai8x.Linear(fc_inputs*dim*dim, num_classes, bias=True, wide=True)
+        self.fc = ai8x.Linear(fc_inputs*dim*dim, num_classes, bias=True, wide=True, **kwargs)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
