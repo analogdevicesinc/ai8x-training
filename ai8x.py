@@ -197,7 +197,7 @@ class RoundQat(nn.Module):
     def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
         """Forward prop"""
         factor = 2**(dev.ACTIVATION_BITS - 1)
-        return x.mul(factor).round().div(factor)
+        return RoundFunction.apply(x.mul(factor)).div(factor)
 
 
 class FloorQat(nn.Module):
@@ -207,7 +207,7 @@ class FloorQat(nn.Module):
     def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
         """Forward prop"""
         factor = 2**(dev.ACTIVATION_BITS - 1)
-        return x.mul(factor).floor().div(factor)
+        return FloorFunction.apply(x.mul(factor)).div(factor)
 
 
 def quantize_clamp(wide, quantize_activation=False):
