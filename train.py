@@ -281,7 +281,8 @@ def main():
         msglogger.info('=> using early-exit threshold values of %s', args.earlyexit_thresholds)
 
     # Get policy for quantization aware training
-    qat_policy = parse_qat_yaml.parse(args.qat_policy) if args.qat_policy.lower() != "none" else None
+    qat_policy = parse_qat_yaml.parse(args.qat_policy) \
+        if args.qat_policy.lower() != "none" else None
 
     # We can optionally resume from a checkpoint
     optimizer = None
