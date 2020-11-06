@@ -1,2 +1,2 @@
 start_epoch: 10
-bits_weights: 8
+weight_bits: 8

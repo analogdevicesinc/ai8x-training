@@ -12,7 +12,7 @@ echo "-----------------------------"
 echo "Training cifar10 model"
 ./train_cifar10.sh
 echo "-----------------------------"
-echo "Training cifar100 model with no QAT"
+echo "Training cifar100 model without QAT"
 ./train_cifar100.sh
 echo "-----------------------------"
 echo "Training cifar100 model with 8-bit QAT"

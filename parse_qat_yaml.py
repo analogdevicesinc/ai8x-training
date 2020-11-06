@@ -29,7 +29,7 @@ def parse(yaml_file):
     if policy:
         if 'start_epoch' not in policy:
             assert False, '`start_epoch` must be defined in QAT policy'
-        if 'bits_weights' not in policy:
-            assert False, '`bits_weights` must be defined in QAT policy'
+        if 'weight_bits' not in policy:
+            assert False, '`weight_bits` must be defined in QAT policy'
 
     return policy
