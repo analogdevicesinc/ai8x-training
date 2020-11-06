@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_November 3, 2020_
+_November 6, 2020_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -737,7 +737,7 @@ The following table describes the most important command line arguments for `tra
 | `--lr`, `--learning-rate`  | Set initial learning rate                                    | `--lr 0.001`                    |
 | `--deterministic`          | Seed random number generators with fixed values              |                                 |
 | `--resume-from`            | Resume from previous checkpoint                              | `--resume-from chk.pth.tar`     |
-| `--qat-policy`             | Define QAT parameters in YAML file                           | `--qat-policy qat_policy.yaml`  |
+| `--qat-policy`             | Define QAT policy in YAML file (default: qat_policy.yaml). Use ‘’None” to disable QAT. | `--qat-policy qat_policy.yaml`  |
 | *Display and statistics*   |                                                              |                                 |
 | `--confusion`              | Display the confusion matrix                                 |                                 |
 | `--param-hist`             | Collect parameter statistics                                 |                                 |
@@ -848,15 +848,23 @@ When reshaping data, `in_dim:` must be specified in the model description file.
 
 #### Support for Quantization
 
+The hardware always uses signed integers for data and weights. While data is always 8-bit, weights can be configured on a per-layer basis. However, training makes use of floating point values for both data and weights, while also clipping (clamping) values.
+
 ##### Data
 
 When using the `-8` command line switch, all module outputs are quantized to 8-bit in the range  [-128...+127] to simulate hardware behavior. The last layer can optionally use 32-bit output for increased precision. This is simulated by adding the parameter `wide=True` to the module function call.
 
-##### Weights: Quantization Aware Training
+##### Weights: Quantization Aware Training (QAT)
 
-After `start_epoch` epochs (parsed from the YAML file specified by `--qat-policy`), training will learn an additional parameter that corresponds to a shift of the final sum of products.
+Quantization-aware training (QAT) is enabled by default. QAT is controlled by a policy file, specified by `--qat-policy`.
 
-By default, weights are quantized to 8-bits. The custom modules in `ai8x.py` have an optional `weight_bits=` parameter that can be used to reduce the number of bits available for weights on a per-layer basis.
+* After `start_epoch` epochs, training will learn an additional parameter that corresponds to a shift of the final sum of products.
+* `weight_bits` describes the number of bits available for weights.
+* `overrides` allows specifying the `weight_bits` on a per-layer basis.
+
+By default, weights are quantized to 8-bits after 10 epochs as specified in `qat_policy.yaml`. A more refined example that specifies weight sizes for individual layers can be seen in `qat_policy_cifar100.yaml`.
+
+Quantization-aware training can be <u>disabled</u> by specifying `--qat-policy None`.
 
 #### Batch Normalization
 
@@ -963,11 +971,11 @@ The `quantize.py` software quantizes an existing PyTorch checkpoint file and wri
 
 #### Quantization-Aware Training (QAT)
 
-Quantization-aware training is the better performing approach. It is enabled by default. QAT learns additional parameters during training that help with quantization. No additional arguments are needed for `quantize.py`.
+Quantization-aware training is the better performing approach. It is enabled by default. QAT learns additional parameters during training that help with quantization (see [Weights: Quantization Aware Training (QAT)](#Weights: Quantization Aware Training (QAT)). No additional arguments are needed for `quantize.py`.
 
 #### Post-Training Quantization
 
-This approach is also called *”naive quantization”*. It should be used when  `--disable-qat` is specified for training. 
+This approach is also called *”naive quantization”*. It should be used when  `--qat-policy None` is specified for training. 
 
 While several approaches for clipping are implemented in `quantize.py`, clipping with a simple fixed scale factor performs best, based on experimental results. The approach requires the clamping operators implemented in `ai8x.py`.
 
@@ -1344,25 +1352,25 @@ Note that `output_shift` can be used for (limited) “linear” activation.
 
 ##### `quantization` (Optional)
 
-This key describes the width of the weight memory in bits and can be `1`, `2`, `4`, or `8` (the default is based on the range of the layer’s weights). Specifying a `quantization` that is smaller than what the weights require results in an error message.
+This key describes the width of the weight memory in bits and can be `1`, `2`, `4`, or `8` (the default is based on the range of the layer’s weights). Specifying a `quantization` that is smaller than what the weights require results in an error message. By default, the value is automatically derived from the weights.
 
 Example:
 	`quantization: 4`
 
 ##### `output_shift` (Optional)
 
-When `output_width` is 8, the 32-bit intermediate result can be shifted left or right before reduction to 8-bit. The value specified here is cumulative with the value generated from `quantization`. Note that `output_shift` is not supported for passthrough layers.
+When `output_width` is 8, the 32-bit intermediate result can be shifted left or right before reduction to 8-bit. The value specified here is cumulative with the value generated from and used by `quantization`. Note that `output_shift` is not supported for passthrough layers.
 
 The 32-bit intermediate result is multiplied by $2^{totalshift}$, where the total shift count must be within the range $[-15, +15]$, resulting in a factor of $[2^{–15}, 2^{15}]$ or $[0.0000305176$ to $32768]$.
 
-| quantization | implicit shift | range for `output_shift` |
-| ------------ | -------------- | ------------------------ |
-| 8-bit        | 0              | $[-15, +15]$             |
-| 4-bit        | 4              | $[-19, +11]$             |
-| 2-bit        | 6              | $[-21, +9]$              |
-| 1-bit        | 7              | $[-22, +8]$              |
+| weight quantization | shift used by quantization | available range for `output_shift` |
+| ------------------- | -------------------------- | ---------------------------------- |
+| 8-bit               | 0                          | $[-15, +15]$                       |
+| 4-bit               | 4                          | $[-19, +11]$                       |
+| 2-bit               | 6                          | $[-21, +9]$                        |
+| 1-bit               | 7                          | $[-22, +8]$                        |
 
-Using `output_shift` can help normalize data, particularly when using small weights. By default, `output_shift` is generated by the training software.
+Using `output_shift` can help normalize data, particularly when using small weights. By default, `output_shift` is generated by the training software, and it is used for batch normalization as well as quantization-aware training.
 
 Example:
 	`output_shift: 2`
@@ -1940,20 +1948,20 @@ Total: 2 KiB (4 instances of 128 × 32)
 
 ### Linting
 
-Both projects are set up for `flake8` and `pylint` to lint Python code. The line width is related to 100 (instead of the default of 80), and the number of lines per module was increased; configuration files are included in the projects. Shell code is linted by `shellcheck`, and YAML files by `yamllint`.
+Both projects are set up for `flake8`, `pylint` and `isort` to lint Python code. The line width is related to 100 (instead of the default of 80), and the number of lines per module was increased; configuration files are included in the projects. Shell code is linted by `shellcheck`, and YAML files by `yamllint`.
 Code should not generate any warnings in any of the tools (some of the components in the `ai8x-training` project will create warnings as they are based on third-party code).
 
 `flake8` and `pylint` need to be installed into both virtual environments:
 
 ```shell
-(ai8x-synthesis) $ pip3 install flake8 pylint mypy
+(ai8x-synthesis) $ pip3 install flake8 pylint mypy isort
 ```
 
 The GitHub projects use the [GitHub Super-Linter](https://github.com/github/super-linter) to automatically verify push operations and pull requests. The Super-Linter can be installed locally, see [installation instructions](https://github.com/github/super-linter/blob/master/docs/run-linter-locally.md).
 To run locally, create a clean copy of the repository and run the following command from the project directory (i.e., `ai8x-training` or `ai8x-synthesis`): 
 
 ```shell
-$ docker run --rm -e RUN_LOCAL=true -e VALIDATE_MARKDOWN=false -e VALIDATE_PYTHON_BLACK=false -e VALIDATE_PYTHON_ISORT=false -e VALIDATE_ANSIBLE=false -e VALIDATE_EDITORCONFIG=false -e FILTER_REGEX_EXCLUDE="attic/.*|inspect_ckpt.py" -v `pwd`:/tmp/lint github/super-linter
+$ docker run --rm -e RUN_LOCAL=true -e VALIDATE_MARKDOWN=false -e VALIDATE_PYTHON_BLACK=false -e VALIDATE_ANSIBLE=false -e VALIDATE_EDITORCONFIG=false -e FILTER_REGEX_EXCLUDE="attic/.*|inspect_ckpt.py" -v `pwd`:/tmp/lint github/super-linter
 ```
 
 ### Submitting Changes
