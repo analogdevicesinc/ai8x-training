@@ -1,7 +1,7 @@
 lr_schedulers:
   training_lr:
     class: MultiStepLR
-    milestones: [160, 320, 480]
+    milestones: [100, 200, 300, 400]
     gamma: 0.5
 
 policies:

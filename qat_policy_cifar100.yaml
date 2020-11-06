@@ -1,0 +1,15 @@
+start_epoch: 30
+bits_weights: 2
+overrides:
+        conv1:
+                bits_weights: 8
+        conv2:
+                bits_weights: 4
+        conv11:
+                bits_weights: 4
+        conv12:
+                bits_weights: 4
+        conv13:
+                bits_weights: 4
+        conv14:
+                bits_weights: 4

@@ -12,8 +12,14 @@ echo "-----------------------------"
 echo "Training cifar10 model"
 ./train_cifar10.sh
 echo "-----------------------------"
-echo "Training cifar100 model"
+echo "Training cifar100 model with no QAT"
 ./train_cifar100.sh
+echo "-----------------------------"
+echo "Training cifar100 model with 8-bit QAT"
+./train_cifar100_qat8.sh
+echo "-----------------------------"
+echo "Training cifar100 model with mixed bit width QAT"
+./train_cifar100_qat_mixed.sh
 echo "-----------------------------"
 echo "Training cifar100_residual model"
 ./train_cifar100_ressimplenet.sh
