@@ -196,6 +196,7 @@ def main():
     if args.evaluate and args.shap == 0:
         args.deterministic = True
     if args.deterministic:
+        # torch.set_deterministic(True)
         distiller.set_deterministic(args.seed)  # For experiment reproducability
         if args.seed is not None:
             distiller.set_seed(args.seed)

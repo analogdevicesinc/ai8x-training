@@ -50,15 +50,12 @@ where “....” is the project root, for example `~/Documents/Source/AI`.
 
 ### Prerequisites
 
-This software currently supports Ubuntu 18.04 LTS.
-*Note: Ubuntu 20.04 LTS works, but requires CUDA 11 which is not officially supported by PyTorch 1.5.1.*
-The server version is sufficient, see https://ubuntu.com/download/server.
+This software currently supports Ubuntu Linux 18.04 LTS and 20.04 LTS. The server version is sufficient, see https://ubuntu.com/download/server.
 *Note: The Windows Subsystem for Linux (WSL) currently does <u>not</u> support CUDA.*
 
 When going beyond simple models, model training does not work well without CUDA hardware acceleration. The network loader does not require CUDA, and very simple models can also be trained on systems without CUDA.
 
-On Ubuntu 18.04 LTS, install CUDA 10.2. On Ubuntu 20.04 LTS, install CUDA 11.1.
-https://developer.nvidia.com/cuda-toolkit-archive
+*Recommendation:* Unless TensorFlow support is required, install CUDA 11.1 on Ubuntu 20.04 LTS. Otherwise, install CUDA 10.2 on Ubuntu 18.04 LTS. See https://developer.nvidia.com/cuda-toolkit-archive.
 
 *Note: When using multiple GPUs, the software will automatically use all available GPUs and distribute the workload. To prevent this, set the `CUDA_VISIBLE_DEVICES` environment variable. Use the `--gpus` command line argument to set the default GPU.*
 
@@ -93,9 +90,9 @@ The following software is optional, and can be replaced with other similar softw
 
 ### Project Installation
 
-*The software in this project requires Python 3.6.9 or a later 3.6.x version. Versions 3.7/3.8/3.9 are not yet supported.*
+*The software in this project uses Python 3.8.6 or a later 3.8.x version.*
 
-It is not necessary to install Python 3.6.9 system-wide, or to rely on the system-provided Python. To manage Python versions, use `pyenv` (https://github.com/pyenv/pyenv).
+It is not necessary to install Python 3.8.6 system-wide, or to rely on the system-provided Python. To manage Python versions, use `pyenv` (https://github.com/pyenv/pyenv).
 
 On macOS (no CUDA support available):
 
@@ -120,7 +117,7 @@ eval "$(pyenv init -)"
 eval "$(pyenv virtualenv-init -)"
 ```
 
-Next, close the Terminal, open a new Terminal and install Python 3.6.9.
+Next, close the Terminal, open a new Terminal and install Python 3.8.6.
 
 On macOS:
 
@@ -132,13 +129,13 @@ $ env \
   PKG_CONFIG_PATH="$(brew --prefix tcl-tk)/lib/pkgconfig" \
   CFLAGS="-I$(brew --prefix tcl-tk)/include" \
   PYTHON_CONFIGURE_OPTS="--with-tcltk-includes='-I$(brew --prefix tcl-tk)/include' --with-tcltk-libs='-L$(brew --prefix tcl-tk)/lib -ltcl8.6 -ltk8.6'" \
-  pyenv install 3.6.9
+  pyenv install 3.8.6
 ```
 
 On Linux:
 
 ```shell
-$ pyenv install 3.6.9
+$ pyenv install 3.8.6
 ```
 
 #### git Environment
@@ -220,21 +217,21 @@ To create the virtual environment and install basic wheels:
 ```shell
 $ cd ai8x-training
 $ git submodule update --init
-$ pyenv local 3.6.9
+$ pyenv local 3.8.6
 $ python3 -m venv .
 $ source bin/activate
 (ai8x-training) $ pip3 install -U pip wheel setuptools
 ```
 
-The next step differs depending on whether the system uses Linux with CUDA 10.1, or any other setup.
+The next step differs depending on whether the system uses Linux with CUDA 11.1, or any other setup.
 
-For CUDA 10.1 on Linux:
+For CUDA 11.1 on Linux:
 
 ```shell
-(ai8x-training) $ pip3 install -r requirements-cu101.txt
+(ai8x-training) $ pip3 install -r requirements-cu111.txt
 ```
 
-For all other systems, including CUDA 10.2 and CUDA 11.1 on Linux:
+For all other systems, including CUDA 10.2 on Linux:
 
 ```shell
 (ai8x-training) $ pip3 install -r requirements.txt
@@ -258,7 +255,7 @@ After a small delay of typically a day, a “Release” tag is created on GitHub
 
 In addition to code updated in the repository itself, submodules and Python libraries may have been updated as well.
 
-Major upgrades (such as updating from PyTorch 1.3.1 to PyTorch 1.5.1) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#Upstream Code). 
+Major upgrades (such as updating from PyTorch 1.5 to PyTorch 1.7) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#Upstream Code). 
 
 For minor updates, pull the latest code and install the updated wheels:
 
@@ -266,7 +263,7 @@ For minor updates, pull the latest code and install the updated wheels:
 (ai8x-training) $ git pull
 (ai8x-training) $ git submodule update --init
 (ai8x-training) $ pip3 install -U pip setuptools
-(ai8x-training) $ pip3 install -U -r requirements.txt # or requirements-cu101.txt with CUDA 10.1
+(ai8x-training) $ pip3 install -U -r requirements.txt # or requirements-cu111.txt with CUDA 11.1
 ```
 
 #### Synthesis Project
@@ -285,7 +282,7 @@ Then, create a second virtual environment:
 $ cd $AI_PROJECT_ROOT
 $ cd ai8x-synthesis
 $ git submodule update --init
-$ pyenv local 3.6.9
+$ pyenv local 3.8.6
 $ python3 -m venv .
 $ source bin/activate
 (ai8x-synthesis) $ pip3 install -U pip setuptools
