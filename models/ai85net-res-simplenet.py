@@ -27,32 +27,34 @@ class AI85ResidualSimpleNet(nn.Module):
             num_channels=3,
             dimensions=(32, 32),  # pylint: disable=unused-argument
             bias=False,
+            **kwargs
     ):
         super().__init__()
 
-        self.conv1 = ai8x.FusedConv2dReLU(num_channels, 16, 3, stride=1, padding=1, bias=bias)
-        self.conv2 = ai8x.FusedConv2dReLU(16, 20, 3, stride=1, padding=1, bias=bias)
-        self.conv3 = ai8x.FusedConv2dReLU(20, 20, 3, stride=1, padding=1, bias=bias)
-        self.conv4 = ai8x.FusedConv2dReLU(20, 20, 3, stride=1, padding=1, bias=bias)
+        self.conv1 = ai8x.FusedConv2dReLU(num_channels, 16, 3, stride=1, padding=1, bias=bias,
+                                          **kwargs)
+        self.conv2 = ai8x.FusedConv2dReLU(16, 20, 3, stride=1, padding=1, bias=bias, **kwargs)
+        self.conv3 = ai8x.FusedConv2dReLU(20, 20, 3, stride=1, padding=1, bias=bias, **kwargs)
+        self.conv4 = ai8x.FusedConv2dReLU(20, 20, 3, stride=1, padding=1, bias=bias, **kwargs)
         self.resid1 = ai8x.Add()
         self.conv5 = ai8x.FusedMaxPoolConv2dReLU(20, 20, 3, pool_size=2, pool_stride=2,
-                                                 stride=1, padding=1, bias=bias)
-        self.conv6 = ai8x.FusedConv2dReLU(20, 20, 3, stride=1, padding=1, bias=bias)
+                                                 stride=1, padding=1, bias=bias, **kwargs)
+        self.conv6 = ai8x.FusedConv2dReLU(20, 20, 3, stride=1, padding=1, bias=bias, **kwargs)
         self.resid2 = ai8x.Add()
-        self.conv7 = ai8x.FusedConv2dReLU(20, 44, 3, stride=1, padding=1, bias=bias)
+        self.conv7 = ai8x.FusedConv2dReLU(20, 44, 3, stride=1, padding=1, bias=bias, **kwargs)
         self.conv8 = ai8x.FusedMaxPoolConv2dReLU(44, 48, 3, pool_size=2, pool_stride=2,
-                                                 stride=1, padding=1, bias=bias)
-        self.conv9 = ai8x.FusedConv2dReLU(48, 48, 3, stride=1, padding=1, bias=bias)
+                                                 stride=1, padding=1, bias=bias, **kwargs)
+        self.conv9 = ai8x.FusedConv2dReLU(48, 48, 3, stride=1, padding=1, bias=bias, **kwargs)
         self.resid3 = ai8x.Add()
         self.conv10 = ai8x.FusedMaxPoolConv2dReLU(48, 96, 3, pool_size=2, pool_stride=2,
-                                                  stride=1, padding=1, bias=bias)
+                                                  stride=1, padding=1, bias=bias, **kwargs)
         self.conv11 = ai8x.FusedMaxPoolConv2dReLU(96, 512, 1, pool_size=2, pool_stride=2,
-                                                  padding=0, bias=bias)
-        self.conv12 = ai8x.FusedConv2dReLU(512, 128, 1, stride=1, padding=0, bias=bias)
+                                                  padding=0, bias=bias, **kwargs)
+        self.conv12 = ai8x.FusedConv2dReLU(512, 128, 1, stride=1, padding=0, bias=bias, **kwargs)
         self.conv13 = ai8x.FusedMaxPoolConv2dReLU(128, 128, 3, pool_size=2, pool_stride=2,
-                                                  stride=1, padding=1, bias=bias)
+                                                  stride=1, padding=1, bias=bias, **kwargs)
         self.conv14 = ai8x.Conv2d(128, num_classes, 1, stride=1, padding=0, bias=bias,
-                                  wide=True)
+                                  wide=True, **kwargs)
 
     def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""

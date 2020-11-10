@@ -29,7 +29,7 @@ class normalize:
     def __call__(self, img):
         if self.args.act_mode_8bit:
             return img.sub(0.5).mul(256.).round().clamp(min=-128, max=127)
-        return img.sub(0.5)
+        return img.sub(0.5).mul(256.).round().clamp(min=-128, max=127).div(256.)
 
 
 class QuantizationFunction(Function):
@@ -40,20 +40,25 @@ class QuantizationFunction(Function):
     The backward pass is straight through.
     """
     @staticmethod
-    def forward(_, x, bits=None):  # pylint: disable=arguments-differ
+    def forward(_, x, bits=None, extra_bit_shift=None):  # pylint: disable=arguments-differ
         """Forward prop"""
-        if bits > 1:
-            return x.add(.5).div(2**(bits-1)).add(.5).floor()
-        if bits < 1:
-            return x.mul(2**(1-bits)).add(.5).floor()
-        return x.add(.5).floor()
+        if dev.simulate:
+            if bits > 1:
+                return x.add(.5).div(2**(bits+extra_bit_shift-1)).add(.5).floor()
+            if bits < 1:
+                return x.mul(2**(1-bits-extra_bit_shift)).add(.5).floor()
+            return x.add(.5).floor()
+
+        factor1 = 2**(bits-extra_bit_shift-1)
+        factor2 = 2**(bits-1)
+        return x.mul(factor1).add(.5).floor().div(factor2)
 
     @staticmethod
     def backward(_, x):  # pylint: disable=arguments-differ
         """Backprop"""
         # Straight through - return as many input gradients as there were arguments;
         # gradients of non-Tensor arguments to forward must be None.
-        return x, None
+        return x, None, None
 
 
 class Quantize(nn.Module):
@@ -61,13 +66,14 @@ class Quantize(nn.Module):
     Post-activation integer quantization module
     Apply the custom autograd function
     """
-    def __init__(self, num_bits=8):
+    def __init__(self, num_bits=8, num_extra_bit_shift=0):
         super().__init__()
         self.num_bits = num_bits
+        self.num_extra_bit_shift = num_extra_bit_shift
 
     def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
-        return QuantizationFunction.apply(x, self.num_bits)
+        return QuantizationFunction.apply(x, self.num_bits, self.num_extra_bit_shift)
 
 
 class FloorFunction(Function):
@@ -94,7 +100,7 @@ class Floor(nn.Module):
     Post-pooling integer quantization module
     Apply the custom autograd function
     """
-    def forward(self, x):  # pylint: disable=arguments-differ,no-self-use
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
         """Forward prop"""
         return FloorFunction.apply(x)
 
@@ -123,7 +129,7 @@ class Round(nn.Module):
     Post-pooling integer quantization module
     Apply the custom autograd function
     """
-    def forward(self, x):  # pylint: disable=arguments-differ,no-self-use
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
         """Forward prop"""
         return RoundFunction.apply(x)
 
@@ -143,29 +149,96 @@ class Clamp(nn.Module):
         return x.clamp(min=self.min_val, max=self.max_val)
 
 
-def quantize_clamp(wide, output_shift):
+class ScaleFunction(Function):
+    """
+    Custom AI8X autograd function
+    The forward pass returns the integer floor value of the x scaled with input s
+    The backward pass is straight through
+    """
+    @staticmethod
+    def forward(ctx, x, s):  # pylint: disable=arguments-differ
+        """Forward prop"""
+        ctx.save_for_backward(s)
+        if s < 1.:
+            if dev.simulate:
+                return (x*s).floor()
+
+            factor = 2**(2*(dev.DATA_BITS - 1))
+            return (x*s*factor).floor().div(factor)
+        return x*s
+
+    @staticmethod
+    def backward(ctx, x):  # pylint: disable=arguments-differ
+        """Backprop"""
+        s, = ctx.saved_tensors
+        return x/s, None
+
+
+class Scaler(nn.Module):
+    """
+    Scaler module that considers integer quantization
+    Apply the custom autograd function
+    """
+    def __init__(self, quantized=False):
+        super().__init__()
+        self.quantized = quantized
+
+    def forward(self, x, s):  # pylint: disable=arguments-differ
+        """Forward prop"""
+        if self.quantized:
+            return ScaleFunction.apply(x, s)
+        return s*x
+
+
+class RoundQat(nn.Module):
+    """
+    Round function for AvgPool in QAT mode
+    """
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
+        factor = 2**(dev.ACTIVATION_BITS - 1)
+        return RoundFunction.apply(x.mul(factor)).div(factor)
+
+
+class FloorQat(nn.Module):
+    """
+    Floor function for AvgPool in QAT mode
+    """
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
+        factor = 2**(dev.ACTIVATION_BITS - 1)
+        return FloorFunction.apply(x.mul(factor)).div(factor)
+
+
+def quantize_clamp(wide, quantize_activation=False):
     """
     Return new Quantization and Clamp objects.
     """
     if dev.simulate:
         if not wide:
-            quantize = Quantize(num_bits=dev.DATA_BITS + output_shift)
+            quantize = Quantize(num_bits=dev.DATA_BITS)
             clamp = Clamp(
                 min_val=-(2**(dev.ACTIVATION_BITS-1)),
                 max_val=2**(dev.ACTIVATION_BITS-1)-1,
             )
         else:
-            quantize = Quantize(num_bits=dev.DATA_BITS + 1)
+            quantize = Quantize(num_bits=dev.DATA_BITS, num_extra_bit_shift=1)
             clamp = Clamp(
                 min_val=-(2**(dev.FULL_ACC_BITS-1)),
                 max_val=2**(dev.FULL_ACC_BITS-1)-1,
             )
     else:
-        quantize = Empty()
+        if quantize_activation:
+            if not wide:
+                quantize = Quantize(num_bits=dev.ACTIVATION_BITS)
+            else:
+                quantize = Quantize(num_bits=dev.DATA_BITS, num_extra_bit_shift=1)
+        else:
+            quantize = Empty()
         if not wide:
             clamp = Clamp(  # Do not combine with ReLU
                 min_val=-1.,
-                max_val=1.,
+                max_val=(2.**(dev.ACTIVATION_BITS-1)-1)/(2.**(dev.ACTIVATION_BITS-1)),
             )
         else:
             clamp = Clamp(
@@ -176,7 +249,7 @@ def quantize_clamp(wide, output_shift):
     return quantize, clamp
 
 
-def quantize_clamp_pool(pooling):
+def quantize_clamp_pool(pooling, quantize_activation=False):
     """
     Return new Quantization and Clamp objects for pooling.
     """
@@ -193,18 +266,82 @@ def quantize_clamp_pool(pooling):
     else:
         quantize = Empty()
         if pooling == 'Avg':
-            clamp = Clamp(min_val=-1., max_val=1.)
+            if quantize_activation:
+                quantize = RoundQat() if dev.round_avg else FloorQat()
+            clamp = Clamp(min_val=-1., max_val=127./128.)
         else:  # Max, None
             clamp = Empty()
 
     return quantize, clamp
 
 
+def quantize_clamp_parameters(bits):
+    """
+    Return new Quantization and Clamp objects for parameter
+    """
+    if dev.simulate or bits == 0:
+        clamp = Empty()
+        if bits != 0:
+            quantize = Quantize(num_bits=bits-dev.DATA_BITS+1)
+        else:
+            quantize = Empty()
+    else:
+        clamp = Clamp(min_val=-1., max_val=(2.**(bits-1)-1)/(2.**(bits-1)))
+        quantize = Quantize(num_bits=bits)
+
+    return quantize, clamp
+
+
+class OutputShiftSqueeze(nn.Module):
+    """
+    Return output_shift when not using quantization-aware training.
+    """
+    def forward(self, _, x):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
+        return x.squeeze(0)
+
+
+class OutputShift(nn.Module):
+    """
+    Calculate the clamped output shift when adjusting during quantization-aware training.
+    """
+    def forward(self, x, _):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
+        return -(1./x.abs().max()).log2().ceil().clamp(min=-15., max=15.)
+
+
+class One(nn.Module):
+    """
+    Return 1.
+    """
+    def forward(self, _):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
+        return 1.
+
+
+class WeightScale(nn.Module):
+    """
+    Calculate the weight scale (square root of the output shift)
+    """
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
+        return 2.**(-x)
+
+
+class OutputScale(nn.Module):
+    """
+    Calculate the output scale (square of the output shift)
+    """
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
+        return 2.**x
+
+
 class Abs(nn.Module):
     """
     Return abs(x)
     """
-    def forward(self, x):  # pylint: disable=arguments-differ,no-self-use
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
         """Forward prop"""
         return torch.abs_(x)  # abs_() is the in-place version
 
@@ -213,7 +350,7 @@ class Empty(nn.Module):
     """
     Do nothing
     """
-    def forward(self, x):  # pylint: disable=arguments-differ,no-self-use
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
         """Forward prop"""
         return x
 
@@ -230,7 +367,119 @@ def get_activation(activation=None):
     return Empty()
 
 
-class Conv2d(nn.Module):
+class QuantizationAwareModule(nn.Module):
+    """
+    AI8X - Common code for Quantization-Aware Training
+    """
+    def __init__(
+            self,
+            pooling=None,
+            activation=None,
+            wide=False,
+            weight_bits=None,
+            bias_bits=None,
+            quantize_activation=False,
+            pool=None,
+            op=None,
+            func=None,
+            bn=None,
+    ):
+        super().__init__()
+
+        assert weight_bits in [None, 1, 2, 4, 8], f'Weight bits cannot be {weight_bits}'
+        assert bias_bits in [None, 8], f'Bias bits cannot be {bias_bits}'
+
+        self.quantize = None
+        self.clamp = None
+        self.quantize_bias = None
+        self.clamp_bias = None
+        self.calc_out_shift = None
+        self.scale = None
+        self.calc_weight_scale = None
+        self.calc_out_scale = None
+        self.quantize_weight = None
+        self.clamp_weight = None
+        self.quantize_pool = None
+        self.clamp_pool = None
+
+        self.activate = get_activation(activation)
+        self.wide = wide
+
+        self.pool = pool
+        self.op = op
+        self.func = func
+        self.bn = bn
+        self.pooling = pooling
+
+        self.output_shift = nn.Parameter(torch.Tensor([0.]), requires_grad=False)
+        self.init_module(weight_bits, bias_bits, quantize_activation)
+
+    def init_module(self, weight_bits, bias_bits, quantize_activation):
+        """Initialize model parameters"""
+        if weight_bits is None and bias_bits is None and not quantize_activation:
+            self.weight_bits = nn.Parameter(torch.Tensor([0]), requires_grad=False)
+            self.bias_bits = nn.Parameter(torch.Tensor([0]), requires_grad=False)
+            self.quantize_activation = nn.Parameter(torch.Tensor([False]), requires_grad=False)
+            self.adjust_output_shift = nn.Parameter(torch.Tensor([False]), requires_grad=False)
+        elif weight_bits in [1, 2, 4, 8] and bias_bits == 8 and quantize_activation:
+            self.weight_bits = nn.Parameter(torch.Tensor([weight_bits]), requires_grad=False)
+            self.bias_bits = nn.Parameter(torch.Tensor([bias_bits]), requires_grad=False)
+            self.quantize_activation = nn.Parameter(torch.Tensor([True]), requires_grad=False)
+            self.adjust_output_shift = nn.Parameter(torch.Tensor([not dev.simulate]),
+                                                    requires_grad=False)
+        else:
+            assert False, f'Undefined mode with weight_bits: {weight_bits}, ' \
+                          f'bias_bits: {bias_bits}, ' \
+                          f'quantize_activation: {quantize_activation}'
+
+        self.set_functions()
+
+    def set_functions(self):
+        """Set functions to be used wrt the model parameters"""
+        if self.adjust_output_shift.detach():
+            self.calc_out_shift = OutputShift()
+            self.scale = Scaler(False)
+            self.calc_weight_scale = WeightScale()
+        else:
+            self.calc_out_shift = OutputShiftSqueeze()
+            self.scale = Scaler(True)
+            self.calc_weight_scale = One()
+        self.calc_out_scale = OutputScale()
+
+        self.quantize_weight, self.clamp_weight = \
+            quantize_clamp_parameters(self.weight_bits.detach().item())
+        self.quantize_bias, self.clamp_bias = \
+            quantize_clamp_parameters(self.bias_bits.detach().item())
+        self.quantize, self.clamp = \
+            quantize_clamp(self.wide, self.quantize_activation.detach().item())
+        self.quantize_pool, self.clamp_pool = \
+            quantize_clamp_pool(self.pooling, self.quantize_activation.detach().item())
+
+    def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
+        if self.pool is not None:
+            x = self.clamp_pool(self.quantize_pool(self.pool(x)))
+        if self.op is not None:
+            out_shift = self.calc_out_shift(self.op.weight.detach(), self.output_shift.detach())
+            weight_scale = self.calc_weight_scale(out_shift)
+            out_scale = self.calc_out_scale(out_shift)
+
+            self.output_shift = nn.Parameter(out_shift.unsqueeze(0), requires_grad=False)
+
+            weight = self.clamp_weight(self.quantize_weight(weight_scale * self.op.weight))
+            bias = self.op.bias
+            if bias is not None:
+                bias = self.clamp_bias(self.quantize_bias(weight_scale * bias))
+
+            x = self.func(x, weight, bias, self.op.stride, self.op.padding,
+                          self.op.dilation, self.op.groups)
+            if self.bn is not None:
+                x = self.bn(x)
+            x = self.clamp(self.quantize(self.activate(self.scale(x, out_scale))))
+        return x
+
+
+class Conv2d(QuantizationAwareModule):
     """
     AI8X - 2D pooling ('Avg', 'Max' or None) optionally followed by
     2D convolution/transposed 2D convolution and activation ('ReLU', 'Abs', None)
@@ -248,12 +497,12 @@ class Conv2d(nn.Module):
             padding=0,
             bias=True,
             activation=None,
-            output_shift=0,
             wide=False,
             batchnorm=None,
+            weight_bits=None,
+            bias_bits=None,
+            quantize_activation=False,
     ):
-        super().__init__()
-
         assert not wide or activation is None
 
         if pooling is not None:
@@ -302,18 +551,20 @@ class Conv2d(nn.Module):
         assert 0 <= padding <= 2
 
         if pooling == 'Max':
-            self.pool = nn.MaxPool2d(kernel_size=pool_size, stride=pool_stride, padding=0)
+            pool = nn.MaxPool2d(kernel_size=pool_size, stride=pool_stride, padding=0)
         elif pooling == 'Avg':
-            self.pool = nn.AvgPool2d(kernel_size=pool_size, stride=pool_stride, padding=0)
+            pool = nn.AvgPool2d(kernel_size=pool_size, stride=pool_stride, padding=0)
         else:
-            self.pool = None
+            pool = None
 
         if batchnorm == 'Affine':
-            self.bn = nn.BatchNorm2d(out_channels, eps=1e-05, momentum=0.05, affine=True)
+            bn = nn.BatchNorm2d(out_channels, eps=1e-05, momentum=0.05, affine=True)
+            assert bias, '`bias` must be set (enable --use-bias for models where bias is optional)'
         elif batchnorm == 'NoAffine':
-            self.bn = nn.BatchNorm2d(out_channels, eps=1e-05, momentum=0.05, affine=False)
+            bn = nn.BatchNorm2d(out_channels, eps=1e-05, momentum=0.05, affine=False)
+            assert bias, '`bias` must be set (enable --use-bias for models where bias is optional)'
         else:
-            self.bn = None
+            bn = None
 
         if kernel_size is not None:
             if isinstance(kernel_size, tuple):
@@ -323,34 +574,37 @@ class Conv2d(nn.Module):
             assert kernel_size == 3 or dev.device != 84 and kernel_size == 1
 
             if op == 'Conv2d':
-                self.conv2d = nn.Conv2d(in_channels, out_channels,
-                                        kernel_size=kernel_size, stride=stride,
-                                        padding=padding, bias=bias)
+                opn = nn.Conv2d(in_channels, out_channels,
+                                kernel_size=kernel_size, stride=stride,
+                                padding=padding, bias=bias)
             elif op == 'ConvTranspose2d':
                 assert dev.device != 84
-                self.conv2d = nn.ConvTranspose2d(in_channels, out_channels,
-                                                 kernel_size=kernel_size, stride=stride,
-                                                 output_padding=1,
-                                                 padding=padding, bias=bias)
+                opn = nn.ConvTranspose2d(in_channels, out_channels,
+                                         kernel_size=kernel_size, stride=stride,
+                                         output_padding=1,
+                                         padding=padding, bias=bias)
             else:
                 raise ValueError('Unsupported operation')
         else:
-            self.conv2d = None
+            opn = None
 
-        self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
-        self.quantize, self.clamp = quantize_clamp(wide, output_shift)
-        self.activate = get_activation(activation)
+        if op == 'ConvTranspose2d':
+            func = nn.functional.conv_transpose2d
+        else:
+            func = nn.functional.conv2d
 
-    def forward(self, x):  # pylint: disable=arguments-differ
-        """Forward prop"""
-        if self.pool is not None:
-            x = self.clamp_pool(self.quantize_pool(self.pool(x)))
-        if self.conv2d is not None:
-            x = self.conv2d(x)
-            if self.bn is not None:
-                x = self.bn(x)
-            x = self.clamp(self.quantize(self.activate(x)))
-        return x
+        super().__init__(
+            pooling,
+            activation,
+            wide,
+            weight_bits,
+            bias_bits,
+            quantize_activation,
+            pool,
+            opn,
+            func,
+            bn,
+        )
 
 
 class FusedMaxPoolConv2d(Conv2d):
@@ -359,6 +613,14 @@ class FusedMaxPoolConv2d(Conv2d):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, pooling='Max', **kwargs)
+
+
+class FusedMaxPoolConv2dBN(FusedMaxPoolConv2d):
+    """
+    AI8X - Fused 2D Max Pool, 2D Convolution, BatchNorm and Activation ('ReLU', 'Abs', None)
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, batchnorm='NoAffine', **kwargs)
 
 
 class FusedMaxPoolConv2dReLU(FusedMaxPoolConv2d):
@@ -383,6 +645,14 @@ class FusedMaxPoolConv2dAbs(FusedMaxPoolConv2d):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, activation='Abs', **kwargs)
+
+
+class FusedMaxPoolConv2dBNAbs(FusedMaxPoolConv2dAbs):
+    """
+    AI8X - Fused 2D Max Pool, 2D Convolution, BatchNorm and Abs
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, batchnorm='NoAffine', **kwargs)
 
 
 class MaxPool2d(FusedMaxPoolConv2d):
@@ -410,12 +680,28 @@ class FusedAvgPoolConv2dReLU(FusedAvgPoolConv2d):
         super().__init__(*args, activation='ReLU', **kwargs)
 
 
+class FusedAvgPoolConv2dBNReLU(FusedAvgPoolConv2dReLU):
+    """
+    AI8X - Fused 2D Avg Pool, 2D Convolution, BatchNorm and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, batchnorm='NoAffine', **kwargs)
+
+
 class FusedAvgPoolConv2dAbs(FusedAvgPoolConv2d):
     """
     AI8X - Fused 2D Avg Pool, 2D Convolution and Abs
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, activation='Abs', **kwargs)
+
+
+class FusedAvgPoolConv2dBNAbs(FusedAvgPoolConv2dAbs):
+    """
+    AI8X - Fused 2D Avg Pool, 2D Convolution, BatchNorm and Abs
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, batchnorm='NoAffine', **kwargs)
 
 
 class AvgPool2d(FusedAvgPoolConv2d):
@@ -534,7 +820,7 @@ class FusedSoftwareLinearReLU(nn.Module):
         if dev.device != 84:
             print('WARNING: SoftwareLinear should be used on AI84 only')
 
-        self.linear = nn.Linear(in_features, out_features, bias)
+        self.op = nn.Linear(in_features, out_features, bias)
 
         if dev.simulate:
             self.quantize = Quantize(num_bits=dev.DATA_BITS)
@@ -542,7 +828,7 @@ class FusedSoftwareLinearReLU(nn.Module):
             self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
         else:
             self.quantize = Empty()
-            self.clamp = Clamp(min_val=-1., max_val=1.)  # Do not combine with ReLU
+            self.clamp = Clamp(min_val=-1., max_val=127./128.)  # Do not combine with ReLU
 
         if relu:
             self.activate = nn.ReLU(inplace=True)
@@ -551,7 +837,7 @@ class FusedSoftwareLinearReLU(nn.Module):
 
     def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
-        x = self.linear(x)
+        x = self.op(x)
         x = self.clamp(self.quantize(self.activate(x)))
         return x
 
@@ -564,29 +850,56 @@ class SoftwareLinear(FusedSoftwareLinearReLU):
         super().__init__(in_features, out_features, relu=False, **kwargs)
 
 
-class Linear(nn.Module):
+def func_linear(x, weight, bias, _stride, _padding, _dilation, _groups):
+    """
+    Wrapper for `nn.functional.linear` that takes the same number of arguments as Conv1d/Conv2d.
+    """
+    return nn.functional.linear(x, weight, bias)
+
+
+class Linear(QuantizationAwareModule):
     """
     AI85+ - Fused Linear and activation ('ReLU', 'Abs', None)
     """
-    def __init__(self, in_features, out_features, bias=None,
-                 activation=None, output_shift=0, wide=False):
-        super().__init__()
+    def __init__(
+            self,
+            in_features,
+            out_features,
+            pooling=None,
+            bias=None,
+            activation=None,
+            wide=False,
+            batchnorm=None,  # pylint: disable=unused-argument
+            weight_bits=None,
+            bias_bits=None,
+            quantize_activation=False,
+    ):
+        assert not wide or activation is None
 
         assert dev.device != 84
         assert in_features <= 1024
         assert out_features <= 1024
-        assert not wide or activation is None
+        assert pooling is None
+        assert batchnorm is None
 
-        self.linear = nn.Linear(in_features, out_features, bias)
+        super().__init__(
+            pooling,
+            activation,
+            wide,
+            weight_bits,
+            bias_bits,
+            quantize_activation,
+            None,
+            nn.Linear(in_features, out_features, bias),
+            func_linear,
+            None,
+        )
 
-        self.quantize, self.clamp = quantize_clamp(wide, output_shift)
-        self.activate = get_activation(activation)
-
-    def forward(self, x):  # pylint: disable=arguments-differ
-        """Forward prop"""
-        x = self.linear(x)
-        x = self.clamp(self.quantize(self.activate(x)))
-        return x
+        # Define dummy arguments to make Linear and Conv1d/Conv2d compatible.
+        self.op.stride = None
+        self.op.padding = None
+        self.op.dilation = None
+        self.op.groups = None
 
 
 class FusedLinearReLU(Linear):
@@ -605,7 +918,7 @@ class FusedLinearAbs(Linear):
         super().__init__(*args, activation='Abs', **kwargs)
 
 
-class Conv1d(nn.Module):
+class Conv1d(QuantizationAwareModule):
     """
     AI8X - Fused 1D Pool ('Avg', 'Max' or None) followed by
     1D Convolution and activation ('ReLU', 'Abs', None)
@@ -622,11 +935,12 @@ class Conv1d(nn.Module):
             padding=0,
             bias=True,
             activation=None,
-            output_shift=0,
             wide=False,
+            batchnorm=None,
+            weight_bits=None,
+            bias_bits=None,
+            quantize_activation=False,
     ):
-        super().__init__()
-
         assert not wide or activation is None
 
         if pooling is not None:
@@ -646,11 +960,20 @@ class Conv1d(nn.Module):
             assert dev.device == 84 or stride == 1
 
         if pooling == 'Max':
-            self.pool = nn.MaxPool1d(kernel_size=pool_size, stride=pool_stride, padding=0)
+            pool = nn.MaxPool1d(kernel_size=pool_size, stride=pool_stride, padding=0)
         elif pooling == 'Avg':
-            self.pool = nn.AvgPool1d(kernel_size=pool_size, stride=pool_stride, padding=0)
+            pool = nn.AvgPool1d(kernel_size=pool_size, stride=pool_stride, padding=0)
         else:
-            self.pool = None
+            pool = None
+
+        if batchnorm == 'Affine':
+            bn = nn.BatchNorm1d(out_channels, eps=1e-05, momentum=0.05, affine=True)
+            assert bias, '`bias` must be set (enable --use-bias for models where bias is optional)'
+        elif batchnorm == 'NoAffine':
+            bn = nn.BatchNorm1d(out_channels, eps=1e-05, momentum=0.05, affine=False)
+            assert bias, '`bias` must be set (enable --use-bias for models where bias is optional)'
+        else:
+            bn = None
 
         if kernel_size is not None:
             assert dev.device != 84 or padding in [0, 3, 6]
@@ -658,23 +981,23 @@ class Conv1d(nn.Module):
             assert dev.device != 84 or kernel_size == 9
             assert dev.device == 84 or kernel_size in [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
-            self.conv1d = nn.Conv1d(in_channels, out_channels, kernel_size, stride=stride,
-                                    padding=padding, bias=bias)
+            opn = nn.Conv1d(in_channels, out_channels, kernel_size, stride=stride,
+                            padding=padding, bias=bias)
         else:
-            self.conv1d = None
+            opn = None
 
-        self.quantize_pool, self.clamp_pool = quantize_clamp_pool(pooling)
-        self.quantize, self.clamp = quantize_clamp(wide, output_shift)
-        self.activate = get_activation(activation)
-
-    def forward(self, x):  # pylint: disable=arguments-differ
-        """Forward prop"""
-        if self.pool is not None:
-            x = self.clamp_pool(self.quantize_pool(self.pool(x)))
-        if self.conv1d is not None:
-            x = self.conv1d(x)
-            x = self.clamp(self.quantize(self.activate(x)))
-        return x
+        super().__init__(
+            pooling,
+            activation,
+            wide,
+            weight_bits,
+            bias_bits,
+            quantize_activation,
+            pool,
+            opn,
+            nn.functional.conv1d,
+            bn,
+        )
 
 
 class FusedMaxPoolConv1d(Conv1d):
@@ -685,6 +1008,14 @@ class FusedMaxPoolConv1d(Conv1d):
         super().__init__(*args, pooling='Max', **kwargs)
 
 
+class FusedMaxPoolConv1dBN(FusedMaxPoolConv1d):
+    """
+    AI8X - Fused 1D Max Pool, 1D Convolution, BatchNorm and Activation ('ReLU', 'Abs', None)
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, batchnorm='NoAffine', **kwargs)
+
+
 class FusedMaxPoolConv1dReLU(FusedMaxPoolConv1d):
     """
     AI8X - Fused 1D Max Pool, 1D Convolution and ReLU
@@ -693,12 +1024,34 @@ class FusedMaxPoolConv1dReLU(FusedMaxPoolConv1d):
         super().__init__(*args, activation='ReLU', **kwargs)
 
 
+class FusedMaxPoolConv1dBNReLU(FusedMaxPoolConv1dReLU):
+    """
+    AI8X - Fused 1D Max Pool, 1D Convolution, BatchNorm and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        if 'batchnorm' in kwargs:
+            super().__init__(*args, **kwargs)
+        else:
+            super().__init__(*args, batchnorm='NoAffine', **kwargs)
+
+
 class FusedMaxPoolConv1dAbs(FusedMaxPoolConv1d):
     """
     AI8X - Fused 1D Max Pool, 1D Convolution and Abs
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, activation='Abs', **kwargs)
+
+
+class FusedMaxPoolConv1dBNAbs(FusedMaxPoolConv1d):
+    """
+    AI8X - Fused 1D Max Pool, 1D Convolution, BatchNorm and Abs
+    """
+    def __init__(self, *args, **kwargs):
+        if 'batchnorm' in kwargs:
+            super().__init__(*args, **kwargs)
+        else:
+            super().__init__(*args, batchnorm='NoAffine', **kwargs)
 
 
 class MaxPool1d(FusedMaxPoolConv1d):
@@ -726,12 +1079,31 @@ class FusedAvgPoolConv1dReLU(FusedAvgPoolConv1d):
         super().__init__(*args, activation='ReLU', **kwargs)
 
 
+class FusedAvgPoolConv1dBNReLU(FusedAvgPoolConv1dReLU):
+    """
+    AI8X - Fused 1D Avg Pool, 1D Convolution, BatchNorm and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        if 'batchnorm' in kwargs:
+            super().__init__(*args, **kwargs)
+        else:
+            super().__init__(*args, batchnorm='NoAffine', **kwargs)
+
+
 class FusedAvgPoolConv1dAbs(FusedAvgPoolConv1d):
     """
     AI8X - Fused 1D Avg Pool, 1D Convolution and Abs
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, activation='Abs', **kwargs)
+
+
+class FusedAvgPoolConv1dBNAbs(FusedAvgPoolConv1d):
+    """
+    AI8X - Fused 1D Avg Pool, 1D Convolution, BatchNorm and Abs
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, batchnorm='NoAffine', **kwargs)
 
 
 class AvgPool1d(FusedAvgPoolConv1d):
@@ -751,12 +1123,34 @@ class FusedConv1dReLU(Conv1d):
         super().__init__(*args, activation='ReLU', **kwargs)
 
 
+class FusedConv1dBNReLU(FusedConv1dReLU):
+    """
+    AI8X - Fused 1D Convolution, BatchNorm and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        if 'batchnorm' in kwargs:
+            super().__init__(*args, **kwargs)
+        else:
+            super().__init__(*args, batchnorm='NoAffine', **kwargs)
+
+
 class FusedConv1dAbs(Conv1d):
     """
     AI8X - Fused 1D Convolution and Abs
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, activation='Abs', **kwargs)
+
+
+class FusedConv1dBNAbs(FusedConv1dAbs):
+    """
+    AI8X - Fused 1D Convolution, BatchNorm and Abs
+    """
+    def __init__(self, *args, **kwargs):
+        if 'batchnorm' in kwargs:
+            super().__init__(*args, **kwargs)
+        else:
+            super().__init__(*args, batchnorm='NoAffine', **kwargs)
 
 
 class Eltwise(nn.Module):
@@ -770,7 +1164,7 @@ class Eltwise(nn.Module):
             bits = dev.ACTIVATION_BITS
             self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
         else:
-            self.clamp = Clamp(min_val=-1., max_val=1.)
+            self.clamp = Clamp(min_val=-1., max_val=127./128.)
 
     def forward(self, *x):
         """Forward prop"""
@@ -916,6 +1310,7 @@ def set_device(
         device,
         simulate,
         round_avg,
+        verbose=True,
 ):
     """
     Change implementation configuration to match the `device` input value and
@@ -923,7 +1318,8 @@ def set_device(
     """
     global dev  # pylint: disable=global-statement
 
-    print(f'Configuring device: {devices.partnum(device)}, simulate={simulate}.')
+    if verbose:
+        print(f'Configuring device: {devices.partnum(device)}, simulate={simulate}.')
 
     if device == 84:
         dev = DevAI84(simulate, round_avg)
@@ -933,3 +1329,105 @@ def set_device(
         dev = DevAI87(simulate, round_avg)
     else:
         raise ValueError(f'Unkown device {device}.')
+
+
+class QuantizeONNX(nn.Module):
+    """
+    Post-activation integer quantization module
+    Apply the custom autograd function
+    """
+    def __init__(self, num_bits=8):
+        super().__init__()
+        self.num_bits = num_bits
+
+    def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
+        factor = 2**(self.num_bits-1)
+        return x.mul(factor).round().div(factor)
+
+
+def initiate_qat(m, qat_policy):
+    """
+    Modify model `m` to start quantization aware training.
+    """
+    def _initiate_qat(m):
+        for attr_str in dir(m):
+            target_attr = getattr(m, attr_str)
+            if isinstance(target_attr, QuantizationAwareModule):
+                target_attr.init_module(qat_policy['weight_bits'], 8, True)
+                if 'overrides' in qat_policy:
+                    if attr_str in qat_policy['overrides']:
+                        target_attr.init_module(qat_policy['overrides'][attr_str]['weight_bits'],
+                                                8, True)
+
+                setattr(m, attr_str, target_attr)
+
+    m.apply(_initiate_qat)
+
+
+def update_model(m):
+    """
+    Update model `m` with the current parameters.
+    It is used to update model functions after loading a checkpoint file.
+    """
+    def _update_model(m):
+        for attr_str in dir(m):
+            target_attr = getattr(m, attr_str)
+            if isinstance(target_attr, QuantizationAwareModule):
+                target_attr.set_functions()
+                setattr(m, attr_str, target_attr)
+
+    m.apply(_update_model)
+
+
+def fuse_bn_layers(m):
+    """
+    Fuse the bn layers before the quantization aware training starts.
+    """
+    def _fuse_bn_layers(m):
+        for attr_str in dir(m):
+            target_attr = getattr(m, attr_str)
+            if isinstance(target_attr, QuantizationAwareModule) \
+               and target_attr.bn is not None:
+                w = target_attr.op.weight.data
+                b = target_attr.op.bias.data
+                device = w.device
+
+                r_mean = target_attr.bn.running_mean
+                r_var = target_attr.bn.running_var
+                r_std = torch.sqrt(r_var + 1e-20)
+                beta = target_attr.bn.weight
+                gamma = target_attr.bn.bias
+
+                if beta is None:
+                    beta = torch.ones(w.shape[0]).to(device)
+                if gamma is None:
+                    gamma = torch.zeros(w.shape[0]).to(device)
+
+                w_new = w * (beta / r_std).reshape((w.shape[0],) + (1,) * (len(w.shape) - 1))
+                b_new = (b - r_mean)/r_std * beta + gamma
+
+                target_attr.op.weight.data = w_new
+                target_attr.op.bias.data = b_new
+                target_attr.bn = None
+                setattr(m, attr_str, target_attr)
+
+    m.apply(_fuse_bn_layers)
+
+
+def onnx_export_prep(m, simplify=False):
+    """
+    Prepare model `m` for ONNX export. When `simplify` is True, remove several
+    quantization related operators from the model graph.
+    """
+    def _onnx_export_prep(m):
+        for attr_str in dir(m):
+            target_attr = getattr(m, attr_str)
+            if not simplify:
+                if isinstance(target_attr, Quantize):
+                    setattr(m, attr_str, QuantizeONNX(target_attr.num_bits))
+            else:
+                if isinstance(target_attr, (Quantize, Clamp, Round, Floor)):
+                    setattr(m, attr_str, Empty())
+
+    m.apply(_onnx_export_prep)

@@ -1,0 +1,7 @@
+start_epoch: 10
+weight_bits: 2
+overrides:
+        conv1:
+                weight_bits: 8
+        fc:
+                weight_bits: 4

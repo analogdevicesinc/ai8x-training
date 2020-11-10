@@ -20,7 +20,7 @@ class AI85Net20(nn.Module):
     CNN that tries to achieve accuracy > %90 for kws.
     """
     def __init__(self, num_classes=21, num_channels=1, dimensions=(64, 64),
-                 fc_inputs=30, bias=False):
+                 fc_inputs=30, bias=False, **kwargs):
         super().__init__()
 
         # AI84 Limits
@@ -30,29 +30,29 @@ class AI85Net20(nn.Module):
         dim = dimensions[0]
 
         self.conv1 = ai8x.FusedConv2dReLU(num_channels, 15, 3,
-                                          padding=1, bias=bias)
+                                          padding=1, bias=bias, **kwargs)
         # padding 1 -> no change in dimensions -> 15x28x28
 
         pad = 2 if dim == 28 else 1
         self.conv2 = ai8x.FusedMaxPoolConv2dReLU(15, 30, 3, pool_size=2, pool_stride=2,
-                                                 padding=pad, bias=bias)
+                                                 padding=pad, bias=bias, **kwargs)
         dim //= 2  # pooling, padding 0 -> 30x14x14
         if pad == 2:
             dim += 2  # padding 2 -> 30x16x16
 
         self.conv3 = ai8x.FusedMaxPoolConv2dReLU(30, 60, 3, pool_size=2, pool_stride=2, padding=1,
-                                                 bias=bias)
+                                                 bias=bias, **kwargs)
         dim //= 2  # pooling, padding 0 -> 60x8x8
 
         self.conv4 = ai8x.FusedMaxPoolConv2dReLU(60, 30, 3, pool_size=2, pool_stride=2, padding=1,
-                                                 bias=bias)
+                                                 bias=bias, **kwargs)
         dim //= 2  # pooling, padding 0 -> 30x4x4
 
         self.conv5 = ai8x.FusedMaxPoolConv2dReLU(30, 30, 3, pool_size=2, pool_stride=2, padding=1,
-                                                 bias=bias)
+                                                 bias=bias, **kwargs)
         dim //= 2  # pooling, padding 0 -> 30x2x2
 
-        self.conv6 = ai8x.FusedConv2dReLU(30, fc_inputs, 3, padding=1, bias=bias)
+        self.conv6 = ai8x.FusedConv2dReLU(30, fc_inputs, 3, padding=1, bias=bias, **kwargs)
 
         self.fc = ai8x.SoftwareLinear(fc_inputs*dim*dim, num_classes, bias=True)
 
