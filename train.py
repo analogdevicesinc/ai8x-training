@@ -109,6 +109,7 @@ import sample
 import parse_qat_yaml
 # from range_linear_ai84 import PostTrainLinearQuantizerAI84
 
+matplotlib.use("pgf")
 
 # Logger handle
 msglogger = None
@@ -172,7 +173,6 @@ def main():
         os.makedirs(args.output_dir)
 
     if args.shap > 0:
-        matplotlib.use('TkAgg')
         args.batch_size = 100 + args.shap
 
     msglogger = apputils.config_pylogger(os.path.join(script_dir, 'logging.conf'), args.name,
@@ -1126,12 +1126,26 @@ def evaluate_model(model, criterion, test_loader, loggers, activations_collector
     top1, _, _ = test(test_loader, model, criterion, loggers, activations_collectors, args=args)
 
     if args.shap > 0:
+        matplotlib.use('TkAgg')
+        print("Generating plot...")
         images, _ = iter(test_loader).next()
         background = images[:100]
         test_images = images[100:100 + args.shap]
 
-        e = shap.DeepExplainer(model, background)
-        shap_values = e.shap_values(test_images)
+        # pylint: disable=protected-access
+        shap.explainers._deep.deep_pytorch.op_handler['Clamp'] = \
+            shap.explainers._deep.deep_pytorch.passthrough
+        shap.explainers._deep.deep_pytorch.op_handler['Empty'] = \
+            shap.explainers._deep.deep_pytorch.passthrough
+        shap.explainers._deep.deep_pytorch.op_handler['Floor'] = \
+            shap.explainers._deep.deep_pytorch.passthrough
+        shap.explainers._deep.deep_pytorch.op_handler['Quantize'] = \
+            shap.explainers._deep.deep_pytorch.passthrough
+        shap.explainers._deep.deep_pytorch.op_handler['Scaler'] = \
+            shap.explainers._deep.deep_pytorch.passthrough
+        # pylint: enable=protected-access
+        e = shap.DeepExplainer(model.to(args.device), background.to(args.device))
+        shap_values = e.shap_values(test_images.to(args.device))
         shap_numpy = [np.swapaxes(np.swapaxes(s, 1, -1), 1, 2) for s in shap_values]
         test_numpy = np.swapaxes(np.swapaxes(test_images.numpy(), 1, -1), 1, 2)
         # Plot the feature attributions

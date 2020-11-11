@@ -314,9 +314,9 @@ class One(nn.Module):
     """
     Return 1.
     """
-    def forward(self, _):  # pylint: disable=arguments-differ, no-self-use
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
         """Forward prop"""
-        return 1.
+        return torch.ones(1).to(x.device)
 
 
 class WeightScale(nn.Module):
