@@ -12,6 +12,7 @@ Test networks for AI85/AI86
 Optionally quantize/clamp activations
 """
 import torch.nn as nn
+
 import ai8x
 import ai8x_fire
 

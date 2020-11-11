@@ -12,6 +12,7 @@ KWS Networks for AI85
 Optionally quantize/clamp activations
 """
 import torch.nn as nn
+
 import ai8x
 
 

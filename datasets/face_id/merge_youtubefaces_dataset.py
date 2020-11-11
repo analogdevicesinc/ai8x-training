@@ -11,10 +11,11 @@ Script to merge YouTubeFaces data samples into more compact file series to effet
 FaceID model training.
 """
 
-import os
-import json
 import argparse
+import json
+import os
 import pickle
+
 import numpy as np
 
 

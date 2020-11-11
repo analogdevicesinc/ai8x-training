@@ -11,10 +11,13 @@ Test routine for QAT
 """
 import copy
 import sys
+
 import torch
+
 sys.path.insert(0, '..')
 # pylint: disable=import-error, wrong-import-position
 import ai8x  # noqa E402
+
 # pylint: enable=import-error, wrong-import-position
 
 

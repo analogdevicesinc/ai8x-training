@@ -13,8 +13,8 @@ the limits into account.
 import torch
 import torch.nn as nn
 from torch.autograd import Function
-import devices
 
+import devices
 
 dev = None
 

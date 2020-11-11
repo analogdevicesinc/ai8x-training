@@ -10,14 +10,16 @@
 Script to generate dataset for FaceID training and validation from VGGFace-2 dataset.
 """
 
-import os
-import json
 import argparse
+import json
+import os
+
 import numpy as np
-import scipy.ndimage
-from matplotlib.image import imread
 import torch
+
+import scipy.ndimage
 from facenet_pytorch import MTCNN, InceptionResnetV1  # pylint: disable=no-name-in-module
+from matplotlib.image import imread
 
 
 def generate_image(img, box, count):  # pylint: disable=too-many-locals

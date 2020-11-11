@@ -28,14 +28,17 @@ import errno
 import hashlib
 import os
 import tarfile
-import warnings
 import time
-import librosa
+import warnings
+
 import numpy as np
 import torch
-from torchvision import transforms
 from torch.utils.model_zoo import tqdm
+from torchvision import transforms
+
+import librosa
 from six.moves import urllib
+
 import ai8x
 
 

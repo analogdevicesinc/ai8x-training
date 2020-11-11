@@ -60,53 +60,59 @@ models, or with the provided sample models:
 - MobileNet for ImageNet: https://github.com/marvis/pytorch-mobilenet
 """
 
-import time
+import fnmatch
+import logging
+import operator
 import os
 import sys
+import time
 import traceback
-import logging
 from collections import OrderedDict
 from functools import partial
 from pydoc import locate
-import fnmatch
-import operator
-from pkg_resources import parse_version
-import matplotlib
+
 import numpy as np
+
+import matplotlib
+from pkg_resources import parse_version
 
 # TensorFlow 2.x compatibility
 try:
-    import tensorflow  # pylint: disable=import-error
     import tensorboard  # pylint: disable=import-error
+    import tensorflow  # pylint: disable=import-error
     tensorflow.io.gfile = tensorboard.compat.tensorflow_stub.io.gfile
 except (ModuleNotFoundError, AttributeError):
     pass
 
-import shap
 import torch
+import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.nn.parallel
-import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
-import torchnet.meter as tnt
-import examples.auto_compression.amc as adc
+
+# pylint: disable=wrong-import-order
 import distiller
 import distiller.apputils as apputils
 import distiller.model_summaries as model_summaries
+import examples.auto_compression.amc as adc
+import shap
+import torchnet.meter as tnt
 from distiller.data_loggers import PythonLogger, TensorBoardLogger
 # pylint: disable=no-name-in-module
-from distiller.data_loggers.collector import SummaryActivationStatsCollector, \
-    RecordsActivationStatsCollector, QuantCalibrationStatsCollector, \
-    collectors_context
+from distiller.data_loggers.collector import (QuantCalibrationStatsCollector,
+                                              RecordsActivationStatsCollector,
+                                              SummaryActivationStatsCollector, collectors_context)
 from distiller.quantization.range_linear import PostTrainLinearQuantizer
+
 # pylint: enable=no-name-in-module
 import ai8x
 import datasets
 import nnplot
+import parse_qat_yaml
 import parsecmd
 import sample
-import parse_qat_yaml
+
 # from range_linear_ai84 import PostTrainLinearQuantizerAI84
 
 matplotlib.use("pgf")

@@ -14,8 +14,9 @@ import itertools
 import re
 from textwrap import wrap
 
-import matplotlib.figure as matfig
 import numpy as np
+
+import matplotlib.figure as matfig
 
 
 def confusion_matrix(cm, labels, normalize=False):

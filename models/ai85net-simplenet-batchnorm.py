@@ -14,6 +14,7 @@ Simplified version of the network proposed in [1].
     outperform deeper and more complex architectures." arXiv preprint arXiv:1608.06037 (2016).
 """
 import torch.nn as nn
+
 import ai8x
 
 

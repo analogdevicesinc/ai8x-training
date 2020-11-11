@@ -10,6 +10,7 @@
 AI85 demonstration network
 """
 import torch.nn as nn
+
 import ai8x
 
 
