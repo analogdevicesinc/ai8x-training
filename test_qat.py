@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 ###################################################################################################
 #
 # Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
@@ -10,15 +11,10 @@
 Test routine for QAT
 """
 import copy
-import sys
 
 import torch
 
-sys.path.insert(0, '..')
-# pylint: disable=import-error, wrong-import-position
-import ai8x  # noqa E402
-
-# pylint: enable=import-error, wrong-import-position
+import ai8x
 
 
 def create_input_data(num_channels):
@@ -135,7 +131,7 @@ def test():
                 q_int_out = q_int_layer(inp_int)
 
                 assert ((128. * q_fp_out) == q_int_out).all(), 'FAIL!!'
-                print('DONE')
+                print('PASS')
 
     print('\nSUCCESS!!')
 
