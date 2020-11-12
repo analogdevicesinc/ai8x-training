@@ -1023,7 +1023,7 @@ Example for MNIST:
 To evaluate the quantized network for MAX78000 (run from the training project):
 
 ```shell
-(ai8x-training) $ ./evaluate_mnist.sh
+(ai8x-training) $ scripts/evaluate_mnist.sh
 ```
 
 #### Alternative Quantization Approaches
@@ -1658,9 +1658,9 @@ np.save(os.path.join('tests', 'sample_mnist'), a, allow_pickle=False, fix_import
 
 #### Saving a Sample Input from Training Data
 
-1. In the `ai8x-training` project, add the argument `--save-sample 10` to the `evaluate_mnist.sh` script. *Note: The index 10 is arbitrary, but it must be smaller than the batch size. If manual visual verification is desired, it is a good idea to pick a sample where the quantized model computes the correct answer.*
+1. In the `ai8x-training` project, add the argument `--save-sample 10` to the `scripts/evaluate_mnist.sh` script. *Note: The index 10 is arbitrary, but it must be smaller than the batch size. If manual visual verification is desired, it is a good idea to pick a sample where the quantized model computes the correct answer.*
 
-2. Run the modified `evaluate_mnist.sh`. It will produce a file named `sample_mnist.npy`.
+2. Run the modified `scripts/evaluate_mnist.sh`. It will produce a file named `sample_mnist.npy`.
 
 3. Save the `sample_mnist.npy` file and copy it to the `ai8x-synthesis` project.
 
@@ -1674,13 +1674,13 @@ np.save(os.path.join('tests', 'sample_mnist'), a, allow_pickle=False, fix_import
    ```
 2. Create an evaluation script and run it:
    ```shell
-   (ai8x-training) $ cp evaluate_mnist.sh evaluate_new.sh
-   (ai8x-training) $ vim evaluate_new.sh
-   (ai8x-training) $ ./evaluate_new.sh
+   (ai8x-training) $ cp scripts/evaluate_mnist.sh scripts/evaluate_new.sh
+   (ai8x-training) $ vim scripts/evaluate_new.sh
+   (ai8x-training) $ scripts/evaluate_new.sh
    ```
    Example output:
    ```shell
-   (ai8x-training) $ ./evaluate_new.sh 
+   (ai8x-training) $ scripts/evaluate_new.sh 
    Configuring device: AI85, simulate=True.
    Log file for this run: logs/2020.06.03-125328/2020.06.03-125328.log
    --------------------------------------------------------
