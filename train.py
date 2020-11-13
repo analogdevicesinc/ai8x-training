@@ -60,55 +60,62 @@ models, or with the provided sample models:
 - MobileNet for ImageNet: https://github.com/marvis/pytorch-mobilenet
 """
 
-import time
+import fnmatch
+import logging
+import operator
 import os
 import sys
+import time
 import traceback
-import logging
 from collections import OrderedDict
 from functools import partial
 from pydoc import locate
-import fnmatch
-import operator
-from pkg_resources import parse_version
-import matplotlib
+
 import numpy as np
+
+import matplotlib
+from pkg_resources import parse_version
 
 # TensorFlow 2.x compatibility
 try:
-    import tensorflow  # pylint: disable=import-error
     import tensorboard  # pylint: disable=import-error
+    import tensorflow  # pylint: disable=import-error
     tensorflow.io.gfile = tensorboard.compat.tensorflow_stub.io.gfile
 except (ModuleNotFoundError, AttributeError):
     pass
 
-import shap
 import torch
+import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.nn.parallel
-import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
-import torchnet.meter as tnt
-import examples.auto_compression.amc as adc
+
+# pylint: disable=wrong-import-order
 import distiller
 import distiller.apputils as apputils
 import distiller.model_summaries as model_summaries
+import examples.auto_compression.amc as adc
+import shap
+import torchnet.meter as tnt
 from distiller.data_loggers import PythonLogger, TensorBoardLogger
 # pylint: disable=no-name-in-module
-from distiller.data_loggers.collector import SummaryActivationStatsCollector, \
-    RecordsActivationStatsCollector, QuantCalibrationStatsCollector, \
-    collectors_context
+from distiller.data_loggers.collector import (QuantCalibrationStatsCollector,
+                                              RecordsActivationStatsCollector,
+                                              SummaryActivationStatsCollector, collectors_context)
 from distiller.quantization.range_linear import PostTrainLinearQuantizer
+
 # pylint: enable=no-name-in-module
 import ai8x
 import datasets
 import nnplot
+import parse_qat_yaml
 import parsecmd
 import sample
-import parse_qat_yaml
+
 # from range_linear_ai84 import PostTrainLinearQuantizerAI84
 
+matplotlib.use("pgf")
 
 # Logger handle
 msglogger = None
@@ -172,7 +179,6 @@ def main():
         os.makedirs(args.output_dir)
 
     if args.shap > 0:
-        matplotlib.use('TkAgg')
         args.batch_size = 100 + args.shap
 
     msglogger = apputils.config_pylogger(os.path.join(script_dir, 'logging.conf'), args.name,
@@ -265,9 +271,9 @@ def main():
         tflogger.tblogger.writer.add_text('Command line', str(args))
 
         if dimensions[2] > 1:
-            dummy_input = torch.autograd.Variable(torch.randn((1, ) + dimensions))
+            dummy_input = torch.randn((1, ) + dimensions)
         else:  # 1D input
-            dummy_input = torch.autograd.Variable(torch.randn((1, ) + dimensions[:-1]))
+            dummy_input = torch.randn((1, ) + dimensions[:-1])
         tflogger.tblogger.writer.add_graph(model.to('cpu'), (dummy_input, ), False)
 
         all_loggers.append(tflogger)
@@ -1126,12 +1132,26 @@ def evaluate_model(model, criterion, test_loader, loggers, activations_collector
     top1, _, _ = test(test_loader, model, criterion, loggers, activations_collectors, args=args)
 
     if args.shap > 0:
+        matplotlib.use('TkAgg')
+        print("Generating plot...")
         images, _ = iter(test_loader).next()
         background = images[:100]
         test_images = images[100:100 + args.shap]
 
-        e = shap.DeepExplainer(model, background)
-        shap_values = e.shap_values(test_images)
+        # pylint: disable=protected-access
+        shap.explainers._deep.deep_pytorch.op_handler['Clamp'] = \
+            shap.explainers._deep.deep_pytorch.passthrough
+        shap.explainers._deep.deep_pytorch.op_handler['Empty'] = \
+            shap.explainers._deep.deep_pytorch.passthrough
+        shap.explainers._deep.deep_pytorch.op_handler['Floor'] = \
+            shap.explainers._deep.deep_pytorch.passthrough
+        shap.explainers._deep.deep_pytorch.op_handler['Quantize'] = \
+            shap.explainers._deep.deep_pytorch.passthrough
+        shap.explainers._deep.deep_pytorch.op_handler['Scaler'] = \
+            shap.explainers._deep.deep_pytorch.passthrough
+        # pylint: enable=protected-access
+        e = shap.DeepExplainer(model.to(args.device), background.to(args.device))
+        shap_values = e.shap_values(test_images.to(args.device))
         shap_numpy = [np.swapaxes(np.swapaxes(s, 1, -1), 1, 2) for s in shap_values]
         test_numpy = np.swapaxes(np.swapaxes(test_images.numpy(), 1, -1), 1, 2)
         # Plot the feature attributions

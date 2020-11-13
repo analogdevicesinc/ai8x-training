@@ -12,6 +12,7 @@ Script that is used for fusing/folding batchnorm layers onto conv2d layers.
 """
 
 import argparse
+
 import torch
 
 

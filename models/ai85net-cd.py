@@ -10,6 +10,7 @@
 Cats and Dogs classification network for AI85
 """
 import torch.nn as nn
+
 import ai8x
 
 

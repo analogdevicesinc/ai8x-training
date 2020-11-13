@@ -12,6 +12,7 @@ Networks that fit into AI84
 Optionally quantize/clamp activations
 """
 import torch.nn as nn
+
 import ai8x
 
 

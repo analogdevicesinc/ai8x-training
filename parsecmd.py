@@ -29,12 +29,13 @@ Command line parser for the Training/Quantization software.
 
 import argparse
 
-from examples.auto_compression.amc import amc_args as adc
+# pylint: disable=wrong-import-order
 import distiller
 import distiller.quantization
 from distiller.utils import float_range_argparse_checker as float_range
-from devices import device
+from examples.auto_compression.amc import amc_args as adc
 
+from devices import device
 
 SUMMARY_CHOICES = ['sparsity', 'compute', 'model', 'modules', 'png', 'png_w_params', 'onnx',
                    'onnx_simplified']

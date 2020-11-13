@@ -13,8 +13,8 @@ the limits into account.
 import torch
 import torch.nn as nn
 from torch.autograd import Function
-import devices
 
+import devices
 
 dev = None
 
@@ -149,45 +149,16 @@ class Clamp(nn.Module):
         return x.clamp(min=self.min_val, max=self.max_val)
 
 
-class ScaleFunction(Function):
-    """
-    Custom AI8X autograd function
-    The forward pass returns the integer floor value of the x scaled with input s
-    The backward pass is straight through
-    """
-    @staticmethod
-    def forward(ctx, x, s):  # pylint: disable=arguments-differ
-        """Forward prop"""
-        ctx.save_for_backward(s)
-        if s < 1.:
-            if dev.simulate:
-                return (x*s).floor()
-
-            factor = 2**(2*(dev.DATA_BITS - 1))
-            return (x*s*factor).floor().div(factor)
-        return x*s
-
-    @staticmethod
-    def backward(ctx, x):  # pylint: disable=arguments-differ
-        """Backprop"""
-        s, = ctx.saved_tensors
-        return x/s, None
-
-
 class Scaler(nn.Module):
     """
     Scaler module that considers integer quantization
     Apply the custom autograd function
     """
-    def __init__(self, quantized=False):
-        super().__init__()
-        self.quantized = quantized
-
-    def forward(self, x, s):  # pylint: disable=arguments-differ
+    def forward(self, x, s):  # pylint: disable=arguments-differ, no-self-use
         """Forward prop"""
-        if self.quantized:
-            return ScaleFunction.apply(x, s)
-        return s*x
+        if dev.simulate:
+            return FloorFunction.apply(x*s)
+        return x*s
 
 
 class RoundQat(nn.Module):
@@ -314,9 +285,9 @@ class One(nn.Module):
     """
     Return 1.
     """
-    def forward(self, _):  # pylint: disable=arguments-differ, no-self-use
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
         """Forward prop"""
-        return 1.
+        return torch.ones(1).to(x.device)
 
 
 class WeightScale(nn.Module):
@@ -438,12 +409,11 @@ class QuantizationAwareModule(nn.Module):
         """Set functions to be used wrt the model parameters"""
         if self.adjust_output_shift.detach():
             self.calc_out_shift = OutputShift()
-            self.scale = Scaler(False)
             self.calc_weight_scale = WeightScale()
         else:
             self.calc_out_shift = OutputShiftSqueeze()
-            self.scale = Scaler(True)
             self.calc_weight_scale = One()
+        self.scale = Scaler()
         self.calc_out_scale = OutputScale()
 
         self.quantize_weight, self.clamp_weight = \

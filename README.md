@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_November 6, 2020_
+_November 12, 2020_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -55,7 +55,7 @@ This software currently supports Ubuntu 18.04 LTS.
 The server version is sufficient, see https://ubuntu.com/download/server.
 *Note: The Windows Subsystem for Linux (WSL) currently does <u>not</u> support CUDA.*
 
-When going beyond simple tests, model training requires CUDA hardware acceleration (the network loader does not require CUDA).
+When going beyond simple models, model training does not work well without CUDA hardware acceleration. The network loader does not require CUDA, and very simple models can also be trained on systems without CUDA.
 
 On Ubuntu 18.04 LTS, install CUDA 10.2. On Ubuntu 20.04 LTS, install CUDA 11.1.
 https://developer.nvidia.com/cuda-toolkit-archive
@@ -100,10 +100,10 @@ It is not necessary to install Python 3.6.9 system-wide, or to rely on the syste
 On macOS (no CUDA support available):
 
 ```shell
-$ brew install pyenv pyenv-virtualenv libomp libsndfile
+$ brew install pyenv pyenv-virtualenv libomp libsndfile tcl-tk
 ```
 
-On Ubuntu 18.04 LTS/20.04 LTS:
+On Linux:
 
 ```shell
 $ sudo apt-get install -y make build-essential libssl-dev zlib1g-dev \
@@ -120,7 +120,22 @@ eval "$(pyenv init -)"
 eval "$(pyenv virtualenv-init -)"
 ```
 
-Next, close the Terminal and install Python 3.6.9:
+Next, close the Terminal, open a new Terminal and install Python 3.6.9.
+
+On macOS:
+
+```shell
+$ env \
+  PATH="$(brew --prefix tcl-tk)/bin:$PATH" \
+  LDFLAGS="-L$(brew --prefix tcl-tk)/lib" \
+  CPPFLAGS="-I$(brew --prefix tcl-tk)/include" \
+  PKG_CONFIG_PATH="$(brew --prefix tcl-tk)/lib/pkgconfig" \
+  CFLAGS="-I$(brew --prefix tcl-tk)/include" \
+  PYTHON_CONFIGURE_OPTS="--with-tcltk-includes='-I$(brew --prefix tcl-tk)/include' --with-tcltk-libs='-L$(brew --prefix tcl-tk)/lib -ltcl8.6 -ltk8.6'" \
+  pyenv install 3.6.9
+```
+
+On Linux:
 
 ```shell
 $ pyenv install 3.6.9
@@ -149,10 +164,6 @@ Add this line to `~/.profile`.
 
 Nirvana Distiller is package for neural network compression and quantization. Network compression can reduce the memory footprint of a neural network, increase its inference speed and save energy. Distiller is automatically installed with the other packages.
 
-On macOS, add the following to `~/.matplotlib/matplotrc`:
-
-    backend: TkAgg
-
 #### Uber Manifold
 
 Manifold is a model-agnostic visual debugging tool for machine learning. Manifold can compare models, detects which subset of data a model is inaccurately predicting, and explains the potential cause of poor model performance by surfacing the feature distribution difference between better and worse-performing subsets of data.
@@ -165,7 +176,7 @@ On macOS,
 brew install yarn npm
 ```
 
-On Ubuntu 18.04 LTS,
+On Linux,
 
 ```shell
 $ cd $AI_PROJECT_ROOT
@@ -315,7 +326,7 @@ if [ $? -eq 1 ] ; then
 fi
 ```
 
-The debugger requires OpenOCD. On Windows, an OpenOCD executable is installed with the SDK. On macOS and Linux, the OpenOCD fork from [https://github.com/MaximIntegratedMicros/openocd.git](https://github.com/MaximIntegratedMicros/openocd.git) must be used. An Ubuntu 18.04 LTS binary is available at https://github.com/MaximIntegratedAI/MAX78000_SDK/blob/master/Tools/OpenOCD/openocd. *Note: A copy of the configuration files and a `run-openocd-maxdap` script are contained in the `hardware` folder of the `ai8x-synthesis` project.*
+The debugger requires OpenOCD. On Windows, an OpenOCD executable is installed with the SDK. On macOS and Linux, the OpenOCD fork from [https://github.com/MaximIntegratedMicros/openocd.git](https://github.com/MaximIntegratedMicros/openocd.git) must be used. An Ubuntu Linux binary is available at https://github.com/MaximIntegratedAI/MAX78000_SDK/blob/master/Tools/OpenOCD/openocd. *Note: A copy of the configuration files and a `run-openocd-maxdap` script are contained in the `hardware` folder of the `ai8x-synthesis` project.*
 
 `gen-demos-max78000.sh` will create code that is compatible with the SDK and copy it into the SDK’s Example directories.
 
@@ -607,7 +618,7 @@ Even though it is supported by the accelerator, the Network Generator will not b
 
 For each layer, the weight memory start column is automatically configured by the Network Loader. The start column must be a multiple of 4, and the value applies to all processors.
 
-The following example shows the weight memory layout for two layers. The first layer (L0) has 7 inputs and 9 outputs, and the second layer (L1) has 9 inputs and 2 outputs.
+The following example shows the weight memory layout for two layers. The first layer (L0) has 8 inputs and 10 outputs, and the second layer (L1) has 10 inputs and 2 outputs.
 
 ![Layers and Weight Memory](docs/KernelMemoryLayers.png)
 
@@ -711,11 +722,11 @@ The example shows a fractionally-strided convolution with a stride of 2, pad of 
 
 ## Model Training and Quantization
 
-The main training software is `train.py`. It drives the training aspects including model creation, checkpointing, model save, and status display (see `--help` for the many supported options, and the `train_*.sh` scripts for example usage).
+The main training software is `train.py`. It drives the training aspects including model creation, checkpointing, model save, and status display (see `--help` for the many supported options, and the `scripts/train_*.sh` scripts for example usage).
 
 The `ai84net.py` and `ai85net.py` files contain models that fit into AI84’s weight memory. These models rely on the MAX78000/MAX78002 hardware operators that are defined in `ai8x.py`.
 
-To train the FP32 model for MNIST on MAX78000, run `train_mnist.sh` in the `ai8x-training` project. This script will place checkpoint files into the log directory. Training makes use of the Distiller framework, but the `train.py` software has been modified slightly to improve it and add some MAX78000/MAX78002 specifics.
+To train the FP32 model for MNIST on MAX78000, run `scripts/train_mnist.sh` from the `ai8x-training` project. This script will place checkpoint files into the log directory. Training makes use of the Distiller framework, but the `train.py` software has been modified slightly to improve it and add some MAX78000/MAX78002 specifics.
 
 ### Command Line Arguments
 
@@ -1012,7 +1023,7 @@ Example for MNIST:
 To evaluate the quantized network for MAX78000 (run from the training project):
 
 ```shell
-(ai8x-training) $ ./evaluate_mnist.sh
+(ai8x-training) $ scripts/evaluate_mnist.sh
 ```
 
 #### Alternative Quantization Approaches
@@ -1061,7 +1072,7 @@ The training/verification data is located (by default) in `data/DataSetName`, fo
 
 #### Training Process
 
-Train the new network/new dataset. See `train_mnist.sh` for a command line example.
+Train the new network/new dataset. See `scripts/train_mnist.sh` for a command line example.
 
 #### Netron - Network Visualization
 
@@ -1647,9 +1658,9 @@ np.save(os.path.join('tests', 'sample_mnist'), a, allow_pickle=False, fix_import
 
 #### Saving a Sample Input from Training Data
 
-1. In the `ai8x-training` project, add the argument `--save-sample 10` to the `evaluate_mnist.sh` script. *Note: The index 10 is arbitrary, but it must be smaller than the batch size. If manual visual verification is desired, it is a good idea to pick a sample where the quantized model computes the correct answer.*
+1. In the `ai8x-training` project, add the argument `--save-sample 10` to the `scripts/evaluate_mnist.sh` script. *Note: The index 10 is arbitrary, but it must be smaller than the batch size. If manual visual verification is desired, it is a good idea to pick a sample where the quantized model computes the correct answer.*
 
-2. Run the modified `evaluate_mnist.sh`. It will produce a file named `sample_mnist.npy`.
+2. Run the modified `scripts/evaluate_mnist.sh`. It will produce a file named `sample_mnist.npy`.
 
 3. Save the `sample_mnist.npy` file and copy it to the `ai8x-synthesis` project.
 
@@ -1663,13 +1674,13 @@ np.save(os.path.join('tests', 'sample_mnist'), a, allow_pickle=False, fix_import
    ```
 2. Create an evaluation script and run it:
    ```shell
-   (ai8x-training) $ cp evaluate_mnist.sh evaluate_new.sh
-   (ai8x-training) $ vim evaluate_new.sh
-   (ai8x-training) $ ./evaluate_new.sh
+   (ai8x-training) $ cp scripts/evaluate_mnist.sh scripts/evaluate_new.sh
+   (ai8x-training) $ vim scripts/evaluate_new.sh
+   (ai8x-training) $ scripts/evaluate_new.sh
    ```
    Example output:
    ```shell
-   (ai8x-training) $ ./evaluate_new.sh 
+   (ai8x-training) $ scripts/evaluate_new.sh 
    Configuring device: AI85, simulate=True.
    Log file for this run: logs/2020.06.03-125328/2020.06.03-125328.log
    --------------------------------------------------------
