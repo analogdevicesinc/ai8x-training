@@ -363,7 +363,7 @@ class KWS:
                         print('\t%d of %d' % (r + 1, len(records)))
 
                     if hash(record) % 10 < 9:
-                        d_typ = np.uint8(0)  # train/val
+                        d_typ = np.uint8(0)  # train+val
                         traincount += 1
                     else:
                         d_typ = np.uint8(1)  # test
@@ -373,7 +373,7 @@ class KWS:
                     y, fs = librosa.load(record_pth, offset=0, sr=None)
                     audio_list = self.augment_multiple(y, fs, aug_num)
                     for n_a, y in enumerate(audio_list):
-                        # store set type: train/validate or test
+                        # store set type: train+validate or test
                         data_type[(aug_num + 1) * r + n_a, 0] = d_typ
                         if y.size >= data_len:
                             y = y[:data_len]
@@ -410,7 +410,7 @@ class KWS:
             torch.save(mfcc_dataset, os.path.join(self.processed_folder, self.data_file))
 
         print('Dataset created!')
-        print('Training/Validation: %d,  Test: %d' % (traincount, testcount))
+        print('Training+Validation: %d,  Test: %d' % (traincount, testcount))
 
 
 class KWS_20(KWS):
@@ -432,7 +432,7 @@ def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6):
     The dataset originally includes 30 keywords. A dataset is formed with 7 or 21 classes which
     includes 6 or 20 of the original keywords and the rest of the
     dataset is used to form the last class, i.e class of the others.
-    The dataset is split into training/validation and test sets. 90:10 training+validation:test
+    The dataset is split into training+validation and test sets. 90:10 training+validation:test
     split is used by default.
 
     Data is augmented to 3x duplicate data by random stretch/shift and randomly adding noise where
@@ -480,7 +480,7 @@ def KWS_20_get_datasets(data, load_train=True, load_test=True):
     The dataset originally includes 30 keywords. A dataset is formed with 21 classes which includes
     20 of the original keywords and the rest of the dataset is used to form the last class, i.e.,
     class of the others.
-    The dataset is split into training/validation and test sets. 90:10 training+validation:test
+    The dataset is split into training+validation and test sets. 90:10 training+validation:test
     split is used by default.
 
     Data is augmented to 3x duplicate data by random stretch/shift and randomly adding noise where
