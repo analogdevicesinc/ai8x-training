@@ -435,7 +435,7 @@ def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6):
     The dataset is split into training/validation and test sets. 90:10 training+validation:test
     split is used by default.
 
-    Data is augmented to 3x duplicate data by randomly stretch, shift and randomly add noise where
+    Data is augmented to 3x duplicate data by random stretch/shift and randomly adding noise where
     the stretching coefficient, shift amount and noise variance are randomly selected between
     0.8 and 1.3, -0.1 and 0.1, 0 and 1, respectively.
     """
@@ -483,7 +483,7 @@ def KWS_20_get_datasets(data, load_train=True, load_test=True):
     The dataset is split into training/validation and test sets. 90:10 training+validation:test
     split is used by default.
 
-    Data is augmented to 3x duplicate data by randomly stretch, shift and randomly add noise where
+    Data is augmented to 3x duplicate data by random stretch/shift and randomly adding noise where
     the stretching coefficient, shift amount and noise variance are randomly selected between
     0.8 and 1.3, -0.1 and 0.1, 0 and 1, respectively.
     """
