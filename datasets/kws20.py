@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2018-2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -51,7 +51,7 @@ class KWS:
     root (string): Root directory of dataset where ``KWS/processed/dataset.pt``
         exist.
     classes(array): List of keywords to be used.
-    d_type(string): Option for the created dataset. ``train``, ``val``, ``test``.
+    d_type(string): Option for the created dataset. ``train`` or ``test``.
     n_augment(int, optional): Number of augmented samples added to the dataset from
         each sample by random modifications, i.e. stretching, shifting and random noise.
     transform (callable, optional): A function/transform that takes in an PIL image
@@ -79,7 +79,7 @@ class KWS:
         self.d_type = d_type
         self.t_type = t_type
         self.transform = transform
-        self.data_file = 'dataset.pt'
+        self.data_file = 'dataset2.pt'
 
         if download:
             self.__download()
@@ -215,10 +215,8 @@ class KWS:
     def __filter_dtype(self):
         if self.d_type == 'train':
             idx_to_select = (self.data_type == 0)[:, -1]
-        elif self.d_type == 'val':
-            idx_to_select = (self.data_type == 1)[:, -1]
         elif self.d_type == 'test':
-            idx_to_select = (self.data_type == 2)[:, -1]
+            idx_to_select = (self.data_type == 1)[:, -1]
         else:
             print('Unknown data type: %s' % self.d_type)
             return
@@ -361,28 +359,24 @@ class KWS:
 
                 time1 = time.time()
                 traincount = 0
-                validatecount = 0
                 testcount = 0
                 for r, record in enumerate(records):
 
                     if r % 1000 == 0:
                         print('\t%d of %d' % (r + 1, len(records)))
 
-                    if hash(record) % 10 < 7:
-                        d_typ = np.uint8(0)  # train
+                    if hash(record) % 10 < 9:
+                        d_typ = np.uint8(0)  # train+val
                         traincount += 1
-                    elif hash(record) % 10 < 9:
-                        d_typ = np.uint8(1)  # val
-                        validatecount += 1
                     else:
-                        d_typ = np.uint8(2)  # test
+                        d_typ = np.uint8(1)  # test
                         testcount += 1
 
                     record_pth = os.path.join(test_data_path, label, record)
                     y, fs = librosa.load(record_pth, offset=0, sr=None)
                     audio_list = self.augment_multiple(y, fs, aug_num)
                     for n_a, y in enumerate(audio_list):
-                        # store set type: train, validate or test
+                        # store set type: train+validate or test
                         data_type[(aug_num + 1) * r + n_a, 0] = d_typ
                         if y.size >= data_len:
                             y = y[:data_len]
@@ -419,7 +413,7 @@ class KWS:
             torch.save(mfcc_dataset, os.path.join(self.processed_folder, self.data_file))
 
         print('Dataset created!')
-        print('Training: %d,  Validation: %d, Test: %d' % (traincount, validatecount, testcount))
+        print('Training+Validation: %d,  Test: %d' % (traincount, testcount))
 
 
 class KWS_20(KWS):
@@ -441,10 +435,10 @@ def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6):
     The dataset originally includes 30 keywords. A dataset is formed with 7 or 21 classes which
     includes 6 or 20 of the original keywords and the rest of the
     dataset is used to form the last class, i.e class of the others.
-    The dataset is split into training, validation and test sets. 80:10:10 training:validation:test
+    The dataset is split into training+validation and test sets. 90:10 training+validation:test
     split is used by default.
 
-    Data is augmented to 3x duplicate data by randomly stretch, shift and randomly add noise where
+    Data is augmented to 3x duplicate data by random stretch/shift and randomly adding noise where
     the stretching coefficient, shift amount and noise variance are randomly selected between
     0.8 and 1.3, -0.1 and 0.1, 0 and 1, respectively.
     """
@@ -469,7 +463,7 @@ def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6):
         train_dataset = None
 
     if load_test:
-        test_dataset = KWS(root=data_dir, classes=classes, d_type='val',
+        test_dataset = KWS(root=data_dir, classes=classes, d_type='test',
                            transform=transform, t_type='keyword', download=True)
 
         if args.truncate_testset:
@@ -489,10 +483,10 @@ def KWS_20_get_datasets(data, load_train=True, load_test=True):
     The dataset originally includes 30 keywords. A dataset is formed with 21 classes which includes
     20 of the original keywords and the rest of the dataset is used to form the last class, i.e.,
     class of the others.
-    The dataset is split into training, validation and test sets. 80:10:10 training:validation:test
+    The dataset is split into training+validation and test sets. 90:10 training+validation:test
     split is used by default.
 
-    Data is augmented to 3x duplicate data by randomly stretch, shift and randomly add noise where
+    Data is augmented to 3x duplicate data by random stretch/shift and randomly adding noise where
     the stretching coefficient, shift amount and noise variance are randomly selected between
     0.8 and 1.3, -0.1 and 0.1, 0 and 1, respectively.
     """
