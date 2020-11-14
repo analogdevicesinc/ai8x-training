@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_November 12, 2020_
+_November 13, 2020_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -50,10 +50,10 @@ where “....” is the project root, for example `~/Documents/Source/AI`.
 
 ### Prerequisites
 
-This software currently supports Ubuntu Linux 18.04 LTS and 20.04 LTS. The server version is sufficient, see https://ubuntu.com/download/server.
-*Note: The Windows Subsystem for Linux (WSL) currently does <u>not</u> support CUDA.*
+This software currently supports Ubuntu Linux 18.04 LTS and 20.04 LTS. The server version is sufficient, see https://ubuntu.com/download/server. *Alternatively, Ubuntu Linux can also be used inside the Windows Subsystem for Linux (WSL2) by following 
+https://docs.nvidia.com/cuda/wsl-user-guide/. However, please note that WSL2 with CUDA is a pre-release and unexpected behavior may occur.*
 
-When going beyond simple models, model training does not work well without CUDA hardware acceleration. The network loader does not require CUDA, and very simple models can also be trained on systems without CUDA.
+When going beyond simple models, model training does not work well without CUDA hardware acceleration. The network loader (“izer”) does not require CUDA, and very simple models can also be trained on systems without CUDA.
 
 *Recommendation:* Unless TensorFlow support is required, install CUDA 11.1 on Ubuntu 20.04 LTS. Otherwise, install CUDA 10.2 on Ubuntu 18.04 LTS. See https://developer.nvidia.com/cuda-toolkit-archive.
 
