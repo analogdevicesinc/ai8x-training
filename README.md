@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_November 22, 2020_
+_November 23, 2020_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -666,19 +666,20 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   
   * Kernel sizes must be 1×1 or 3×3.
   * Padding can be 0, 1, or 2.
-  * Stride is fixed to 1. Pooling, including 1×1, can be used to achieve a stride other than 1.
+  * Stride is fixed to [1, 1] when using pooling. Otherwise, the stride must be equal in both dimensions:
+    [N, N], where 1 ≤ N ≤ 16.
   
 * `Conv1d`:
   
   * Kernel sizes must be 1 through 9.
   * Padding can be 0, 1, or 2.
-  * Stride is fixed to 1. Pooling, including 1, can be used to achieve a stride other than 1.
+  * Stride is fixed to 1 when using pooling. Otherwise, the stride can be from 1 through 16.
   
 * `ConvTranspose2d`:
 
   * Kernel sizes must be 3×3.
   * Padding can be 0, 1, or 2.
-  * Stride is fixed to 2. Output padding is fixed to 1.
+  * Stride is fixed to [2, 2]. Output padding is fixed to 1.
 
 * A programmable layer-specific shift operator is available at the output of a convolution.
 
@@ -1424,13 +1425,7 @@ Example:
 
 ##### `stride` (Optional)
 
-2D convolutions:
-
-​	This key must be `1`.
-
-1D convolutions:
-
-​	This key must be `1`.
+When using pooling, this key must be `1` or `[1, 1]`. Otherwise, the stride specifies the convolution stride and it can be specified as an integer (when the value is identical for both dimensions, or for 1D convolutions), or as two values in order `[H, W]`, where both values must be identical. The default is `1` or `[1, 1]`.
 
 ##### `pad` (Optional)
 
@@ -1456,10 +1451,10 @@ Example:
 
 ##### `pool_stride` (Optional)
 
-When performing a pooling operation, this key describes the pool stride. The pooling stride can be specified as an integer (when the value is identical for both dimensions, or for 1D convolutions), or as two values in order `[H, W]`. The default is `1` or `[1, 1]`.
+When performing a pooling operation, this key describes the pool stride. The pooling stride can be specified as an integer (when the value is identical for both dimensions, or for 1D convolutions), or as two values in order `[H, W]`, where both values must be identical. The default is `1` or `[1, 1]`.
 
 Example:
-	 `pool_stride: 2`
+	 `pool_stride: [2, 2]`
 
 ##### `in_channels` (Optional)
 
