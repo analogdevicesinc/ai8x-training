@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_November 23, 2020_
+_November 24, 2020_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -1038,7 +1038,7 @@ Copy the working and tested weight files into the `trained/` folder of the `ai8x
 Example for MNIST:
 
 ```shell
-(ai8x-synthesis) $ ./quantize_mnist.sh
+(ai8x-synthesis) $ scripts/quantize_mnist.sh
 ```
 
 To evaluate the quantized network for MAX78000 (run from the training project):
@@ -1629,12 +1629,12 @@ Adding new datasets to the Network Loader is implemented as follows:
    `(ai8x-synthesis) $ cp ../ai8x-training/logs/2020.06.02-154133/best.pth.tar trained/new-unquantized.pth.tar`
 
 2. When using post-training quantization, the quantized weights are the result of the quantization step. Copy and customize an existing quantization shell script, for example:
-   `(ai8x-synthesis) $ cp quantize_mnist.sh quantize_new.sh`
+   `(ai8x-synthesis) $ cp scripts/quantize_mnist.sh scripts/quantize_new.sh`
 
-   Then, *edit this script to point to the new model and dataset* (`vim quantize_new.sh`), and call the script to generate the quantized weights. Example:
+   Then, *edit this script to point to the new model and dataset* (`vi scripts/quantize_new.sh`), and call the script to generate the quantized weights. Example:
    ```shell
-   (ai8x-synthesis) $ ./quantize_new.sh 
-   Configuring device: AI85.
+   (ai8x-synthesis) $ scripts/quantize_new.sh 
+   Configuring device: MAX78000.
    Reading networks/new.yaml to configure network...
    Converting checkpoint file trained/new-unquantized.pth.tar to trained/new.pth.tar
    +----------------------+-------------+----------+
@@ -1699,7 +1699,7 @@ np.save(os.path.join('tests', 'sample_mnist'), a, allow_pickle=False, fix_import
    Example output:
    ```shell
    (ai8x-training) $ scripts/evaluate_new.sh 
-   Configuring device: AI85, simulate=True.
+   Configuring device: MAX78000, simulate=True.
    Log file for this run: logs/2020.06.03-125328/2020.06.03-125328.log
    --------------------------------------------------------
    Logging to TensorBoard - remember to execute the server:
