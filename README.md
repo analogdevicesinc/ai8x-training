@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_November 24, 2020_
+_November 25, 2020_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -626,7 +626,7 @@ Because of the fact that a processor has its own dedicated weight memory, this w
 
 ### Active Processors and Layers
 
-For each layer, a set of active processors must be specified. The number of active processors must be the same as the number of input channels for the layer, and the input data for that layer must be located in data memory instances accessible to the selected processors.
+For each layer, a set of active processors must be specified. The number input channels for the layer must be equal to or a multiple of the active processors, and the input data for that layer must be located in data memory instances accessible to the selected processors.
 
 It is possible to specify a relative offset into the data memory instance that applies to all processors. _Example:_ Assuming HWC data format, specifying the offset as 8192 bytes will cause processors 0-3 to read their input from the second half of data memory 0, processors 4-7 will read from the second half of data memory instance 1, etc.
 
@@ -1834,11 +1834,13 @@ Turn off the boost circuit connected to `port`.`pin`.
 
 #### Energy Measurement
 
-The MAX78000 Evaluation Kit (EVKit) revision C and later includes a MAX32625 microcontroller connected to a MAX34417 power accumulator. Since the sample rate of the MAX34417 s slow compared to typical inference times, `ai8xize.py` supports the command line parameter `--energy` that will run 100 iterations of the inference, separating out the input data load time. This allows enough sample time to get meaningful results (recommended minimum: 1 second).
+The MAX78000 Evaluation Kit (EVKit) revision C and later includes a MAX32625 microcontroller connected to a MAX34417 power accumulator. Since the sample rate of the MAX34417 is slow compared to typical inference times, `ai8xize.py` supports the command line parameter `--energy` that will run 100 iterations of the inference, separating out the input data load time. This allows enough sample time to get meaningful results (recommended minimum: 1 second).
 
 When running C code generated with `--energy`, the power display on the EVKit will display the inference energy.
 
 *Note: MAX78000 uses LED1 and LED2 to trigger power measurement via MAX32625 and MAX34417.*
+
+See https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/MAX78000_Evaluation_Kit/MAX78000%20Power%20Monitor%20and%20Energy%20Benchmarking%20Guide.pdf for more information about benchmarking.
 
 ## Further Information
 
