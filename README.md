@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_November 25, 2020_
+_November 30, 2020_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -444,23 +444,9 @@ The fast FIFO is only available from the RISC-V core, and runs synchronously wit
 
 The fast FIFO is selected using the `--fast-fifo` argument for `ai8xize.py`.
 
-### Accelerator Limits
-
-* MAX78000:
-  * The maximum number of layers is 32 (pooling and element-wise layers do not count when preceding a convolution).
-  * The maximum number of input channels in any layer is 1024 each.
-  * The maximum number of output channels in any layer is 1024 each.
-  * The weight memory supports up to 768 * 64 3×3 Q7 kernels (see [Number Format](#Number-Format)).
-    When using 1-, 2- or 4 bit weights, the capacity increases accordingly.
-    When using more than 64 input or output channels, weight memory is shared and effective capacity decreases.
-    Weights must be arranged according to specific rules detailed below.
-  * There are 16 instances of 32 KiB data memory. When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 181×181 pixels per channel in the CHW format. However, when using more than one input channel, the HWC format may be preferred, and all layer output are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance -- or 91×90 pixels per channel.
-    Note that the first layer commonly creates a wide expansion (i.e., large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical.
-  * When using streaming, the data sizes are limited to 1023×1023, subject to available TRAM. Streaming is limited to 8 layers or less, and to four FIFOs (up to 4 input channels in CHW and up to 16 channels in HWC format). When using streaming, the product of a layer’s input data width, input data height, and input data channels divided by 64 rounded up must not exceed 2^21: $rows * columns * ⌈\frac{channels}{64}⌉ < 2^{21}$.
-
 ### Number Format
 
-All weights, bias values and data are stored and computed in Q7 format (signed two’s complement 8-bit integers, [-128...+127]). See https://en.wikipedia.org/wiki/Q_%28number_format%29.
+All weights, bias values and data are stored and computed in Q7 format (signed two’s complement 8-bit integers, [–128...+127]). See https://en.wikipedia.org/wiki/Q_%28number_format%29.
 
 The 8-bit value $w$ is defined as:
 
@@ -660,12 +646,11 @@ The following picture shows an example of a `Conv2d` with 1×1 kernels, 5 input 
 ### Limitations of MAX78000 Networks
 
 The MAX78000 hardware does not support arbitrary network parameters. Specifically,
-* Dilation, groups, depth-wise convolutions, and hardware batch normalization are not supported. *Note: Batch normalization should be folded into the weights, see [Batch Normalization](#Batch-Normalization).*
 
 * `Conv2d`:
   
   * Kernel sizes must be 1×1 or 3×3.
-  * Padding can be 0, 1, or 2.
+  * Padding can be 0, 1, or 2. Padding always uses zeros.
   * Stride is fixed to [1, 1] when using pooling. Otherwise, the stride must be equal in both dimensions:
     [N, N], where 1 ≤ N ≤ 16.
   
@@ -681,7 +666,7 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   * Padding can be 0, 1, or 2.
   * Stride is fixed to [2, 2]. Output padding is fixed to 1.
 
-* A programmable layer-specific shift operator is available at the output of a convolution.
+* A programmable layer-specific shift operator is available at the output of a convolution, see [`output_shift` (Optional)](#output_shift \(Optional\)).
 
 * The supported activation functions are `ReLU` and `Abs`, and a limited subset of `Linear`.
 
@@ -692,7 +677,7 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   
   * Pooling strides can be 1 through 16. For 2D pooling, the stride is the same for both dimensions.
   
-  * For 2D pooling, supported pooling kernel sizes are 1×1 through 16×16, including non-square kernels. 1D pooling supports kernels from 1 through 16. *Note: 1×1 kernels can be used when a convolution stride other than 1 is desired.*
+  * For 2D pooling, supported pooling kernel sizes are 1×1 through 16×16, including non-square kernels. 1D pooling supports kernel sizes from 1 through 16. *Note: 1×1 kernels can be used when a convolution stride other than 1 is desired.*
   
   * Average pooling is implemented both using `floor()`and using rounding (half towards positive infinity). Use the `--avg-pool-rounding` switch to turn on rounding in the training software and the Network Generator.
   
@@ -701,33 +686,48 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
     * _floor:_ Since there is a quantization step at the output of the average pooling, a 2×2 `AvgPool2d` of `[[0, 0], [0, 3]]` will return $\lfloor \frac{3}{4} \rfloor = 0$.
     * _rounding:_ 2×2 `AvgPool2d` of `[[0, 0], [0, 3]]` will return $\lfloor \frac{3}{4} \rceil = 1$.
   
-* The number of input channels must not exceed 1024.
+* The number of input channels must not exceed 1024 per layer.
 
-* The number of output channels must not exceed 1024.
+* The number of output channels must not exceed 1024 per layer.
 
 * The number of layers must not exceed 32 (where pooling and element-wise operations do not add to the count when preceding a convolution).
 
 * The maximum dimension (number of rows or columns) for input or output data is 1023.
   
   * When using data greater than 90×91, `streaming` mode must be used.
-  * When using `streaming` mode, the product of any layer’s input width, input height, and input channels divided by 64 rounded up must not exceed 2^21: $width * height * ⌈\frac{channels}{64}⌉ < 2^{21}$.
+  * When using `streaming` mode, the product of any layer’s input width, input height, and input channels divided by 64 rounded up must not exceed 2^21: $width * height * ⌈\frac{channels}{64}⌉ < 2^{21}$. _width_ and _height_ must not exceed 1023.
+  * Streaming is limited to 8 layers or less, and is limited to four FIFOs (up to 4 input channels in CHW and up to 16 channels in HWC format), see [FIFOs](#FIFOs).
   
-* Overall weight storage is limited to 64*768 3×3 8-bit kernels (and proportionally more when using smaller weights, or smaller kernels). However, weights must be arranged in a certain order, see above.
+* The weight memory supports up to 768 * 64 3×3 Q7 kernels (see [Number Format](#Number-Format)).
+  When using 1-, 2- or 4 bit weights, the capacity increases accordingly.
+  When using more than 64 input or output channels, weight memory is shared and effective capacity decreases.
+  Weights must be arranged according to specific rules detailed in [Layers and Weight Memory](#Layers and Weight Memory).
+
+* There are 16 instances of 32 KiB data memory. When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 181×181 pixels per channel in the CHW format. However, when using more than one input channel, the HWC format may be preferred, and all layer output are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance -- or 91×90 pixels per channel.
+  Note that the first layer commonly creates a wide expansion (i.e., large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical.
 
 * The hardware supports 1D and 2D convolution layers, 2D transposed convolution layers (upsampling), element-wise addition, subtraction, binary OR, binary XOR as well as fully connected layers (`Linear`) (implemented using 1×1 convolutions on 1×1 data):
   * The maximum number of input neurons is 1024, and the maximum number of output neurons is 1024 (16 each per processor used).
-  *  `Flatten` functionality is available to convert 2D input data for use by fully connected layers.
-  *  Element-wise operators support from 2 up to 16 inputs.
-  *  Element-wise operators can be chained in-flight with pooling and 2D convolution (where the order of pooling and element-wise operations can be swapped).
+  
+  * `Flatten` functionality is available to convert 2D input data for use by fully connected layers, see [Fully Connected Layers](#Fully Connected \(Linear\) Layers).
+  
+  * When “flattening” two-dimensional data, the input dimensions (C×H×W) must satisfy H×W ≤ 256 and C ≤ 64.
+  
+  * Element-wise operators support from 2 up to 16 inputs.
+  
+  * Element-wise operators can be chained in-flight with pooling and 2D convolution (where the order of pooling and element-wise operations can be swapped).
+  
   * For convenience, a `Softmax` operator is supported in software.
   
 * Since the internal network format is HWC in groups of four channels, output concatenation only works properly when all components of the concatenation other than the last have multiples of four channels.
 
+* Dilation, groups, and depth-wise convolutions are not supported. *Note: Batch normalization should be folded into the weights, see [Batch Normalization](#Batch-Normalization).*
+
 ### Fully Connected (Linear) Layers
 
-m×n fully connected layers can be realized in hardware by “flattening” 2D input data into m channels of 1×1 input data. The hardware will produce n channels of 1×1 output data. When chaining multiple fully connected layers, the flattening step is omitted. The following picture shows 2D data, the equivalent flattened 1D data, and the output.
+m×n fully connected layers can be realized in hardware by “flattening” 2D input data of dimensions C×H×W into m=C×H×W channels of 1×1 input data. The hardware will produce n channels of 1×1 output data. When chaining multiple fully connected layers, the flattening step is omitted. The following picture shows 2D data, the equivalent flattened 1D data, and the output.
 
-For MAX78000/MAX78002, both m and n must not be larger than 16.
+For MAX78000/MAX78002, the product H×W must not exceed 256, and C must not exceed 64.
 
 ![MLP](docs/MLP.png)
 
