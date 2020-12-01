@@ -513,7 +513,7 @@ def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6):
         raise ValueError(f'Unsupported num_classes {num_classes}')
 
     augmentation = {'aug_num': 2}
-    quantization_scheme = {'compand': True, 'mu': 10}
+    quantization_scheme = {'compand': False, 'mu': 10}
 
     if load_train:
         train_dataset = KWS(root=data_dir, classes=classes, d_type='train',
