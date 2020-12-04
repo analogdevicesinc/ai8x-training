@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_November 30, 2020_
+_December 4, 2020_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -479,6 +479,8 @@ On MAX78000/MAX78002, _weights_ can be 1, 2, 4, or 8 bits wide (configurable per
 
 Note that 1-bit weights (and, to a lesser degree, 2-bit weights) require the use of bias to produce useful results. Without bias, all sums of products of activated data from a prior layer would be negative, and activation of that data would always be zero.
 
+In other cases, using bias in convolutional layers does not improve inference performance. In particular, [Quantization](#Quantization)-Aware Training (QAT) optimizes the weight distribution, possibly deteriorating the distribution of the bias values.
+
 #### Rounding
 
 MAX78000/MAX78002 rounding (for the CNN sum of products) uses “round half towards positive infinity”, i.e. $y=⌊0.5+x⌋$. This rounding method is not the default method in either Excel or Python/NumPy. The rounding method can be achieved in NumPy using `y = np.floor(0.5 + x)` and in Excel as `=FLOOR.PRECISE(0.5 + X)`.
@@ -651,14 +653,13 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   
   * Kernel sizes must be 1×1 or 3×3.
   * Padding can be 0, 1, or 2. Padding always uses zeros.
-  * Stride is fixed to [1, 1] when using pooling. Otherwise, the stride must be equal in both dimensions:
-    [N, N], where 1 ≤ N ≤ 16.
+  * Stride is fixed to [1, 1].
   
 * `Conv1d`:
   
   * Kernel sizes must be 1 through 9.
   * Padding can be 0, 1, or 2.
-  * Stride is fixed to 1 when using pooling. Otherwise, the stride can be from 1 through 16.
+  * Stride is fixed to 1.
   
 * `ConvTranspose2d`:
 
@@ -677,7 +678,7 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   
   * Pooling strides can be 1 through 16. For 2D pooling, the stride is the same for both dimensions.
   
-  * For 2D pooling, supported pooling kernel sizes are 1×1 through 16×16, including non-square kernels. 1D pooling supports kernel sizes from 1 through 16. *Note: 1×1 kernels can be used when a convolution stride other than 1 is desired.*
+  * For 2D pooling, supported pooling kernel sizes are 1×1 through 16×16, including non-square kernels. 1D pooling supports kernel sizes from 1 through 16. *Note: Pooling kernel size values do not have to be the same as the pooling stride.*
   
   * Average pooling is implemented both using `floor()`and using rounding (half towards positive infinity). Use the `--avg-pool-rounding` switch to turn on rounding in the training software and the Network Generator.
   
@@ -711,7 +712,7 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   
   * `Flatten` functionality is available to convert 2D input data for use by fully connected layers, see [Fully Connected Layers](#Fully Connected \(Linear\) Layers).
   
-  * When “flattening” two-dimensional data, the input dimensions (C×H×W) must satisfy H×W ≤ 256 and C ≤ 64.
+  * When “flattening” two-dimensional data, the input dimensions (C×H×W) must satisfy H×W ≤ 256 and C ≤ 64. Pooling cannot be used at the same time as flattening.
   
   * Element-wise operators support from 2 up to 16 inputs.
   
@@ -1425,7 +1426,7 @@ Example:
 
 ##### `stride` (Optional)
 
-When using pooling, this key must be `1` or `[1, 1]`. Otherwise, the stride specifies the convolution stride and it can be specified as an integer (when the value is identical for both dimensions, or for 1D convolutions), or as two values in order `[H, W]`, where both values must be identical. The default is `1` or `[1, 1]`.
+This key must be `1` or `[1, 1]`.
 
 ##### `pad` (Optional)
 
@@ -1497,7 +1498,7 @@ Example:
 
 ##### `flatten` (Optional)
 
-`flatten` specifies that 2D input data should be transformed to 1D data for use by a `Linear` layer.
+`flatten` specifies that 2D input data should be transformed to 1D data for use by a `Linear` layer. *Note that flattening cannot be used in the same layer as pooling.*
 
 Example:
 	`flatten: true`
