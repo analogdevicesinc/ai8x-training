@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_November 20, 2020_
+_December 4, 2020_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -110,12 +110,14 @@ $ sudo apt-get install -y make build-essential libssl-dev zlib1g-dev \
 $ curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
 ```
 
-Then, add to either `~/.bash_profile`, `~/.bashrc` or `~/.profile` (as shown by the terminal output of the previous step):
+Then, add to either `~/.bash_profile`, `~/.bashrc`, or `~/.profile` (as shown by the terminal output of the previous step):
 
 ```shell
 eval "$(pyenv init -)"
 eval "$(pyenv virtualenv-init -)"
 ```
+
+If you use zsh as the shell (default on macOS), add these same commands to  `~/.zshrc` in addition.
 
 Next, close the Terminal, open a new Terminal and install Python 3.8.6.
 
@@ -216,6 +218,16 @@ To create the virtual environment and install basic wheels:
 
 ```shell
 $ cd ai8x-training
+```
+If you want to use the “develop” branch, switch to “develop” using this optional step:
+
+```shell
+$ git checkout develop  # optional
+```
+
+Then continue with the following:
+
+```shell
 $ git submodule update --init
 $ pyenv local 3.8.6
 $ python3 -m venv .
@@ -281,6 +293,17 @@ Then, create a second virtual environment:
 ```shell
 $ cd $AI_PROJECT_ROOT
 $ cd ai8x-synthesis
+```
+
+If you want to use the “develop” branch, switch to “develop” using this optional step:
+
+```shell
+$ git checkout develop  # optional
+```
+
+Then continue:
+
+```shell
 $ git submodule update --init
 $ pyenv local 3.8.6
 $ python3 -m venv .
@@ -421,23 +444,9 @@ The fast FIFO is only available from the RISC-V core, and runs synchronously wit
 
 The fast FIFO is selected using the `--fast-fifo` argument for `ai8xize.py`.
 
-### Accelerator Limits
-
-* MAX78000:
-  * The maximum number of layers is 32 (pooling and element-wise layers do not count when preceding a convolution).
-  * The maximum number of input channels in any layer is 1024 each.
-  * The maximum number of output channels in any layer is 1024 each.
-  * The weight memory supports up to 768 * 64 3×3 Q7 kernels (see [Number Format](#Number-Format)).
-    When using 1-, 2- or 4 bit weights, the capacity increases accordingly.
-    When using more than 64 input or output channels, weight memory is shared and effective capacity decreases.
-    Weights must be arranged according to specific rules detailed below.
-  * There are 16 instances of 32 KiB data memory. When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 181×181 pixels per channel in the CHW format. However, when using more than one input channel, the HWC format may be preferred, and all layer output are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance -- or 91×90 pixels per channel.
-    Note that the first layer commonly creates a wide expansion (i.e., large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical.
-  * When using streaming, the data sizes are limited to 1023×1023, subject to available TRAM. Streaming is limited to 8 layers or less, and to four FIFOs (up to 4 input channels in CHW and up to 16 channels in HWC format). When using streaming, the product of a layer’s input data width, input data height, and input data channels divided by 64 rounded up must not exceed 2^21: $rows * columns * ⌈\frac{channels}{64}⌉ < 2^{21}$.
-
 ### Number Format
 
-All weights, bias values and data are stored and computed in Q7 format (signed two’s complement 8-bit integers, [-128...+127]). See https://en.wikipedia.org/wiki/Q_%28number_format%29.
+All weights, bias values and data are stored and computed in Q7 format (signed two’s complement 8-bit integers, [–128...+127]). See https://en.wikipedia.org/wiki/Q_%28number_format%29.
 
 The 8-bit value $w$ is defined as:
 
@@ -469,6 +478,8 @@ On MAX78000/MAX78002, _weights_ can be 1, 2, 4, or 8 bits wide (configurable per
 |    1  |   –1 |    0 |
 
 Note that 1-bit weights (and, to a lesser degree, 2-bit weights) require the use of bias to produce useful results. Without bias, all sums of products of activated data from a prior layer would be negative, and activation of that data would always be zero.
+
+In other cases, using bias in convolutional layers does not improve inference performance. In particular, [Quantization](#Quantization)-Aware Training (QAT) optimizes the weight distribution, possibly deteriorating the distribution of the bias values.
 
 #### Rounding
 
@@ -588,11 +599,19 @@ All internal data are stored in HWC format, 4 channels per 32-bit word. Assuming
 
 #### CHW
 
-The input layer can also use the CHW format (sequence of channels), for example:
+The input layer can alternatively also use the CHW format (sequence of channels), for example:
 
 ![RRRRRR...GGGGGG...BBBBBB...](docs/CHW.png)
 
-### CHW Data Format and Consequences for Weight Memory Layout
+
+
+#### Considerations for Choosing an Input Format
+
+The accelerator supports both HWC and CHW input formats to avoid unnecessary data manipulation. Internal layers always use the HWC format.
+
+In general, HWC is faster since each memory read can deliver data to up to four processors in parallel. On the other hand, four processors must share one data memory instance, which reduces the maximum allowable dimensions.
+
+#### CHW Input Data Format and Consequences for Weight Memory Layout
 
 When using the CHW data format, only one of the four processors sharing the data memory instance can be used. The next channel needs to use a processor connected to a different data memory instance, so that the machine can deliver one byte per clock cycle to each enabled processor.
 
@@ -603,7 +622,7 @@ Because of the fact that a processor has its own dedicated weight memory, this w
 
 ### Active Processors and Layers
 
-For each layer, a set of active processors must be specified. The number of active processors must be the same as the number of input channels for the layer, and the input data for that layer must be located in data memory instances accessible to the selected processors.
+For each layer, a set of active processors must be specified. The number input channels for the layer must be equal to or a multiple of the active processors, and the input data for that layer must be located in data memory instances accessible to the selected processors.
 
 It is possible to specify a relative offset into the data memory instance that applies to all processors. _Example:_ Assuming HWC data format, specifying the offset as 8192 bytes will cause processors 0-3 to read their input from the second half of data memory 0, processors 4-7 will read from the second half of data memory instance 1, etc.
 
@@ -630,34 +649,33 @@ The Network Loader prints a kernel map that shows the kernel arrangement based o
 
 ### Example: `Conv2D`
 
-The following picture shows an example of a `Conv2d` with 1×1 kernels, 5 input channels, 2 output channels and data size of 2×2. The inputs are shown on the left, and the outputs on the right, and the kernels are shown lined up with the associated inputs --- the number of kernel rows matches the number of input channels, and the number kernel columns matches the number of output channels. The lower half of the picture shows how the data is arranged in memory when HWC data is used for both input and output.
+The following picture shows an example of a `Conv2d` with 1×1 kernels, 5 input channels, 2 output channels and data size of 2×2. The inputs are shown on the left, and the outputs on the right, and the kernels are shown lined up with the associated inputs — the number of kernel rows matches the number of input channels, and the number kernel columns matches the number of output channels. The lower half of the picture shows how the data is arranged in memory when HWC data is used for both input and output.
 
 ![Conv2Dk1x1](docs/Conv2Dk1x1.png)
 
 ### Limitations of MAX78000 Networks
 
 The MAX78000 hardware does not support arbitrary network parameters. Specifically,
-* Dilation, groups, depth-wise convolutions, and hardware batch normalization are not supported. *Note: Batch normalization should be folded into the weights, see [Batch Normalization](#Batch-Normalization).*
 
 * `Conv2d`:
   
   * Kernel sizes must be 1×1 or 3×3.
-  * Padding can be 0, 1, or 2.
-  * Stride is fixed to 1. Pooling, including 1×1, can be used to achieve a stride other than 1.
+  * Padding can be 0, 1, or 2. Padding always uses zeros.
+  * Stride is fixed to [1, 1].
   
 * `Conv1d`:
   
   * Kernel sizes must be 1 through 9.
   * Padding can be 0, 1, or 2.
-  * Stride is fixed to 1. Pooling, including 1, can be used to achieve a stride other than 1.
+  * Stride is fixed to 1.
   
 * `ConvTranspose2d`:
 
   * Kernel sizes must be 3×3.
   * Padding can be 0, 1, or 2.
-  * Stride is fixed to 2. Output padding is fixed to 1.
+  * Stride is fixed to [2, 2]. Output padding is fixed to 1.
 
-* A programmable layer-specific shift operator is available at the output of a convolution.
+* A programmable layer-specific shift operator is available at the output of a convolution, see [`output_shift` (Optional)](#output_shift \(Optional\)).
 
 * The supported activation functions are `ReLU` and `Abs`, and a limited subset of `Linear`.
 
@@ -668,7 +686,7 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   
   * Pooling strides can be 1 through 16. For 2D pooling, the stride is the same for both dimensions.
   
-  * For 2D pooling, supported pooling kernel sizes are 1×1 through 16×16, including non-square kernels. 1D pooling supports kernels from 1 through 16. *Note: 1×1 kernels can be used when a convolution stride other than 1 is desired.*
+  * For 2D pooling, supported pooling kernel sizes are 1×1 through 16×16, including non-square kernels. 1D pooling supports kernel sizes from 1 through 16. *Note: Pooling kernel size values do not have to be the same as the pooling stride.*
   
   * Average pooling is implemented both using `floor()`and using rounding (half towards positive infinity). Use the `--avg-pool-rounding` switch to turn on rounding in the training software and the Network Generator.
   
@@ -677,33 +695,48 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
     * _floor:_ Since there is a quantization step at the output of the average pooling, a 2×2 `AvgPool2d` of `[[0, 0], [0, 3]]` will return $\lfloor \frac{3}{4} \rfloor = 0$.
     * _rounding:_ 2×2 `AvgPool2d` of `[[0, 0], [0, 3]]` will return $\lfloor \frac{3}{4} \rceil = 1$.
   
-* The number of input channels must not exceed 1024.
+* The number of input channels must not exceed 1024 per layer.
 
-* The number of output channels must not exceed 1024.
+* The number of output channels must not exceed 1024 per layer.
 
 * The number of layers must not exceed 32 (where pooling and element-wise operations do not add to the count when preceding a convolution).
 
 * The maximum dimension (number of rows or columns) for input or output data is 1023.
   
   * When using data greater than 90×91, `streaming` mode must be used.
-  * When using `streaming` mode, the product of any layer’s input width, input height, and input channels divided by 64 rounded up must not exceed 2^21: $width * height * ⌈\frac{channels}{64}⌉ < 2^{21}$.
+  * When using `streaming` mode, the product of any layer’s input width, input height, and input channels divided by 64 rounded up must not exceed 2^21: $width * height * ⌈\frac{channels}{64}⌉ < 2^{21}$. _width_ and _height_ must not exceed 1023.
+  * Streaming is limited to 8 layers or less, and is limited to four FIFOs (up to 4 input channels in CHW and up to 16 channels in HWC format), see [FIFOs](#FIFOs).
   
-* Overall weight storage is limited to 64*768 3×3 8-bit kernels (and proportionally more when using smaller weights, or smaller kernels). However, weights must be arranged in a certain order, see above.
+* The weight memory supports up to 768 * 64 3×3 Q7 kernels (see [Number Format](#Number-Format)).
+  When using 1-, 2- or 4 bit weights, the capacity increases accordingly.
+  When using more than 64 input or output channels, weight memory is shared and effective capacity decreases.
+  Weights must be arranged according to specific rules detailed in [Layers and Weight Memory](#Layers and Weight Memory).
+
+* There are 16 instances of 32 KiB data memory. When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 181×181 pixels per channel in the CHW format. However, when using more than one input channel, the HWC format may be preferred, and all layer output are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance -- or 91×90 pixels per channel.
+  Note that the first layer commonly creates a wide expansion (i.e., large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical.
 
 * The hardware supports 1D and 2D convolution layers, 2D transposed convolution layers (upsampling), element-wise addition, subtraction, binary OR, binary XOR as well as fully connected layers (`Linear`) (implemented using 1×1 convolutions on 1×1 data):
   * The maximum number of input neurons is 1024, and the maximum number of output neurons is 1024 (16 each per processor used).
-  *  `Flatten` functionality is available to convert 2D input data for use by fully connected layers.
-  *  Element-wise operators support from 2 up to 16 inputs.
-  *  Element-wise operators can be chained in-flight with pooling and 2D convolution (where the order of pooling and element-wise operations can be swapped).
+  
+  * `Flatten` functionality is available to convert 2D input data for use by fully connected layers, see [Fully Connected Layers](#Fully Connected \(Linear\) Layers).
+  
+  * When “flattening” two-dimensional data, the input dimensions (C×H×W) must satisfy H×W ≤ 256 and C ≤ 64. Pooling cannot be used at the same time as flattening.
+  
+  * Element-wise operators support from 2 up to 16 inputs.
+  
+  * Element-wise operators can be chained in-flight with pooling and 2D convolution (where the order of pooling and element-wise operations can be swapped).
+  
   * For convenience, a `Softmax` operator is supported in software.
   
 * Since the internal network format is HWC in groups of four channels, output concatenation only works properly when all components of the concatenation other than the last have multiples of four channels.
 
+* Dilation, groups, and depth-wise convolutions are not supported. *Note: Batch normalization should be folded into the weights, see [Batch Normalization](#Batch-Normalization).*
+
 ### Fully Connected (Linear) Layers
 
-m×n fully connected layers can be realized in hardware by “flattening” 2D input data into m channels of 1×1 input data. The hardware will produce n channels of 1×1 output data. When chaining multiple fully connected layers, the flattening step is omitted. The following picture shows 2D data, the equivalent flattened 1D data, and the output.
+m×n fully connected layers can be realized in hardware by “flattening” 2D input data of dimensions C×H×W into m=C×H×W channels of 1×1 input data. The hardware will produce n channels of 1×1 output data. When chaining multiple fully connected layers, the flattening step is omitted. The following picture shows 2D data, the equivalent flattened 1D data, and the output.
 
-For MAX78000/MAX78002, both m and n must not be larger than 16.
+For MAX78000/MAX78002, the product H×W must not exceed 256, and C must not exceed 64.
 
 ![MLP](docs/MLP.png)
 
@@ -1014,7 +1047,7 @@ Copy the working and tested weight files into the `trained/` folder of the `ai8x
 Example for MNIST:
 
 ```shell
-(ai8x-synthesis) $ ./quantize_mnist.sh
+(ai8x-synthesis) $ scripts/quantize_mnist.sh
 ```
 
 To evaluate the quantized network for MAX78000 (run from the training project):
@@ -1093,6 +1126,8 @@ The `ai8xize.py` program needs two inputs:
 1. A quantized checkpoint file, generated by the MAX78000/MAX78002 model quantization program `quantize.py`.
 2. A YAML description of the network.
 
+By default, the C code is split into two files: `main.c` contains the wrapper code, and loads a sample input and verifies the output for the sample input. `cnn.c` contains functions that are generated for a specific network to load, configure, and run the accelerator. During development, this split makes it easier to swap out only the network while keeping customized wrapper code intact.
+
 ### Command Line Arguments
 
 The following table describes the most important command line arguments for `ai8xize.py`. Use `--help` for a complete list.
@@ -1116,11 +1151,12 @@ The following table describes the most important command line arguments for `ai8
 | `--compact-weights`      | Use *memcpy* to load weights in order to save code space     |                                 |
 | `--mexpress`             | Use faster kernel loading                                    |                                 |
 | `--mlator`               | Use hardware to swap output bytes (useful for large multi-channel outputs) |                                 |
-| `--unload`               | Add cnn_unload() function to generated code                  |                                 |
-| `--softmax`              | Add cnn_unload() and Softmax functions to generated code     |                                 |
+| `--softmax`              | Add software Softmax functions to generated code             |                                 |
 | `--boost`                | Turn on a port pin to boost the CNN supply                   | `--boost 2.5`                   |
+| `--timer`                | Insert code to time the inference using a timer              | `--timer 0`                     |
 | *File names*             |                                                              |                                 |
-| `--c-filename`           | C file name base (default: main.c)                           | `--c-filename cnn.c`            |
+| `--c-filename`           | Main C file name base (default: main.c)                      | `--c-filename main.c`           |
+| `--api-filename`         | API C file name (default: cnn.c)                             | `--api-filename cnn.c`          |
 | `--weight-filename`      | Weight header file name (default: weights.h)                 | `--weight-filename wt.h`        |
 | `--sample-filename`      | Sample data header file name (default: sampledata.h)         | `--sample-filename kat.h`       |
 | `--sample-input`         | Sample data source file name (default: tests/sample_dataset.npy) | `--sample-input kat.npy`        |
@@ -1228,7 +1264,15 @@ To generate an RTL simulation for the same network and sample data in the direct
 
 ### Network Loader Configuration Language
 
-Network descriptions are written in YAML (see https://en.wikipedia.org/wiki/YAML). There are two sections in each file --- global statements and a sequence of layer descriptions.
+Network descriptions are written in YAML (see https://en.wikipedia.org/wiki/YAML). There are two sections in each file — global statements and a sequence of layer descriptions.
+
+#### Purpose of the YAML Network Description
+
+The network description must match the model that was used for training. In effect, the checkpoint file contains the trained weights, and the YAML file contains a description of the network structure. Additionally, the YAML file (sometimes also called “sidecar file”) describes which processors to use (`processors`) and which offsets to read and write data from (`in_offset` and `out_offset`).
+
+##### Data Memory Ping-Pong
+
+For simple networks with relatively small data dimensions, the easiest way to use the data offsets is by “ping-ponging” between offset 0 and half the memory (offset 0x4000). For example, the input is loaded at offset 0, and the first layer produces its output at offset 0x4000. The second layer reads from 0x4000 and writes to 0. Assuming the dimensions are small enough, this easy method avoids overwriting an input that has not yet been consumed by the accelerator.
 
 #### Global Configuration
 
@@ -1271,18 +1315,23 @@ This key allows overriding of the processing sequence. The default is `0` for th
 
 `processors` specifies which processors will handle the input data. The processor map must match the number of input channels, and the input data format. For example, in CHW format, processors must be attached to different data memory instances.
 
+`processors` is specified as a 64-bit hexadecimal value.
+
 *Note: When using multi-pass (i.e., using more than 64 channels), the number processors is an integer division of the channel count, rounded up. For example, 60 processors are specified for 120 channels.*
 
-Example:
+Example for three processors 0, 4, and 8:
 	 `processors: 0x0000000000000111`
+
+Example for four processors 0, 1, 2, and 3:
+​	 `processors: 0x000000000000000f`
 
 ##### `output_processors` (Optional)
 
-`output_processors` specifies which data memory instances and 32-bit word offsets to use for the layer’s output data. When not specified, this key defaults to the next layer’s `processors`, or, for the last layer, to the global `output_map`.
+`output_processors` specifies which data memory instances and 32-bit word offsets to use for the layer’s output data. When not specified, this key defaults to the next layer’s `processors`, or, for the last layer, to the global `output_map`. `output_processors` is specified as a 64-bit hexadecimal value.
 
 ##### `out_offset` (Optional)
 
-`out_offset` specifies the relative offset inside the data memory instance where the output data should be written to. When not specified, `out_offset` defaults to `0`.
+`out_offset` specifies the relative offset inside the data memory instance where the output data should be written to. When not specified, `out_offset` defaults to `0`. See also [Data Memory Ping-Pong](#Data Memory Ping-Pong).
 
 Example:
 	 `out_offset: 0x2000`
@@ -1296,14 +1345,14 @@ Example:
 
 ##### `output_width` (Optional)
 
-When __not__ using an `activation`, the last layer can output `32` bits of unclipped data in Q17.14 format. The default is `8` bits.
+When __not__ using an `activation`, the **last** layer can output `32` bits of unclipped data in Q17.14 format. The default is `8` bits. *Note that the corresponding model’s last layer must be trained with* `wide=True` *when* `output_width` *is 32*.
 
 Example:
 	`output_width: 32`
 
 ##### `data_format` (Optional)
 
-When specified for the first layer only, `data_format` can be either `chw`/`big` or `hwc`/`little`. The default is `hwc`. Note that the data format interacts with `processors`. 
+When specified for the first layer only, `data_format` can be either `chw`/`big` or `hwc`/`little`. The default is `hwc`. Note that the data format interacts with `processors`, see [Channel Data Formats](#Channel Data Formats).
 
 ##### `operation`
 
@@ -1398,13 +1447,7 @@ Example:
 
 ##### `stride` (Optional)
 
-2D convolutions:
-
-​	This key must be `1`.
-
-1D convolutions:
-
-​	This key must be `1`.
+This key must be `1` or `[1, 1]`.
 
 ##### `pad` (Optional)
 
@@ -1430,10 +1473,10 @@ Example:
 
 ##### `pool_stride` (Optional)
 
-When performing a pooling operation, this key describes the pool stride. The pooling stride can be specified as an integer (when the value is identical for both dimensions, or for 1D convolutions), or as two values in order `[H, W]`. The default is `1` or `[1, 1]`.
+When performing a pooling operation, this key describes the pool stride. The pooling stride can be specified as an integer (when the value is identical for both dimensions, or for 1D convolutions), or as two values in order `[H, W]`, where both values must be identical. The default is `1` or `[1, 1]`.
 
 Example:
-	 `pool_stride: 2`
+	 `pool_stride: [2, 2]`
 
 ##### `in_channels` (Optional)
 
@@ -1476,7 +1519,7 @@ Example:
 
 ##### `flatten` (Optional)
 
-`flatten` specifies that 2D input data should be transformed to 1D data for use by a `Linear` layer.
+`flatten` specifies that 2D input data should be transformed to 1D data for use by a `Linear` layer. *Note that flattening cannot be used in the same layer as pooling.*
 
 Example:
 	`flatten: true`
@@ -1608,12 +1651,12 @@ Adding new datasets to the Network Loader is implemented as follows:
    `(ai8x-synthesis) $ cp ../ai8x-training/logs/2020.06.02-154133/best.pth.tar trained/new-unquantized.pth.tar`
 
 2. When using post-training quantization, the quantized weights are the result of the quantization step. Copy and customize an existing quantization shell script, for example:
-   `(ai8x-synthesis) $ cp quantize_mnist.sh quantize_new.sh`
+   `(ai8x-synthesis) $ cp scripts/quantize_mnist.sh scripts/quantize_new.sh`
 
-   Then, *edit this script to point to the new model and dataset* (`vim quantize_new.sh`), and call the script to generate the quantized weights. Example:
+   Then, *edit this script to point to the new model and dataset* (`vi scripts/quantize_new.sh`), and call the script to generate the quantized weights. Example:
    ```shell
-   (ai8x-synthesis) $ ./quantize_new.sh 
-   Configuring device: AI85.
+   (ai8x-synthesis) $ scripts/quantize_new.sh 
+   Configuring device: MAX78000.
    Reading networks/new.yaml to configure network...
    Converting checkpoint file trained/new-unquantized.pth.tar to trained/new.pth.tar
    +----------------------+-------------+----------+
@@ -1678,7 +1721,7 @@ np.save(os.path.join('tests', 'sample_mnist'), a, allow_pickle=False, fix_import
    Example output:
    ```shell
    (ai8x-training) $ scripts/evaluate_new.sh 
-   Configuring device: AI85, simulate=True.
+   Configuring device: MAX78000, simulate=True.
    Log file for this run: logs/2020.06.03-125328/2020.06.03-125328.log
    --------------------------------------------------------
    Logging to TensorBoard - remember to execute the server:
@@ -1746,23 +1789,84 @@ Run `ai8xize.py` with the new network and the new sample data to generate embedd
 
 #### Starting an Inference, Waiting for Completion, Multiple Inferences in Sequence
 
-An inference is started by loading registers and kernels, loading the input, and enabling processing.  This code is automatically generated—see the `cnn_load()`, `load_kernels()`, and `load_input()` functions. The sample data can be used as a self-checking feature on device power-up since the output for the sample data is known.
+An inference is started by configuring registers and weights, loading the input, and enabling processing.  This code is automatically generated—see the `cnn_init()`, `cnn_load_weights()`, `cnn_load_bias()`, `cnn_configure()`, and `load_input()` functions. The sample data can be used as a self-checking feature on device power-up since the output for the sample data is known.
+To start the accelerator, use `cnn_start()`. The `load_input()` function is called either before `cnn_start()`, or after `cnn_start()`, depending on whether FIFOs are used. To run a second inference with new data, call `cnn_start()` again (after or before loading the new data input using load_input()`).
 
-The MAX78000/MAX78002 accelerator can generate an interrupt on completion, and it will set a status bit (see `cnn_wait()`). The resulting data can now be unloaded from the accelerator (code for this is also auto-generated in `cnn_unload()`).
+The MAX78000/MAX78002 accelerator can generate an interrupt on completion, and it will set a status bit (see `cnn.c`). The resulting data can now be unloaded from the accelerator (code for this is also auto-generated in `cnn_unload()`).
 
-To run another inference, ensure all groups are disabled (stopping the state machine, as shown in `cnn_load()`). Next, load the new input data and start processing.
+To run another inference, ensure all groups are disabled (stopping the state machine, as shown in `cnn_init()`). Next, load the new input data and start processing.
 
 #### Softmax, and Data unload in C
 
-`ai8xize.py` can generate a custom `cnn_unload()` function using the command line switch `--unload`. The `--softmax` switch additionally inserts a call to a software Softmax function that is provided in the `assets/device-ai8x` folder. To use the provided software Softmax on MAX78000/MAX78002, the last layer output should be 32-bit wide (`output_width: 32`).
+`ai8xize.py` can generate a call to a software Softmax function using the command line switch `--softmax`. That function is provided in the `assets/device-all` folder. To use the provided software Softmax on MAX78000/MAX78002, the last layer output should be 32-bit wide (`output_width: 32`).
 
 The software Softmax function is optimized for processing time and it quantizes the input.
 
 ![softmax](docs/softmax.png)
 
-#### Contents of the device-* Folder
+#### Overview of the Generated API functions
+
+The API code (in `cnn.c` by default) is auto-generated. It is data independent, but differs depending on the network. This simplifies replacing the network while keeping the remainder of the code intact.
+
+The functions that do not return `void` return either `CNN_FAIL` or `CNN_OK` as specified in the auto-generated `cnn.h` header file. The header file also contains a definition for the number of outputs of the network (`CNN_NUM_OUTPUTS`). In limited circumstances, this can make the wrapper code somewhat network independent.
+
+`int cnn_enable(uint32_t clock_source, uint32_t clock_divider);`
+Enable clocks (from `clock_source` with `clock_divider`) and power to the accelerator; also enable the accelerator interrupt. By default, on MAX78000, the accelerator runs at 50 MHz (APB clock or PCLK divided by 1).
+
+`int cnn_disable(void);`
+Disable clocks and power to the accelerator.
+
+`int cnn_init(void);`
+Perform minimum accelerator initialization so it can be configured or restarted.
+
+`int cnn_configure(void);`
+Configure the accelerator for the given network.
+
+`int cnn_load_weights(void);`
+Load the accelerator weights.
+
+`int cnn_verify_weights(void);`
+Verify the accelerator weights (used for debug only).
+
+`int cnn_load_bias(void);`
+Load accelerator the bias values (if needed).
+
+`int cnn_start(void);`
+Start accelerator processing.
+
+`int cnn_stop(void);`
+Force-stop the accelerator regardless of whether it has finished or not.
+
+`int cnn_continue(void);`
+Continue accelerator processing after force-stopping it.
+
+`int cnn_unload(uint32_t *out_buf);`
+Unload the results from the accelerator. The output buffer must be 32-bit aligned (round up to the next 32-bit size when using 8-bit outputs).
+
+`int cnn_boost_enable(mxc_gpio_regs_t *port, uint32_t pin);`
+Turn on the boost circuit on `port`.`pin`. This is only needed for very energy intense networks. Use the `--boost` command line option to insert calls to this function in the wrapper code.
+
+`int cnn_boost_disable(mxc_gpio_regs_t *port, uint32_t pin);`
+Turn off the boost circuit connected to `port`.`pin`.
+
+#### Contents of the device-all Folder
 
 * For MAX78000/MAX78002, the software Softmax is implemented in `softmax.c`.
+* A template for the `cnn.h` header file in `templatecnn.h`. The template is customized during code generation.
+
+#### Energy Measurement
+
+The MAX78000 Evaluation Kit (EVKit) revision C and later includes a MAX32625 microcontroller connected to a MAX34417 power accumulator. Since the sample rate of the MAX34417 is slow compared to typical inference times, `ai8xize.py` supports the command line parameter `--energy` that will run 100 iterations of the inference, separating out the input data load time. This allows enough sample time to get meaningful results (recommended minimum: 1 second).
+
+When running C code generated with `--energy`, the power display on the EVKit will display the inference energy.
+
+*Note: MAX78000 uses LED1 and LED2 to trigger power measurement via MAX32625 and MAX34417.*
+
+See https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/MAX78000_Evaluation_Kit/MAX78000%20Power%20Monitor%20and%20Energy%20Benchmarking%20Guide.pdf for more information about benchmarking.
+
+## Further Information
+
+Additional information about the evaluation kits, and the software development kit (SDK) is available on the web at https://github.com/MaximIntegratedAI/aximAI_Documentation
 
 ---
 
