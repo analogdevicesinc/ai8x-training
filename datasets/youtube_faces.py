@@ -72,7 +72,7 @@ class YouTubeFacesDataset(data.Dataset):
 
     def __normalize_data(self, data_item):  # pylint: disable=no-self-use
         data_item = data_item.astype(np.float32)
-        data_item /= 255
+        data_item /= 256
         return data_item
 
     def __len__(self):

@@ -40,7 +40,7 @@ def imagenet_get_datasets(data, load_train=True, load_test=True, input_size=224,
     By default we use a 90:10 (45K:5K) training:validation split.
 
     The output of torchvision datasets are PIL Image images of range [0, 1].
-    We transform them to Tensors of normalized range [-1, 1]
+    We transform them to Tensors of normalized range [-1, 127/128]
 
     Data augmentation: 4 pixels are padded on each side, and a 224x224 crop is randomly sampled
     from the padded image or its horizontal flip.

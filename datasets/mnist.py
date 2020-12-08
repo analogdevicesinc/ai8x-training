@@ -39,7 +39,7 @@ def mnist_get_datasets(data, load_train=True, load_test=True):
     By default we use a 90:10 (45K:5K) training:validation split.
 
     The output of torchvision datasets are PIL Image images of range [0, 1].
-    We transform them to Tensors of normalized range [-1, 1]
+    We transform them to Tensors of normalized range [-1, 127/128]
     https://github.com/pytorch/tutorials/blob/master/beginner_source/blitz/cifar10_tutorial.py
 
     Data augmentation: 4 pixels are padded on each side, and a 32x32 crop is randomly sampled

@@ -24,6 +24,9 @@ echo "-----------------------------"
 echo "Training cifar100_residual model"
 scripts/train_cifar100_ressimplenet.sh
 echo "-----------------------------"
+echo "Training cifar100_simplenetwide2x model with mixed width QAT"
+scripts/train_cifar100_simplenetwide2x_qat_mixed.sh
+echo "-----------------------------"
 echo "Training kws20 model"
 scripts/train_kws20.sh
 echo "-----------------------------"
