@@ -1,4 +1,4 @@
-numpy>=1.19,<1.20
+numpy>=1.16,<1.17
 PyYAML>=5.1.1
 tabulate==0.8.3
 future>=0.17.1
@@ -10,7 +10,7 @@ shap>=0.34.0
 tk>=0.1.0
 sndfile>=0.2
 numba<0.50.0
-tensorflow==2.4.0
+tensorflow==2.3.0
 tensorboard==2.3.0
 tensorflow_datasets==3.2.1
 tensorflow_metadata==0.23.0
