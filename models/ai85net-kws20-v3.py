@@ -26,7 +26,7 @@ class AI85KWS20Netv3(nn.Module):
             num_channels=128,
             dimensions=(128, 1),  # pylint: disable=unused-argument
             bias=False,
-			**kwargs
+            **kwargs
 
     ):
         super().__init__()
