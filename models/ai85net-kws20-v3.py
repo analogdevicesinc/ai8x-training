@@ -30,9 +30,8 @@ class AI85KWS20Netv3(nn.Module):
 
     ):
         super().__init__()
-
         self.drop = nn.Dropout(p=0.2)
-        #Time: 128 Feature :128
+        # Time: 128 Feature :128
         self.voice_conv1 = ai8x.FusedConv1dReLU(num_channels, 100, 1, stride=1, padding=0,
                                                 bias=bias, **kwargs)
         # T: 128 F: 100
