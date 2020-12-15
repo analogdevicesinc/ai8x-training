@@ -39,9 +39,11 @@ from torchvision import transforms
 import librosa
 from six.moves import urllib
 
+import pytsmod as tsm
+
 import ai8x
 
-import pytsmod as tsm
+
 
 
 class KWS:
