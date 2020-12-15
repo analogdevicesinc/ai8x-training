@@ -15,12 +15,13 @@ import os
 import tarfile
 import warnings
 
-import librosa
-import librosa.display
 import numpy as np
 import torch
 from torch.utils.model_zoo import tqdm
 from torchvision import transforms
+
+import librosa
+import librosa.display
 from PIL import Image
 from six.moves import urllib
 

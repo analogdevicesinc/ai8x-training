@@ -10,12 +10,14 @@
 Cats and Dogs Datasets
 """
 import os
+import shutil
 import sys
 from os import listdir, makedirs
 from random import random
-import shutil
+
 import torchvision
 from torchvision import transforms
+
 import ai8x
 
 

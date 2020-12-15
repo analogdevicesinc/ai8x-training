@@ -29,14 +29,16 @@ Command line parser for the Training/Quantization software.
 
 import argparse
 
-from examples.auto_compression.amc import amc_args as adc
+# pylint: disable=wrong-import-order
 import distiller
 import distiller.quantization
 from distiller.utils import float_range_argparse_checker as float_range
+from examples.auto_compression.amc import amc_args as adc
+
 from devices import device
 
-
-SUMMARY_CHOICES = ['sparsity', 'compute', 'model', 'modules', 'png', 'png_w_params', 'onnx']
+SUMMARY_CHOICES = ['sparsity', 'compute', 'model', 'modules', 'png', 'png_w_params', 'onnx',
+                   'onnx_simplified']
 
 
 def get_parser(model_names, dataset_names):
@@ -74,7 +76,12 @@ def get_parser(model_names, dataset_names):
                         help='when simulating, use "round()" in AvgPool operations '
                              '(default: use "floor()")')
 
-    optimizer_args = parser.add_argument_group('Optimizer arguments')
+    qat_args = parser.add_argument_group('Quantization Arguments')
+    qat_args.add_argument('--qat-policy', dest='qat_policy', default='qat_policy.yaml',
+                          help='path to YAML file that defines the '
+                               'QAT (quantization-aware training) policy')
+
+    optimizer_args = parser.add_argument_group('Optimizer Arguments')
     optimizer_args.add_argument('--optimizer', default='SGD',
                                 help='optimizer for training (default: SGD)')
     optimizer_args.add_argument('--lr', '--learning-rate', default=0.1,
@@ -87,7 +94,7 @@ def get_parser(model_names, dataset_names):
     parser.add_argument('--print-freq', '-p', default=10, type=int,
                         metavar='N', help='print frequency (default: 10)')
 
-    load_checkpoint_group = parser.add_argument_group('Resuming arguments')
+    load_checkpoint_group = parser.add_argument_group('Resuming Arguments')
     load_checkpoint_group_exc = load_checkpoint_group.add_mutually_exclusive_group()
     load_checkpoint_group_exc.add_argument('--resume-from', dest='resumed_checkpoint_path',
                                            default='', type=str, metavar='PATH',

@@ -27,12 +27,13 @@ weight tensor masks in the schedule).
 
 $ python3 inspect_ckpt.py checkpoint.pth.tar --model --schedule
 """
-import torch
 import argparse
-from tabulate import tabulate
+
+import torch
 
 import distiller
 from distiller.apputils.checkpoint import get_contents_table
+from tabulate import tabulate
 
 
 def inspect_checkpoint(chkpt_file, args):
