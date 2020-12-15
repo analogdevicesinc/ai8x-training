@@ -338,7 +338,7 @@ class KWS:
                                               self.augmentation['shift']['max'])
         random_strech_coeff = np.random.uniform(self.augmentation['strech']['min'],
                                                 self.augmentation['strech']['max'])
-        
+
         #aug_audio = self.stretch(audio, random_strech_coeff)
         aug_audio = tsm.wsola (audio, random_strech_coeff)
         aug_audio = self.shift(aug_audio, random_shift_time, fs)
