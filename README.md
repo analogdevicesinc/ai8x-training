@@ -406,6 +406,8 @@ All input data must be located in the data memory instance the processor can acc
 
 The data memory instances inside the accelerator are single-port memories. This means that only one access operation can happen per clock cycle. When using the HWC data format (see [Channel Data Formats](#Channel-Data-Formats)), this means that each of the four processors sharing the data memory instance will receive one byte of data per clock cycle (since each 32-bit data word consists of four packed channels).
 
+When the data has more than 64 channels, each data memory should store more than four channels. As this data is written by the multiple passes of the used processors in the previous layer, contiguous 32-bit data words are number of those processors channels apart from each other. For example, if a 128 channels data is created using 64 processors, Data Memory 0 stores channels 0, 1, 2, 3 and 64, 65, 66, 67; Data Memory 1 stores channels 4, 5, 6, 7 and 68, 69, 70, 71 and Data Memory 15 stores channels 60, 61, 62, 63 and 124, 125, 126, 127. Therefore, each spatial element of the data is stored by 2 32-bit data word on the same data memory.
+
 ### Streaming Mode
 
 The machine also implements a streaming mode. Streaming allows input data dimensions that exceed the available per-channel data memory in the accelerator.
@@ -1526,7 +1528,7 @@ Example:
 
 ##### `write_gap` (Optional)
 
-`write_gap` specifies the number of words that should be skipped during write operations (i.e., write every *n*th word). This creates an interleaved output that can be used as the input for subsequent layers that use element-wise operations.
+`write_gap` specifies the number of words that should be skipped during write operations (i.e., write every *n*th word). This creates an interleaved output that can be used as the input for subsequent layers that use element-wise operation or concatenate multiple inputs to form a data having more than 64 channels.
 
 Example:
 	`write_gap: 1`
