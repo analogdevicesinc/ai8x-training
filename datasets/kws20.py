@@ -37,6 +37,7 @@ from torch.utils.model_zoo import tqdm
 from torchvision import transforms
 
 import librosa
+import pytsmod as tsm
 from six.moves import urllib
 
 import ai8x
@@ -338,7 +339,7 @@ class KWS:
         random_strech_coeff = np.random.uniform(self.augmentation['strech']['min'],
                                                 self.augmentation['strech']['max'])
 
-        aug_audio = self.stretch(audio, random_strech_coeff)
+        aug_audio = tsm.wsola(audio, random_strech_coeff)
         aug_audio = self.shift(aug_audio, random_shift_time, fs)
         aug_audio = self.add_white_noise(aug_audio, random_noise_var_coeff)
         if verbose:
@@ -543,7 +544,7 @@ def KWS_20_get_datasets(data, load_train=True, load_test=True):
 
     The dataset is loaded from the archive file, so the file is required for this version.
 
-    The dataset originally includes 30 keywords. A dataset is formed with 21 classes which includes
+    The dataset originally includes 35 keywords. A dataset is formed with 21 classes which includes
     20 of the original keywords and the rest of the dataset is used to form the last class, i.e.,
     class of the others.
     The dataset is split into training+validation and test sets. 90:10 training+validation:test
