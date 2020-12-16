@@ -21,7 +21,7 @@ dev = None
 
 class normalize:
     """
-    Normalize input to either [-1, 127/128] or [-128, +127]
+    Normalize input to either [-128/128, +127/128] or [-128, +127]
     """
     def __init__(self, args):
         self.args = args
