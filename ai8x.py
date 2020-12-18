@@ -21,7 +21,7 @@ dev = None
 
 class normalize:
     """
-    Normalize input to either [-0.5, +0.5] or [-128, +127]
+    Normalize input to either [-128/128, +127/128] or [-128, +127]
     """
     def __init__(self, args):
         self.args = args
@@ -29,7 +29,7 @@ class normalize:
     def __call__(self, img):
         if self.args.act_mode_8bit:
             return img.sub(0.5).mul(256.).round().clamp(min=-128, max=127)
-        return img.sub(0.5).mul(256.).round().clamp(min=-128, max=127).div(256.)
+        return img.sub(0.5).mul(256.).round().clamp(min=-128, max=127).div(128.)
 
 
 class QuantizationFunction(Function):

@@ -237,7 +237,6 @@ $ source bin/activate
 
 The next step differs depending on whether the system uses Linux with CUDA 11.1, or any other setup, 
 and whether PyTorch or TensorFlow is used.
-
 For CUDA 11.1 on Linux:
 
 ```shell
@@ -245,7 +244,6 @@ For CUDA 11.1 on Linux:
 ```
 
 For all other PyTorch setups, including CUDA 10.2  and CUDA 11.1 on Linux:
-
 ```shell
 (ai8x-training) $ pip3 install -r requirements.txt
 ```
