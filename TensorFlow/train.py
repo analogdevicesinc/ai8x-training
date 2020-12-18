@@ -10,16 +10,17 @@
 """
 Train a Keras sequential model
 """
+import argparse
+import fnmatch
+import os
+import random as rn
+import sys
 from datetime import datetime
 from pydoc import locate
-import sys
-import random as rn
 from random import randint
-import os
-import fnmatch
-import argparse
-import tensorflow as tf
+
 import numpy as np
+import tensorflow as tf
 
 # following piece it to init seed to make reproducible results
 os.environ['PYTHONHASHSEED'] = '0'

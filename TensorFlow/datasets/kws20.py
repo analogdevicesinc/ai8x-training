@@ -29,12 +29,14 @@ import hashlib
 import os
 import sys
 import tarfile
-import warnings
 import time
-import librosa
+import warnings
+
 import numpy as np
-from tqdm import tqdm
+
+import librosa
 from six.moves import urllib
+from tqdm import tqdm
 
 
 class KWS:

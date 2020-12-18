@@ -10,15 +10,17 @@
 """
 Evaluate an ONNX model with the model test dataset
 """
+import argparse
+import fnmatch
+import os
+import random as rn
+import sys
 from datetime import datetime
 from pydoc import locate
-import sys
-import random as rn
-import os
-import fnmatch
-import argparse
-import tensorflow as tf
+
 import numpy as np
+import tensorflow as tf
+
 import onnxruntime as rt
 
 # following piece it to init seed to make reproducable results

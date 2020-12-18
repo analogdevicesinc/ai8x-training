@@ -8,13 +8,14 @@
 ###################################################################################################
 """ extract final output of tests and store in a log
 """
-from datetime import datetime
-import sys
-import random as rn
-import os
 import argparse
-import tensorflow as tf
+import os
+import random as rn
+import sys
+from datetime import datetime
+
 import numpy as np
+import tensorflow as tf
 
 # following piece it to init seed to make reproducible results
 os.environ['PYTHONHASHSEED'] = '0'
