@@ -432,7 +432,7 @@ if __name__ == '__main__':
         form, sample_image = reformat_sample(sample_image, channelfirst, swap)
 
         np.save(os.path.join(expdir, 'sampledata'),
-                np.array(sample_image * 256, dtype=np.int32))
+                np.array(sample_image * 128, dtype=np.int32))
         fn = open(os.path.join(expdir, 'sampledata.log'), 'w+')
         print(f'index: {index}\nactual class:{test_labels[index]}')
         fn.writelines(f'index: {index}\nactual class:{test_labels[index]}\n')
