@@ -269,11 +269,11 @@ if __name__ == '__main__':
     valid_images = valid_images[pattern]
     valid_labels = valid_labels[pattern]
 
-    # Normalize data to [-0.5, 0.5] range
-    print('Normalize image to [-0.5,0.5] range')
-    train_images = train_images/256.0
-    valid_images = valid_images/256.0
-    test_images = test_images/256.0
+    # Normalize data to [-1, 1] range
+    print('Normalize image to [-1.0,1.0] range')
+    train_images = train_images/128.0
+    valid_images = valid_images/128.0
+    test_images = test_images/128.0
 
     # print("train_images min:", train_images.min())
     # print("train_image max:", train_images.max())
