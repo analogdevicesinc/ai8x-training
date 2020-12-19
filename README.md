@@ -55,8 +55,6 @@ https://docs.nvidia.com/cuda/wsl-user-guide/. However, please note that WSL2 wit
 
 When going beyond simple models, model training does not work well without CUDA hardware acceleration. The network loader (“izer”) does not require CUDA, and very simple models can also be trained on systems without CUDA.
 
-*Recommendation:* Unless TensorFlow support is required, install CUDA 11.1 on Ubuntu 20.04 LTS. Otherwise, install CUDA 10.2 on Ubuntu 18.04 LTS. See https://developer.nvidia.com/cuda-toolkit-archive.
-
 *Note: When using multiple GPUs, the software will automatically use all available GPUs and distribute the workload. To prevent this, set the `CUDA_VISIBLE_DEVICES` environment variable. Use the `--gpus` command line argument to set the default GPU.*
 
 #### Shared (Multi-User) and Remote Systems
