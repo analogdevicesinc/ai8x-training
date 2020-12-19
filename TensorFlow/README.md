@@ -18,7 +18,7 @@ This document describes the modeling of networks using **TensorFlow 2 Keras API*
 
 ## Setup
 
-1. Install NVIDIA GPU drivers (CUDA 10.1 or CUDA 10.2), CUDA Toolkit, CUPTI and cuDNN SDK 7.6 as described in Software requirements for TensorFlow: https://www.tensorflow.org/install/gpu
+1. Install NVIDIA GPU drivers (CUDA 10.1, CUDA 10.2, or CUDA 11.0), CUDA Toolkit, CUPTI and cuDNN SDK 7.6 as described in Software requirements for TensorFlow: https://www.tensorflow.org/install/gpu
 
 2. Make sure that `~/.bash_profile` includes path to CUDA and CUPTI:
 
@@ -1006,7 +1006,6 @@ $ (ai8x-synthesis) ./ai8xize.py --verbose -L --top-level cnn --test-dir tensorfl
 
 | Parameter                        | Description                                                  |
 | -------------------------------- | ------------------------------------------------------------ |
-| --keep-first                     | Applies same scale factor of weights as specified in `—scale` to the first layer. When not specified (default), half of the scale factor is applied to the first layer. See the section _Datasets_ in this document. |
 | --scale                          | Scale factor for weight quantization (default = 1.0)         |
 | --generate-dequantized-onnx-file | Generates a dequantized copy of the ONNX file to be used for evaluation. See the section _Post-Training Model Quantization_ in this document. |
 
