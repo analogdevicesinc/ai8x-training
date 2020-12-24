@@ -8,7 +8,7 @@ _September 9, 2020_
 
 This document describes the modeling of networks using **TensorFlow 2 Keras API**. The machine learning models created and trained can be ported to and executed on MAX78000. Different types of Keras models with TensorFlow  are supported, including high-level sequential, functional and sub-classing APIs. The following development flow has to be used:
 
-1. Create the Keras model using supported MAX78000 TensorFlow sub-classes which reflect hardware behavior and limit operations.k
+1. Create the Keras model using supported MAX78000 TensorFlow sub-classes which reflect hardware behavior and limit operations.
 2. Train the model and store the model graph and weights into a **saved_model.pb** file.
 3. Use the Tensorflow to ONNX converter (**convert.py**) to create an ONNX framework model from **saved_model.pb**.
 4. Quantize the ONNX model weights and feed to MAX78000 synthesis tool (_ai8xizer_) to generate C code.
