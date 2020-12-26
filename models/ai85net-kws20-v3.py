@@ -56,7 +56,7 @@ class AI85KWS20Netv3(nn.Module):
         self.kws_conv4 = ai8x.FusedMaxPoolConv1dReLU(100, 64, 6, stride=1, padding=1,
                                                      bias=bias, **kwargs)
         # T : 2 F: 128
-        self.fc = ai8x.Linear(256, num_classes, bias=bias)
+        self.fc = ai8x.Linear(256, num_classes, bias=bias, wide=True, **kwargs)
 
     def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
