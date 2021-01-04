@@ -60,54 +60,62 @@ models, or with the provided sample models:
 - MobileNet for ImageNet: https://github.com/marvis/pytorch-mobilenet
 """
 
-import time
+import fnmatch
+import logging
+import operator
 import os
 import sys
+import time
 import traceback
-import logging
 from collections import OrderedDict
 from functools import partial
 from pydoc import locate
-import fnmatch
-import operator
-from pkg_resources import parse_version
-import matplotlib
+
 import numpy as np
+
+import matplotlib
+from pkg_resources import parse_version
 
 # TensorFlow 2.x compatibility
 try:
-    import tensorflow  # pylint: disable=import-error
     import tensorboard  # pylint: disable=import-error
+    import tensorflow  # pylint: disable=import-error
     tensorflow.io.gfile = tensorboard.compat.tensorflow_stub.io.gfile
 except (ModuleNotFoundError, AttributeError):
     pass
 
-import shap
 import torch
+import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.nn.parallel
-import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
-import torchnet.meter as tnt
-import examples.auto_compression.amc as adc
+
+# pylint: disable=wrong-import-order
 import distiller
 import distiller.apputils as apputils
 import distiller.model_summaries as model_summaries
+import examples.auto_compression.amc as adc
+import shap
+import torchnet.meter as tnt
 from distiller.data_loggers import PythonLogger, TensorBoardLogger
 # pylint: disable=no-name-in-module
-from distiller.data_loggers.collector import SummaryActivationStatsCollector, \
-    RecordsActivationStatsCollector, QuantCalibrationStatsCollector, \
-    collectors_context
+from distiller.data_loggers.collector import (QuantCalibrationStatsCollector,
+                                              RecordsActivationStatsCollector,
+                                              SummaryActivationStatsCollector, collectors_context)
 from distiller.quantization.range_linear import PostTrainLinearQuantizer
+
 # pylint: enable=no-name-in-module
 import ai8x
 import datasets
 import nnplot
+import parse_qat_yaml
 import parsecmd
 import sample
+
 # from range_linear_ai84 import PostTrainLinearQuantizerAI84
 
+matplotlib.use("pgf")
 
 # Logger handle
 msglogger = None
@@ -171,7 +179,6 @@ def main():
         os.makedirs(args.output_dir)
 
     if args.shap > 0:
-        matplotlib.use('TkAgg')
         args.batch_size = 100 + args.shap
 
     msglogger = apputils.config_pylogger(os.path.join(script_dir, 'logging.conf'), args.name,
@@ -189,6 +196,7 @@ def main():
     if args.evaluate and args.shap == 0:
         args.deterministic = True
     if args.deterministic:
+        # torch.set_deterministic(True)
         distiller.set_deterministic(args.seed)  # For experiment reproducability
         if args.seed is not None:
             distiller.set_seed(args.seed)
@@ -246,29 +254,8 @@ def main():
     if args.regression and args.display_embedding:
         raise ValueError('ERROR: Argument --embedding cannot be used with regression')
 
-    # Create the model
-    module = next(item for item in supported_models if item['name'] == args.cnn)
+    model = create_model(supported_models, dimensions, args)
 
-    # Override distiller's input shape detection. This is not a very clean way to do it since
-    # we're replacing a protected member.
-    distiller.utils._validate_input_shape = (  # pylint: disable=protected-access
-        lambda _a, _b: (1, ) + dimensions[:module['dim'] + 1]
-    )
-
-    Model = locate(module['module'] + '.' + args.cnn)
-    if not Model:
-        raise RuntimeError("Model " + args.cnn + " not found\n")
-    if module['dim'] > 1 and module['min_input'] > dimensions[2]:
-        model = Model(pretrained=False, num_classes=args.num_classes,
-                      num_channels=dimensions[0],
-                      dimensions=(dimensions[1], dimensions[2]),
-                      padding=(module['min_input'] - dimensions[2] + 1) // 2,
-                      bias=args.use_bias).to(args.device)
-    else:
-        model = Model(pretrained=False, num_classes=args.num_classes,
-                      num_channels=dimensions[0],
-                      dimensions=(dimensions[1], dimensions[2]),
-                      bias=args.use_bias).to(args.device)
     # if args.add_logsoftmax:
     #     model = nn.Sequential(model, nn.LogSoftmax(dim=1))
     # if args.add_softmax:
@@ -285,9 +272,9 @@ def main():
         tflogger.tblogger.writer.add_text('Command line', str(args))
 
         if dimensions[2] > 1:
-            dummy_input = torch.autograd.Variable(torch.randn((1, ) + dimensions))
+            dummy_input = torch.randn((1, ) + dimensions)
         else:  # 1D input
-            dummy_input = torch.autograd.Variable(torch.randn((1, ) + dimensions[:-1]))
+            dummy_input = torch.randn((1, ) + dimensions[:-1])
         tflogger.tblogger.writer.add_graph(model.to('cpu'), (dummy_input, ), False)
 
         all_loggers.append(tflogger)
@@ -296,18 +283,34 @@ def main():
         tflogger = None
         all_tbloggers = []
 
-    # capture thresholds for early-exit training
+    # Capture thresholds for early-exit training
     if args.earlyexit_thresholds:
         msglogger.info('=> using early-exit threshold values of %s', args.earlyexit_thresholds)
+
+    # Get policy for quantization aware training
+    qat_policy = parse_qat_yaml.parse(args.qat_policy) \
+        if args.qat_policy.lower() != "none" else None
 
     # We can optionally resume from a checkpoint
     optimizer = None
     if args.resumed_checkpoint_path:
+        if qat_policy is not None:
+            checkpoint = torch.load(args.resumed_checkpoint_path,
+                                    map_location=lambda storage, loc: storage)
+            if checkpoint.get('epoch', None) >= qat_policy['start_epoch']:
+                ai8x.fuse_bn_layers(model)
         model, compression_scheduler, optimizer, start_epoch = apputils.load_checkpoint(
             model, args.resumed_checkpoint_path, model_device=args.device)
+        ai8x.update_model(model)
     elif args.load_model_path:
+        if qat_policy is not None:
+            checkpoint = torch.load(args.load_model_path,
+                                    map_location=lambda storage, loc: storage)
+            if checkpoint.get('epoch', None) >= qat_policy['start_epoch']:
+                ai8x.fuse_bn_layers(model)
         model = apputils.load_lean_checkpoint(model, args.load_model_path,
                                               model_device=args.device)
+        ai8x.update_model(model)
 
     if not args.load_serialized and args.gpus != -1 and torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model, device_ids=args.gpus).to(args.device)
@@ -331,17 +334,7 @@ def main():
         criterion = nn.MSELoss().to(args.device)
 
     if optimizer is None:
-        if args.optimizer.lower() == 'sgd':
-            optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum,
-                                        weight_decay=args.weight_decay)
-        elif args.optimizer.lower() == 'adam':
-            optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-        else:
-            msglogger.info('Unknown optimizer type: %s. SGD is set as optimizer!!!',
-                           args.optimizer)
-            optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum,
-                                        weight_decay=args.weight_decay)
-
+        optimizer = create_optimizer(model, args)
         msglogger.info('Optimizer Type: %s', type(optimizer))
         msglogger.info('Optimizer Args: %s', optimizer.defaults)
 
@@ -415,7 +408,7 @@ def main():
 
     args.kd_policy = None
     if args.kd_teacher:
-        teacher = Model(pretrained=False, num_classes=args.num_classes, num_channels=dimensions[0])
+        teacher = create_model(supported_models, dimensions, args)
         if args.kd_resume:
             teacher = apputils.load_lean_checkpoint(teacher, args.kd_resume)
         dlw = distiller.DistillationLossWeights(args.kd_distill_wt, args.kd_student_wt,
@@ -438,6 +431,16 @@ def main():
 
     vloss = 10**6
     for epoch in range(start_epoch, ending_epoch):
+        if qat_policy is not None and epoch > 0 and epoch == qat_policy['start_epoch']:
+            # Fuse the BN parameters into conv layers before Quantization Aware Training (QAT)
+            ai8x.fuse_bn_layers(model)
+
+            # Switch model from unquantized to quantized for QAT
+            ai8x.initiate_qat(model, qat_policy)
+
+            # Model is re-transferred to GPU in case parameters were added
+            model.to(args.device)
+
         # This is the main training loop.
         msglogger.info('\n')
         if compression_scheduler:
@@ -494,6 +497,65 @@ def main():
 
 OVERALL_LOSS_KEY = 'Overall Loss'
 OBJECTIVE_LOSS_KEY = 'Objective Loss'
+
+
+def create_model(supported_models, dimensions, args):
+    """Create the model"""
+    module = next(item for item in supported_models if item['name'] == args.cnn)
+
+    # Override distiller's input shape detection. This is not a very clean way to do it since
+    # we're replacing a protected member.
+    distiller.utils._validate_input_shape = (  # pylint: disable=protected-access
+        lambda _a, _b: (1, ) + dimensions[:module['dim'] + 1]
+    )
+
+    Model = locate(module['module'] + '.' + args.cnn)
+    if not Model:
+        raise RuntimeError("Model " + args.cnn + " not found\n")
+
+    # Set model paramaters
+    if args.act_mode_8bit:
+        weight_bits = 8
+        bias_bits = 8
+        quantize_activation = True
+    else:
+        weight_bits = None
+        bias_bits = None
+        quantize_activation = False
+
+    if module['dim'] > 1 and module['min_input'] > dimensions[2]:
+        model = Model(pretrained=False, num_classes=args.num_classes,
+                      num_channels=dimensions[0],
+                      dimensions=(dimensions[1], dimensions[2]),
+                      padding=(module['min_input'] - dimensions[2] + 1) // 2,
+                      bias=args.use_bias,
+                      weight_bits=weight_bits,
+                      bias_bits=bias_bits,
+                      quantize_activation=quantize_activation).to(args.device)
+    else:
+        model = Model(pretrained=False, num_classes=args.num_classes,
+                      num_channels=dimensions[0],
+                      dimensions=(dimensions[1], dimensions[2]),
+                      bias=args.use_bias,
+                      weight_bits=weight_bits,
+                      bias_bits=bias_bits,
+                      quantize_activation=quantize_activation).to(args.device)
+
+    return model
+
+
+def create_optimizer(model, args):
+    """Create the optimizer"""
+    if args.optimizer.lower() == 'sgd':
+        optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum,
+                                    weight_decay=args.weight_decay)
+    elif args.optimizer.lower() == 'adam':
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    else:
+        msglogger.info('Unknown optimizer type: %s. SGD is set as optimizer!!!', args.optimizer)
+        optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum,
+                                    weight_decay=args.weight_decay)
+    return optimizer
 
 
 def train(train_loader, model, criterion, optimizer, epoch,
@@ -1071,12 +1133,26 @@ def evaluate_model(model, criterion, test_loader, loggers, activations_collector
     top1, _, _ = test(test_loader, model, criterion, loggers, activations_collectors, args=args)
 
     if args.shap > 0:
+        matplotlib.use('TkAgg')
+        print("Generating plot...")
         images, _ = iter(test_loader).next()
         background = images[:100]
         test_images = images[100:100 + args.shap]
 
-        e = shap.DeepExplainer(model, background)
-        shap_values = e.shap_values(test_images)
+        # pylint: disable=protected-access
+        shap.explainers._deep.deep_pytorch.op_handler['Clamp'] = \
+            shap.explainers._deep.deep_pytorch.passthrough
+        shap.explainers._deep.deep_pytorch.op_handler['Empty'] = \
+            shap.explainers._deep.deep_pytorch.passthrough
+        shap.explainers._deep.deep_pytorch.op_handler['Floor'] = \
+            shap.explainers._deep.deep_pytorch.passthrough
+        shap.explainers._deep.deep_pytorch.op_handler['Quantize'] = \
+            shap.explainers._deep.deep_pytorch.passthrough
+        shap.explainers._deep.deep_pytorch.op_handler['Scaler'] = \
+            shap.explainers._deep.deep_pytorch.passthrough
+        # pylint: enable=protected-access
+        e = shap.DeepExplainer(model.to(args.device), background.to(args.device))
+        shap_values = e.shap_values(test_images.to(args.device))
         shap_numpy = [np.swapaxes(np.swapaxes(s, 1, -1), 1, 2) for s in shap_values]
         test_numpy = np.swapaxes(np.swapaxes(test_images.numpy(), 1, -1), 1, 2)
         # Plot the feature attributions
@@ -1095,8 +1171,10 @@ def summarize_model(model, dataset, which_summary, filename='model'):
     if which_summary.startswith('png'):
         model_summaries.draw_img_classifier_to_file(model, filename + '.png', dataset,
                                                     which_summary == 'png_w_params')
-    elif which_summary == 'onnx':
-        model_summaries.export_img_classifier_to_onnx(model, filename + '.onnx', dataset)
+    elif which_summary in ['onnx', 'onnx_simplified']:
+        ai8x.onnx_export_prep(model, simplify=(which_summary == 'onnx_simplified'))
+        model_summaries.export_img_classifier_to_onnx(model, filename + '.onnx', dataset,
+                                                      opset_version=11)
     else:
         distiller.model_summary(model, which_summary, dataset)
 

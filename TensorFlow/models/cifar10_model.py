@@ -10,8 +10,9 @@
 cifar10 network for AI85/AI86
 """
 import tensorflow as tf
+
 # AI8xTF sub-classes
-import ai8xTF   # pylint: disable=import-error
+import ai8xTF  # pylint: disable=import-error
 
 model = tf.keras.models.Sequential([
     tf.keras.Input(shape=(32, 32, 3)),

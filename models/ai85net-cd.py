@@ -10,6 +10,7 @@
 Cats and Dogs classification network for AI85
 """
 import torch.nn as nn
+
 import ai8x
 
 
@@ -18,7 +19,7 @@ class AI85CatsDogsNet(nn.Module):
     Define CNN model for image classification.
     """
     def __init__(self, num_classes=2, num_channels=3, dimensions=(64, 64),
-                 fc_inputs=30, bias=False):
+                 fc_inputs=30, bias=False, **kwargs):
         super().__init__()
 
         # AI85 Limits
@@ -28,31 +29,31 @@ class AI85CatsDogsNet(nn.Module):
         dim = dimensions[0]
 
         self.conv1 = ai8x.FusedConv2dReLU(num_channels, 15, 3,
-                                          padding=1, bias=bias)
+                                          padding=1, bias=bias, **kwargs)
         # padding 1 -> no change in dimensions -> 15x64x64
 
         pad = 2 if dim == 28 else 1
         self.conv2 = ai8x.FusedMaxPoolConv2dReLU(15, 30, 3, pool_size=2, pool_stride=2,
-                                                 padding=pad, bias=bias)
+                                                 padding=pad, bias=bias, **kwargs)
         dim //= 2  # pooling, padding 0 -> 30x32x32
         if pad == 2:
             dim += 2  # padding 2 -> 30x16x16
 
         self.conv3 = ai8x.FusedMaxPoolConv2dReLU(30, 60, 3, pool_size=2, pool_stride=2, padding=1,
-                                                 bias=bias)
+                                                 bias=bias, **kwargs)
         dim //= 2  # pooling, padding 0 -> 60x16x16
 
         self.conv4 = ai8x.FusedMaxPoolConv2dReLU(60, 30, 3, pool_size=2, pool_stride=2, padding=1,
-                                                 bias=bias)
+                                                 bias=bias, **kwargs)
         dim //= 2  # pooling, padding 0 -> 30x8x8
 
         self.conv5 = ai8x.FusedMaxPoolConv2dReLU(30, 30, 3, pool_size=2, pool_stride=2, padding=1,
-                                                 bias=bias)
+                                                 bias=bias, **kwargs)
         dim //= 2  # pooling, padding 0 -> 30x4x4
 
-        self.conv6 = ai8x.FusedConv2dReLU(30, fc_inputs, 3, padding=1, bias=bias)
+        self.conv6 = ai8x.FusedConv2dReLU(30, fc_inputs, 3, padding=1, bias=bias, **kwargs)
 
-        self.fc = ai8x.Linear(fc_inputs*dim*dim, num_classes, bias=True)
+        self.fc = ai8x.Linear(fc_inputs*dim*dim, num_classes, bias=True, **kwargs)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):

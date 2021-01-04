@@ -10,16 +10,17 @@
 """
 Train a Keras sequential model
 """
+import argparse
+import fnmatch
+import os
+import random as rn
+import sys
 from datetime import datetime
 from pydoc import locate
-import sys
-import random as rn
 from random import randint
-import os
-import fnmatch
-import argparse
-import tensorflow as tf
+
 import numpy as np
+import tensorflow as tf
 
 # following piece it to init seed to make reproducible results
 os.environ['PYTHONHASHSEED'] = '0'
@@ -268,11 +269,11 @@ if __name__ == '__main__':
     valid_images = valid_images[pattern]
     valid_labels = valid_labels[pattern]
 
-    # Normalize data to [-0.5, 0.5] range
-    print('Normalize image to [-0.5,0.5] range')
-    train_images = train_images/256.0
-    valid_images = valid_images/256.0
-    test_images = test_images/256.0
+    # Normalize data to [-1, 1] range
+    print('Normalize image to [-1.0,1.0] range')
+    train_images = train_images/128.0
+    valid_images = valid_images/128.0
+    test_images = test_images/128.0
 
     # print("train_images min:", train_images.min())
     # print("train_image max:", train_images.max())
@@ -431,7 +432,7 @@ if __name__ == '__main__':
         form, sample_image = reformat_sample(sample_image, channelfirst, swap)
 
         np.save(os.path.join(expdir, 'sampledata'),
-                np.array(sample_image * 256, dtype=np.int32))
+                np.array(sample_image * 128, dtype=np.int32))
         fn = open(os.path.join(expdir, 'sampledata.log'), 'w+')
         print(f'index: {index}\nactual class:{test_labels[index]}')
         fn.writelines(f'index: {index}\nactual class:{test_labels[index]}\n')

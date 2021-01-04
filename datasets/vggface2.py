@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -70,7 +70,7 @@ class VGGFace2Dataset(data.Dataset):
 
     def __normalize_data(self, data_item):  # pylint: disable=no-self-use
         data_item = data_item.astype(np.float32)
-        data_item /= 255
+        data_item /= 256
         return data_item
 
     def __len__(self):

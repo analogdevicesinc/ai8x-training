@@ -10,15 +10,17 @@
 """
 Evaluate an ONNX model with the model test dataset
 """
+import argparse
+import fnmatch
+import os
+import random as rn
+import sys
 from datetime import datetime
 from pydoc import locate
-import sys
-import random as rn
-import os
-import fnmatch
-import argparse
-import tensorflow as tf
+
 import numpy as np
+import tensorflow as tf
+
 import onnxruntime as rt
 
 # following piece it to init seed to make reproducable results
@@ -127,11 +129,11 @@ if __name__ == '__main__':
     print("test_images shape:", test_images.shape)
     print("test_labels shape:", test_labels.shape)
 
-    # Normalize data to [-0.5, 0.5] range
-    print('Normalize image to [-0.5,0.5] range')
-    train_images = train_images/256.0
-    valid_images = valid_images/256.0
-    test_images = test_images/256.0
+    # Normalize data to [-1.0, 1.0] range
+    print('Normalize image to [-1.0,1.0] range')
+    train_images = train_images/128.0
+    valid_images = valid_images/128.0
+    test_images = test_images/128.0
 
     if nchw:
         ndim = train_images.ndim

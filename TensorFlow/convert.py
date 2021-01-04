@@ -12,5 +12,4 @@ Call tf2onnx.convert
 """
 from tf2onnx import convert
 
-
 convert.main()

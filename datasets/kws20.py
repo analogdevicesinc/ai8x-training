@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2018-2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -28,14 +28,17 @@ import errno
 import hashlib
 import os
 import tarfile
-import warnings
 import time
-import librosa
+import warnings
+
 import numpy as np
 import torch
-from torchvision import transforms
 from torch.utils.model_zoo import tqdm
+from torchvision import transforms
+
+import librosa
 from six.moves import urllib
+
 import ai8x
 
 
@@ -48,7 +51,7 @@ class KWS:
     root (string): Root directory of dataset where ``KWS/processed/dataset.pt``
         exist.
     classes(array): List of keywords to be used.
-    d_type(string): Option for the created dataset. ``train``, ``val``, ``test``.
+    d_type(string): Option for the created dataset. ``train`` or ``test``.
     n_augment(int, optional): Number of augmented samples added to the dataset from
         each sample by random modifications, i.e. stretching, shifting and random noise.
     transform (callable, optional): A function/transform that takes in an PIL image
@@ -69,14 +72,18 @@ class KWS:
                   'sheila': 24, 'six': 25, 'stop': 26, 'three': 27, 'tree': 28, 'two': 29,
                   'up': 30, 'visual': 31, 'wow': 32, 'yes': 33, 'zero': 34}
 
-    def __init__(self, root, classes, d_type, t_type, transform=None, download=False):
+    def __init__(self, root, classes, d_type, t_type, transform=None, quantization_scheme=None,
+                 augmentation=None, download=False):
 
         self.root = root
         self.classes = classes
         self.d_type = d_type
         self.t_type = t_type
         self.transform = transform
-        self.data_file = 'dataset.pt'
+        self.data_file = 'dataset2.pt'
+
+        self.__parse_quantization(quantization_scheme)
+        self.__parse_augmentation(augmentation)
 
         if download:
             self.__download()
@@ -102,6 +109,41 @@ class KWS:
         """Folder for the processed data.
         """
         return os.path.join(self.root, self.__class__.__name__, 'processed')
+
+    def __parse_quantization(self, quantization_scheme):
+        if quantization_scheme:
+            self.quantization = quantization_scheme
+            if 'bits' not in self.quantization:
+                self.quantization['bits'] = 8
+            if 'compand' not in self.quantization:
+                self.quantization['compand'] = False
+            elif 'mu' not in self.quantization:
+                self.quantization['mu'] = 10
+        else:
+            print('No define quantization schema!, ',
+                  'Number of bits set to 8.')
+            self.quantization = {'bits': 8, 'compand': False}
+
+    def __parse_augmentation(self, augmentation):
+        self.augmentation = augmentation
+        if augmentation:
+            if 'aug_num' not in augmentation:
+                print('No key `aug_num` in input augmentation dictionary! ',
+                      'It is set to 0.')
+                self.augmentation['aug_num'] = 0
+            else:
+                if 'noise_var' not in augmentation:
+                    print('No key `noise_var` in input augmentation dictionary! ',
+                          'It is set to defaults: [Min: 0., Max: 1.]')
+                    self.augmentation['noise_var'] = {'min': 0., 'max': 1.}
+                if 'shift' not in augmentation:
+                    print('No key `shift` in input augmentation dictionary! '
+                          'It is set to defaults: [Min:-0.1, Max: 0.1]')
+                    self.augmentation['shift'] = {'min': -0.1, 'max': 0.1}
+                if 'strech' not in augmentation:
+                    print('No key `strech` in input augmentation dictionary! '
+                          'It is set to defaults: [Min: 0.8, Max: 1.3]')
+                    self.augmentation['strech'] = {'min': 0.8, 'max': 1.3}
 
     def __download(self):
 
@@ -212,10 +254,8 @@ class KWS:
     def __filter_dtype(self):
         if self.d_type == 'train':
             idx_to_select = (self.data_type == 0)[:, -1]
-        elif self.d_type == 'val':
-            idx_to_select = (self.data_type == 1)[:, -1]
         elif self.d_type == 'test':
-            idx_to_select = (self.data_type == 2)[:, -1]
+            idx_to_select = (self.data_type == 1)[:, -1]
         else:
             print('Unknown data type: %s' % self.d_type)
             return
@@ -291,9 +331,12 @@ class KWS:
     def augment(self, audio, fs, verbose=False):
         """Augments audio by adding random noise, shift and stretch ratio.
         """
-        random_noise_var_coeff = np.random.uniform(0, 1)
-        random_shift_time = np.random.uniform(-0.1, 0.1)
-        random_strech_coeff = np.random.uniform(0.8, 1.3)
+        random_noise_var_coeff = np.random.uniform(self.augmentation['noise_var']['min'],
+                                                   self.augmentation['noise_var']['max'])
+        random_shift_time = np.random.uniform(self.augmentation['shift']['min'],
+                                              self.augmentation['shift']['max'])
+        random_strech_coeff = np.random.uniform(self.augmentation['strech']['min'],
+                                                self.augmentation['strech']['max'])
 
         aug_audio = self.stretch(audio, random_strech_coeff)
         aug_audio = self.shift(aug_audio, random_shift_time, fs)
@@ -307,96 +350,106 @@ class KWS:
         """Calls `augment` function for n_augment times for given audio data.
         Finally the original audio is added to have (n_augment+1) audio data.
         """
-        aug_audio = [self.augment(audio, fs, verbose) for i in range(n_augment)]
+        aug_audio = [self.augment(audio, fs, verbose=verbose) for i in range(n_augment)]
         aug_audio.insert(0, audio)
         return aug_audio
 
     @staticmethod
-    def quantize_audio(data):
-        """quantize audio to 8 bit
+    def compand(data, mu=255):
+        """Compand the signal level to warp from Laplacian distribution to uniform distribution"""
+        data = np.sign(data) * np.log(1 + mu*np.abs(data)) / np.log(1 + mu)
+        return data
+
+    @staticmethod
+    def quantize_audio(data, num_bits=8, compand=False, mu=10):
+        """quantize audio
         """
-        step_size = 2.0 / 256.0
+        if compand:
+            data = KWS.compand(data, mu)
+
+        step_size = 2.0 / 2**(num_bits)
+        max_val = 2**(num_bits) - 1
         q_data = np.round((data - (-1.0)) / step_size)
-        q_data = np.clip(q_data, 0, 255)
+        q_data = np.clip(q_data, 0, max_val)
         return np.uint8(q_data)
 
-    def __gen_datasets(self):
+    def __gen_datasets(self, exp_len=16384, row_len=128, overlap_ratio=0):
         print('Generating dataset from raw data samples for the first time. ')
         print('Warning: This process could take an hour!')
         with warnings.catch_warnings():
             warnings.simplefilter('error')
 
-            test_data_path = self.raw_folder
-            lst = os.listdir(test_data_path)
-            lst = sorted(lst)
-            labels = [d for d in lst if os.path.isdir(os.path.join(test_data_path, d))
+            lst = sorted(os.listdir(self.raw_folder))
+            labels = [d for d in lst if os.path.isdir(os.path.join(self.raw_folder, d))
                       and d[0].isalpha()]
 
             # PARAMETERS
-            data_len = 128 * 128
-            aug_num = 2
+            overlap = int(np.ceil(row_len * overlap_ratio))
+            num_rows = int(np.ceil(exp_len / (row_len - overlap)))
+            data_len = int((num_rows*row_len - (num_rows-1)*overlap))
             print('data_len: %s' % data_len)
 
             # show the size of dataset for each keyword
             print('------------- Label Size ---------------')
             for i, label in enumerate(labels):
-                records = os.listdir(os.path.join(test_data_path, label))
-                print('%8s:  \t%d' % (label, len(records)))
+                record_list = os.listdir(os.path.join(self.raw_folder, label))
+                print('%8s:  \t%d' % (label, len(record_list)))
             print('------------------------------------------')
 
             for i, label in enumerate(labels):
-
                 print(f'Processing the label: {label}. {i + 1} of {len(labels)}')
-                records = os.listdir(os.path.join(test_data_path, label))
-                records = sorted(records)
+                record_list = sorted(os.listdir(os.path.join(self.raw_folder, label)))
 
-                # dimension: 128x128
-                data_in = np.empty(((aug_num + 1) * len(records), 128, 128), dtype=np.uint8)
-                data_type = np.empty(((aug_num + 1) * len(records), 1), dtype=np.uint8)
+                # dimension: row_length x number_of_rows
+                data_in = np.empty(((self.augmentation['aug_num'] + 1) * len(record_list), row_len,
+                                    num_rows), dtype=np.uint8)
+                data_type = np.empty(((self.augmentation['aug_num'] + 1) * len(record_list), 1),
+                                     dtype=np.uint8)
                 # create data classes
-                data_class = np.full(((aug_num + 1) * len(records), 1), i, dtype=np.uint8)
+                data_class = np.full(((self.augmentation['aug_num'] + 1) * len(record_list), 1), i,
+                                     dtype=np.uint8)
 
-                time1 = time.time()
-                traincount = 0
-                validatecount = 0
-                testcount = 0
-                for r, record in enumerate(records):
-
+                time_s = time.time()
+                train_count = 0
+                test_count = 0
+                for r, record_name in enumerate(record_list):
                     if r % 1000 == 0:
-                        print('\t%d of %d' % (r + 1, len(records)))
+                        print('\t%d of %d' % (r + 1, len(record_list)))
 
-                    if hash(record) % 10 < 7:
-                        d_typ = np.uint8(0)  # train
-                        traincount += 1
-                    elif hash(record) % 10 < 9:
-                        d_typ = np.uint8(1)  # val
-                        validatecount += 1
+                    if hash(record_name) % 10 < 9:
+                        d_typ = np.uint8(0)  # train+val
+                        train_count += 1
                     else:
-                        d_typ = np.uint8(2)  # test
-                        testcount += 1
+                        d_typ = np.uint8(1)  # test
+                        test_count += 1
 
-                    record_pth = os.path.join(test_data_path, label, record)
-                    y, fs = librosa.load(record_pth, offset=0, sr=None)
-                    audio_list = self.augment_multiple(y, fs, aug_num)
-                    for n_a, y in enumerate(audio_list):
-                        # store set type: train, validate or test
-                        data_type[(aug_num + 1) * r + n_a, 0] = d_typ
-                        if y.size >= data_len:
-                            y = y[:data_len]
-                        else:
-                            y = np.pad(y, [0, data_len - y.size], 'constant')
+                    record_pth = os.path.join(self.raw_folder, label, record_name)
+                    record, fs = librosa.load(record_pth, offset=0, sr=None)
+                    audio_seq_list = self.augment_multiple(record, fs,
+                                                           self.augmentation['aug_num'])
+                    for n_a, audio_seq in enumerate(audio_seq_list):
+                        # store set type: train+validate or test
+                        data_type[(self.augmentation['aug_num'] + 1) * r + n_a, 0] = d_typ
 
                         # Write audio 128x128=16384 samples without overlap
-                        for j in range(128):
-                            audio_seq1 = y[(j * 128):(j * 128 + 128)]
+                        for n_r in range(num_rows):
+                            start_idx = n_r*(row_len - overlap)
+                            end_idx = start_idx + row_len
+                            audio_chunk = audio_seq[start_idx:end_idx]
+                            # pad zero if the length of the chunk is smaller than row_len
+                            audio_chunk = np.pad(audio_chunk, [0, row_len-audio_chunk.size])
                             # store input data after quantization
-                            data_in[(aug_num + 1) * r + n_a, :, j] = self.quantize_audio(
-                                audio_seq1)
+                            data_idx = (self.augmentation['aug_num'] + 1) * r + n_a
+                            data_in[data_idx, :, n_r] = \
+                                KWS.quantize_audio(audio_chunk,
+                                                   num_bits=self.quantization['bits'],
+                                                   compand=self.quantization['compand'],
+                                                   mu=self.quantization['mu'])
 
-                dur = time.time() - time1
+                dur = time.time() - time_s
                 print('Done in %.3fsecs.' % dur)
                 print(data_in.shape)
-                time1 = time.time()
+                time_s = time.time()
                 if i == 0:
                     data_in_all = data_in.copy()
                     data_class_all = data_class.copy()
@@ -405,7 +458,7 @@ class KWS:
                     data_in_all = np.concatenate((data_in_all, data_in), axis=0)
                     data_class_all = np.concatenate((data_class_all, data_class), axis=0)
                     data_type_all = np.concatenate((data_type_all, data_type), axis=0)
-                dur = time.time() - time1
+                dur = time.time() - time_s
                 print('Data concat done in %.3fsecs.' % dur)
 
             data_in_all = torch.from_numpy(data_in_all)
@@ -416,7 +469,7 @@ class KWS:
             torch.save(mfcc_dataset, os.path.join(self.processed_folder, self.data_file))
 
         print('Dataset created!')
-        print('Training: %d,  Validation: %d, Test: %d' % (traincount, validatecount, testcount))
+        print('Training+Validation: %d,  Test: %d' % (train_count, test_count))
 
 
 class KWS_20(KWS):
@@ -438,10 +491,10 @@ def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6):
     The dataset originally includes 30 keywords. A dataset is formed with 7 or 21 classes which
     includes 6 or 20 of the original keywords and the rest of the
     dataset is used to form the last class, i.e class of the others.
-    The dataset is split into training, validation and test sets. 80:10:10 training:validation:test
+    The dataset is split into training+validation and test sets. 90:10 training+validation:test
     split is used by default.
 
-    Data is augmented to 3x duplicate data by randomly stretch, shift and randomly add noise where
+    Data is augmented to 3x duplicate data by random stretch/shift and randomly adding noise where
     the stretching coefficient, shift amount and noise variance are randomly selected between
     0.8 and 1.3, -0.1 and 0.1, 0 and 1, respectively.
     """
@@ -459,15 +512,22 @@ def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6):
     else:
         raise ValueError(f'Unsupported num_classes {num_classes}')
 
+    augmentation = {'aug_num': 2}
+    quantization_scheme = {'compand': False, 'mu': 10}
+
     if load_train:
         train_dataset = KWS(root=data_dir, classes=classes, d_type='train',
-                            transform=transform, t_type='keyword', download=True)
+                            transform=transform, t_type='keyword',
+                            quantization_scheme=quantization_scheme,
+                            augmentation=augmentation, download=True)
     else:
         train_dataset = None
 
     if load_test:
-        test_dataset = KWS(root=data_dir, classes=classes, d_type='val',
-                           transform=transform, t_type='keyword', download=True)
+        test_dataset = KWS(root=data_dir, classes=classes, d_type='test',
+                           transform=transform, t_type='keyword',
+                           quantization_scheme=quantization_scheme,
+                           augmentation=augmentation, download=True)
 
         if args.truncate_testset:
             test_dataset.data = test_dataset.data[:1]
@@ -486,10 +546,10 @@ def KWS_20_get_datasets(data, load_train=True, load_test=True):
     The dataset originally includes 30 keywords. A dataset is formed with 21 classes which includes
     20 of the original keywords and the rest of the dataset is used to form the last class, i.e.,
     class of the others.
-    The dataset is split into training, validation and test sets. 80:10:10 training:validation:test
+    The dataset is split into training+validation and test sets. 90:10 training+validation:test
     split is used by default.
 
-    Data is augmented to 3x duplicate data by randomly stretch, shift and randomly add noise where
+    Data is augmented to 3x duplicate data by random stretch/shift and randomly adding noise where
     the stretching coefficient, shift amount and noise variance are randomly selected between
     0.8 and 1.3, -0.1 and 0.1, 0 and 1, respectively.
     """

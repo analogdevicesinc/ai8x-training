@@ -24,9 +24,10 @@
 """
 mnist dataset.
 """
-from tensorflow.keras import datasets
-from sklearn.model_selection import train_test_split
 import numpy as np
+from tensorflow.keras import datasets
+
+from sklearn.model_selection import train_test_split
 
 
 def mnist_get_datasets(data_dir):
