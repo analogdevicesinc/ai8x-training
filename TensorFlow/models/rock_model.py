@@ -10,8 +10,9 @@
 rock, paper, scissors network for AI85/AI86
 """
 import tensorflow as tf
+
 # AI8xTF sub-classes
-import ai8xTF   # pylint: disable=import-error
+import ai8xTF  # pylint: disable=import-error
 
 IMG_SIZE = 64  # All images will be resized to 120x120
 

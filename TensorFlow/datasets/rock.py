@@ -24,11 +24,13 @@
 """
 rock, paper, scissors dataset.
 """
-import os
 import errno
-import tensorflow as tf
-import tensorflow_datasets as tfds
+import os
+
 import numpy as np
+import tensorflow as tf
+
+import tensorflow_datasets as tfds
 
 
 def rock_get_datasets(data_dir):

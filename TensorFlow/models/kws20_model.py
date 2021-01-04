@@ -10,6 +10,7 @@
 Keyword spotting network for AI85/AI86
 """
 import tensorflow as tf
+
 # AI8xTF sub-classes
 import ai8xTF  # pylint: disable=import-error
 

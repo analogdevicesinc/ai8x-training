@@ -24,9 +24,10 @@
 """
 fashionmnist dataset.
 """
-import tensorflow as tf
-from sklearn.model_selection import train_test_split
 import numpy as np
+import tensorflow as tf
+
+from sklearn.model_selection import train_test_split
 
 
 def fashionmnist_get_datasets(data_dir):

@@ -12,6 +12,7 @@ Networks that fit into AI84
 Optionally quantize/clamp activations
 """
 import torch.nn as nn
+
 import ai8x
 
 
@@ -20,7 +21,7 @@ class AI85Net5(nn.Module):
     5-Layer CNN that uses max parameters in AI84
     """
     def __init__(self, num_classes=10, num_channels=3, dimensions=(28, 28),
-                 planes=60, pool=2, fc_inputs=12, bias=False):
+                 planes=60, pool=2, fc_inputs=12, bias=False, **kwargs):
         super().__init__()
 
         # Limits
@@ -31,30 +32,30 @@ class AI85Net5(nn.Module):
         dim = dimensions[0]
 
         self.conv1 = ai8x.FusedConv2dReLU(num_channels, planes, 3,
-                                          padding=1, bias=bias)
+                                          padding=1, bias=bias, **kwargs)
         # padding 1 -> no change in dimensions -> MNIST: 28x28 | CIFAR: 32x32
 
         pad = 2 if dim == 28 else 1
         self.conv2 = ai8x.FusedMaxPoolConv2dReLU(planes, planes, 3, pool_size=2, pool_stride=2,
-                                                 padding=pad, bias=bias)
+                                                 padding=pad, bias=bias, **kwargs)
         dim //= 2  # pooling, padding 0 -> MNIST: 14x14 | CIFAR: 16x16
         if pad == 2:
             dim += 2  # MNIST: padding 2 -> 16x16 | CIFAR: padding 1 -> 16x16
 
         self.conv3 = ai8x.FusedMaxPoolConv2dReLU(planes, 128-planes-fc_inputs, 3,
                                                  pool_size=2, pool_stride=2, padding=1,
-                                                 bias=bias)
+                                                 bias=bias, **kwargs)
         dim //= 2  # pooling, padding 0 -> 8x8
         # padding 1 -> no change in dimensions
 
         self.conv4 = ai8x.FusedAvgPoolConv2dReLU(128-planes-fc_inputs,
                                                  fc_inputs, 3,
                                                  pool_size=pool, pool_stride=2, padding=1,
-                                                 bias=bias)
+                                                 bias=bias, **kwargs)
         dim //= pool  # pooling, padding 0 -> 4x4
         # padding 1 -> no change in dimensions
 
-        self.fc = ai8x.Linear(fc_inputs*dim*dim, num_classes, bias=True, wide=True)
+        self.fc = ai8x.Linear(fc_inputs*dim*dim, num_classes, bias=True, wide=True, **kwargs)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -85,7 +86,7 @@ class AI85NetExtraSmall(nn.Module):
     Minimal CNN for minimum energy per inference for MNIST
     """
     def __init__(self, num_classes=10, num_channels=3, dimensions=(28, 28),
-                 fc_inputs=8, bias=False):
+                 fc_inputs=8, bias=False, **kwargs):
         super().__init__()
 
         # AI84 Limits
@@ -95,23 +96,23 @@ class AI85NetExtraSmall(nn.Module):
         dim = dimensions[0]
 
         self.conv1 = ai8x.FusedConv2dReLU(num_channels, 8, 3,
-                                          padding=1, bias=bias)
+                                          padding=1, bias=bias, **kwargs)
         # padding 1 -> no change in dimensions -> 8x28x28
 
         pad = 2 if dim == 28 else 1
         self.conv2 = ai8x.FusedMaxPoolConv2dReLU(8, 8, 3, pool_size=2, pool_stride=2,
-                                                 padding=pad, bias=bias)
+                                                 padding=pad, bias=bias, **kwargs)
         dim //= 2  # pooling, padding 0 -> 8x14x14
         if pad == 2:
             dim += 2  # padding 2 -> 8x16x16
 
         self.conv3 = ai8x.FusedMaxPoolConv2dReLU(8, fc_inputs, 3,
                                                  pool_size=4, pool_stride=4, padding=1,
-                                                 bias=bias)
+                                                 bias=bias, **kwargs)
         dim //= 4  # pooling, padding 0 -> 8x4x4
         # padding 1 -> 8x4x4
 
-        self.fc = ai8x.Linear(fc_inputs*dim*dim, num_classes, bias=True, wide=True)
+        self.fc = ai8x.Linear(fc_inputs*dim*dim, num_classes, bias=True, wide=True, **kwargs)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):

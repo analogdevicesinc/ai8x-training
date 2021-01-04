@@ -9,12 +9,14 @@
 """
 Graphical output routines
 """
+import io
 import itertools
 import re
 from textwrap import wrap
-import matplotlib.figure as matfig
-from matplotlib.backends.backend_tkagg import FigureCanvasAgg
+
 import numpy as np
+
+import matplotlib.figure as matfig
 
 
 def confusion_matrix(cm, labels, normalize=False):
@@ -36,7 +38,6 @@ def confusion_matrix(cm, labels, normalize=False):
     np.set_printoptions(precision=2)
 
     fig = matfig.Figure(figsize=(5, 5), dpi=96, facecolor='w', edgecolor='k')
-    canvas = FigureCanvasAgg(fig)
     ax = fig.add_subplot(1, 1, 1)
     ax.imshow(cm, cmap='jet')
 
@@ -66,7 +67,11 @@ def confusion_matrix(cm, labels, normalize=False):
                 fontsize=FONTSIZE, verticalalignment='center', color='white')
     fig.set_tight_layout(True)
 
-    canvas.draw()
-    data = np.fromstring(canvas.tostring_rgb(), dtype=np.uint8, sep='')
-    data = data.reshape(canvas.get_width_height()[::-1] + (3,))
+    buf = io.BytesIO()
+    fig.savefig(buf, format='raw', dpi='figure')
+    buf.seek(0)
+    data = np.frombuffer(buf.getvalue(), dtype=np.uint8)
+    data = np.reshape(np.frombuffer(buf.getvalue(), dtype=np.uint8),
+                      newshape=(int(fig.bbox.bounds[3]), int(fig.bbox.bounds[2]), -1))
+    buf.close()
     return data

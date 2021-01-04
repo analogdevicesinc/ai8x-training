@@ -10,8 +10,10 @@
 """
 import os
 import sys
-import tensorflow as tf
+
 import numpy as np
+import tensorflow as tf
+
 sys.path.append(os.path.join('..', '..'))
 import ai8xTF  # pylint: disable=import-error,wrong-import-order,wrong-import-position  # noqa:E402
 

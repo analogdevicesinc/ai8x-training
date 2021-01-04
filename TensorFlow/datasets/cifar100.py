@@ -24,9 +24,10 @@
 """
 cifar100 dataset.
 """
-from tensorflow.keras import datasets
-from sklearn.model_selection import train_test_split
 import numpy as np
+from tensorflow.keras import datasets
+
+from sklearn.model_selection import train_test_split
 
 
 def cifar100_get_datasets(data_dir):

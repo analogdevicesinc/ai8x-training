@@ -18,7 +18,7 @@ This document describes the modeling of networks using **TensorFlow 2 Keras API*
 
 ## Setup
 
-1. Install NVIDIA GPU drivers (CUDA 10.1 or CUDA 10.2), CUDA Toolkit, CUPTI and cuDNN SDK 7.6 as described in Software requirements for TensorFlow: https://www.tensorflow.org/install/gpu
+1. Install NVIDIA GPU drivers (CUDA 10.1, CUDA 10.2, or CUDA 11.0), CUDA Toolkit, CUPTI and cuDNN SDK 7.6 as described in Software requirements for TensorFlow: https://www.tensorflow.org/install/gpu
 
 2. Make sure that `~/.bash_profile` includes path to CUDA and CUPTI:
 
@@ -177,8 +177,6 @@ datasets/rock.py
 ```
 
 Datasets include training, validation and test images and labels. Images are in the [–128,127] range when created by the dataset scripts.
-
-In the training script, data points are normalized to [–0.5, 0.5] and fed to the network. However, in the synthesis script, samples are expected in the [–128,127] range and normalized to the [–1,+1] range to mimic hardware. To accommodate ×2 scaling, the first layer weights are scaled by 1/2 by default, unless `--keep-first` is selected in synthesis.
 
 ## Examples
 
@@ -1006,7 +1004,6 @@ $ (ai8x-synthesis) ./ai8xize.py --verbose -L --top-level cnn --test-dir tensorfl
 
 | Parameter                        | Description                                                  |
 | -------------------------------- | ------------------------------------------------------------ |
-| --keep-first                     | Applies same scale factor of weights as specified in `—scale` to the first layer. When not specified (default), half of the scale factor is applied to the first layer. See the section _Datasets_ in this document. |
 | --scale                          | Scale factor for weight quantization (default = 1.0)         |
 | --generate-dequantized-onnx-file | Generates a dequantized copy of the ONNX file to be used for evaluation. See the section _Post-Training Model Quantization_ in this document. |
 
