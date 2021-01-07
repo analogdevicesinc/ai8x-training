@@ -243,7 +243,7 @@ The next step differs depending on whether the system uses Linux with CUDA 11.1,
 (ai8x-training) $ pip3 install -r requirements-cu111.txt
 ```
 
-**For all other Pytorch systems, including CUDA 10.2 on Linux:**
+**For all other PyTorch systems, including CUDA 10.2 on Linux:**
 
 ```shell
 (ai8x-training) $ pip3 install -r requirements.txt
