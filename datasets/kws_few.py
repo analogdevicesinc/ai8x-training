@@ -36,12 +36,12 @@ import torch
 from torch.utils.model_zoo import tqdm
 from torchvision import transforms
 
+import kws_config
 import librosa
 import pytsmod as tsm
 from six.moves import urllib
 
 import ai8x
-import kws_config
 
 
 class KWS:
