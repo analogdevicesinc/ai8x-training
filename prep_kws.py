@@ -9,18 +9,17 @@ import os
 import random
 import shutil
 
-
 kwlist = ['backward', 'bed', 'bird', 'cat', 'dog', 'down', 'eight', 'five', 'follow', 'forward',
-		  'four', 'go', 'happy', 'house', 'learn', 'left', 'marvin', 'nine', 'no', 'off', 'on',
-		  'one', 'right', 'seven', 'sheila', 'six', 'stop', 'three', 'tree', 'two', 'up', 'visual',
-		  'wow', 'yes', 'zero', 'helplively']
+          'four', 'go', 'happy', 'house', 'learn', 'left', 'marvin', 'nine', 'no', 'off', 'on',
+          'one', 'right', 'seven', 'sheila', 'six', 'stop', 'three', 'tree', 'two', 'up', 'visual',
+          'wow', 'yes', 'zero', 'helplively']
 
 classes_1 = ['helplively']
 
 classes_5 = ['up', 'down', 'left', 'right', 'stop', 'go']
 
 classes_20 = ['up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one', 'two',
-			  'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero']
+              'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero']
 
 
 def prep_files(__kwlist):
