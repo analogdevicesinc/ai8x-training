@@ -23,7 +23,8 @@ model = tf.keras.models.Sequential([
         filters=15,
         kernel_size=3,
         strides=1,
-        padding_size=1
+        padding_size=1,
+        use_bias=False
         ),
     ai8xTF.FusedMaxPoolConv2DReLU(
         filters=30,
@@ -31,7 +32,8 @@ model = tf.keras.models.Sequential([
         strides=1,
         padding_size=1,
         pool_size=2,
-        pool_strides=2
+        pool_strides=2,
+        use_bias=False
         ),
     tf.keras.layers.Dropout(0.2),
     ai8xTF.FusedMaxPoolConv2DReLU(
@@ -40,7 +42,8 @@ model = tf.keras.models.Sequential([
         strides=1,
         padding_size=1,
         pool_size=2,
-        pool_strides=2
+        pool_strides=2,
+        use_bias=False
         ),
     ai8xTF.FusedMaxPoolConv2DReLU(
         filters=30,
@@ -48,7 +51,8 @@ model = tf.keras.models.Sequential([
         strides=1,
         padding_size=1,
         pool_size=2,
-        pool_strides=2
+        pool_strides=2,
+        use_bias=False
         ),
     ai8xTF.FusedMaxPoolConv2DReLU(
         filters=30,
@@ -56,17 +60,19 @@ model = tf.keras.models.Sequential([
         strides=1,
         padding_size=1,
         pool_size=2,
-        pool_strides=2
+        pool_strides=2,
+        use_bias=False
         ),
     ai8xTF.FusedConv2DReLU(
         filters=30,
         kernel_size=3,
         strides=1,
-        padding_size=1
+        padding_size=1,
+        use_bias=False
         ),
     tf.keras.layers.Flatten(),
     tf.keras.layers.Dropout(0.2),
-    ai8xTF.FusedDense(3, wide=True)
+    ai8xTF.FusedDense(3, wide=True, use_bias=False)
 ])
 
 lr_schedule = tf.keras.callbacks.ReduceLROnPlateau(
