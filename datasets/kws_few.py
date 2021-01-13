@@ -68,7 +68,6 @@ class KWS:
     fs = 16000
     class_dict = kws_config.class_dict
 
-
     def __init__(self, root, classes, d_type, t_type, transform=None, quantization_scheme=None,
                  augmentation=None, download=False):
 
