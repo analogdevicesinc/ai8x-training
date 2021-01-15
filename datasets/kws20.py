@@ -37,6 +37,7 @@ from torch.utils.model_zoo import tqdm
 from torchvision import transforms
 
 import librosa
+import pytsmod as tsm
 from six.moves import urllib
 
 import ai8x
@@ -118,7 +119,7 @@ class KWS:
             if 'compand' not in self.quantization:
                 self.quantization['compand'] = False
             elif 'mu' not in self.quantization:
-                self.quantization['mu'] = 10
+                self.quantization['mu'] = 255
         else:
             print('No define quantization schema!, ',
                   'Number of bits set to 8.')
@@ -338,7 +339,7 @@ class KWS:
         random_strech_coeff = np.random.uniform(self.augmentation['strech']['min'],
                                                 self.augmentation['strech']['max'])
 
-        aug_audio = self.stretch(audio, random_strech_coeff)
+        aug_audio = tsm.wsola(audio, random_strech_coeff)
         aug_audio = self.shift(aug_audio, random_shift_time, fs)
         aug_audio = self.add_white_noise(aug_audio, random_noise_var_coeff)
         if verbose:
@@ -361,8 +362,14 @@ class KWS:
         return data
 
     @staticmethod
-    def quantize_audio(data, num_bits=8, compand=False, mu=10):
-        """quantize audio
+    def expand(data, mu=255):
+        """Undo the companding"""
+        data = np.sign(data) * (1 / mu) * (np.power((1 + mu), np.abs(data)) - 1)
+        return data
+
+    @staticmethod
+    def quantize_audio(data, num_bits=8, compand=False, mu=255):
+        """Quantize audio
         """
         if compand:
             data = KWS.compand(data, mu)
@@ -371,6 +378,12 @@ class KWS:
         max_val = 2**(num_bits) - 1
         q_data = np.round((data - (-1.0)) / step_size)
         q_data = np.clip(q_data, 0, max_val)
+
+        if compand:
+            data_ex = (q_data - 2**(num_bits - 1)) / 2**(num_bits - 1)
+            data_ex = KWS.expand(data_ex)
+            q_data = np.round((data_ex - (-1.0)) / step_size)
+            q_data = np.clip(q_data, 0, max_val)
         return np.uint8(q_data)
 
     def __gen_datasets(self, exp_len=16384, row_len=128, overlap_ratio=0):
@@ -543,7 +556,7 @@ def KWS_20_get_datasets(data, load_train=True, load_test=True):
 
     The dataset is loaded from the archive file, so the file is required for this version.
 
-    The dataset originally includes 30 keywords. A dataset is formed with 21 classes which includes
+    The dataset originally includes 35 keywords. A dataset is formed with 21 classes which includes
     20 of the original keywords and the rest of the dataset is used to form the last class, i.e.,
     class of the others.
     The dataset is split into training+validation and test sets. 90:10 training+validation:test

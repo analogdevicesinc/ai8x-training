@@ -19,3 +19,4 @@ tf2onnx>=1.6.1
 onnxruntime>=1.3.0
 pydot>=1.4.1
 graphviz==0.10.1
+

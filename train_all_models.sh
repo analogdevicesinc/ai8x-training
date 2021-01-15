@@ -33,6 +33,9 @@ echo "-----------------------------"
 echo "Training kws20_v2 model"
 scripts/train_kws20_v2.sh
 echo "-----------------------------"
+echo "Training kws20_v3 model"
+scripts/train_kws20_v3.sh
+echo "-----------------------------"
 echo "Training faceid model"
 scripts/train_faceid.sh
 
