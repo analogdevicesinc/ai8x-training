@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_December 24, 2020_
+_January 14, 2020_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -55,7 +55,7 @@ https://docs.nvidia.com/cuda/wsl-user-guide/. However, please note that WSL2 wit
 
 When going beyond simple models, model training does not work well without CUDA hardware acceleration. The network loader (“izer”) does not require CUDA, and very simple models can also be trained on systems without CUDA.
 
-*Recommendation:* Unless TensorFlow support is required, install CUDA 11.1 on Ubuntu 20.04 LTS. Otherwise, install CUDA 10.2 on Ubuntu 18.04 LTS. See https://developer.nvidia.com/cuda-toolkit-archive.
+*Recommendation:* Install the latest version of CUDA 11 on Ubuntu 20.04 LTS. See https://developer.nvidia.com/cuda-toolkit-archive.
 
 *Note: When using multiple GPUs, the software will automatically use all available GPUs and distribute the workload. To prevent this, set the `CUDA_VISIBLE_DEVICES` environment variable. Use the `--gpus` command line argument to set the default GPU.*
 
@@ -63,7 +63,7 @@ When going beyond simple models, model training does not work well without CUDA 
 
 On a shared (multi-user) system that has previously been set up, only local installation is needed. CUDA and any `apt-get` or `brew` tasks are not necessary.
 
-The `screen` command can be used inside a remote terminal to disconnect a session from the controlling terminal, so that a long running training session doesn’t abort due to network issues, or local power saving. In addition, screen can log all console output to a text file.
+The `screen` command (or alternatively, the more powerful `tmux`) can be used inside a remote terminal to disconnect a session from the controlling terminal, so that a long running training session doesn’t abort due to network issues, or local power saving. In addition, screen can log all console output to a text file.
 
 Example:
 
@@ -74,7 +74,7 @@ targethost$
 Ctrl+A,D to disconnect
 ```
 
-`man screen` has more information.
+`man screen` and `man tux` describe the software in more detail.
 
 #### Recommended Software
 
@@ -235,9 +235,9 @@ $ source bin/activate
 (ai8x-training) $ pip3 install -U pip wheel setuptools
 ```
 
-The next step differs depending on whether the system uses Linux with CUDA 11.1, or any other setup.
+The next step differs depending on whether the system uses Linux with CUDA 11.x, or any other setup.
 
-For CUDA 11.1 on Linux:
+For CUDA 11.x on Linux:
 
 ```shell
 (ai8x-training) $ pip3 install -r requirements-cu111.txt
@@ -275,8 +275,10 @@ For minor updates, pull the latest code and install the updated wheels:
 (ai8x-training) $ git pull
 (ai8x-training) $ git submodule update --init
 (ai8x-training) $ pip3 install -U pip setuptools
-(ai8x-training) $ pip3 install -U -r requirements.txt # or requirements-cu111.txt with CUDA 11.1
+(ai8x-training) $ pip3 install -U -r requirements.txt # or requirements-cu111.txt with CUDA 11.x
 ```
+
+Updating Python frequently requires updating `pyenv` first. Should `pyenv install x.y.z`
 
 #### Synthesis Project
 
@@ -1325,19 +1327,19 @@ This key allows overriding of the processing sequence. The default is `0` for th
 
 `processors` specifies which processors will handle the input data. The processor map must match the number of input channels, and the input data format. For example, in CHW format, processors must be attached to different data memory instances.
 
-`processors` is specified as a 64-bit hexadecimal value.
+`processors` is specified as a 64-bit hexadecimal value. Dots (‘.’) and a leading ‘0x’ are ignored.
 
 *Note: When using multi-pass (i.e., using more than 64 channels), the number processors is an integer division of the channel count, rounded up. For example, 60 processors are specified for 120 channels.*
 
 Example for three processors 0, 4, and 8:
-	 `processors: 0x0000000000000111`
+	 `processors: 0x0000.0000.0000.0111`
 
 Example for four processors 0, 1, 2, and 3:
-​	 `processors: 0x000000000000000f`
+​	 `processors: 0x0000.0000.0000.000f`
 
 ##### `output_processors` (Optional)
 
-`output_processors` specifies which data memory instances and 32-bit word offsets to use for the layer’s output data. When not specified, this key defaults to the next layer’s `processors`, or, for the last layer, to the global `output_map`. `output_processors` is specified as a 64-bit hexadecimal value.
+`output_processors` specifies which data memory instances and 32-bit word offsets to use for the layer’s output data. When not specified, this key defaults to the next layer’s `processors`, or, for the last layer, to the global `output_map`. `output_processors` is specified as a 64-bit hexadecimal value. Dots (‘.’) and a leading ‘0x’ are ignored.
 
 ##### `out_offset` (Optional)
 
@@ -1386,6 +1388,7 @@ Element-wise operations default to two operands. This can be changed using the `
 ##### `eltwise` (Optional)
 
 Element-wise operations can also be added “in-flight” to `Conv2d`. In this case, the element-wise operation is specified using the `eltwise` key.
+*Note: On MAX78000, this is only supported for 64 channels, or up to 128 channels when only two operands are used. Use a separate layer for the element-wise operation when more operands or channels are needed instead of combining the element-wise operator with a convolution.*
 
 Example:
   `eltwise: add`
@@ -1536,7 +1539,8 @@ Example:
 
 ##### `write_gap` (Optional)
 
-`write_gap` specifies the number of words that should be skipped during write operations (i.e., write every *n*th word). This creates an interleaved output that can be used as the input for subsequent layers that use an element-wise operation, or to concatenate multiple inputs to form data with more than 64 channels.
+`write_gap` specifies the number of channels that should be skipped during write operations (this value is multiplied with the output multi-pass, i.e., write every *n*th word where *n = write_gap × output_multipass*). This creates an interleaved output that can be used as the input for subsequent layers that use an element-wise operation, or to concatenate multiple inputs to form data with more than 64 channels.
+Set `write_gap` to `1` to produce output for a subsequent two-input element-wise operation.
 
 Example:
 	`write_gap: 1`
@@ -2083,6 +2087,7 @@ The GitHub projects use the [GitHub Super-Linter](https://github.com/github/supe
 To run locally, create a clean copy of the repository and run the following command from the project directory (i.e., `ai8x-training` or `ai8x-synthesis`): 
 
 ```shell
+$ docker pull github/super-linter:latest
 $ docker run --rm -e RUN_LOCAL=true -e VALIDATE_MARKDOWN=false -e VALIDATE_PYTHON_BLACK=false -e VALIDATE_ANSIBLE=false -e VALIDATE_EDITORCONFIG=false -e FILTER_REGEX_EXCLUDE="attic/.*|inspect_ckpt.py" -v `pwd`:/tmp/lint github/super-linter
 ```
 
