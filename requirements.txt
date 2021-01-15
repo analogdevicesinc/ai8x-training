@@ -9,9 +9,10 @@ Pillow>=7
 shap>=0.34.0
 tk>=0.1.0
 sndfile>=0.2
-torch==1.7.0
-torchvision==0.8.1
+torch==1.7.1
+torchvision==0.8.2
 tensorboard==2.4.0
 numba<0.50.0
 opencv-python>=4.4.0
+pytsmod>=0.3.3
 -e distiller

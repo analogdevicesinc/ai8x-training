@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_December 4, 2020_
+_December 24, 2020_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -54,6 +54,8 @@ This software currently supports Ubuntu Linux 18.04 LTS and 20.04 LTS. The serve
 https://docs.nvidia.com/cuda/wsl-user-guide/. However, please note that WSL2 with CUDA is a pre-release and unexpected behavior may occur.*
 
 When going beyond simple models, model training does not work well without CUDA hardware acceleration. The network loader (“izer”) does not require CUDA, and very simple models can also be trained on systems without CUDA.
+
+*Recommendation:* Unless TensorFlow support is required, install CUDA 11.1 on Ubuntu 20.04 LTS. Otherwise, install CUDA 10.2 on Ubuntu 18.04 LTS. See https://developer.nvidia.com/cuda-toolkit-archive.
 
 *Note: When using multiple GPUs, the software will automatically use all available GPUs and distribute the workload. To prevent this, set the `CUDA_VISIBLE_DEVICES` environment variable. Use the `--gpus` command line argument to set the default GPU.*
 
@@ -233,19 +235,19 @@ $ source bin/activate
 (ai8x-training) $ pip3 install -U pip wheel setuptools
 ```
 
-The next step differs depending on whether the system uses Linux with CUDA 11.1, or any other setup, 
-and whether PyTorch or TensorFlow is used.
-For PyTorch CUDA 11.1 on Linux:
+The next step differs depending on whether the system uses Linux with CUDA 11.1, or any other setup, and whether PyTorch or TensorFlow is used.
+**For PyTorch CUDA 11.1 on Linux:**
+
 
 ```shell
 (ai8x-training) $ pip3 install -r requirements-cu111.txt
 ```
 
-For all other PyTorch setups, including CUDA 10.2 on Linux:
+**For all other PyTorch systems, including CUDA 10.2 on Linux:**
+
 ```shell
 (ai8x-training) $ pip3 install -r requirements.txt
 ```
-
 For TensorFlow (CUDA or CPU, all operating systems):
 
 ```shell
@@ -409,6 +411,16 @@ Data memory connections can be visualized as follows:
 All input data must be located in the data memory instance the processor can access. Conversely, output data can be written to any data memory instance inside the accelerator (but not to general purpose SRAM on the Arm microcontroller bus).
 
 The data memory instances inside the accelerator are single-port memories. This means that only one access operation can happen per clock cycle. When using the HWC data format (see [Channel Data Formats](#Channel-Data-Formats)), this means that each of the four processors sharing the data memory instance will receive one byte of data per clock cycle (since each 32-bit data word consists of four packed channels).
+
+##### Multi-Pass
+
+When data has more channels than active processors, “multi-pass” is used. Each processor works on more than one channel, using multiple sequential passes, and each data memory holds more than four channels.
+
+As data is read using multiple passes, and all available processor work in parallel, the first pass reads channels 0 through 63, the second pass reads channels 64 through 127, etc., assuming 64 processors are active.
+
+For example, if 192-channel data is read using 64 active processors, Data Memory 0 stores three 32-bit words: channels 0, 1, 2, 3 in the first word, 64, 65, 66, 67 in the second word, and 128, 129, 130, 131 in the third word. Data Memory 1 stores channels 4, 5, 6, 7 in the first word, 68, 69, 70, 71 in the second word, and 132, 133, 134, 135 in the third word, and so on. The first processor processes channel 0 in the first pass, channel 64 in the second pass, and channel 128 in the third pass.
+
+*Note: Multi-pass also works with channel counts that are not a multiple of 64, and can be used with less than 64 active processors.*
 
 ### Streaming Mode
 
@@ -1530,7 +1542,7 @@ Example:
 
 ##### `write_gap` (Optional)
 
-`write_gap` specifies the number of words that should be skipped during write operations (i.e., write every *n*th word). This creates an interleaved output that can be used as the input for subsequent layers that use element-wise operations.
+`write_gap` specifies the number of words that should be skipped during write operations (i.e., write every *n*th word). This creates an interleaved output that can be used as the input for subsequent layers that use an element-wise operation, or to concatenate multiple inputs to form data with more than 64 channels.
 
 Example:
 	`write_gap: 1`

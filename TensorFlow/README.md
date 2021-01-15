@@ -2,7 +2,7 @@
 
 # TensorFlow 2.3.0 Support with Keras API
 
-_September 9, 2020_
+*Jan. 13, 2020*
 
 ## Overview
 
@@ -18,9 +18,9 @@ This document describes the modeling of networks using **TensorFlow 2 Keras API*
 
 ## Setup
 
-1. Install NVIDIA GPU drivers (CUDA 10.1, CUDA 10.2, or CUDA 11.0), CUDA Toolkit, CUPTI and cuDNN SDK 7.6 as described in Software requirements for TensorFlow: https://www.tensorflow.org/install/gpu
+1. Install NVIDIA GPU drivers (CUDA 10.1, CUDA 10.2), CUDA Toolkit, CUPTI and cuDNN SDK 7.6 as described in Software requirements for TensorFlow: https://www.tensorflow.org/install/gpu
 
-2. Make sure that `~/.bash_profile` includes path to CUDA and CUPTI:
+2. Make sure that `~/.bash_profile` includes path to CUDA and CUPTI according to CUDA revision 10.1 or 10.2:
 
 ```shell
 export PATH="$PATH:/usr/local/cuda-10.1/bin"
