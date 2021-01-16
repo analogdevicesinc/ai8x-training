@@ -14,4 +14,5 @@ https://download.pytorch.org/whl/cu110/torchvision-0.8.2%2Bcu110-cp38-cp38-linux
 tensorboard==2.3.0
 numba<0.50.0
 opencv-python>=4.4.0
+pytsmod>=0.3.3
 -e distiller
