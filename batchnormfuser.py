@@ -39,6 +39,7 @@ def bn_fuser(state_dict):
         r_var_key = bn_key + '.running_var'
         beta_key = bn_key + '.weight'
         gamma_key = bn_key + '.bias'
+        batches_key = bn_key + '.num_batches_tracked'
 
         w = state_dict[w_key]
         device = state_dict[w_key].device
@@ -60,6 +61,9 @@ def bn_fuser(state_dict):
         else:
             gamma = torch.zeros(w.shape[0]).to(device)
 
+        beta = 0.25 * beta
+        gamma = 0.25 * gamma
+
         w_new = w * (beta / r_std).reshape((w.shape[0],) + (1,) * (len(w.shape) - 1))
         b_new = (b - r_mean)/r_std * beta + gamma
 
@@ -74,6 +78,8 @@ def bn_fuser(state_dict):
             del state_dict[beta_key]
         if gamma_key in state_dict:
             del state_dict[gamma_key]
+        if batches_key in state_dict:
+            del state_dict[batches_key]
 
     return state_dict
 
