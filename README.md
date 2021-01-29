@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_January 14, 2020_
+_January 28, 2021_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -650,6 +650,9 @@ The following example shows the weight memory layout for two layers. The first l
 
 ![Layers and Weight Memory](docs/KernelMemoryLayers.png)
 
+#### Bias Memories
+
+Bias values are stored in separate bias memories. There are four bias memory instances available, and a layer can access any bias memory instance where at least one processor is enabled. By default, bias memories are automatically allocated using a modified Fit-First Descending (FFD) algorithm. Before considering the required resource sizes in descending order, and placing values in the bias memory with most available resources, the algorithm places those bias values that require a single specified bias memory.
 
 ### Weight Storage Example
 
@@ -1340,6 +1343,13 @@ Example for four processors 0, 1, 2, and 3:
 ##### `output_processors` (Optional)
 
 `output_processors` specifies which data memory instances and 32-bit word offsets to use for the layer’s output data. When not specified, this key defaults to the next layer’s `processors`, or, for the last layer, to the global `output_map`. `output_processors` is specified as a 64-bit hexadecimal value. Dots (‘.’) and a leading ‘0x’ are ignored.
+
+##### `bias_group` (Optional)
+
+`bias_group` specifies one or more of the ×16 processor groups (0 through 3) that should be used for the layer’s bias memory. By default, a modified Fit-First Descending (FFD) algorithm is used to automatically place the bias values.
+
+Example:
+	`bias_group: 1`
 
 ##### `out_offset` (Optional)
 
@@ -2088,7 +2098,7 @@ To run locally, create a clean copy of the repository and run the following comm
 
 ```shell
 $ docker pull github/super-linter:latest
-$ docker run --rm -e RUN_LOCAL=true -e VALIDATE_MARKDOWN=false -e VALIDATE_PYTHON_BLACK=false -e VALIDATE_ANSIBLE=false -e VALIDATE_EDITORCONFIG=false -e FILTER_REGEX_EXCLUDE="attic/.*|inspect_ckpt.py" -v `pwd`:/tmp/lint github/super-linter
+$ docker run --rm -e RUN_LOCAL=true -e VALIDATE_MARKDOWN=false -e VALIDATE_PYTHON_BLACK=false -e VALIDATE_ANSIBLE=false -e VALIDATE_EDITORCONFIG=false -e VALIDATE_JSCPD=false -e FILTER_REGEX_EXCLUDE="attic/.*|inspect_ckpt.py" -v `pwd`:/tmp/lint github/super-linter
 ```
 
 ### Submitting Changes
