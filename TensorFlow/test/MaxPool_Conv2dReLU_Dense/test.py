@@ -72,7 +72,7 @@ if not os.path.isdir(logdir):
 # Log stdout to file
 sys.stdout = Logger(os.path.join(logdir,  # type:ignore[assignment]
                                  'result.log'))  # noqa:F821
-np.set_printoptions(suppress=True,linewidth=1000,threshold=1000)
+np.set_printoptions(suppress=True, linewidth=1000, threshold=1000)
 
 # Init input samples
 test_input = np.random.normal(0, 0.5, size=(8, 8))
@@ -98,7 +98,6 @@ input_layer = tf.keras.Input(shape=(8, 8))
 reshape = tf.keras.layers.Reshape(target_shape=(8, 8, 1))(input_layer)
 
 conv1 = ai8xTF.FusedConv2DReLU(
-#conv1 = ai8xTF.FusedConv2D(
     filters=2,
     kernel_size=3,
     strides=1,
@@ -107,7 +106,7 @@ conv1 = ai8xTF.FusedConv2DReLU(
     kernel_initializer=tf.keras.initializers.constant(k1)
     )(reshape)
 maxpool1 = ai8xTF.MaxPool2D(
-    pool_size=(2,2),
+    pool_size=(2, 2),
     pool_strides=1,
     )(conv1)
 flat = tf.keras.layers.Flatten()(maxpool1)
@@ -130,7 +129,7 @@ for layer in model.layers:
     weight = np.array((layer.get_weights()[0:1]))  # weights
     # Convert to 8bit, round and clamp
     print('Weight(8-bit)=\n', clamp(np.floor(weight*128+0.5)))
-    print('Weight(float)=\n', weight)#clamp(np.floor(weight*128+0.5)))
+    print('Weight(float)=\n', weight)  # clamp(np.floor(weight*128+0.5)))
     print(weight.shape)
     bias = np.array((layer.get_weights()[1:2]))  # bias
     # Convert to 8bit, round and clamp
@@ -144,10 +143,10 @@ for layer in model.layers:
 conv1_out, maxpool1_out, flat_out, output = model.predict(test_input)
 
 # Model output
-print('Conv output=\n', conv1_out,conv1_out.dtype)
-print('Pool output=\n', maxpool1_out,maxpool1_out.dtype)
-print('Flat output=\n', flat_out,flat_out.dtype)
-print('Output=\n', output,output.dtype)
+print('Conv output=\n', conv1_out, conv1_out.dtype)
+print('Pool output=\n', maxpool1_out, maxpool1_out.dtype)
+print('Flat output=\n', flat_out, flat_out.dtype)
+print('Output=\n', output, output.dtype)
 
 # Save model
 tf.saved_model.save(model, 'saved_model')

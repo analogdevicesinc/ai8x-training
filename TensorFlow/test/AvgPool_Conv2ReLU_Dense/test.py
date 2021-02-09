@@ -75,7 +75,6 @@ sys.stdout = Logger(os.path.join(logdir,  # type:ignore[assignment]
 
 # Init input samples
 test_input = np.random.normal(0, 0.5, size=(8, 8))
-#test_input = clamp(np.floor(test_input*128 + 0.5))/128.0
 test_input = clamp(np.floor(test_input*128+0.5))/128.0
 test_input = np.reshape(test_input, (1, 8, 8))
 print('Test Input shape', test_input.shape)
@@ -84,11 +83,9 @@ print('Test Input', test_input)
 # Init layer kernel
 
 k1 = np.linspace(-0.9, 0.9, num=18, dtype=np.float32)
-#k1 = clamp(np.floor(k1*128+0.5))/128.0
 k1 = clamp(np.floor(k1*128+0.5))/128.0
 
 k5 = np.linspace(-0.5, 0.5, num=490, dtype=np.float32)
-#k5 = clamp(np.floor(k5*128+0.5))/128.0
 k5 = clamp(np.floor(k5*128+0.5))/128.0
 
 init_bias = np.array([-0.01, 0.01])
@@ -100,7 +97,6 @@ input_layer = tf.keras.Input(shape=(8, 8))
 reshape = tf.keras.layers.Reshape(target_shape=(8, 8, 1))(input_layer)
 
 conv1 = ai8xTF.FusedConv2DReLU(
-#conv1 = ai8xTF.FusedConv2D(
     filters=2,
     kernel_size=3,
     strides=1,
@@ -109,7 +105,7 @@ conv1 = ai8xTF.FusedConv2DReLU(
     kernel_initializer=tf.keras.initializers.constant(k1)
     )(reshape)
 avgpool1 = ai8xTF.AvgPool2D(
-    pool_size=(2,2),
+    pool_size=(2, 2),
     pool_strides=1,
     )(conv1)
 flat = tf.keras.layers.Flatten()(avgpool1)

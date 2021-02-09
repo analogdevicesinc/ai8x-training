@@ -107,8 +107,6 @@ conv1 = ai8xTF.FusedConv1DReLU(
     kernel_size=1,
     strides=1,
     padding_size=0,
-#    pool_size=2,
-#    pool_strides=2,
     use_bias=False,
     kernel_initializer=kernel_initializer,
     )(reshape)
@@ -121,7 +119,6 @@ output_layer = ai8xTF.FusedDense(
     3,
     wide=True,
     use_bias=False,
-   # bias_initializer=bias_initializer,
     kernel_initializer=kernel_initializer3,
     )(flat)
 model = tf.keras.Model(inputs=[input_layer], outputs=[output_layer])
