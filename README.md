@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_January 28, 2021_
+_February 10, 2021_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -652,7 +652,8 @@ The following example shows the weight memory layout for two layers. The first l
 
 #### Bias Memories
 
-Bias values are stored in separate bias memories. There are four bias memory instances available, and a layer can access any bias memory instance where at least one processor is enabled. By default, bias memories are automatically allocated using a modified Fit-First Descending (FFD) algorithm. Before considering the required resource sizes in descending order, and placing values in the bias memory with most available resources, the algorithm places those bias values that require a single specified bias memory.
+Bias values are stored in separate bias memories. There are four bias memory instances available, and a layer can access any bias memory instance where at least one processor is enabled. By default, bias memories are automatically allocated using a modified Fit-First Descending (FFD) algorithm. Before considering the required resource sizes in descending order, and placing values in the bias memory with most available resources, the algorithm places those bias values that require a single specified bias memory. The bias memory allocation can optionally be controlled using the [`bias_group`](#`bias_group` (Optional)) configuration option.
+
 
 ### Weight Storage Example
 
@@ -699,6 +700,8 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   
   * Pooling does not support padding.
   
+  * Pooling more than 64 channels requires use of a “fused” convolution in the same layer, unless the pooled dimensions are 1×1.
+  
   * Pooling strides can be 1 through 16. For 2D pooling, the stride is the same for both dimensions.
   
   * For 2D pooling, supported pooling kernel sizes are 1×1 through 16×16, including non-square kernels. 1D pooling supports kernel sizes from 1 through 16. *Note: Pooling kernel size values do not have to be the same as the pooling stride.*
@@ -730,12 +733,12 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
 * There are 16 instances of 32 KiB data memory. When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 181×181 pixels per channel in the CHW format. However, when using more than one input channel, the HWC format may be preferred, and all layer output are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance -- or 91×90 pixels per channel.
   Note that the first layer commonly creates a wide expansion (i.e., large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical.
 
-* The hardware supports 1D and 2D convolution layers, 2D transposed convolution layers (upsampling), element-wise addition, subtraction, binary OR, binary XOR as well as fully connected layers (`Linear`) (implemented using 1×1 convolutions on 1×1 data):
+* The hardware supports 1D and 2D convolution layers, 2D transposed convolution layers (upsampling), element-wise addition, subtraction, binary OR, binary XOR as well as fully connected layers (`Linear`), which are implemented using 1×1 convolutions on 1×1 data:
   * The maximum number of input neurons is 1024, and the maximum number of output neurons is 1024 (16 each per processor used).
   
   * `Flatten` functionality is available to convert 2D input data for use by fully connected layers, see [Fully Connected Layers](#Fully Connected \(Linear\) Layers).
   
-  * When “flattening” two-dimensional data, the input dimensions (C×H×W) must satisfy H×W ≤ 256 and C ≤ 64. Pooling cannot be used at the same time as flattening.
+  * When “flattening” two-dimensional data, the input dimensions (C×H×W) must satisfy C×H×W ≤ 16384. Pooling cannot be used at the same time as flattening.
   
   * Element-wise operators support from 2 up to 16 inputs.
   
@@ -751,7 +754,7 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
 
 m×n fully connected layers can be realized in hardware by “flattening” 2D input data of dimensions C×H×W into m=C×H×W channels of 1×1 input data. The hardware will produce n channels of 1×1 output data. When chaining multiple fully connected layers, the flattening step is omitted. The following picture shows 2D data, the equivalent flattened 1D data, and the output.
 
-For MAX78000/MAX78002, the product H×W must not exceed 256, and C must not exceed 64.
+For MAX78000/MAX78002, the product C×H×W must not exceed 16384.
 
 ![MLP](docs/MLP.png)
 
@@ -1344,13 +1347,6 @@ Example for four processors 0, 1, 2, and 3:
 
 `output_processors` specifies which data memory instances and 32-bit word offsets to use for the layer’s output data. When not specified, this key defaults to the next layer’s `processors`, or, for the last layer, to the global `output_map`. `output_processors` is specified as a 64-bit hexadecimal value. Dots (‘.’) and a leading ‘0x’ are ignored.
 
-##### `bias_group` (Optional)
-
-`bias_group` specifies one or more of the ×16 processor groups (0 through 3) that should be used for the layer’s bias memory. By default, a modified Fit-First Descending (FFD) algorithm is used to automatically place the bias values.
-
-Example:
-	`bias_group: 1`
-
 ##### `out_offset` (Optional)
 
 `out_offset` specifies the relative offset inside the data memory instance where the output data should be written to. When not specified, `out_offset` defaults to `0`. See also [Data Memory Ping-Pong](#Data Memory Ping-Pong).
@@ -1451,6 +1447,8 @@ The 32-bit intermediate result is multiplied by $2^{totalshift}$, where the tota
 | 1-bit               | 7                          | $[-22, +8]$                        |
 
 Using `output_shift` can help normalize data, particularly when using small weights. By default, `output_shift` is generated by the training software, and it is used for batch normalization as well as quantization-aware training.
+
+*Note:* When using 32-bit wide outputs in the final layer, no hardware shift is performed and `output_shift` is ignored.
 
 Example:
 	`output_shift: 2`
@@ -1554,6 +1552,17 @@ Set `write_gap` to `1` to produce output for a subsequent two-input element-wise
 
 Example:
 	`write_gap: 1`
+
+##### `bias_group` (Optional)
+
+For layers that use a bias, this key can specify one or more bias memories that should be used. By default, the software uses a “Fit First Descending (FFD)” allocation algorithm that considers largest bias lengths first, and then the layer number, and places each bias in the available group with the most available space, descending to the smallest bias length.
+
+“Available groups” is layer specific and is a list of the groups that have enabled processors for the respective layer. `bias_group` must reference one or more of the available groups. This check can be overridden using the command line option `--ignore-bias-groups` that allows any group or list of groups for any layer.
+
+`bias_group` can be a list of integers or a single integer.
+
+Example:
+	`bias_group: 0`
 
 #### Example
 
@@ -1824,7 +1833,7 @@ To run another inference, ensure all groups are disabled (stopping the state mac
 
 `ai8xize.py` can generate a call to a software Softmax function using the command line switch `--softmax`. That function is provided in the `assets/device-all` folder. To use the provided software Softmax on MAX78000/MAX78002, the last layer output should be 32-bit wide (`output_width: 32`).
 
-The software Softmax function is optimized for processing time and it quantizes the input.
+The software Softmax function is optimized for processing time and it quantizes the input. When the last layer uses weights that are not 8-bits, the software function used will shift the input values first.
 
 ![softmax](docs/softmax.png)
 
