@@ -1,8 +1,8 @@
 # MAX78000
 
-# TensorFlow 2.3.0 Support with Keras API
+# TensorFlow 2.4.1 Support with Keras API
 
-*Jan. 13, 2020*
+*Feb. 10, 2021*
 
 ## Overview
 
@@ -10,7 +10,7 @@ This document describes the modeling of networks using **TensorFlow 2 Keras API*
 
 1. Create the Keras model using supported MAX78000 TensorFlow sub-classes which reflect hardware behavior and limit operations.
 2. Train the model and store the model graph and weights into a **saved_model.pb** file.
-3. Use the Tensorflow to ONNX converter (**convert.py**) to create an ONNX framework model from **saved_model.pb**.
+3. Use the TensorFlow to ONNX converter (**convert.py**) to create an ONNX framework model from **saved_model.pb**.
 4. Quantize the ONNX model weights and feed to MAX78000 synthesis tool (_ai8xizer_) to generate C code.
 5. Compile the generated C code, and load into MAX78000 to verify.
 
@@ -18,16 +18,32 @@ This document describes the modeling of networks using **TensorFlow 2 Keras API*
 
 ## Setup
 
-1. Install NVIDIA GPU drivers (CUDA 10.1, CUDA 10.2), CUDA Toolkit, CUPTI and cuDNN SDK 7.6 as described in Software requirements for TensorFlow: https://www.tensorflow.org/install/gpu
+1. Tensorflow 2.4 only supports CUDA 11.0 with cuDNN SDK 8.0.4. Please install NVIDIA GPU drivers , CUDA Toolkit, CUPTI and cuDNN SDKas described in Software requirements for TensorFlow:  
 
-2. Make sure that `~/.bash_profile` includes path to CUDA and CUPTI according to CUDA revision 10.1 or 10.2:
+   https://www.tensorflow.org/install/gpu
 
-```shell
-export PATH="$PATH:/usr/local/cuda-10.1/bin"
-export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/cuda-10.1/extras/CUPTI/lib64"
-```
+2. To create a virtual environment and install packages, please refer to the section “Creating the Virtual Environment” of [1]: ../README.md, including the cloning and installation of *ai8x-training* and  *ai8x-synthesis* requirements with following considerations:
 
-3. To create a virtual environment, please refer to the section “Creating the Virtual Environment” of [1]: ../README.md, including the installation of ai8x-training and  ai8x-synthesis requirements.
+   - [ ] Make sure to checkout ***develop-tf*  branch** of *ai8x-training* and *ai8x-synthesis* which supports TensorFlow
+   - [ ] To install TensorFlow and other requirements for ai8x_training: 
+
+   ```shell
+   (ai8x-training) $ pip3 install -U pip wheel setuptools
+   (ai8x-training) $ cd TensorFlow
+   (ai8x-training) $ pip3 install -r requirements_tf.txt
+   ```
+
+   - [ ] To install requirements for ai8x_synthesis:
+
+   ```shell
+   (ai8x-synthesis) $ pip3 install -U pip setuptools
+   (ai8x-synthesis) $ pip3 install -r requirements.txt
+   ```
+
+
+***For other versions of CUDA including CUDA 11.1 and 11.2, installing Tensorflow with requirements_tf.txt will not work with GPU, and you may need to build Tensorflow from source using instructions in https://www.tensorflow.org/install/source.***
+
+
 
 ## Supported MAX78000 TensorFlow Keras Subclasses
 
@@ -71,12 +87,6 @@ export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/cuda-10.1/extras/CUPTI/lib64
 * Padding can be 0, 1, or 2 (default: padding_size = 0).
 * Stride is fixed to 1. Pooling, including 1, can be used to achieve a stride other than 1.
 
-`Conv2DTranspose`:
-
-* Kernel sizes must be 3×3.
-* Padding can be 0, 1, or 2 (default: padding_size = 0).
-* Stride is fixed to 2
-
 `Pooling`:
 
 * Both max pooling and average pooling are available, with or without convolution.
@@ -118,7 +128,11 @@ The script automatically downloads the corresponding dataset, processes and copi
 
 ### Command-Line Arguments for Training
 
-The following command line parameters are supported for training:
+The following command line parameters are supported for training.
+
+**Make sure to save sample in channel first format (--channel-first) to be used for synthesis. If the first layer is conv1d, also make sure to use --swap.**
+
+Once training is complete, the model is converted to ONNX format and stored in `export/`.
 
 | Argument                | Description                                                  |
 | ----------------------- | ------------------------------------------------------------ |
@@ -130,11 +144,11 @@ The following command line parameters are supported for training:
 | --dataset               | Dataset name                                                 |
 | --save-sample           | Save input sample with specified index in _.npy_ format in the `export/` folder for verification |
 | --save-sample-per-class | Save one input sample for each class in _.npy_ format in the `logs/` folder to be used for verification |
-| --channel-first         | Save sample in channel first format in multi-channel cases (default: channel last, the native format on TensorFlow), suitable to be used by the synthesis script (NCHW) |
-| --swap                  | if --channel-first is selected, this option swaps order of H and W in the saved sample data. This is only needed if first layer is a conv1d (default: no swap) |
+| --channel-first         | **Save sample in channel first format in multi-channel cases (default: channel last, the native format on TensorFlow), suitable to be used by the synthesis script (NCHW)** |
+| --swap                  | **if --channel-first is selected, this option swaps order of H and W in the saved sample data. This is only needed if first layer is a conv1d (default: no swap)** |
 | --metrics               | Metrics used in compiling model (default: accuracy)          |
 
-Once training is complete, the model is converted to ONNX format and stored in `export/`.
+
 
 ### Models
 
@@ -1000,7 +1014,7 @@ $ (ai8x-synthesis) ./ai8xize.py --verbose -L --top-level cnn --test-dir tensorfl
 
 2. `ai8x-synthesis/networks/mnist-chw-ai85-tf.yaml` -  YAML description of the model
 
-3. `ai8x-training/TensorFlow/export/mnist/sampledata.npy` -  Input data sample file
+3. `ai8x-training/TensorFlow/export/mnist/sampledata.npy` -  Input data sample file created in channel-first format
 
 | Parameter                        | Description                                                  |
 | -------------------------------- | ------------------------------------------------------------ |
@@ -1009,7 +1023,7 @@ $ (ai8x-synthesis) ./ai8xize.py --verbose -L --top-level cnn --test-dir tensorfl
 
 Other parameters are described in section “Network Loader (AI8Xize)“ of  [1]. 
 
-Generated C code is stored in the `ai8x-synthesis/tensorflow/tf-mnist/` directory.
+Generated C code is stored in the `ai8x-synthesis/sdk-tensorflow/tf-mnist/` directory.
 
 To generate MAX78000 C source code for all TensorFlow examples, execute following script:
 
@@ -1031,9 +1045,9 @@ $ (ai8x-synthesis) ./gen-tf-demos-max78000.sh
 
 ## Deployment on Hardware
 
-After synthesis, the generated C code will be stored in the  `ai8x-synthesis/tensorflow/` directory with the project name.
+After synthesis, the generated C code will be stored in the  `ai8x-synthesis/sdk-tensorflow/` directory with the project name.
 
-The project folder needs to be copied to the  `ai8x-synthesis/sdk/Examples/MAX78000/CNN/` folder and can be compiled and flashed using SDK tools as instructed in [2]
+The project folder needs to be copied to the  `ai8x-synthesis/sdk/Examples/MAX78000/CNN/` folder and can be compiled and flashed using SDK tools as instructed in [2].
 
 
 
