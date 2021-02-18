@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_December 24, 2020_
+*Feb 10, 2021*
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -219,11 +219,13 @@ To create the virtual environment and install basic wheels:
 ```shell
 $ cd ai8x-training
 ```
-If you want to use the “develop” branch, switch to “develop” using this optional step:
+If you want to use the “develop” branch (PyTorch), switch to “develop” using this optional step:
 
 ```shell
 $ git checkout develop  # optional
 ```
+
+***For TensorFlow, make sure to switch to "develop-tf"*.**
 
 Then continue with the following:
 
@@ -248,12 +250,14 @@ The next step differs depending on whether the system uses Linux with CUDA 11.1,
 ```shell
 (ai8x-training) $ pip3 install -r requirements.txt
 ```
-For TensorFlow (CUDA or CPU, all operating systems):
+**For TensorFlow (CUDA 11.0 or CPU, all operating systems):**
 
 ```shell
 (ai8x-training) $ cd TensorFlow
 (ai8x-training) $ pip3 install -r requirements_tf.txt
 ```
+
+*For more information on TensorFlow installation, please refer to /aix8-training/TensorFlow/README.md.*
 
 ##### Repository Branches
 
@@ -301,11 +305,13 @@ $ cd $AI_PROJECT_ROOT
 $ cd ai8x-synthesis
 ```
 
-If you want to use the “develop” branch, switch to “develop” using this optional step:
+If you want to use the “develop” branch (PyTorch), switch to “develop” using this optional step:
 
 ```shell
 $ git checkout develop  # optional
 ```
+
+***For TensorFlow, make sure to switch to "develop-tf"*.**
 
 Then continue:
 

@@ -1,4 +1,4 @@
-numpy>=1.16,<1.17
+numpy>=1.19,<1.20
 PyYAML>=5.1.1
 tabulate==0.8.3
 future>=0.17.1
@@ -10,13 +10,12 @@ shap>=0.34.0
 tk>=0.1.0
 sndfile>=0.2
 numba<0.50.0
-tensorflow==2.3.0
-tensorboard==2.3.0
-tensorflow_datasets==3.2.1
-tensorflow_metadata==0.23.0
-absl-py<0.9,>=0.7
+tensorflow==2.4.1
+tensorboard==2.4.1
+tensorflow_datasets==4.2.0
+tensorflow_metadata==0.26.0
+absl-py~=0.10
 tf2onnx>=1.6.1
 onnxruntime>=1.3.0
 pydot>=1.4.1
 graphviz==0.10.1
-
