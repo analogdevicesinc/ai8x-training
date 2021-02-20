@@ -518,11 +518,13 @@ class Conv2d(QuantizationAwareModule):
 
             if op == 'ConvTranspose2d':
                 assert stride == 2
+                assert padding == 1
             else:
                 assert stride == 1
         else:
             if op == 'ConvTranspose2d':
                 assert stride == 2
+                assert padding == 1
             else:
                 assert 0 < stride <= 3
 

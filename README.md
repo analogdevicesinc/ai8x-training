@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_February 10, 2021_
+_February 11, 2021_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -688,7 +688,7 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
 * `ConvTranspose2d`:
 
   * Kernel sizes must be 3×3.
-  * Padding can be 0, 1, or 2.
+  * Padding can only be 1.
   * Stride is fixed to [2, 2]. Output padding is fixed to 1.
 
 * A programmable layer-specific shift operator is available at the output of a convolution, see [`output_shift` (Optional)](#output_shift \(Optional\)).
