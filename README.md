@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_February 11, 2021_
+_February 19, 2021_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -688,7 +688,7 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
 * `ConvTranspose2d`:
 
   * Kernel sizes must be 3×3.
-  * Padding can only be 1.
+  * Padding must be 1 *(Note: hardware supports additional padding modes, but there is no direct equivalent in PyToch)*.
   * Stride is fixed to [2, 2]. Output padding is fixed to 1.
 
 * A programmable layer-specific shift operator is available at the output of a convolution, see [`output_shift` (Optional)](#output_shift \(Optional\)).
@@ -1558,7 +1558,7 @@ Example:
 
 For layers that use a bias, this key can specify one or more bias memories that should be used. By default, the software uses a “Fit First Descending (FFD)” allocation algorithm that considers largest bias lengths first, and then the layer number, and places each bias in the available group with the most available space, descending to the smallest bias length.
 
-“Available groups” is layer specific and is a list of the groups that have enabled processors for the respective layer. `bias_group` must reference one or more of the available groups. This check can be overridden using the command line option `--ignore-bias-groups` that allows any group or list of groups for any layer.
+“Available groups” is the complete list of groups used by the network (in any layer). `bias_group` must reference one or more of these available groups.
 
 `bias_group` can be a list of integers or a single integer.
 
