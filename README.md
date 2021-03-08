@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_February 19, 2021_
+_March 2, 2021_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -204,7 +204,7 @@ Windows/MS-DOS is not supported for training networks at this time. *This includ
 
 ### Upstream Code
 
-Change to the project root and run the following commands. Use your GitHub credentials when prompted.
+Change to the project root and run the following commands. Use your GitHub credentials if prompted.
 
 ```shell
 $ cd $AI_PROJECT_ROOT
@@ -317,6 +317,10 @@ $ source bin/activate
 ##### Repository Branches and Updates
 
 Branches and updates for `ai8x-synthesis` are handled similarly to the [`ai8x-training`](#Repository Branches) project.
+
+**Installation is now Complete**
+
+With the installation of Training and Synthesis projects completed it is important to remember to activate the proper Python virtual environment when switching between projects. If scripts begin failing in a previously working environment, the cause might be that the incorrect virtual environment is active or that no virtual environment has been activated.
 
 ### Embedded Software Development Kit (SDK)
 
@@ -688,7 +692,7 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
 * `ConvTranspose2d`:
 
   * Kernel sizes must be 3×3.
-  * Padding must be 1 *(Note: hardware supports additional padding modes, but there is no direct equivalent in PyToch)*.
+  * Padding can be 0, 1, or 2.
   * Stride is fixed to [2, 2]. Output padding is fixed to 1.
 
 * A programmable layer-specific shift operator is available at the output of a convolution, see [`output_shift` (Optional)](#output_shift \(Optional\)).
@@ -1456,13 +1460,9 @@ Example:
 
 ##### `kernel_size` (Optional)
 
-2D convolutions:
-
-​	This key must be `3x3` (the default) or `1x1`.
-
-1D convolutions:
-
-​	This key must be `1` through `9`.
+* For `Conv2D`, this key must be `3x3` (the default) or `1x1`.
+* For `Conv1D`, this key must be `1` through `9`.
+* For `ConvTranspose2D`, this key must be `3x3` (the default).
 
 Example:
 	`kernel_size: 1x1`
@@ -1477,6 +1477,7 @@ This key must be `1` or `[1, 1]`.
 
 * For `Conv2d`, this value can be `0`, `1` (the default), or `2`.
 * For `Conv1d`, the value can be `0`, `1`, `2`, or `3` (the default).
+* For `ConvTranspose2d`, this value can be `0`, `1` (the default), or `2`. *Note that the value follows PyTorch conventions and effectively adds* `(kernel_size – 1) – pad` *amount of zero padding to both sizes of the input, so “0” adds 2 zeros each and “2” adds no padding.*
 * For `Passthrough`, this value must be `0` (the default).
 
 ##### `max_pool` (Optional)
