@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_February 22, 2021_
+_March 2, 2021_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -204,7 +204,7 @@ Windows/MS-DOS is not supported for training networks at this time. *This includ
 
 ### Upstream Code
 
-Change to the project root and run the following commands. Use your GitHub credentials when prompted.
+Change to the project root and run the following commands. Use your GitHub credentials if prompted.
 
 ```shell
 $ cd $AI_PROJECT_ROOT
@@ -317,6 +317,10 @@ $ source bin/activate
 ##### Repository Branches and Updates
 
 Branches and updates for `ai8x-synthesis` are handled similarly to the [`ai8x-training`](#Repository Branches) project.
+
+**Installation is now Complete**
+
+With the installation of Training and Synthesis projects completed it is important to remember to activate the proper Python virtual environment when switching between projects. If scripts begin failing in a previously working environment, the cause might be that the incorrect virtual environment is active or that no virtual environment has been activated.
 
 ### Embedded Software Development Kit (SDK)
 
