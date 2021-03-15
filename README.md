@@ -1235,7 +1235,7 @@ The following table describes the most important command line arguments for `ai8
 
 ### YAML Network Description
 
-The [quick-start guide](https://raw.githubusercontent.com/MaximIntegratedAI/MaximAI_Documentation/master/Guides/YAML%20Quickstart.md) provides a short overview of the purpose and structure of the YAML network description file.
+The [quick-start guide](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/Guides/YAML%20Quickstart.md) provides a short overview of the purpose and structure of the YAML network description file.
 
 An example network description for the ai85net5 architecture and MNIST is shown below:
 
