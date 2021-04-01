@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_March 18, 2021_
+_March 31, 2021_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -1845,7 +1845,7 @@ The MAX78000/MAX78002 accelerator can generate an interrupt on completion, and i
 
 To run another inference, ensure all groups are disabled (stopping the state machine, as shown in `cnn_init()`). Next, load the new input data and start processing.
 
-#### Softmax, and Data unload in C
+#### Softmax, and Data Unload in C
 
 `ai8xize.py` can generate a call to a software Softmax function using the command line switch `--softmax`. That function is provided in the `assets/device-all` folder. To use the provided software Softmax on MAX78000/MAX78002, the last layer output should be 32-bit wide (`output_width: 32`).
 
@@ -1853,7 +1853,45 @@ The software Softmax function is optimized for processing time and it quantizes 
 
 ![softmax](docs/softmax.png)
 
-#### Overview of the Generated API functions
+
+
+#### Generated Files and Upgrading the CNN Model
+
+The generated C code comprises the following files. Some of the files are customized based in the project name, and some are custom for a combination of project name and weight/sample data inputs:
+
+| File name    | Source                           | Project specific? | Model/weights change? |
+| ------------ | -------------------------------- | ----------------- | --------------------- |
+| Makefile     | template in assets/embedded-ai87 | Yes               | No                    |
+| cnn.c        | generated                        | Yes               | **Yes**               |
+| cnn.h        | template in assets/device-all    | Yes               | **Yes**               |
+| weights.h    | generated                        | Yes               | **Yes**               |
+| log.txt      | generated                        | Yes               | **Yes**               |
+| main.c       | generated                        | Yes               | No                    |
+| sampledata.h | generated                        | Yes               | No                    |
+| softmax.c    | assets/device-all                | No                | No                    |
+| model.launch | template in assets/eclipse       | Yes               | No                    |
+| .cproject    | template in assets/eclipse       | Yes               | No                    |
+| .project     | template in assets/eclipse       | Yes               | No                    |
+
+In order to upgrade an embedded project after retraining the model, point the network generator to a new empty directory and regenerate. Then, copy the four files that will have changed to your original project — `cnn.c`, `cnn.h`, `weights.h`, and `log.txt`. This allows for persistent customization of the I/O code and project (for example, in `main.c` and additional files) while allowing easy model upgrades.
+
+The generator also adds all files from the `assets/eclipse`, `assets/device-all`, and `assets/embedded-ai87` folders. These files (when starting with `template` in their name) will be automatically customized to include project specific information as shown in the following table:
+
+| Key                   | Replaced by                                                  |
+| --------------------- | ------------------------------------------------------------ |
+| `##__PROJ_NAME__##`   | Project name (works on file names as well as the file contents) |
+| `##__ELF_FILE__##`    | Output elf (binary) file name                                |
+| `##__BOARD__##`       | Board name (e.g., `EvKit_V1`)                                |
+| `##__FILE_INSERT__##` | Network statistics and timer                                 |
+
+##### Contents of the device-all Folder
+
+* For MAX78000/MAX78002, the software Softmax is implemented in `softmax.c`.
+* A template for the `cnn.h` header file in `templatecnn.h`. The template is customized during code generation using model statistics and timer, but uses common function signatures for all projects.
+
+
+
+#### Overview of the Generated API Functions
 
 The API code (in `cnn.c` by default) is auto-generated. It is data independent, but differs depending on the network. This simplifies replacing the network while keeping the remainder of the code intact.
 
@@ -1898,10 +1936,7 @@ Turn on the boost circuit on `port`.`pin`. This is only needed for very energy i
 `int cnn_boost_disable(mxc_gpio_regs_t *port, uint32_t pin);`
 Turn off the boost circuit connected to `port`.`pin`.
 
-#### Contents of the device-all Folder
 
-* For MAX78000/MAX78002, the software Softmax is implemented in `softmax.c`.
-* A template for the `cnn.h` header file in `templatecnn.h`. The template is customized during code generation.
 
 #### Energy Measurement
 
