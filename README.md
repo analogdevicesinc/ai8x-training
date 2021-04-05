@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_March 31, 2021_
+_April 5, 2021_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -90,9 +90,9 @@ The following software is optional, and can be replaced with other similar softw
 
 ### Project Installation
 
-*The software in this project uses Python 3.8.6 or a later 3.8.x version.*
+*The software in this project uses Python 3.8.9 or a later 3.8.x version.*
 
-It is not necessary to install Python 3.8.6 system-wide, or to rely on the system-provided Python. To manage Python versions, use `pyenv` (https://github.com/pyenv/pyenv).
+It is not necessary to install Python 3.8.9 system-wide, or to rely on the system-provided Python. To manage Python versions, use `pyenv` (https://github.com/pyenv/pyenv).
 
 On macOS (no CUDA support available):
 
@@ -119,7 +119,7 @@ eval "$(pyenv virtualenv-init -)"
 
 If you use zsh as the shell (default on macOS), add these same commands to `~/.zprofile` or `~/.zshrc` in addition to adding them to the bash startup scripts.
 
-Next, close the Terminal, open a new Terminal and install Python 3.8.6.
+Next, close the Terminal, open a new Terminal and install Python 3.8.9.
 
 On macOS:
 
@@ -131,13 +131,13 @@ $ env \
   PKG_CONFIG_PATH="$(brew --prefix tcl-tk)/lib/pkgconfig" \
   CFLAGS="-I$(brew --prefix tcl-tk)/include" \
   PYTHON_CONFIGURE_OPTS="--with-tcltk-includes='-I$(brew --prefix tcl-tk)/include' --with-tcltk-libs='-L$(brew --prefix tcl-tk)/lib -ltcl8.6 -ltk8.6'" \
-  pyenv install 3.8.6
+  pyenv install 3.8.9
 ```
 
 On Linux:
 
 ```shell
-$ pyenv install 3.8.6
+$ pyenv install 3.8.9
 ```
 
 #### git Environment
@@ -229,7 +229,7 @@ Then continue with the following:
 
 ```shell
 $ git submodule update --init
-$ pyenv local 3.8.6
+$ pyenv local 3.8.9
 $ python3 -m venv .
 $ source bin/activate
 (ai8x-training) $ pip3 install -U pip wheel setuptools
@@ -307,7 +307,7 @@ Then continue:
 
 ```shell
 $ git submodule update --init
-$ pyenv local 3.8.6
+$ pyenv local 3.8.9
 $ python3 -m venv .
 $ source bin/activate
 (ai8x-synthesis) $ pip3 install -U pip setuptools
