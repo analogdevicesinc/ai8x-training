@@ -240,7 +240,7 @@ The next step differs depending on whether the system uses Linux with CUDA 11.x,
 For CUDA 11.x on Linux:
 
 ```shell
-(ai8x-training) $ pip3 install -r requirements-cu111.txt
+(ai8x-training) $ pip3 install -r requirements-cu11.txt
 ```
 
 For all other systems, including CUDA 10.2 on Linux:
@@ -275,7 +275,7 @@ For minor updates, pull the latest code and install the updated wheels:
 (ai8x-training) $ git pull
 (ai8x-training) $ git submodule update --init
 (ai8x-training) $ pip3 install -U pip setuptools
-(ai8x-training) $ pip3 install -U -r requirements.txt # or requirements-cu111.txt with CUDA 11.x
+(ai8x-training) $ pip3 install -U -r requirements.txt # or requirements-cu11.txt with CUDA 11.x
 ```
 
 Updating Python frequently requires updating `pyenv` first. Should `pyenv install x.y.z`
