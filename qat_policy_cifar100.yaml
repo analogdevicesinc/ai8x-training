@@ -1,4 +1,5 @@
-start_epoch: 30
+start_epoch: 80
+shift_quantile: 0.995
 weight_bits: 2
 overrides:
         conv1:
