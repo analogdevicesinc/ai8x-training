@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_April 7, 2021_
+_April 8, 2021_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -1910,7 +1910,7 @@ Perform minimum accelerator initialization so it can be configured or restarted.
 Configure the accelerator for the given network.
 
 `int cnn_load_weights(void);`
-Load the accelerator weights.
+Load the accelerator weights. Note that `cnn_init()` must be called before loading weights after reset or wake from sleep.
 
 `int cnn_verify_weights(void);`
 Verify the accelerator weights (used for debug only).
