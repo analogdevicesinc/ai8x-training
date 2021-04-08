@@ -171,6 +171,16 @@ class RoundQat(nn.Module):
         return RoundFunction.apply(x.mul(factor)).div(factor)
 
 
+class RoundQatONNX(nn.Module):
+    """
+    Round function for AvgPool in QAT mode
+    """
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
+        factor = 2**(dev.ACTIVATION_BITS - 1)
+        return x.mul(factor).round().div(factor)
+
+
 class FloorQat(nn.Module):
     """
     Floor function for AvgPool in QAT mode
@@ -179,6 +189,16 @@ class FloorQat(nn.Module):
         """Forward prop"""
         factor = 2**(dev.ACTIVATION_BITS - 1)
         return FloorFunction.apply(x.mul(factor)).div(factor)
+
+
+class FloorQatONNX(nn.Module):
+    """
+    Floor function for AvgPool in QAT mode
+    """
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
+        factor = 2**(dev.ACTIVATION_BITS - 1)
+        return x.mul(factor).floor().div(factor)
 
 
 def quantize_clamp(wide, quantize_activation=False):
@@ -294,6 +314,15 @@ class OutputShift(nn.Module):
         return -(1./limit).log2().floor().clamp(min=-15., max=15.)
 
 
+class OutputShiftONNX(nn.Module):
+    """
+    Calculate the clamped output shift when adjusting during quantization-aware training.
+    """
+    def forward(self, x, _):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
+        return -(1./x.abs().max()).log2().floor().clamp(min=-15., max=15.)
+
+
 class One(nn.Module):
     """
     Return 1.
@@ -367,7 +396,7 @@ class QuantizationAwareModule(nn.Module):
             op=None,
             func=None,
             bn=None,
-            shift_quantile=None
+            shift_quantile=1.0,
     ):
         super().__init__()
 
@@ -1450,8 +1479,15 @@ def onnx_export_prep(m, simplify=False):
             if not simplify:
                 if isinstance(target_attr, Quantize):
                     setattr(m, attr_str, QuantizeONNX(target_attr.num_bits))
-            else:
-                if isinstance(target_attr, (Quantize, Clamp, Round, Floor)):
-                    setattr(m, attr_str, Empty())
+                elif isinstance(target_attr, FloorQat):
+                    setattr(m, attr_str, FloorQatONNX())
+                elif isinstance(target_attr, RoundQat):
+                    setattr(m, attr_str, RoundQatONNX())
+                elif isinstance(target_attr, OutputShift):
+                    setattr(m, attr_str, OutputShiftONNX())
+            elif isinstance(target_attr, (Quantize, Clamp, Round, Floor, FloorQat, RoundQat)):
+                setattr(m, attr_str, Empty())
+            elif isinstance(target_attr, OutputShift):
+                setattr(m, attr_str, OutputShiftONNX())
 
     m.apply(_onnx_export_prep)
