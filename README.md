@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_April 5, 2021_
+_April 7, 2021_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -107,7 +107,7 @@ $ sudo apt-get install -y make build-essential libssl-dev zlib1g-dev \
   libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
   libncurses5-dev libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev \
   libsndfile-dev portaudio19-dev
-$ curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
+$ curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash  # NOTE: Verify contents of the script before running it!!
 ```
 
 Then, add to either `~/.bash_profile`, `~/.bashrc`, or `~/.profile` (as shown by the terminal output of the previous step):
