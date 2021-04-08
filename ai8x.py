@@ -105,6 +105,16 @@ class Floor(nn.Module):
         return FloorFunction.apply(x)
 
 
+class FloorONNX(nn.Module):
+    """
+    Post-pooling integer quantization module
+    Apply the custom autograd function
+    """
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
+        return x.floor()
+
+
 class RoundFunction(Function):
     """
     Custom MAX78000 autograd function
@@ -158,6 +168,18 @@ class Scaler(nn.Module):
         """Forward prop"""
         if dev.simulate:
             return FloorFunction.apply(x*s)
+        return x*s
+
+
+class ScalerONNX(nn.Module):
+    """
+    Scaler module that considers integer quantization
+    Apply the custom autograd function
+    """
+    def forward(self, x, s):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
+        if dev.simulate:
+            return x.mul(s).floor()
         return x*s
 
 
@@ -1485,9 +1507,15 @@ def onnx_export_prep(m, simplify=False):
                     setattr(m, attr_str, RoundQatONNX())
                 elif isinstance(target_attr, OutputShift):
                     setattr(m, attr_str, OutputShiftONNX())
+                elif isinstance(target_attr, Scaler):
+                    setattr(m, attr_str, ScalerONNX())
+                elif isinstance(target_attr, Floor):
+                    setattr(m, attr_str, FloorONNX())
             elif isinstance(target_attr, (Quantize, Clamp, Round, Floor, FloorQat, RoundQat)):
                 setattr(m, attr_str, Empty())
             elif isinstance(target_attr, OutputShift):
                 setattr(m, attr_str, OutputShiftONNX())
+            elif isinstance(target_attr, Scaler):
+                setattr(m, attr_str, ScalerONNX())
 
     m.apply(_onnx_export_prep)
