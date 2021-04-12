@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_March 31, 2021_
+_April 8, 2021_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -90,9 +90,9 @@ The following software is optional, and can be replaced with other similar softw
 
 ### Project Installation
 
-*The software in this project uses Python 3.8.6 or a later 3.8.x version.*
+*The software in this project uses Python 3.8.9 or a later 3.8.x version.*
 
-It is not necessary to install Python 3.8.6 system-wide, or to rely on the system-provided Python. To manage Python versions, use `pyenv` (https://github.com/pyenv/pyenv).
+It is not necessary to install Python 3.8.9 system-wide, or to rely on the system-provided Python. To manage Python versions, use `pyenv` (https://github.com/pyenv/pyenv).
 
 On macOS (no CUDA support available):
 
@@ -107,7 +107,7 @@ $ sudo apt-get install -y make build-essential libssl-dev zlib1g-dev \
   libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
   libncurses5-dev libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev \
   libsndfile-dev portaudio19-dev
-$ curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
+$ curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash  # NOTE: Verify contents of the script before running it!!
 ```
 
 Then, add to either `~/.bash_profile`, `~/.bashrc`, or `~/.profile` (as shown by the terminal output of the previous step):
@@ -119,7 +119,7 @@ eval "$(pyenv virtualenv-init -)"
 
 If you use zsh as the shell (default on macOS), add these same commands to `~/.zprofile` or `~/.zshrc` in addition to adding them to the bash startup scripts.
 
-Next, close the Terminal, open a new Terminal and install Python 3.8.6.
+Next, close the Terminal, open a new Terminal and install Python 3.8.9.
 
 On macOS:
 
@@ -131,13 +131,13 @@ $ env \
   PKG_CONFIG_PATH="$(brew --prefix tcl-tk)/lib/pkgconfig" \
   CFLAGS="-I$(brew --prefix tcl-tk)/include" \
   PYTHON_CONFIGURE_OPTS="--with-tcltk-includes='-I$(brew --prefix tcl-tk)/include' --with-tcltk-libs='-L$(brew --prefix tcl-tk)/lib -ltcl8.6 -ltk8.6'" \
-  pyenv install 3.8.6
+  pyenv install 3.8.9
 ```
 
 On Linux:
 
 ```shell
-$ pyenv install 3.8.6
+$ pyenv install 3.8.9
 ```
 
 #### git Environment
@@ -229,7 +229,7 @@ Then continue with the following:
 
 ```shell
 $ git submodule update --init
-$ pyenv local 3.8.6
+$ pyenv local 3.8.9
 $ python3 -m venv .
 $ source bin/activate
 (ai8x-training) $ pip3 install -U pip wheel setuptools
@@ -240,7 +240,7 @@ The next step differs depending on whether the system uses Linux with CUDA 11.x,
 For CUDA 11.x on Linux:
 
 ```shell
-(ai8x-training) $ pip3 install -r requirements-cu111.txt
+(ai8x-training) $ pip3 install -r requirements-cu11.txt
 ```
 
 For all other systems, including CUDA 10.2 on Linux:
@@ -275,7 +275,7 @@ For minor updates, pull the latest code and install the updated wheels:
 (ai8x-training) $ git pull
 (ai8x-training) $ git submodule update --init
 (ai8x-training) $ pip3 install -U pip setuptools
-(ai8x-training) $ pip3 install -U -r requirements.txt # or requirements-cu111.txt with CUDA 11.x
+(ai8x-training) $ pip3 install -U -r requirements.txt # or requirements-cu11.txt with CUDA 11.x
 ```
 
 Updating Python frequently requires updating `pyenv` first. Should `pyenv install x.y.z`
@@ -307,7 +307,7 @@ Then continue:
 
 ```shell
 $ git submodule update --init
-$ pyenv local 3.8.6
+$ pyenv local 3.8.9
 $ python3 -m venv .
 $ source bin/activate
 (ai8x-synthesis) $ pip3 install -U pip setuptools
@@ -646,9 +646,10 @@ Because of the fact that a processor has its own dedicated weight memory, this w
 
 For each layer, a set of active processors must be specified. The number input channels for the layer must be equal to or a multiple of the active processors, and the input data for that layer must be located in data memory instances accessible to the selected processors.
 
-It is possible to specify a relative offset into the data memory instance that applies to all processors. _Example:_ Assuming HWC data format, specifying the offset as 8192 bytes will cause processors 0-3 to read their input from the second half of data memory 0, processors 4-7 will read from the second half of data memory instance 1, etc.
+It is possible to specify a relative offset into the data memory instance that applies to all processors.
+_Example:_ Assuming HWC data format, specifying the offset as 16384 bytes (or 0x4000) will cause processors 0-3 to read their input from the second half of data memory 0, processors 4-7 will read from the second half of data memory instance 1, etc.
 
-For most simple networks with limited data sizes, it is easiest to ping-pong between the first and second halves of the data memories - specify the data offset as 0 for the first layer, 0x2000 for the second layer, 0 for the third layer, etc. This strategy avoids overlapping inputs and outputs when a given processor is used in two consecutive layers.
+For most simple networks with limited data sizes, it is easiest to ping-pong between the first and second halves of the data memories – specify the data offset as 0 for the first layer, 0x4000 for the second layer, 0 for the third layer, etc. This strategy avoids overlapping inputs and outputs when a given processor is used in two consecutive layers.
 
 Even though it is supported by the accelerator, the Network Generator will not be able to check for inadvertent overwriting of unprocessed input data by newly generated output data when overlapping data or streaming data. Use the `--overlap-data` command line switch to disable these checks, and to allow overlapped data.
 
@@ -823,10 +824,14 @@ The following table describes the most important command line arguments for `tra
 | `--8-bit-mode`, `-8`       | Simluate quantized operation for hardware device (8-bit data) |                                 |
 | `--exp-load-weights-from`  | Load weights from file                                       |                                 |
 | *Export*                   |                                                              |                                 |
-| `--summary onnx`           | Export trained model to ONNX (default name: to model.onnx)   |                                 |
+| `--summary onnx`           | Export trained model to ONNX (default name: to model.onnx) — *see description below* |                                 |
 | `--summary onnx_simplified` | Export trained model to simplified ONNX file (default name: model.onnx) |                                 |
 | `--summary-filename`       | Change the file name for the exported model                  | `--summary-filename mnist.onnx` |
 | `--save-sample`            | Save data[index] from the test set to a NumPy pickle for use as sample data | `--save-sample 10`              |
+
+#### ONNX Model Export
+
+The ONNX model export (via `--summary onnx` or `--summary onnx_simplified`) is primarily intended for visualization of the model. ONNX does not support all of the operators that `ai8x.py` uses, and these operators are therefore removed from the export (see function `onnx_export_prep()` in `ai8x.py`). The ONNX file does contain the trained weights and *may* therefore be usable for inference under certain circumstances. However, it is important to note that the ONNX file **will not** be usable for training (for example, the ONNX `floor` operator has a  gradient of zero which is incompatible with quantization-aware training as implemented in `ai8x.py`).
 
 ### Observing GPU Resources
 
@@ -1910,7 +1915,7 @@ Perform minimum accelerator initialization so it can be configured or restarted.
 Configure the accelerator for the given network.
 
 `int cnn_load_weights(void);`
-Load the accelerator weights.
+Load the accelerator weights. Note that `cnn_init()` must be called before loading weights after reset or wake from sleep.
 
 `int cnn_verify_weights(void);`
 Verify the accelerator weights (used for debug only).

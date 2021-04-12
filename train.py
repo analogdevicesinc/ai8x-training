@@ -1180,8 +1180,13 @@ def summarize_model(model, dataset, which_summary, filename='model'):
                                                     which_summary == 'png_w_params')
     elif which_summary in ['onnx', 'onnx_simplified']:
         ai8x.onnx_export_prep(model, simplify=(which_summary == 'onnx_simplified'))
-        model_summaries.export_img_classifier_to_onnx(model, filename + '.onnx', dataset,
-                                                      opset_version=11)
+        model_summaries.export_img_classifier_to_onnx(
+            model,
+            filename + '.onnx',
+            dataset,
+            add_softmax=False,
+            opset_version=13,
+        )
     else:
         distiller.model_summary(model, which_summary, dataset)
 

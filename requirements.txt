@@ -1,4 +1,4 @@
-numpy>=1.19,<1.20
+numpy>=1.20.2,<1.21
 PyYAML>=5.1.1
 tabulate==0.8.3
 future>=0.17.1
@@ -9,9 +9,9 @@ Pillow>=7
 shap>=0.34.0
 tk>=0.1.0
 sndfile>=0.2
-torch==1.7.1
-torchvision==0.8.2
-tensorboard==2.4.0
+torch==1.8.1
+torchvision==0.9.1
+tensorboard==2.4.1
 numba<0.50.0
 opencv-python>=4.4.0
 pytsmod>=0.3.3
