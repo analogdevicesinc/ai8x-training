@@ -1333,7 +1333,7 @@ def update_old_model_params(model_path, model_new):
             is_model_old = True
             model_old['state_dict'][new_key] = new_val
             if 'compression_sched' in model_old:
-                if 'masks_dict'in model_old['compression_sched']:
+                if 'masks_dict' in model_old['compression_sched']:
                     model_old['compression_sched']['masks_dict'][new_key] = None
 
     if is_model_old:
