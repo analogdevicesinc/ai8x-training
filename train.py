@@ -294,6 +294,7 @@ def main():
     # We can optionally resume from a checkpoint
     optimizer = None
     if args.resumed_checkpoint_path:
+        update_old_model_params(args.resumed_checkpoint_path, model)
         if qat_policy is not None:
             checkpoint = torch.load(args.resumed_checkpoint_path,
                                     map_location=lambda storage, loc: storage)
@@ -303,6 +304,7 @@ def main():
             model, args.resumed_checkpoint_path, model_device=args.device)
         ai8x.update_model(model)
     elif args.load_model_path:
+        update_old_model_params(args.load_model_path, model)
         if qat_policy is not None:
             checkpoint = torch.load(args.load_model_path,
                                     map_location=lambda storage, loc: storage)
@@ -1317,6 +1319,31 @@ def check_pytorch_version():
               "  2. Install the new environment\n"
               "  3. Activate the new environment")
         sys.exit(1)
+
+
+def update_old_model_params(model_path, model_new):
+    """Adds missing model parameters added with default values.
+    This is mainly due to the saved checkpoint is from previous versions of the repo.
+    New model is saved to `model_path` and the old model copied into the same file_path with
+    `__obselete__` prefix."""
+    is_model_old = False
+    model_old = torch.load(model_path)
+    for new_key, new_val in model_new.state_dict().items():
+        if new_key not in model_old['state_dict'] and 'bn' not in new_key:
+            is_model_old = True
+            model_old['state_dict'][new_key] = new_val
+            if 'compression_sched' in model_old:
+                if 'masks_dict' in model_old['compression_sched']:
+                    model_old['compression_sched']['masks_dict'][new_key] = None
+
+    if is_model_old:
+        dir_path, file_name = os.path.split(model_path)
+        new_file_name = '__obselete__' + file_name
+        old_model_path = os.path.join(dir_path, new_file_name)
+        os.rename(model_path, old_model_path)
+        torch.save(model_old, model_path)
+        msglogger.info('Model `%s` is old. Missing parameters added with default values!',
+                       model_path)
 
 
 if __name__ == '__main__':

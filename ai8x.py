@@ -468,13 +468,13 @@ class QuantizationAwareModule(nn.Module):
                           f'bias_bits: {bias_bits}, ' \
                           f'quantize_activation: {quantize_activation}'
 
-        self.shift_quantile = shift_quantile
+        self.shift_quantile = nn.Parameter(torch.Tensor([shift_quantile]), requires_grad=False)
         self.set_functions()
 
     def set_functions(self):
         """Set functions to be used wrt the model parameters"""
         if self.adjust_output_shift.detach():
-            self.calc_out_shift = OutputShift(self.shift_quantile)
+            self.calc_out_shift = OutputShift(self.shift_quantile.detach().item())
             self.calc_weight_scale = WeightScale()
         else:
             self.calc_out_shift = OutputShiftSqueeze()
