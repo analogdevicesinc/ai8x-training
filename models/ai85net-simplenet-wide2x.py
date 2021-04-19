@@ -46,9 +46,9 @@ class AI85SimpleNetWide2x(nn.Module):
         self.conv9 = ai8x.FusedConv2dBNReLU(64, 64, 3, stride=1, padding=1, bias=bias, **kwargs)
         self.conv10 = ai8x.FusedMaxPoolConv2dBNReLU(64, 128, 3, pool_size=2, pool_stride=2,
                                                     stride=1, padding=1, bias=bias, **kwargs)
-        self.conv11 = ai8x.FusedMaxPoolConv2dBNReLU(128, 768, 1, pool_size=2, pool_stride=2,
+        self.conv11 = ai8x.FusedMaxPoolConv2dBNReLU(128, 512, 1, pool_size=2, pool_stride=2,
                                                     padding=0, bias=bias, **kwargs)
-        self.conv12 = ai8x.FusedConv2dBNReLU(768, 192, 1, stride=1, padding=0, bias=bias, **kwargs)
+        self.conv12 = ai8x.FusedConv2dBNReLU(512, 192, 1, stride=1, padding=0, bias=bias, **kwargs)
         self.conv13 = ai8x.FusedMaxPoolConv2dBNReLU(192, 192, 3, pool_size=2, pool_stride=2,
                                                     stride=1, padding=1, bias=bias, **kwargs)
         self.conv14 = ai8x.Conv2d(192, num_classes, 1, stride=1, padding=0, bias=bias,
