@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_April 8, 2021_
+_April 20, 2021_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -256,6 +256,10 @@ By default, the main branch is checked out. This branch has been tested more rig
 ```shell
 (ai8x-training) $ git checkout develop
 ```
+
+###### TensorFlow / Keras
+
+Support for TensorFlow / Keras is currently in the `develop-tf` branch.
 
 ##### Updates
 
@@ -728,6 +732,8 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
 
 * The number of output channels must not exceed 1024 per layer.
 
+  * Bias is supported for up to 512 output channels per layer.
+
 * The number of layers must not exceed 32 (where pooling and element-wise operations do not add to the count when preceding a convolution).
 
 * The maximum dimension (number of rows or columns) for input or output data is 1023.
@@ -817,7 +823,7 @@ The following table describes the most important command line arguments for `tra
 | `--pr-curves`              | Generate precision-recall curves                             |                                 |
 | `--embedding`              | Display embedding (using projector)                          |                                 |
 | *Hardware*                 |                                                              |                                 |
-| `--use-bias`               | The `bias=True` parameter is passed to the model. The effect of this parameter is model dependent (the parameter is either ignored, effective for some operations, or all operations). |                                 |
+| `--use-bias`               | The `bias=True` parameter is passed to the model. The effect of this parameter is model dependent (the parameter does nothing, effects some operations, or all operations). |                                 |
 | `--avg-pool-rounding`      | Use rounding for AvgPool                                     |                                 |
 | *Evaluation*               |                                                              |                                 |
 | `-e`, `--evaluate`         | Evaluate previously trained model                            |                                 |
