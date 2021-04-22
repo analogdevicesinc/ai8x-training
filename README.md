@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_April 20, 2021_
+_April 22, 2021_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -90,6 +90,50 @@ The following software is optional, and can be replaced with other similar softw
 
 ### Project Installation
 
+#### System Packages
+
+Some additional system packages are required, and installation of these additional packages requires administrator privileges. Note that this is the only time administrator privileges are required unless the optional Manifold is installed locally.
+
+##### macOS
+
+On macOS (no CUDA support available) use:
+
+```shell
+$ brew install libomp libsndfile tcl-tk
+```
+
+##### Linux (Ubuntu)
+
+```shell
+$ sudo apt-get install -y make build-essential libssl-dev zlib1g-dev \
+  libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
+  libncurses5-dev libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev \
+  libsndfile-dev portaudio19-dev
+```
+
+###### RedHat Enterprise Linux / CentOS 8
+
+While Ubuntu 20.04 LTS is the supported distribution, the MAX78000 software packages run fine on all modern Linux distributions that also support CUDA. The *apt-get install* commands above must be replaced with distribution specific commands and package names. Unfortunately, there is no obvious 1:1 mapping between package names from one distribution to the next. The following example shows the commands needed for RHEL/CentOS 8.
+
+*Two of the required packages are not in the base repositories. Enable the EPEL and PowerTools repositories:*
+
+```shell
+$ sudo dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+$ sudo dnf config-manager --set-enabled powertools
+```
+
+*Proceed to install the required packages:*
+
+```shell
+$ sudo dnf group install "Development Tools"
+$ sudo dnf install openssl-devel zlib-devel \
+  bzip2-devel readline-devel sqlite-devel wget llvm \
+  xz-devel tk tk-devel libffi-devel \
+  libsndfile libsndfile-devel portaudio-devel
+```
+
+#### Python 3.8
+
 *The software in this project uses Python 3.8.9 or a later 3.8.x version.*
 
 It is not necessary to install Python 3.8.9 system-wide, or to rely on the system-provided Python. To manage Python versions, use `pyenv` (https://github.com/pyenv/pyenv).
@@ -97,16 +141,12 @@ It is not necessary to install Python 3.8.9 system-wide, or to rely on the syste
 On macOS (no CUDA support available):
 
 ```shell
-$ brew install pyenv pyenv-virtualenv libomp libsndfile tcl-tk
+$ brew install pyenv pyenv-virtualenv
 ```
 
 On Linux:
 
 ```shell
-$ sudo apt-get install -y make build-essential libssl-dev zlib1g-dev \
-  libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
-  libncurses5-dev libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev \
-  libsndfile-dev portaudio19-dev
 $ curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash  # NOTE: Verify contents of the script before running it!!
 ```
 
@@ -161,9 +201,9 @@ Add this line to `~/.profile` (and on macOS, to `~/.zprofile`).
 
 #### Nervana Distiller
 
-Nirvana Distiller is package for neural network compression and quantization. Network compression can reduce the memory footprint of a neural network, increase its inference speed and save energy. Distiller is automatically installed with the other packages.
+Nirvana Distiller is package for neural network compression and quantization. Network compression can reduce the memory footprint of a neural network, increase its inference speed and save energy. Distiller is automatically installed as a git sub-module with the other packages.
 
-#### Uber Manifold
+#### Uber Manifold (Optional)
 
 Manifold is a model-agnostic visual debugging tool for machine learning. Manifold can compare models, detects which subset of data a model is inaccurately predicting, and explains the potential cause of poor model performance by surfacing the feature distribution difference between better and worse-performing subsets of data.
 
