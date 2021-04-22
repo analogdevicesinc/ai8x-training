@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_April 20, 2021_
+_April 22, 2021_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -140,6 +140,28 @@ On Linux:
 $ pyenv install 3.8.9
 ```
 
+##### CentOS / RedHat Enterprise Linux 8
+
+While Ubuntu 20.04 LTS is the supported distribution, the MAX78000 software packages run fine on all modern Linux distributions. The *apt-get install* commands above must be replaced with distribution specific commands and package names. Unfortunately, there is no obvious 1:1 mapping between package names from one distribution to another. The following example shows the commands needed for CentOS/RHEL 8.
+
+1. Two of the required packages are not in the base repositories. Enable the EPEL and PowerTools repositories:
+
+```shell
+$ sudo dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+$ sudo dnf config-manager --set-enabled powertools
+```
+
+2. Proceed to install the required packages:
+
+```shell
+$ sudo dnf group install "Development Tools"
+$ sudo dnf install zlib-devel readline-devel openssl-devel bzip2-devel \
+  libsndfile sqlite-devel wget tk tk-devel llvm xz-devel libffi-devel \
+  libsndfile-devel portaudio-devel
+```
+
+3. Continue with the pyenv installer.
+
 #### git Environment
 
 If the local git environment has not been previously configured, add the following commands to configure e-mail and name. The e-mail must match GitHub (including upper/lower case):
@@ -163,7 +185,7 @@ Add this line to `~/.profile` (and on macOS, to `~/.zprofile`).
 
 Nirvana Distiller is package for neural network compression and quantization. Network compression can reduce the memory footprint of a neural network, increase its inference speed and save energy. Distiller is automatically installed with the other packages.
 
-#### Uber Manifold
+#### Uber Manifold (Optional)
 
 Manifold is a model-agnostic visual debugging tool for machine learning. Manifold can compare models, detects which subset of data a model is inaccurately predicting, and explains the potential cause of poor model performance by surfacing the feature distribution difference between better and worse-performing subsets of data.
 
