@@ -20,7 +20,7 @@ import ai8x
 
 class AI85SimpleNet(nn.Module):
     """
-    SimpleNet v1 Model
+    SimpleNet v1 Model with BatchNorm
     """
     def __init__(
             self,
@@ -32,25 +32,25 @@ class AI85SimpleNet(nn.Module):
     ):
         super().__init__()
 
-        self.conv1 = ai8x.FusedConv2dReLU(num_channels, 16, 3, stride=1, padding=1, bias=bias,
-                                          **kwargs)
-        self.conv2 = ai8x.FusedConv2dReLU(16, 20, 3, stride=1, padding=1, bias=bias, **kwargs)
-        self.conv3 = ai8x.FusedConv2dReLU(20, 20, 3, stride=1, padding=1, bias=bias, **kwargs)
-        self.conv4 = ai8x.FusedConv2dReLU(20, 20, 3, stride=1, padding=1, bias=bias, **kwargs)
-        self.conv5 = ai8x.FusedMaxPoolConv2dReLU(20, 20, 3, pool_size=2, pool_stride=2,
-                                                 stride=1, padding=1, bias=bias, **kwargs)
-        self.conv6 = ai8x.FusedConv2dReLU(20, 20, 3, stride=1, padding=1, bias=bias, **kwargs)
-        self.conv7 = ai8x.FusedConv2dReLU(20, 44, 3, stride=1, padding=1, bias=bias, **kwargs)
-        self.conv8 = ai8x.FusedMaxPoolConv2dReLU(44, 48, 3, pool_size=2, pool_stride=2,
-                                                 stride=1, padding=1, bias=bias, **kwargs)
-        self.conv9 = ai8x.FusedConv2dReLU(48, 48, 3, stride=1, padding=1, bias=bias, **kwargs)
-        self.conv10 = ai8x.FusedMaxPoolConv2dReLU(48, 96, 3, pool_size=2, pool_stride=2,
-                                                  stride=1, padding=1, bias=bias, **kwargs)
-        self.conv11 = ai8x.FusedMaxPoolConv2dReLU(96, 512, 1, pool_size=2, pool_stride=2,
-                                                  padding=0, bias=bias, **kwargs)
-        self.conv12 = ai8x.FusedConv2dReLU(512, 128, 1, stride=1, padding=0, bias=bias, **kwargs)
-        self.conv13 = ai8x.FusedMaxPoolConv2dReLU(128, 128, 3, pool_size=2, pool_stride=2,
-                                                  stride=1, padding=1, bias=bias, **kwargs)
+        self.conv1 = ai8x.FusedConv2dBNReLU(num_channels, 16, 3, stride=1, padding=1, bias=bias,
+                                            **kwargs)
+        self.conv2 = ai8x.FusedConv2dBNReLU(16, 20, 3, stride=1, padding=1, bias=bias, **kwargs)
+        self.conv3 = ai8x.FusedConv2dBNReLU(20, 20, 3, stride=1, padding=1, bias=bias, **kwargs)
+        self.conv4 = ai8x.FusedConv2dBNReLU(20, 20, 3, stride=1, padding=1, bias=bias, **kwargs)
+        self.conv5 = ai8x.FusedMaxPoolConv2dBNReLU(20, 20, 3, pool_size=2, pool_stride=2,
+                                                   stride=1, padding=1, bias=bias, **kwargs)
+        self.conv6 = ai8x.FusedConv2dBNReLU(20, 20, 3, stride=1, padding=1, bias=bias, **kwargs)
+        self.conv7 = ai8x.FusedConv2dBNReLU(20, 44, 3, stride=1, padding=1, bias=bias, **kwargs)
+        self.conv8 = ai8x.FusedMaxPoolConv2dBNReLU(44, 48, 3, pool_size=2, pool_stride=2,
+                                                   stride=1, padding=1, bias=bias, **kwargs)
+        self.conv9 = ai8x.FusedConv2dBNReLU(48, 48, 3, stride=1, padding=1, bias=bias, **kwargs)
+        self.conv10 = ai8x.FusedMaxPoolConv2dBNReLU(48, 96, 3, pool_size=2, pool_stride=2,
+                                                    stride=1, padding=1, bias=bias, **kwargs)
+        self.conv11 = ai8x.FusedMaxPoolConv2dBNReLU(96, 512, 1, pool_size=2, pool_stride=2,
+                                                    padding=0, bias=bias, **kwargs)
+        self.conv12 = ai8x.FusedConv2dBNReLU(512, 128, 1, stride=1, padding=0, bias=bias, **kwargs)
+        self.conv13 = ai8x.FusedMaxPoolConv2dBNReLU(128, 128, 3, pool_size=2, pool_stride=2,
+                                                    stride=1, padding=1, bias=bias, **kwargs)
         self.conv14 = ai8x.Conv2d(128, num_classes, 1, stride=1, padding=0, bias=bias,
                                   wide=True, **kwargs)
 

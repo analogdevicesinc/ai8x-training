@@ -32,25 +32,25 @@ class AI85SimpleNetWide2x(nn.Module):
     ):
         super().__init__()
 
-        self.conv1 = ai8x.FusedConv2dReLU(num_channels, 24, 3, stride=1, padding=1, bias=bias,
-                                          **kwargs)
-        self.conv2 = ai8x.FusedConv2dReLU(24, 32, 3, stride=1, padding=1, bias=bias, **kwargs)
-        self.conv3 = ai8x.FusedConv2dReLU(32, 32, 3, stride=1, padding=1, bias=bias, **kwargs)
-        self.conv4 = ai8x.FusedConv2dReLU(32, 32, 3, stride=1, padding=1, bias=bias, **kwargs)
-        self.conv5 = ai8x.FusedMaxPoolConv2dReLU(32, 32, 3, pool_size=2, pool_stride=2,
-                                                 stride=1, padding=1, bias=bias, **kwargs)
-        self.conv6 = ai8x.FusedConv2dReLU(32, 32, 3, stride=1, padding=1, bias=bias, **kwargs)
-        self.conv7 = ai8x.FusedConv2dReLU(32, 64, 3, stride=1, padding=1, bias=bias, **kwargs)
-        self.conv8 = ai8x.FusedMaxPoolConv2dReLU(64, 64, 3, pool_size=2, pool_stride=2,
-                                                 stride=1, padding=1, bias=bias, **kwargs)
-        self.conv9 = ai8x.FusedConv2dReLU(64, 64, 3, stride=1, padding=1, bias=bias, **kwargs)
-        self.conv10 = ai8x.FusedMaxPoolConv2dReLU(64, 128, 3, pool_size=2, pool_stride=2,
-                                                  stride=1, padding=1, bias=bias, **kwargs)
-        self.conv11 = ai8x.FusedMaxPoolConv2dReLU(128, 768, 1, pool_size=2, pool_stride=2,
-                                                  padding=0, bias=bias, **kwargs)
-        self.conv12 = ai8x.FusedConv2dReLU(768, 192, 1, stride=1, padding=0, bias=bias, **kwargs)
-        self.conv13 = ai8x.FusedMaxPoolConv2dReLU(192, 192, 3, pool_size=2, pool_stride=2,
-                                                  stride=1, padding=1, bias=bias, **kwargs)
+        self.conv1 = ai8x.FusedConv2dBNReLU(num_channels, 24, 3, stride=1, padding=1, bias=bias,
+                                            **kwargs)
+        self.conv2 = ai8x.FusedConv2dBNReLU(24, 32, 3, stride=1, padding=1, bias=bias, **kwargs)
+        self.conv3 = ai8x.FusedConv2dBNReLU(32, 32, 3, stride=1, padding=1, bias=bias, **kwargs)
+        self.conv4 = ai8x.FusedConv2dBNReLU(32, 32, 3, stride=1, padding=1, bias=bias, **kwargs)
+        self.conv5 = ai8x.FusedMaxPoolConv2dBNReLU(32, 32, 3, pool_size=2, pool_stride=2,
+                                                   stride=1, padding=1, bias=bias, **kwargs)
+        self.conv6 = ai8x.FusedConv2dBNReLU(32, 32, 3, stride=1, padding=1, bias=bias, **kwargs)
+        self.conv7 = ai8x.FusedConv2dBNReLU(32, 64, 3, stride=1, padding=1, bias=bias, **kwargs)
+        self.conv8 = ai8x.FusedMaxPoolConv2dBNReLU(64, 64, 3, pool_size=2, pool_stride=2,
+                                                   stride=1, padding=1, bias=bias, **kwargs)
+        self.conv9 = ai8x.FusedConv2dBNReLU(64, 64, 3, stride=1, padding=1, bias=bias, **kwargs)
+        self.conv10 = ai8x.FusedMaxPoolConv2dBNReLU(64, 128, 3, pool_size=2, pool_stride=2,
+                                                    stride=1, padding=1, bias=bias, **kwargs)
+        self.conv11 = ai8x.FusedMaxPoolConv2dBNReLU(128, 512, 1, pool_size=2, pool_stride=2,
+                                                    padding=0, bias=bias, **kwargs)
+        self.conv12 = ai8x.FusedConv2dBNReLU(512, 192, 1, stride=1, padding=0, bias=bias, **kwargs)
+        self.conv13 = ai8x.FusedMaxPoolConv2dBNReLU(192, 192, 3, pool_size=2, pool_stride=2,
+                                                    stride=1, padding=1, bias=bias, **kwargs)
         self.conv14 = ai8x.Conv2d(192, num_classes, 1, stride=1, padding=0, bias=bias,
                                   wide=True, **kwargs)
 

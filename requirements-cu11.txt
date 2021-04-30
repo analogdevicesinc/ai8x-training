@@ -1,0 +1,18 @@
+numpy>=1.20.2,<1.21
+PyYAML>=5.1.1
+tabulate==0.8.3
+future>=0.17.1
+six>=1.12.0
+scipy>=1.3.0
+librosa>=0.7.2
+Pillow>=7
+shap>=0.34.0
+tk>=0.1.0
+sndfile>=0.2
+https://download.pytorch.org/whl/cu111/torch-1.8.1%2Bcu111-cp38-cp38-linux_x86_64.whl
+https://download.pytorch.org/whl/cu111/torchvision-0.9.1%2Bcu111-cp38-cp38-linux_x86_64.whl
+tensorboard==2.4.1
+numba<0.50.0
+opencv-python>=4.4.0
+pytsmod>=0.3.3
+-e distiller
