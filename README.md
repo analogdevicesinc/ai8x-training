@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_May 7, 2021_
+_May 13, 2021_
 
 The Maxim Integrated AI project is comprised of four repositories:
 
@@ -236,7 +236,54 @@ $ yarn
 $ cd examples/manifold
 $ yarn
 # ignore warnings
+npm run start
 ```
+
+The actual code will run in JavaScript inside the browser (this may cause warnings that the web page is consuming lots of resources).
+
+##### Integration into PyTorch code
+
+The easiest integration of Manifold is by generating three CSV files during/after training and load them into the demo application (started with the `npm run start` command shown above). For example, a batch tensor can be saved to a CSV file using
+
+```python
+def save_tensor(t, f):
+    """ Save tensor `t` to file handle `f` in CSV format """
+    np.savetxt(f, t.reshape(t.shape[0], t.shape[1], -1).mean(axis=2).cpu().numpy(), delimiter=",")
+```
+
+This example assumes that the shape of the tensor is (batch_size, features, [feature dimensions]) and averages each feature individually.
+
+To create the CSV files, open the files and put the field name(s) into the first line:
+
+```python
+    print('Saving x/ypred/ytrue to CSV...')
+    f_ytrue = open('ytrue.csv', 'w')
+    f_ytrue.write('hr\n')
+    f_ypred = open('ypred.csv', 'w')
+    f_ypred.write('hr\n')
+    f_x = open('x.csv', 'w')
+    f_x.write(','.join(data_fields) + '\n')
+```
+
+Then, where appropriate during test, save features/predictions/truth values to CSV:
+
+```python
+		save_tensor(local_batch_val, f_x)
+    save_tensor(outputs, f_ypred)
+    save_tensor(local_label_val, f_ytrue)
+```
+
+Finally, close the files:
+
+```python
+		f_ytrue.close()
+		f_ypred.close()
+		f_x.close()
+```
+
+Note that performance will suffer when there are more than about 20,000 records in the CSV file. Subsampling the data is one way to avoid this problem.
+
+
 
 #### Windows Systems
 
@@ -321,6 +368,10 @@ For minor updates, pull the latest code and install the updated wheels:
 (ai8x-training) $ pip3 install -U pip setuptools
 (ai8x-training) $ pip3 install -U -r requirements.txt # or requirements-cu11.txt with CUDA 11.x
 ```
+
+##### Updates on Windows
+
+On Windows, please *also* use the Maintenance Tool as documented in the [Maxim Micro SDK (MaximSDK) Installation and Maintenance User Guide](https://pdfserv.maximintegrated.com/en/an/ug7219.pdf). The Maintenance Tool updates the SDK.
 
 ##### Python Version Updates
 
@@ -1278,6 +1329,7 @@ The following table describes the most important command line arguments for `ai8
 | `--softmax`              | Add software Softmax functions to generated code             |                                 |
 | `--boost`                | Turn on a port pin to boost the CNN supply                   | `--boost 2.5`                   |
 | `--timer`                | Insert code to time the inference using a timer              | `--timer 0`                     |
+| `--no-wfi` | Do not use WFI instructions when waiting for CNN completion |  |
 | *File names*             |                                                              |                                 |
 | `--c-filename`           | Main C file name base (default: main.c)                      | `--c-filename main.c`           |
 | `--api-filename`         | API C file name (default: cnn.c)                             | `--api-filename cnn.c`          |
@@ -2086,8 +2138,12 @@ To deal with this issue, there are several options:
 
 #### Debugging Techniques
 
-There can be many reasons why the known-answer test (KAT) fails for a given network. The following techniques may help in narrowing down where in the network or the YAML description of the network the error occurs:
+There can be many reasons why the known-answer test (KAT) fails for a given network with an error message, or where the KAT does not complete. The following techniques may help in narrowing down where in the network or the YAML description of the network the error occurs:
 
+* For very short and small networks, disable the use of WFI instructions while waiting for completion of the CNN computations by using the command line option `--no-wfi`. *Explanation: In these cases, the network terminates more quickly than the time it takes between testing for completion and executing the WFI instruction, so the WFI instruction is never interrupted and the code may appear to hang.*
+  
+* For very large and deep networks, enable the boost power supply using the `--boost` command line option. On the EVkit, the boost supply is connected to port pin P2.5, so the command line option is  `--boost 2.5`.
+  
 * The default compiler optimization level is `-O2`, and incorrect code may be generated under rare circumstances. Lower the optimization level in the generated `Makefile` to `-O1`, clean (`make distclean && make clean`) and rebuild the project (`make`). If this solves the problem, one of the possible reasons is that code is missing the `volatile`  keyword for certain variables.
   To permanently adjust the default compiler optimization level, modify `MXC_OPTIMIZE_CFLAGS` in  `assets/embedded-ai85/templateMakefile` for Arm code and  `assets/embedded-riscv-ai85/templateMakefile.RISCV` for RISC-V code.
 
