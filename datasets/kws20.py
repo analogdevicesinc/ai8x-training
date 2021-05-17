@@ -302,7 +302,7 @@ class KWS:
     def __getitem__(self, index):
         inp, target = self.data[index].type(torch.FloatTensor), int(self.targets[index])
         if not self.save_unquantized:
-        inp /= 256
+            inp /= 256
         # print(inp)
         # print("Shape 1:", inp.shape)
         if self.transform is not None:
