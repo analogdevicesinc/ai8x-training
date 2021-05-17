@@ -1,5 +1,5 @@
 [MESSAGES CONTROL]
-disable=invalid-name
+disable=invalid-name, consider-using-with
 [TYPECHECK]
 ignored-modules = numpy, matplotlib.cm, torch, distiller
 ignored-classes = ModelProto

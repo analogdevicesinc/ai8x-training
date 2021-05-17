@@ -34,7 +34,7 @@ class YouTubeFacesDataset(data.Dataset):
     ):
         data_folder = os.path.join(root_dir, d_type)
         assert os.path.isdir(data_folder), (f'No dataset at {data_folder}.'
-                                            ' Follow the steps at datasets/face_id/README.')
+                                            ' Follow the steps at datasets/face_id/README.md')
 
         data_file_list = sorted([d for d in os.listdir(data_folder) if d.startswith('whole_set')])
 
