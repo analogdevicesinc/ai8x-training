@@ -189,7 +189,7 @@ def camvid_get_datasets(data, load_train=True, load_test=True, num_classes=33):
                                      classes=classes, download=True, transform=test_transform)
 
         if args.truncate_testset:
-            test_dataset.data = test_dataset.data[:1]
+            test_dataset.img_list = test_dataset.img_list[:1]
     else:
         test_dataset = None
 
