@@ -37,7 +37,7 @@ class AI85UNetSmall(nn.Module):
                                                   bias=bias, batchnorm='NoAffine', **kwargs)
 
         self.bneck = ai8x.FusedMaxPoolConv2dBNReLU(32, 64, 3, stride=1, padding=1,
-                                                  bias=bias, batchnorm='NoAffine', **kwargs)
+                                                   bias=bias, batchnorm='NoAffine', **kwargs)
 
         self.upconv3 = ai8x.ConvTranspose2d(64, 32, 3, stride=2, padding=1)
         self.dec3 = ai8x.FusedConv2dBNReLU(64, 32, 3, stride=1, padding=1,
@@ -97,7 +97,7 @@ class AI85UNetMedium(nn.Module):
                                                   bias=bias, batchnorm='NoAffine', **kwargs)
 
         self.bneck = ai8x.FusedMaxPoolConv2dBNReLU(32, 64, 3, stride=1, padding=1,
-                                                  bias=bias, batchnorm='NoAffine', **kwargs)
+                                                   bias=bias, batchnorm='NoAffine', **kwargs)
 
         self.upconv3 = ai8x.ConvTranspose2d(64, 32, 3, stride=2, padding=1)
         self.dec3 = ai8x.FusedConv2dBNReLU(64, 60, 3, stride=1, padding=1,
