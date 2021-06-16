@@ -716,7 +716,7 @@ def train(train_loader, model, criterion, optimizer, epoch,
                 classerr.add(output.data, target)
             else:
                 classerr.add(output.data.permute(0, 2, 3, 1).flatten(start_dim=0, end_dim=2),
-                			 target.flatten())
+                             target.flatten())
             if not args.regression:
                 acc_stats.append([classerr.value(1), classerr.value(min(args.num_classes, 5))])
             else:
@@ -971,7 +971,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                     classerr.add(output.data, target)
                 else:
                     classerr.add(output.data.permute(0, 2, 3, 1).flatten(start_dim=0, end_dim=2),
-                    			 target.flatten())
+                                 target.flatten())
                 if args.display_confusion:
                     confusion.add(output.data, target)
             else:

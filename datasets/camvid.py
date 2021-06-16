@@ -15,7 +15,6 @@ import os
 import sys
 
 import numpy as np
-
 from torch.utils.data import Dataset
 from torchvision import transforms
 
@@ -35,7 +34,7 @@ class CamVidDataset(Dataset):
 
     class_dict = {'None': 0, 'Animal': 1, 'Archway': 2, 'Bicyclist': 3, 'Bridge': 4, 'Building': 5,
                   'Car': 6, 'CartLuggagePram': 7, 'Child': 8, 'Column_Pole': 9, 'Fence': 10,
-                  'LaneMkgsDriv': 11, 'LaneMkgsNonDriv': 12, 'Misc_Text':13,
+                  'LaneMkgsDriv': 11, 'LaneMkgsNonDriv': 12, 'Misc_Text': 13,
                   'MotorcycleScooter': 14, 'OtherMoving': 15, 'ParkingBlock': 16, 'Pedestrian': 17,
                   'Road': 18, 'RoadShoulder': 19, 'Sidewalk': 20, 'SignSymbol': 21, 'Sky': 22,
                   'SUVPickupTruck': 23, 'TrafficCone': 24, 'TrafficLight': 25, 'Train': 26,
