@@ -1,19 +1,22 @@
 # MAX78000 Model Training and Synthesis
 
-_May 18, 2021_
+_June 16, 2021_
 
-The Maxim Integrated AI project is comprised of four repositories:
+The Maxim Integrated AI project is comprised of five repositories:
 
-1. **Start here**: [Top Level Documentation](https://github.com/MaximIntegratedAI/MaximAI_Documentation)
-2. The software development kit (SDK), which contains drivers and example programs ready to run on the Evaluation Kit:
+1. **Start here**:
+    **[Top Level Documentation](https://github.com/MaximIntegratedAI/MaximAI_Documentation)**
+2. The software development kit (SDK), which contains drivers and example programs ready to run on the evaluation kits (EVkit and Feather):
     [MAX78000_SDK](https://github.com/MaximIntegratedAI/MAX78000_SDK)
 3. The training repository, which is used for deep learning *model development and training*:
     [ai8x-training](https://github.com/MaximIntegratedAI/ai8x-training) **(described in this document)**
 4. The synthesis repository, which is used to *convert a trained model into C code* using the “izer” tool:
     [ai8x-synthesis](https://github.com/MaximIntegratedAI/ai8x-synthesis) **(described in this document)**
+5. The reference design repository, which contains host applications and sample applications for reference designs:
+    [refdes](https://github.com/MaximIntegratedAI/refdes)
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
-See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A [PDF copy of this file](README.pdf) is available in this repository. The GitHub rendering of this document does not show the formulas or the clickable table of contents._
+See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A [PDF copy of this file](README.pdf) is available in this repository. The GitHub rendering of this document does not show the mathematical formulas nor the clickable table of contents._
 
 ---
 
@@ -44,7 +47,6 @@ Including the SDK, the expected/resulting file system layout will be:
     ..../ai8x-training/
     ..../ai8x-synthesis/
     ..../ai8x-synthesis/sdk/
-    ..../manifold/
 
 where “....” is the project root, for example `~/Documents/Source/AI`.
 
@@ -74,7 +76,7 @@ targethost$
 Ctrl+A,D to disconnect
 ```
 
-`man screen` and `man tux` describe the software in more detail.
+`man screen` and `man tmux` describe the software in more detail.
 
 #### Recommended Software
 
@@ -92,7 +94,7 @@ The following software is optional, and can be replaced with other similar softw
 
 #### System Packages
 
-Some additional system packages are required, and installation of these additional packages requires administrator privileges. Note that this is the only time administrator privileges are required unless the optional Manifold is installed locally.
+Some additional system packages are required, and installation of these additional packages requires administrator privileges. Note that this is the only time administrator privileges are required.
 
 ##### macOS
 
@@ -134,9 +136,9 @@ $ sudo dnf install openssl-devel zlib-devel \
 
 #### Python 3.8
 
-*The software in this project uses Python 3.8.9 or a later 3.8.x version.*
+*The software in this project uses Python 3.8.10 or a later 3.8.x version.*
 
-It is not necessary to install Python 3.8.9 system-wide, or to rely on the system-provided Python. To manage Python versions, use `pyenv` (https://github.com/pyenv/pyenv).
+It is not necessary to install Python 3.8.10 system-wide, or to rely on the system-provided Python. To manage Python versions, use `pyenv` (https://github.com/pyenv/pyenv).
 
 On macOS (no CUDA support available):
 
@@ -159,7 +161,7 @@ eval "$(pyenv virtualenv-init -)"
 
 If you use zsh as the shell (default on macOS), add these same commands to `~/.zprofile` or `~/.zshrc` in addition to adding them to the bash startup scripts.
 
-Next, close the Terminal, open a new Terminal and install Python 3.8.9.
+Next, close the Terminal, open a new Terminal and install Python 3.8.10.
 
 On macOS:
 
@@ -171,13 +173,13 @@ $ env \
   PKG_CONFIG_PATH="$(brew --prefix tcl-tk)/lib/pkgconfig" \
   CFLAGS="-I$(brew --prefix tcl-tk)/include" \
   PYTHON_CONFIGURE_OPTS="--with-tcltk-includes='-I$(brew --prefix tcl-tk)/include' --with-tcltk-libs='-L$(brew --prefix tcl-tk)/lib -ltcl8.6 -ltk8.6'" \
-  pyenv install 3.8.9
+  pyenv install 3.8.10
 ```
 
 On Linux:
 
 ```shell
-$ pyenv install 3.8.9
+$ pyenv install 3.8.10
 ```
 
 #### git Environment
@@ -203,87 +205,9 @@ Add this line to `~/.profile` (and on macOS, to `~/.zprofile`).
 
 Nirvana Distiller is package for neural network compression and quantization. Network compression can reduce the memory footprint of a neural network, increase its inference speed and save energy. Distiller is automatically installed as a git sub-module with the other packages.
 
-#### Uber Manifold (Optional)
+#### Manifold
 
-Manifold is a model-agnostic visual debugging tool for machine learning. Manifold can compare models, detects which subset of data a model is inaccurately predicting, and explains the potential cause of poor model performance by surfacing the feature distribution difference between better and worse-performing subsets of data.
-
-There is a hosted version of Manifold at http://manifold.mlvis.io/. To install it locally (for IP reasons and higher speed):
-
-On macOS,
-
-```shell
-brew install yarn npm
-```
-
-On Linux,
-
-```shell
-$ cd $AI_PROJECT_ROOT
-$ curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
-$ echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
-$ curl -sL https://deb.nodesource.com/setup_13.x | sudo -E bash -
-$ sudo apt-get update
-$ sudo apt-get install -y nodejs yarn
-```
-
-On both Mac and Linux:
-
-```shell
-$ git clone https://github.com/uber/manifold.git
-$ cd manifold
-$ yarn
-# ignore warnings
-$ cd examples/manifold
-$ yarn
-# ignore warnings
-npm run start
-```
-
-The actual code will run in JavaScript inside the browser (this may cause warnings that the web page is consuming lots of resources).
-
-##### Integration into PyTorch code
-
-The easiest integration of Manifold is by generating three CSV files during/after training and load them into the demo application (started with the `npm run start` command shown above). For example, a batch tensor can be saved to a CSV file using
-
-```python
-def save_tensor(t, f):
-    """ Save tensor `t` to file handle `f` in CSV format """
-    np.savetxt(f, t.reshape(t.shape[0], t.shape[1], -1).mean(axis=2).cpu().numpy(), delimiter=",")
-```
-
-This example assumes that the shape of the tensor is (batch_size, features, [feature dimensions]) and averages each feature individually.
-
-To create the CSV files, open the files and put the field name(s) into the first line:
-
-```python
-    print('Saving x/ypred/ytrue to CSV...')
-    f_ytrue = open('ytrue.csv', 'w')
-    f_ytrue.write('hr\n')
-    f_ypred = open('ypred.csv', 'w')
-    f_ypred.write('hr\n')
-    f_x = open('x.csv', 'w')
-    f_x.write(','.join(data_fields) + '\n')
-```
-
-Then, where appropriate during test, save features/predictions/truth values to CSV:
-
-```python
-		save_tensor(local_batch_val, f_x)
-    save_tensor(outputs, f_ypred)
-    save_tensor(local_label_val, f_ytrue)
-```
-
-Finally, close the files:
-
-```python
-		f_ytrue.close()
-		f_ypred.close()
-		f_x.close()
-```
-
-Note that performance will suffer when there are more than about 20,000 records in the CSV file. Subsampling the data is one way to avoid this problem.
-
-
+Manifold is a model-agnostic visual debugging tool for machine learning. The [Manifold guide](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/Guides/Manifold.md) shows how to integrate this optional package into the training software.
 
 #### Windows Systems
 
@@ -316,7 +240,7 @@ Then continue with the following:
 
 ```shell
 $ git submodule update --init
-$ pyenv local 3.8.9
+$ pyenv local 3.8.10
 $ python3 -m venv .
 $ source bin/activate
 (ai8x-training) $ pip3 install -U pip wheel setuptools
@@ -375,14 +299,14 @@ On Windows, please *also* use the Maintenance Tool as documented in the [Maxim M
 
 ##### Python Version Updates
 
-Updating Python may require updating `pyenv` first. Should `pyenv install 3.8.9` fail,
+Updating Python may require updating `pyenv` first. Should `pyenv install 3.8.10` fail,
 
 ```shell
-$ pyenv install 3.8.9
-python-build: definition not found: 3.8.9
+$ pyenv install 3.8.10
+python-build: definition not found: 3.8.10
 ```
 
-then  `pyenv` must be updated. On macOS, use:
+then `pyenv` must be updated. On macOS, use:
 
 ```shell
 $ brew update && brew upgrade pyenv
@@ -402,12 +326,12 @@ $
 The update should now succeed:
 
 ```shell
-$ pyenv install 3.8.9
-Downloading Python-3.8.9.tar.xz...
--> https://www.python.org/ftp/python/3.8.9/Python-3.8.9.tar.xz
-Installing Python-3.8.9...
+$ pyenv install 3.8.10
+Downloading Python-3.8.10.tar.xz...
+-> https://www.python.org/ftp/python/3.8.10/Python-3.8.10.tar.xz
+Installing Python-3.8.10...
 ...
-$ pyenv local 3.8.9
+$ pyenv local 3.8.10
 ```
 
 
@@ -439,7 +363,7 @@ Then continue:
 
 ```shell
 $ git submodule update --init
-$ pyenv local 3.8.9
+$ pyenv local 3.8.10
 $ python3 -m venv .
 $ source bin/activate
 (ai8x-synthesis) $ pip3 install -U pip setuptools
@@ -552,7 +476,7 @@ As data is read using multiple passes, and all available processor work in paral
 
 For example, if 192-channel data is read using 64 active processors, Data Memory 0 stores three 32-bit words: channels 0, 1, 2, 3 in the first word, 64, 65, 66, 67 in the second word, and 128, 129, 130, 131 in the third word. Data Memory 1 stores channels 4, 5, 6, 7 in the first word, 68, 69, 70, 71 in the second word, and 132, 133, 134, 135 in the third word, and so on. The first processor processes channel 0 in the first pass, channel 64 in the second pass, and channel 128 in the third pass.
 
-*Note: Multi-pass also works with channel counts that are not a multiple of 64, and can be used with less than 64 active processors.*
+*Note: Multi-pass also works with channel counts that are not a multiple of 64, and can be used with fewer than 64 active processors.*
 
 *Note: For all multi-pass cases, the processor count per pass is rounded up to the next multiple of 4.*
 
@@ -576,6 +500,8 @@ The number of discarded pixels is network specific and dependent on pooling stri
 
 *Note: Streaming mode requires the use of FIFOs.*
 
+For concrete examples on how to implement streaming mode with a camera, please see the [Camera Streaming Guide](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/Guides/Camera_Streaming_Guide.md)
+
 #### FIFOs
 
 Since the data memory instances are single-port memories, software would have to temporarily disable the accelerator in order to feed it new data. Using  FIFOs, software can input available data while the accelerator is running. The accelerator will autonomously fetch data from the FIFOs when needed, and stall (pause) when no enough data is available.
@@ -584,7 +510,7 @@ The MAX78000/MAX78002 accelerator has two types of FIFO:
 
 ##### Standard FIFOs
 
-There are four dedicated FIFOs connected to processors 0-3, 16-19, 32-35, and 48-51, supporting up to 16 input channels (in HWC format) or four channels (CHW format). These FIFOs work when used from the ARM Cortex-M4 core and from the RISC-V core.
+There are four dedicated FIFOs connected to processors 0-3, 16-19, 32-35, and 48-51, supporting up to 16 input channels (in HWC format) or four channels (CHW format). These FIFOs work when used from the Arm Cortex-M4 core and from the RISC-V core.
 
 The standard FIFOs are selected using the `--fifo` argument for `ai8xize.py`.
 
@@ -741,15 +667,15 @@ $$ w_0 * w_1 = 128/128 → saturation → 01111111 (= 127/128) $$
 
 ### Channel Data Formats
 
-#### HWC
+#### HWC (Height-Width-Channels)
 
-All internal data are stored in HWC format, 4 channels per 32-bit word. Assuming 3-color (or 3-channel) input, one byte will be unused. The highest frequency in this data format is the channel, so the channels are interleaved.
+All internal data are stored in HWC format, four channels per 32-bit word. Assuming 3-color (or 3-channel) input, one byte of the 32-bit word will be unused. The highest frequency in this data format is the channel, so the channels are interleaved.
 
 Example:
 
 ![0BGR 0BGR 0 BGR 0BGR...](docs/HWC.png)
 
-#### CHW
+#### CHW (Channels-Height-Width)
 
 The input layer can alternatively also use the CHW format (a sequence of channels). The highest frequency in this data format is the width or X-axis (W), and the lowest frequency is the channel. Assuming an RGB input, all red pixels are followed by all green pixels, followed by all blue pixels.
 
@@ -769,14 +695,14 @@ In general, HWC is faster since each memory read can deliver data to up to four 
 
 When using the CHW data format, only one of the four processors sharing the data memory instance can be used. The next channel needs to use a processor connected to a different data memory instance, so that the machine can deliver one byte per clock cycle to each enabled processor.
 
-Because of the fact that a processor has its own dedicated weight memory, this will introduce “gaps” in the weight memory map, as shown in the following illustration:
+Because each processor has its own dedicated weight memory, this will introduce “gaps” in the weight memory map, as shown in the following illustration:
 
 ![Kernel Memory Gaps](docs/KernelMemoryGaps.png)
 
 
 ### Active Processors and Layers
 
-For each layer, a set of active processors must be specified. The number input channels for the layer must be equal to or a multiple of the active processors, and the input data for that layer must be located in data memory instances accessible to the selected processors.
+For each layer, a set of active processors must be specified. The number of input channels for the layer must be equal to, or be a multiple of, the active processors, and the input data for that layer must be located in data memory instances accessible to the selected processors.
 
 It is possible to specify a relative offset into the data memory instance that applies to all processors.
 _Example:_ Assuming HWC data format, specifying the offset as 16384 bytes (or 0x4000) will cause processors 0-3 to read their input from the second half of data memory 0, processors 4-7 will read from the second half of data memory instance 1, etc.
@@ -795,7 +721,7 @@ The following example shows the weight memory layout for two layers. The first l
 
 #### Bias Memories
 
-Bias values are stored in separate bias memories. There are four bias memory instances available, and a layer can access any bias memory instance where at least one processor is enabled. By default, bias memories are automatically allocated using a modified Fit-First Descending (FFD) algorithm. Before considering the required resource sizes in descending order, and placing values in the bias memory with most available resources, the algorithm places those bias values that require a single specified bias memory. The bias memory allocation can optionally be controlled using the [`bias_group`](#`bias_group` (Optional)) configuration option.
+Bias values are stored in separate bias memories. There are four bias memory instances available, and a layer can access any bias memory instance where at least one processor is enabled. By default, bias memories are automatically allocated using a modified Fit-First Descending (FFD) algorithm. Before considering the required resource sizes in descending order, and placing values in the bias memory with the most available resources, the algorithm places those bias values that require a single specified bias memory. The bias memory allocation can optionally be controlled using the [`bias_group`](#`bias_group` (Optional)) configuration option.
 
 
 ### Weight Storage Example
@@ -808,7 +734,7 @@ The Network Loader prints a kernel map that shows the kernel arrangement based o
 
 ### Example: `Conv2D`
 
-The following picture shows an example of a `Conv2d` with 1×1 kernels, 5 input channels, 2 output channels and data size of 2×2. The inputs are shown on the left, and the outputs on the right, and the kernels are shown lined up with the associated inputs — the number of kernel rows matches the number of input channels, and the number kernel columns matches the number of output channels. The lower half of the picture shows how the data is arranged in memory when HWC data is used for both input and output.
+The following picture shows an example of a `Conv2d` with 1×1 kernels, five input channels, two output channels, and a data size of 2×2. The inputs are shown on the left, and the outputs on the right, and the kernels are shown lined up with the associated inputs — the number of kernel rows matches the number of input channels, and the number of kernel columns matches the number of output channels. The lower half of the picture shows how the data is arranged in memory when HWC data is used for both input and output.
 
 ![Conv2Dk1x1](docs/Conv2Dk1x1.png)
 
@@ -843,7 +769,7 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   
   * Pooling does not support padding.
   
-  * Pooling more than 64 channels requires use of a “fused” convolution in the same layer, unless the pooled dimensions are 1×1.
+  * Pooling more than 64 channels requires the use of a “fused” convolution in the same layer, unless the pooled dimensions are 1×1.
   
   * Pooling strides can be 1 through 16. For 2D pooling, the stride is the same for both dimensions.
   
@@ -866,18 +792,21 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
 
 * The maximum dimension (number of rows or columns) for input or output data is 1023.
   
+* Streaming mode:
+  
   * When using data greater than 90×91, `streaming` mode must be used.
-  * When using `streaming` mode, the product of any layer’s input width, input height, and input channels divided by 64 rounded up must not exceed 2^21: $width * height * ⌈\frac{channels}{64}⌉ < 2^{21}$. _width_ and _height_ must not exceed 1023.
-  * Streaming is limited to 8 layers or less, and is limited to four FIFOs (up to 4 input channels in CHW and up to 16 channels in HWC format), see [FIFOs](#FIFOs).
+  * When using `streaming` mode, the product of any layer’s input width, input height, and input channels divided by 64 rounded up must not exceed 2^21: $width * height * ⌈\frac{channels}{64}⌉ < 2^{21}$; _width_ and _height_ must not exceed 1023.
+  * Streaming is limited to 8 consecutive layers or fewer, and is limited to four FIFOs (up to 4 input channels in CHW and up to 16 channels in HWC format), see [FIFOs](#FIFOs).
   * For streaming layers, bias values may not be added correctly in all cases.
+  * The *final* streaming layer must use padding.
   
 * The weight memory supports up to 768 * 64 3×3 Q7 kernels (see [Number Format](#Number-Format)).
-  When using 1-, 2- or 4 bit weights, the capacity increases accordingly.
-  When using more than 64 input or output channels, weight memory is shared and effective capacity decreases.
+  When using 1-, 2- or 4-bit weights, the capacity increases accordingly.
+  When using more than 64 input or output channels, weight memory is shared, and effective capacity decreases.
   Weights must be arranged according to specific rules detailed in [Layers and Weight Memory](#Layers and Weight Memory).
 
-* There are 16 instances of 32 KiB data memory. When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 181×181 pixels per channel in the CHW format. However, when using more than one input channel, the HWC format may be preferred, and all layer output are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance -- or 91×90 pixels per channel.
-  Note that the first layer commonly creates a wide expansion (i.e., large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical.
+* There are 16 instances of 32 KiB data memory. When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 181×181 pixels per channel in the CHW format. However, when using more than one input channel, the HWC format may be preferred, and all layer outputs are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance -- or 91×90 pixels per channel.
+  Note that the first layer commonly creates a wide expansion (i.e., a large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical.
 
 * The hardware supports 1D and 2D convolution layers, 2D transposed convolution layers (upsampling), element-wise addition, subtraction, binary OR, binary XOR as well as fully connected layers (`Linear`), which are implemented using 1×1 convolutions on 1×1 data:
   * The maximum number of input neurons is 1024, and the maximum number of output neurons is 1024 (16 each per processor used).
@@ -906,9 +835,9 @@ For MAX78000/MAX78002, the product C×H×W must not exceed 16384.
 
 ### Upsampling (Fractionally-Strided 2D Convolutions)
 
-The hardware supports 2D upsampling (“fractionally-strided convolutions”, sometimes called “deconvolution” even though this is not strictly mathematically correct). The PyTorch equivalent is `ConvTranspose2D` with a stride of 2.
+The hardware supports 2D upsampling (“fractionally-strided convolutions,” sometimes called “deconvolution” even though this is not strictly mathematically correct). The PyTorch equivalent is `ConvTranspose2D` with a stride of 2.
 
-The example shows a fractionally-strided convolution with a stride of 2, pad of 1, and a 3×3 kernel. This “upsamples” the input dimensions from 3×3 to output dimensions of 6×6.
+The example shows a fractionally-strided convolution with a stride of 2, a pad of 1, and a 3×3 kernel. This “upsamples” the input dimensions from 3×3 to output dimensions of 6×6.
 
 ![fractionallystrided](docs/fractionallystrided.png)
 
@@ -916,13 +845,13 @@ The example shows a fractionally-strided convolution with a stride of 2, pad of 
 
 ## Model Training and Quantization
 
-The main training software is `train.py`. It drives the training aspects including model creation, checkpointing, model save, and status display (see `--help` for the many supported options, and the `scripts/train_*.sh` scripts for example usage).
+The main training software is `train.py`. It drives the training aspects, including model creation, checkpointing, model save, and status display (see `--help` for the many supported options, and the `scripts/train_*.sh` scripts for example usage).
 
 The `ai84net.py` and `ai85net.py` files contain models that fit into AI84’s weight memory. These models rely on the MAX78000/MAX78002 hardware operators that are defined in `ai8x.py`.
 
 To train the FP32 model for MNIST on MAX78000, run `scripts/train_mnist.sh` from the `ai8x-training` project. This script will place checkpoint files into the log directory. Training makes use of the Distiller framework, but the `train.py` software has been modified slightly to improve it and add some MAX78000/MAX78002 specifics.
 
-Since training can take hours or days, the training script does not overwrite any weights previously produced. Results are placed in sub-directories under `logs/` named with date and time when training began. The latest results are always soft-linked to by `latest-log_dir` and `latest_log_file`.
+Since training can take hours or days, the training script does not overwrite any weights previously produced. Results are placed in sub-directories under `logs/` named with the date and time when training began. The latest results are always soft-linked to by `latest-log_dir` and `latest_log_file`.
 
 ### Command Line Arguments
 
@@ -934,7 +863,7 @@ The following table describes the most important command line arguments for `tra
 | *Device selection*         |                                                              |                                 |
 | `--device`                 | Set device (default: AI84)                                   | `--device MAX78000`             |
 | *Model and dataset*        |                                                              |                                 |
-| `-a`, `--arch`, `--model` | Set model (collected from models folder)                     | `--model ai85net5`              |
+| `-a`, `--arch`, `--model`  | Set model (collected from models folder)                     | `--model ai85net5`              |
 | `--dataset`                | Set dataset (collected from datasets folder)                 | `--dataset MNIST`               |
 | `--data`                   | Path to dataset (default: data)                              | `--data /data/ml`               |
 | *Training*                 |                                                              |                                 |
@@ -944,31 +873,31 @@ The following table describes the most important command line arguments for `tra
 | `--lr`, `--learning-rate`  | Set initial learning rate                                    | `--lr 0.001`                    |
 | `--deterministic`          | Seed random number generators with fixed values              |                                 |
 | `--resume-from`            | Resume from previous checkpoint                              | `--resume-from chk.pth.tar`     |
-| `--qat-policy`             | Define QAT policy in YAML file (default: qat_policy.yaml). Use ‘’None” to disable QAT. | `--qat-policy qat_policy.yaml`  |
-| `--nas`                    | Enable network architecture search                           |
-| `--nas-policy`             | Define NAS policy in YAML file                               | `--nas-policy nas/nas_policy.yaml`  |
+| `--qat-policy`             | Define QAT policy in YAML file (default: qat_policy.yaml). Use ‘’None” to disable QAT. | `--qat-policy qat_policy.yaml` |
+| `--nas`                    | Enable network architecture search                           |                                 |
+| `--nas-policy`             | Define NAS policy in YAML file                               | `--nas-policy nas/nas_policy.yaml` |
 | *Display and statistics*   |                                                              |                                 |
-| `--enable-tensorboard` | Enable logging to TensorBoard (default: disabled) | |
+| `--enable-tensorboard`     | Enable logging to TensorBoard (default: disabled)            |                                 |
 | `--confusion`              | Display the confusion matrix                                 |                                 |
 | `--param-hist`             | Collect parameter statistics                                 |                                 |
 | `--pr-curves`              | Generate precision-recall curves                             |                                 |
 | `--embedding`              | Display embedding (using projector)                          |                                 |
 | *Hardware*                 |                                                              |                                 |
-| `--use-bias`               | The `bias=True` parameter is passed to the model. The effect of this parameter is model dependent (the parameter does nothing, effects some operations, or all operations). |                                 |
+| `--use-bias`               | The `bias=True` parameter is passed to the model. The effect of this parameter is model-dependent (the parameter does nothing, affects some operations, or all operations). |                                 |
 | `--avg-pool-rounding`      | Use rounding for AvgPool                                     |                                 |
 | *Evaluation*               |                                                              |                                 |
 | `-e`, `--evaluate`         | Evaluate previously trained model                            |                                 |
-| `--8-bit-mode`, `-8`       | Simluate quantized operation for hardware device (8-bit data) |                                 |
+| `--8-bit-mode`, `-8`       | Simulate quantized operation for hardware device (8-bit data). Used for evaluation only. |     |
 | `--exp-load-weights-from`  | Load weights from file                                       |                                 |
 | *Export*                   |                                                              |                                 |
-| `--summary onnx`           | Export trained model to ONNX (default name: to model.onnx) — *see description below* |                                 |
-| `--summary onnx_simplified` | Export trained model to simplified ONNX file (default name: model.onnx) |                                 |
+| `--summary onnx`           | Export trained model to ONNX (default name: to model.onnx) — *see description below* |         |
+| `--summary onnx_simplified` | Export trained model to simplified ONNX file (default name: model.onnx) |                     |
 | `--summary-filename`       | Change the file name for the exported model                  | `--summary-filename mnist.onnx` |
-| `--save-sample`            | Save data[index] from the test set to a NumPy pickle for use as sample data | `--save-sample 10`              |
+| `--save-sample`            | Save data[index] from the test set to a NumPy pickle for use as sample data | `--save-sample 10` |
 
 #### ONNX Model Export
 
-The ONNX model export (via `--summary onnx` or `--summary onnx_simplified`) is primarily intended for visualization of the model. ONNX does not support all of the operators that `ai8x.py` uses, and these operators are therefore removed from the export (see function `onnx_export_prep()` in `ai8x.py`). The ONNX file does contain the trained weights and *may* therefore be usable for inference under certain circumstances. However, it is important to note that the ONNX file **will not** be usable for training (for example, the ONNX `floor` operator has a  gradient of zero which is incompatible with quantization-aware training as implemented in `ai8x.py`).
+The ONNX model export (via `--summary onnx` or `--summary onnx_simplified`) is primarily intended for visualization of the model. ONNX does not support all of the operators that `ai8x.py` uses, and these operators are therefore removed from the export (see function `onnx_export_prep()` in `ai8x.py`). The ONNX file does contain the trained weights and *may* therefore be usable for inference under certain circumstances. However, it is important to note that the ONNX file **will not** be usable for training (for example, the ONNX `floor` operator has a  gradient of zero, which is incompatible with quantization-aware training as implemented in `ai8x.py`).
 
 ### Observing GPU Resources
 
@@ -1044,11 +973,11 @@ The following modules are predefined:
 
 #### Dropout
 
-Dropout modules such as `torch.nn.Dropout()` and `torch.nn.Dropout2d()`are automatically disabled during inference, and can therefore be used for training without affecting inference.
+Dropout modules such as `torch.nn.Dropout()` and `torch.nn.Dropout2d()` are automatically disabled during inference, and can therefore be used for training without affecting inference.
 
 #### view and reshape
 
-There are two supported cases for  `view()` or `reshape()`.
+There are two supported cases for `view()` or `reshape()`.
 
 1. Conversion between 1D data and 2D data: Both the batch dimension (first dimension) and the channel dimension (second dimension) must stay the same. The height/width of the 2D data must match the length of the 1D data (i.e., H×W = L).
    Examples:
@@ -1066,9 +995,11 @@ The hardware always uses signed integers for data and weights. While data is alw
 
 ##### Data
 
-When using the `-8` command line switch, all module outputs are quantized to 8-bit in the range  [-128...+127] to simulate hardware behavior. The last layer can optionally use 32-bit output for increased precision. This is simulated by adding the parameter `wide=True` to the module function call.
+When using the `-8` command line switch, all module outputs are quantized to 8-bit in the range  [-128...+127] to simulate hardware behavior. The `-8` command line switch is designed for *evaluating quantized weights* against a test set, in order to understand the impact of quantization. *Note that model training always uses floating point values, and therefore `-8` is not compatible with training.*
 
-##### Weights: Quantization Aware Training (QAT)
+The last layer can optionally use 32-bit output for increased precision. This is simulated by adding the parameter `wide=True` to the module function call.
+
+##### Weights: Quantization-Aware Training (QAT)
 
 Quantization-aware training (QAT) is enabled by default. QAT is controlled by a policy file, specified by `--qat-policy`.
 
@@ -1084,17 +1015,20 @@ For more information, please also see [Quantization](#Quantization).
 
 #### Batch Normalization
 
-Batch normalization after `Conv1d` and  `Conv2d` layers is supported using “fusing”. The fusing operation merges the effect of batch normalization layers into the parameters of the preceding convolutional layer. For detailed information about batch normalization fusing/folding, see Section 3.2 of the following paper: https://arxiv.org/pdf/1712.05877.pdf.
+Batch normalization after `Conv1d` and `Conv2d` layers is supported using “fusing.” The fusing operation merges the effect of batch normalization layers into the parameters of the preceding convolutional layer, by modifying weights and bias values of that preceding layer. For detailed information about batch normalization fusing/fusion/folding, see Section 3.2 of the following paper: https://arxiv.org/pdf/1712.05877.pdf.
 
-After fusing/folding, the network will not contain any batchnorm layers. The effects of batch normalization will instead be expressed by modified weights and biases of the preceding convolutional layer. If the trained network contains batchnorm layers, the `batchnormfuser.py` script (see [BatchNorm Fusing](#BatchNorm-Fusing)) should be called before `quantize.py` to fuse the batchnorm layers. To be able perform folding/fusing by running `batchnormfuser.py`, a second model architecture should be defined without batchnorm layers. This architecture should be exactly the same as the input model architecture, except for the removal of all batchnorm layers.
+After fusing/folding, the network will no longer contain any batchnorm layers. The effects of batch normalization will instead be expressed by modified weights and biases of the preceding convolutional layer.
+
+* When using [Quantization-Aware Training (QAT)](#Quantization-Aware Training (QAT)), batchnorm layers <u>are automatically folded</u> during training and no further action is needed.
+* When using [Post-Training Quantization](#Post-Training Quantization), the `batchnormfuser.py` script (see [BatchNorm Fusing](#BatchNorm-Fusing)) must be called before `quantize.py` to explicitly fuse the batchnorm layers.
 
 ### Model Comparison and Feature Attribution
 
-Both TensorBoard and Manifold can be used for model comparison and feature attribution.
+Both TensorBoard and [Manifold](#Manifold) can be used for model comparison and feature attribution.
 
 #### TensorBoard
 
-TensorBoard is built into `train.py`. When enabled using `--enable-tensorboard`, it provides a local web server that can be started before, during, or after training and it picks up all data that is written to the `logs/` directory. 
+TensorBoard is built into `train.py`. When enabled using `--enable-tensorboard`, it provides a local web server that can be started before, during, or after training, and it picks up all data that is written to the `logs/` directory. 
 
 For classification models, TensorBoard supports the optional `--param-hist` and `--embedding` command line arguments. `--embedding` randomly selects up to 100 data points from the last batch of each verification epoch. These can be viewed in the “projector” tab in TensorBoard.
 
@@ -1121,34 +1055,7 @@ When using PuTTY, port forwarding is achieved as follows:
 
 ![putty-forward](docs/putty-forward.jpg)
 
-#### Manifold
 
-The quickest way to integrate manifold is by creating CSV files from the training software. *Note that performance will suffer when there are more than about 20,000 records in the CSV file. Subsampling the data is one way to avoid this problem.*
-
-The `train.py` program can create CSV files using the `--save-csv` command line argument in combination with `--evaluate`:
-
-```shell
-./train.py --model ai85net5 --dataset MNIST --confusion --evaluate --save-csv mnist --device MAX78000 --exp-load-weights-from ../ai8x-synthesis/trained/ai85-mnist.pth.tar -8
-```
-
-To run the manifold example application:
-
-```shell
-$ cd manifold/examples/manifold
-$ npm run start
-```
-
-The code will run in JavaScript inside the browser (this may cause warnings that the web page is consuming lots of resources). To run a browser remotely on a development machine, forward X11 using the following command:
-
-```shell
-$ ssh -Yn targethost firefox http://localhost:8080/
-```
-
-To forward only the remote web port, use `ssh`:
-
-```shell
-$ ssh -L 8080:127.0.0.1:8080 targethost
-```
 
 #### SHAP — SHapely Additive exPlanations
 
@@ -1162,11 +1069,18 @@ The train.py program can create plots using the `--shap` command line argument i
 
 This will create a plot with a random selection of 3 test images. The plot shows ten outputs (the ten classes) for the three different input images on the left. Red pixels increase the model’s output while blue pixels decrease the output. The sum of the SHAP values equals the difference between the expected model output (averaged over the background dataset) and the current model output.
 
-<img src="docs/shap.png" alt="shap"  />
+<img src="docs/shap.png" alt="shap"/>
 
 ### BatchNorm Fusing
 
-If batchnorm fusing is needed (see [Batch Normalization](#Batch-Normalization)), the `batchnormfuser.py` tool must be run.
+Batchnorm fusing (see [Batch Normalization](#Batch-Normalization)) is needed as a separate step <u>only when both</u> the following are true:
+
+1. Batch Normalization is used in the network and
+2. [Quantization-Aware Training (QAT)](#Quantization-Aware Training (QAT)) is <u>not</u> used (i.e., when [post-training quantization](#Post-Training Quantization) is active).
+
+In order to perform batchnorm fusing, the `batchnormfuser.py` tool must be run *before* the `quantize.py` script.
+
+*Note: Most of the examples either don’t use batchnorm, so no fusing is needed, or they use QAT, so batchnorm fusing happens automatically.*
 
 #### Command Line Arguments
 
@@ -1176,21 +1090,21 @@ The following table describes the command line arguments for `batchnormfuser.py`
 | ------------------- | ------------------------------------------------------------ | ---------------------------------------- |
 | `-i`, `--inp_path`  | Set input checkpoint path                                    | `-i logs/2020.06.05-235316/best.pth.tar` |
 | `-o`, `--out_path`  | Set output checkpoint path for saving fused model            | `-o best_without_bn.pth.tar`             |
-| `-oa`, `--out_arch` | Set output architecture name (architecture without batchnorm layers) | `-oa ai85simplenet`                      |
+| `-oa`, `--out_arch` | Set output architecture name (architecture without batchnorm layers) | `-oa ai85simplenet`              |
 
 ### Quantization
 
 There are two main approaches to quantization — quantization-aware training and post-training quantization. The MAX78000/MAX78002 support both approaches.
 
-The `quantize.py` software quantizes an existing PyTorch checkpoint file and writes out a new PyTorch checkpoint file that can then be used to evaluate the quality of the quantized network, using the same PyTorch framework used for training. The same new checkpoint file will also be used to feed the [Network Loader](#Network-Loader).
+For both approaches, the `quantize.py` software quantizes an existing PyTorch checkpoint file and writes out a new PyTorch checkpoint file that can then be used to evaluate the quality of the quantized network, using the same PyTorch framework used for training. The same new quantized checkpoint file will also be used to feed the [Network Loader](#Network-Loader).
 
 #### Quantization-Aware Training (QAT)
 
-Quantization-aware training is the better performing approach. It is enabled by default. QAT learns additional parameters during training that help with quantization (see [Weights: Quantization Aware Training (QAT)](#Weights: Quantization Aware Training (QAT)). No additional arguments are needed for `quantize.py`.
+Quantization-aware training is the better performing approach. It is enabled by default. QAT learns additional parameters during training that help with quantization (see [Weights: Quantization-Aware Training (QAT)](#Weights: Quantization-Aware Training (QAT)). No additional arguments are needed for `quantize.py`.
 
 #### Post-Training Quantization
 
-This approach is also called *”naive quantization”*. It should be used when  `--qat-policy None` is specified for training. 
+This approach is also called *”naive quantization”*. It should be used when `--qat-policy None` is specified for training. 
 
 While several approaches for clipping are implemented in `quantize.py`, clipping with a simple fixed scale factor performs best, based on experimental results. The approach requires the clamping operators implemented in `ai8x.py`.
 
@@ -1204,13 +1118,13 @@ The `quantize.py` software has the following important command line arguments:
 | --------------------- | ------------------------------------------------------------ | --------------- |
 | `--help`              | Complete list of options                                     |                 |
 | *Device selection*    |                                                              |                 |
-| `--device`            | Set device (default: AI84)                                     | `--device MAX78000`   |
+| `--device`            | Set device (default: MAX78000)                               | `--device MAX78000` |
 | *Debug*               |                                                              |                 |
 | `-v`                  | Verbose output                                               |                 |
 | *Weight quantization* |                                                              |                 |
 | `-c`, `--config-file` | YAML file with weight quantization information<br />(default: from checkpoint file, or 8-bit for all layers) | `-c mnist.yaml` |
 | `--clip-method`       | Non-QAT clipping method — either STDDEV, AVG, AVGMAX or SCALE | `--clip-method SCALE` |
-| `--scale` | Sets scale for the SCALE clipping method | `--scale 0.85` |
+| `--scale`             | Sets scale for the SCALE clipping method                     | `--scale 0.85`  |
 
 *Note: The syntax for the optional YAML file is described below. The same file can be used for both `quantize.py` and `ai8xize.py`.*
 
@@ -1254,15 +1168,25 @@ The following steps are needed for new data formats and datasets:
 
 Develop a data loader in PyTorch, see https://pytorch.org/tutorials/beginner/data_loading_tutorial.html. See `datasets/mnist.py` for an example.
 
-The data loader must include a loader function, for example `mnist_get_datasets(data, load_train=True, load_test=True)`. `data` is a tuple of the specified data directory and the program arguments, and the two bools specify whether training and/or test data should be loaded.
+The data loader must include a loader function, for example `mnist_get_datasets(data, load_train=True, load_test=True)`. `data` is a tuple of the specified data directory and the program arguments, and the two *bools* specify whether training and/or test data should be loaded.
 
 The data loader is expected to download and preprocess the datasets as needed and install everything in the specified location.
 
 The loader returns a tuple of two PyTorch Datasets for training and test data.
 
+##### Normalizing Input Data
+
+For training, input data is expected to be in the range $[–\frac{128}{128}, +\frac{127}{128}]$. When evaluating quantized weights, or when running on hardware, input data is instead expected to be in the native MAX7800X range of $[–128, +127]$. Conversely, the majority of PyTorch datasets are PIL images of range $[0, 1]$. The respective data loaders therefore call the `ai8x.normalize()` function, which expects an input of 0 to 1 and normalizes the data to either of these output ranges.
+
+When running inference on MAX7800X hardware, it is important to take the native data format into account, and it is desirable to perform as little preprocessing as possible during inference. For example, an image sensor may return “signed” data in the range $[–128, +127]$ for each color. No additional preprocessing or mapping is needed for this sensor since the model was trained with this data range.
+
+In many cases, image data is delivered as fewer than 8 bits per channel (for example, RGB565). In these cases, retraining the model with this limited range  (0 to 31 for 5-bit color and 0 to 63 for 6-bit color, respectively) can potentially eliminate the need for inference-time preprocessing.
+
+On the other hand, a different sensor may produce unsigned data values in the full 8-bit range $[0, 255]$. This range must be mapped to $[–128, +127]$ to match hardware and the trained model. The mapping can be performed during inference by subtracting 128 from each input byte, but this requires extra processing time during inference.
+
 #### `datasets` Data Structure
 
-Add the new data loader to a new file in the `datasets`  directory (for example `datasets/mnist.py`). The file must include the `datasets` data structure that describes the dataset and points to the new loader. `datasets` can list multiple datasets in the same file.
+Add the new data loader to a new file in the `datasets` directory (for example `datasets/mnist.py`). The file must include the `datasets` data structure that describes the dataset and points to the new loader. `datasets` can list multiple datasets in the same file.
 
 The `input` key describes the dimensionality of the data, and the first dimension is passed as `num_channels` to the model, whereas the remaining dimensions are passed as `dimension`. For example, `'input': (1, 28, 28)` will be passed to the model as `num_channels=1` and `dimensions=(28,28)`.
 
@@ -1294,23 +1218,23 @@ The [Netron tool](https://github.com/lutzroeder/Netron) can visualize networks, 
 
 The following chapter describes the neural architecture search (NAS) solution for MAX78000 as implemented in the [ai8x-training](https://github.com/MaximIntegratedAI/ai8x-training) repository. Details are provided about the NAS method, how to run existing NAS models in the repository, and how to define a new NAS model.
 
-The intention of NAS is to find the best neural architecture for a given set of requirements by automating architecture engineering. NAS explores the search space automatically and returns an architecture that is hard to optimize further using human or “manual” design. Multiple different techniques are proposed in the literature for automated architecture search, including reinforcement based and evolutionary based solutions.
+The intention of NAS is to find the best neural architecture for a given set of requirements by automating architecture engineering. NAS explores the search space automatically and returns an architecture that is hard to optimize further using human or “manual” design. Multiple different techniques are proposed in the literature for automated architecture search, including reinforcement-based and evolutionary-based solutions.
 
 #### Once-for-All
 
-Once-for-All (OFA) is a weight-sharing based NAS technique, originally [proposed by MIT and IBM researchers](https://arxiv.org/abs/1908.09791). The paper introduces a method to deploy a trained model to diverse hardware directly without the need of retraining. This is achieved by training a “supernet”, which is named the “Once-for-All” network, and then deploying only part of the supernet, depending on hardware constraints. This requires a training process where all sub-networks are trained sufficiently to be deployed directly. Since training all sub-networks can be computationally prohibitive, sub-networks are sampled during each gradient update step. However, sampling only a small number of networks may cause performance degradation as the sub-networks are interfering with one another. To solve this issue, a _progressive shrinking_ algorithm is proposed by the authors. Rather than optimizing the supernet directly with all interfering sub-networks, they propose to first train a supernet that is the largest network with maximum kernel size, depth and width. Then, smaller sub-networks that share parameters with the supernet are trained progressively. Thus, smaller networks can be initialized with the most important parameters. If the search space consists of different kernel sizes, depths and widths, they are added to sampling space sequentially to minimize the risk of parameter interference. To illustrate, after full model training, the “elastic kernel” stage is performed, where the kernel size is chosen from {1×1, 3×3} while the depth and width are kept at their maximum values. Next, kernel sizes and depths are sampled in the “elastic depth” stage. Finally, all sub-networks are sampled from the whole search space in the “elastic width” stage.
+Once-for-All (OFA) is a weight-sharing-based NAS technique, originally [proposed by MIT and IBM researchers](https://arxiv.org/abs/1908.09791). The paper introduces a method to deploy a trained model to diverse hardware directly without the need of retraining. This is achieved by training a “supernet,” which is named the “Once-for-All” network, and then deploying only part of the supernet, depending on hardware constraints. This requires a training process where all sub-networks are trained sufficiently to be deployed directly. Since training all sub-networks can be computationally prohibitive, sub-networks are sampled during each gradient update step. However, sampling only a small number of networks may cause performance degradation as the sub-networks are interfering with one another. To resolve this issue, a _progressive shrinking_ algorithm is proposed by the authors. Rather than optimizing the supernet directly with all interfering sub-networks, they propose to first train a supernet that is the largest network with maximum kernel size, depth and width. Then, smaller sub-networks that share parameters with the supernet are trained progressively. Thus, smaller networks can be initialized with the most important parameters. If the search space consists of different kernel sizes, depths and widths, they are added to sampling space sequentially to minimize the risk of parameter interference. To illustrate, after full model training, the “elastic kernel” stage is performed, where the kernel size is chosen from {1×1, 3×3} while the depth and width are kept at their maximum values. Next, kernel sizes and depths are sampled in the “elastic depth” stage. Finally, all sub-networks are sampled from the whole search space in the “elastic width” stage.
 
-After the supernet is trained using sub-networks, the “architecture search” stage takes place. The paper propses evolutionary search as the search algorithm. In this stage, the best architecture is searched, given particular hardware constraints. In the algorithm, a set of candidate architectures that perform best on the validation set are mutated and crossovers are performed iteratively.
+After the supernet is trained using sub-networks, the “architecture search” stage takes place. The paper proposes evolutionary search as the search algorithm. In this stage, the best architecture is searched, given particular hardware constraints. A set of candidate architectures that perform best on the validation set are mutated, and crossovers are performed iteratively in the algorithm.
 
-After the training and search steps, the model is ready to deploy to the target hardware in the OFA method as the parameters are already trained. However, on MAX78000, the model still needs to be quantized for deployment, therefore this implementation has an additional step where the model needs to be trained using the quantization aware training (QAT) module of the MAX78000 training repository. 
+After the training and search steps, the model is ready to deploy to the target hardware in the OFA method as the parameters are already trained. However, on MAX78000, the model still needs to be quantized for deployment. Therefore, this implementation has an additional step where the model needs to be trained using the quantization-aware training (QAT) module of the MAX78000 training repository. 
 
 To summarize, the sequential steps of the Once-for-All supernet training are:
 
-1. <u>Full model training</u> (stage 0): In this step, the supernet with maximum kernel size, depth and width is trained. This network is suggested to be **at least 3× to 5×** bigger than the MAX78000 implementation limits, since sub-networks of the supernet are the targets for MAX78000 deployment.
+1. <u>Full model training</u> (stage 0): In this step, the supernet with maximum kernel size, depth and width is trained. This network is suggested to be **at least 3× to 5×** larger than the MAX78000 implementation limits, since sub-networks of the supernet are the targets for MAX78000 deployment.
 
 2. <u>Elastic kernel</u> (stage 1): In this step, only sub-networks with different kernel sizes are sampled from the supernet. For the MAX78000 *Conv2d* layers, the supported sizes are {3×3, 1×1}, and {5, 3, 1} for *Conv1d* layers. Since the sampled sub-network is a part of the supernet, the supernet is updated with gradient updates.
 
-3. <u>Elastic depth</u> (stage 2): In this step, sub-networks with different kernel sizes and depths are sampled from the supernet. In the MAX78000 implementation of OFA, the network is divided into parts called “units”. Each unit can consist of a different number of layers and contain an extra pooling layer at its beginning. Depth sampling is performed inside the units. If a sub-network with _N_ layers in a specific unit is sampled, the first _D_ layers of the unit in the supernet is kept by removing the last _(N-D)_ layers. Consequently, the first layers of each unit are shared among multiple sub-networks.
+3. <u>Elastic depth</u> (stage 2): In this step, sub-networks with different kernel sizes and depths are sampled from the supernet. In the MAX78000 implementation of OFA, the network is divided into parts called “units.” Each unit can consist of a different number of layers and contain an extra pooling layer at its beginning. Depth sampling is performed inside the units. If a sub-network with _N_ layers in a specific unit is sampled, the first _D_ layers of the unit in the supernet is kept by removing the last _(N-D)_ layers. Consequently, the first layers of each unit are shared among multiple sub-networks.
 
 4. <u>Elastic width</u> (stage 3): In addition to kernel size and depth, sub-networks are sampled from different width options in this stage. For width shrinking, the most important channels with the largest L1 norm are selected. This ensures that only the most important channels are shared. To achieve this, the layer output channels are sorted after each gradient update. The input channels of the following layers are sorted similarly to keep the supernet functional.
 
@@ -1322,7 +1246,7 @@ For more details and to better understand OFA, please see the [original paper](h
 
 ##### Stages and Levels in the MAX78000 Implementation
 
-In the NAS module of the *ai8x-training* repository, there are two concepts that are used to indicate the progress of the NAS training process, called “stages” and “levels”. *Stage* denotes whether full model training (stage 0), elastic kernel (stage 1), elastic depth (stage 2) or elastic width (stage 3) is being performed. Training is completed after stage 3 has finished. 
+In the NAS module of the *ai8x-training* repository, there are two concepts that are used to indicate the progress of the NAS training process, called “stages” and “levels.” *Stage* denotes whether full model training (stage 0), elastic kernel (stage 1), elastic depth (stage 2) or elastic width (stage 3) is being performed. Training is completed after stage 3 has finished. 
 
 *Levels* denote the phases of stages. In the original [OFA paper](https://arxiv.org/abs/1908.09791), the authors suggest progressive shrinking to facilitate training of interfering sub-networks. Stages play an important role here. In each stage, a new search parameter is introduced to the training. To further facilitate training, stages can be decomposed into levels. With increasing levels, smaller sub-networks become sampleable since the network is trained well enough to be ready for an increased number of sub-networks. For example, if the deepest unit in the network consists of 4 layers, there are 3 levels in stage 2. The reason for this is that in the level 1 of stage 2 (elastic depth), the last layer is removed with 50% probability in the sub-network sampling. Therefore, possible depths are 3 or 4 for that unit in level 1. In level 2, the possible depths for this unit are [2, 3, 4]. Likewise, the possible depths are [1, 2, 3, 4] in level 3. The first layer in a unit is always present, it is never removed in any sub-network. The same level logic applies to stage 1 and stage 3 as well. In stage 1, kernel sizes are sampled. For 2D convolutions, the possible kernel options are either 1×1 or 3×3, so there is only one level. However, for 1D convolutions, kernel sizes could be 5, 3, or 1; therefore, there are two levels. In stage 3, widths are sampled. The possible widths are 100% of the same layer’s width in the supernet, plus 75%, 50%, and 25% of the supernet width. Since there are four options, there are 4–1=3 levels in stage 3. As levels increase, smaller widths become an option in the sampling pool.
 
@@ -1332,30 +1256,30 @@ In summary, the architecture of the supernet determines how many levels there wi
 
 Network Architecture Search (NAS) can be enabled using the `--nas` command line option. NAS is based on the Once-For-All (OFA) approach described above. NAS is controlled by a policy file, specified by `--nas-policy`. The policy file contains the following fields:
   * `start_epoch`: The full model is trained without any elastic search until this epoch is reached.
-  * `validation_freq` is set to define the frequency in epochs to calculate the model performance on the validation set after full model training. This parameter is used to save training time especially when the model includes batch normalization.
+  * `validation_freq` is set to define the frequency in epochs to calculate the model performance on the validation set after full model training. This parameter is used to save training time, especially when the model includes batch normalization.
   * The `elastic_kernel`, `elastic_depth` and `elastic_width` fields are used to define the properties of each elastic search stage. These fields include the following two sub-fields:
 	  * `leveling` enables leveling during elastic search. *See [above](# (Stages and Levels in the MAX78000 Implementation)) for an explanation of stages and levels.*
     * `num_epochs` defines the number of epochs for each level of the search stage if `leveling` is `False`.
   * `kd_params` is set to enable Knowledge Distillation.
     * `teacher_model` defines the model used as teacher model. Teacher is the model before epoch `start_epoch` if it is set to `full_model`. Teacher is updated with the model just before the stage transition if this field is set to `prev_stage_model`.
-    * See [here](https://intellabs.github.io/distiller/knowledge_distillation.html#knowledge-distillation) for more information to set `distill_loss`, `student_loss` and  `temperature`.
-  * The `evolution_search` field defines the search algorithm parameters, used to find the sub-network of the full network.
+    * See [here](https://intellabs.github.io/distiller/knowledge_distillation.html#knowledge-distillation) for more information to set `distill_loss`, `student_loss` and `temperature`.
+  * The `evolution_search` field defines the search algorithm parameters used to find the sub-network of the full network.
     * `population_size` is the number of sub-networks to be considered at each iteration.
     * `ratio_parent` is the ratio of the population to be kept for the next iteration.
     * `ratio_mutation` determines the number of mutations at each iteration, which is calculated by multiplying this ratio by the population size.
     * `prob_mutation` is the ratio of the parameter change of a mutated network.
     * `num_iter` is the number of iterations.
-    * `constraints` are used define the constraints of the samples in the population.
+    * `constraints` are used to define the constraints of the samples in the population.
       * `min_num_weights` and `max_num_weights` are used to define the minimum and the maximum number of weights in the network.
-      * `width_options` is used to limit the possible number of channels in any of the layer in the selected network. This constraint can be used to effectively use memory on MAX78000.
+      * `width_options` is used to limit the possible number of channels in any of the layers in the selected network. This constraint can be used to effectively use memory on MAX78000.
 
 It is also possible to resume NAS training from a saved checkpoint using the `--resume-from` option. The teacher model can also be loaded using the `--nas-kd-resume-from` option.
 
 ##### Important Considerations for NAS
 
-* Since the sub-networks are intended to be used on MAX78000, ensure that the full model size of OFA is **at least 3 times** bigger than the MAX78000 kernel memory size. Likewise, it is good practice to design it deeper and wider than the final network that may be considered suitable for the given task. If the initial model size is too big, it will slow down the training process and there is a risk that most of the sub-networks exceed the MAX78000 resources. Therefore, 3× to 5× is recommended as the size multiplier for the full model selection.
-* For the width selection, ensure that widths are multiples of 64 as MAX78000 has 64 processors and each channel is processed in a separate processor. Using multiples of 64, kernel memory is used more efficiently as widths are searched within [100%, 75%, 50%, 25%] of the initial supernet width selection. Note that these are the default percentages and they can be changed. Rather than sudden decreases, more granularity and a linear decrease are recommended as this is more suitable for progressive shrinking.
-* **NAS training takes time**. It will take days or even weeks depending on the number of sub-networks, the full model size and number of epochs at each stage/level, and the available GPU hardware. It is recommended to watch the loss curves in the training and to stop training when the loss fully converges. Then, proceed with the next level using the checkpoint saved from the last level.
+* Since the sub-networks are intended to be used on MAX78000, ensure that the full model size of OFA is **at least three times** larger than the MAX78000 kernel memory size. Likewise, it is good practice to design it deeper and wider than the final network that may be considered suitable for the given task. If the initial model size is too big, it will slow down the training process, and there is a risk that most of the sub-networks exceed the MAX78000 resources. Therefore, 3× to 5× is recommended as the size multiplier for the full model selection.
+* For the width selection, ensure that widths are multiples of 64 as MAX78000 has 64 processors, and each channel is processed in a separate processor. Using multiples of 64, kernel memory is used more efficiently as widths are searched within [100%, 75%, 50%, 25%] of the initial supernet width selection. Note that these are the default percentages, and they can be changed. Rather than sudden decreases, more granularity and a linear decrease are recommended as this is more suitable for progressive shrinking.
+* **NAS training takes time**. It will take days or even weeks depending on the number of sub-networks, the full model size and number of epochs at each stage/level, and the available GPU hardware. It is recommended to watch the loss curves during training and to stop training when the loss fully converges. Then, proceed with the next level using the checkpoint saved from the last level.
 * The number of batches in each epoch plays an important role in the selection of the number of epochs for each stage/level. If the dataset is ten times bigger and there are ten times more gradient updates, divide the number of epochs by 10 for the same supernet architecture.
 
 #### NAS Model Definition
@@ -1390,9 +1314,10 @@ _The `ai8xize` network loader currently depends on PyTorch and Nervana’s Disti
 
 The network loader creates C code that programs the MAX78000/MAX78002 (for embedded execution, or RTL simulation). Additionally, the generated code contains sample input data and the expected output for the sample, as well as code that verifies the expected output.
 
-The `ai8xize.py` program needs two inputs:
-1. A quantized checkpoint file, generated by the MAX78000/MAX78002 model quantization program `quantize.py`.
-2. A YAML description of the network.
+The `ai8xize.py` program needs three inputs:
+1. A quantized checkpoint file, generated by the MAX78000/MAX78002 model quantization program `quantize.py`, see [Quantization](#Quantization).
+2. A YAML description of the network, see [YAML Network Description](#YAML Network Description).
+3. A NumPy “pickle” `.npy` file with sample input data, see [Generating a Random Sample Input](#Generating a Random Sample Input).
 
 By default, the C code is split into two files: `main.c` contains the wrapper code, and loads a sample input and verifies the output for the sample input. `cnn.c` contains functions that are generated for a specific network to load, configure, and run the accelerator. During development, this split makes it easier to swap out only the network while keeping customized wrapper code intact.
 
@@ -1415,21 +1340,22 @@ The following table describes the most important command line arguments for `ai8
 | `--prefix`               | Set test name prefix                                         | `--prefix mnist`                |
 | `--board-name`           | Set the target board (default: `EvKit_V1`)                   | `--board-name FTHR_RevA`        |
 | *Code generation*        |                                                              |                                 |
-| `--overwrite`            | Produce output even when the target directory exists (default: abort) |                                 |
+| `--overwrite`            | Produce output even when the target directory exists (default: abort) |                        |
 | `--compact-data`         | Use *memcpy* to load input data in order to save code space  |                                 |
 | `--compact-weights`      | Use *memcpy* to load weights in order to save code space     |                                 |
 | `--mexpress`             | Use faster kernel loading                                    |                                 |
-| `--mlator`               | Use hardware to swap output bytes (useful for large multi-channel outputs) |                                 |
+| `--mlator`               | Use hardware to swap output bytes (useful for large multi-channel outputs) |                   |
 | `--softmax`              | Add software Softmax functions to generated code             |                                 |
 | `--boost`                | Turn on a port pin to boost the CNN supply                   | `--boost 2.5`                   |
 | `--timer`                | Insert code to time the inference using a timer              | `--timer 0`                     |
-| `--no-wfi` | Do not use WFI instructions when waiting for CNN completion |  |
+| `--no-wfi`               | Do not use WFI instructions when waiting for CNN completion  |                                 |
 | *File names*             |                                                              |                                 |
 | `--c-filename`           | Main C file name base (default: main.c)                      | `--c-filename main.c`           |
 | `--api-filename`         | API C file name (default: cnn.c)                             | `--api-filename cnn.c`          |
 | `--weight-filename`      | Weight header file name (default: weights.h)                 | `--weight-filename wt.h`        |
 | `--sample-filename`      | Sample data header file name (default: sampledata.h)         | `--sample-filename kat.h`       |
-| `--sample-input`         | Sample data source file name (default: tests/sample_dataset.npy) | `--sample-input kat.npy`        |
+| `--sample-output-filename` | Sample result header file name (default: sampleoutput.h) | `--sample-output-filename katresult.h` |
+| `--sample-input`         | Sample data source file name (default: tests/sample_dataset.npy) | `--sample-input kat.npy`    |
 | *Streaming and FIFOs*    |                                                              |                                 |
 | `--fifo`                 | Use FIFOs to load streaming data                             |                                 |
 | `--fast-fifo`            | Use fast FIFO to load streaming data                         |                                 |
@@ -1440,7 +1366,7 @@ The following table describes the most important command line arguments for `ai8
 | `--riscv-exclusive`      | Use exclusive SRAM access for RISC-V (implies --riscv)       |                                 |
 | *Debug and logging*      |                                                              |                                 |
 | `-v`, `--verbose`        | Verbose output                                               |                                 |
-| `-L`, `--log`            | Redirect stdout to log file                                  |                                 |
+| `--no-log`               | Do not redirect stdout to log file (default: enabled)        |                                 |
 | `--log-intermediate`     | Log data between layers                                      |                                 |
 | `--log-pooling`          | Log unpooled and pooled data between layers in CSV format    |                                 |
 | `--log-filename`         | Log file name (default: log.txt)                             | `--log-filename run.log`        |
@@ -1461,7 +1387,7 @@ The following table describes the most important command line arguments for `ai8
 | `--ignore-streaming`     | Ignore all 'streaming' layer directives                      |                                 |
 | *Power saving*           |                                                              |                                 |
 | `--powerdown`            | Power down unused MRAM instances                             |                                 |
-| `--deepsleep`            | Put ARM core into deep sleep                                 |                                 |
+| `--deepsleep`            | Put Arm core into deep sleep                               |                                 |
 | *Hardware settings*      |                                                              |                                 |
 | `--input-offset`         | First layer input offset (x8 hex, defaults to 0x0000)        | `--input-offset 2000`           |
 | `--mlator-noverify`      | Do not check both mlator and non-mlator output               |                                 |
@@ -1474,8 +1400,10 @@ The following table describes the most important command line arguments for `ai8
 | `--ready-sel-aon`        | Specify AON waitstates                                       |                                 |
 | Various                  |                                                              |                                 |
 | `--synthesize-input`     | Instead of using large sample input data, use only the first `--synthesize-words` words of the sample input, and add N to each subsequent set of `--synthesize-words` 32-bit words | `--synthesize-input 0x112233` |
-| `--synthesize-words` | When using `—synthesize-input`, specifies how many words to use from the input. The default is 8. This number must be a divisor of the total number of pixels per channel. | `--synthesize-words 64` |
-| `--max-checklines`       | Instead of checking all of the expected output data, verify only the first N words | `--max-checklines 1024`         |
+| `--synthesize-words`     | When using `—synthesize-input`, specifies how many words to use from the input. The default is 8. This number must be a divisor of the total number of pixels per channel. | `--synthesize-words 64` |
+| `--max-verify-length` | Instead of checking all of the expected output data, verify only the first N words | `--max-verify-length 1024` |
+| `--no-unload`            | Do not create the `cnn_unload()` function                    |                                 |
+| `--no-kat` | Do not generate the `check_output()` function (disable known-answer test) | |
 
 ### YAML Network Description
 
@@ -1530,7 +1458,7 @@ layers:
 To generate an embedded MAX78000 demo in the `demos/ai85-mnist/` folder, use the following command line:
 
 ```shell
-(ai8x-synthesize) $ ./ai8xize.py --verbose --log --test-dir demos --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000 --compact-data --mexpress --softmax
+(ai8x-synthesize) $ ./ai8xize.py --verbose --test-dir demos --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000 --compact-data --mexpress --softmax
 ```
 
 Running this command will combine the network described above with a fully connected software classification layer. The generated code will include all loading, unloading, and configuration steps.
@@ -1538,7 +1466,7 @@ Running this command will combine the network described above with a fully conne
 To generate an RTL simulation for the same network and sample data in the directory `tests/ai85-mnist-....` (where .... is an autogenerated string based on the network topology), use:
 
 ```shell
-(ai8x-synthesize) $ ./ai8xize.py --rtl --verbose --autogen rtlsim --log --test-dir rtlsim --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000
+(ai8x-synthesize) $ ./ai8xize.py --rtl --verbose --autogen rtlsim --test-dir rtlsim --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000
 ```
 
 
@@ -1546,6 +1474,8 @@ To generate an RTL simulation for the same network and sample data in the direct
 ### Network Loader Configuration Language
 
 Network descriptions are written in YAML (see https://en.wikipedia.org/wiki/YAML). There are two sections in each file — global statements and a sequence of layer descriptions.
+
+*Note: The network loader automatically checks the configuration file for syntax errors and prints warnings for non-fatal errors. To perform the same checks manually, run:* `yamllint configfile.yaml`
 
 #### Purpose of the YAML Network Description
 
@@ -1598,7 +1528,7 @@ This key allows overriding of the processing sequence. The default is `0` for th
 
 `processors` is specified as a 64-bit hexadecimal value. Dots (‘.’) and a leading ‘0x’ are ignored.
 
-*Note: When using multi-pass (i.e., using more than 64 channels), the number processors is an integer division of the channel count, rounded up to the next multiple of 4. For example, 52 processors are required for 100 channels (since 100 div 2 = 50, and 52 is the next multiple of 4). For best efficiency, use channel counts that are multiples of 4.*
+*Note: When using multi-pass (i.e., using more than 64 channels), the number of processors is an integer division of the channel count, rounded up to the next multiple of 4. For example, 52 processors are required for 100 channels (since 100 div 2 = 50, and 52 is the next multiple of 4). For best efficiency, use channel counts that are multiples of 4.*
 
 Example for three processors 0, 4, and 8:
 	 `processors: 0x0000.0000.0000.0111`
@@ -1638,7 +1568,7 @@ When specified for the first layer only, `data_format` can be either `chw`/`big`
 ##### `operation`
 
 This key (which can also be specified using `op`, `operator`, or `convolution`) selects a layer’s main operation after the optional input pooling.
-When this key is not specified, a warning is displayed and `Conv2d` is selected.
+When this key is not specified, a warning is displayed, and `Conv2d` is selected.
 
 | Operation                 | Description                                                  |
 | :------------------------ | :----------------------------------------------------------- |
@@ -1740,14 +1670,14 @@ This key must be `1` or `[1, 1]`.
 
 ##### `max_pool` (Optional)
 
-When specified, performs a `MaxPool` before the convolution. The pooling size can specified as an integer (when the value is identical for both dimensions, or for 1D convolutions), or as two values in order `[H, W]`.
+When specified, performs a `MaxPool` before the convolution. The pooling size can be specified as an integer (when the value is identical for both dimensions, or for 1D convolutions), or as two values in order `[H, W]`.
 
 Example:
 	 `max_pool: 2`
 
 ##### `avg_pool` (Optional)
 
-When specified, performs an `AvgPool` before the convolution. The pooling size can specified as an integer (when the value is identical for both dimensions, or for 1D convolutions), or as two values in order `[H, W]`.
+When specified, performs an `AvgPool` before the convolution. The pooling size can be specified as an integer (when the value is identical for both dimensions, or for 1D convolutions), or as two values in order `[H, W]`.
 
 Example:
 	 `avg_pool: 2`
@@ -1777,7 +1707,26 @@ Example:
 
 ##### `in_sequences` (Optional)
 
-By default, a layer’s input is the output of the previous layer. `in_sequences` can be used to point to the output of one or more arbitrary previous layers, for example when processing the same data using two different kernel sizes, or when combining the outputs of several prior layers. `in_sequences` can be specified as an integer (for a single input) or as a list (for multiple inputs). As a special case, `-1` is the input data. The `in_offset` and `out_offset` must be set to match the specified sequence.
+By default, a layer’s input is the output of the previous layer. `in_sequences` can be used to point to the output of one or more arbitrary previous layers, for example when processing the same data using two different kernel sizes, or when combining the outputs of several prior layers. `in_sequences` can be specified as an integer (for a single input) or as a list (for multiple inputs). As a special case, `-1` refers to the input data. The `in_offset` and `out_offset` must be set to match the specified sequence.
+
+###### Multiple Arguments (Element-wise Operations)
+
+`in_sequences` is used to specify the inputs for a multi-operand element-wise operator (for example, `add`). The output processors for all arguments of the sequence must match.
+
+###### Layer Concatenation
+
+`in_sequences` can also be used to specify concatenation similar to `torch.cat()`.
+
+The output processors must be adjacent for all sequence arguments, and arguments listed earlier must use lower processor numbers than arguments listed later. The order of arguments of `in_sequences` must match the model. The following code shows an example `forward` function for a model that concatenates two values:
+
+```python
+def forward(self, x):
+    x = self.conv0(x)  # Layer 0
+    y = self.conv1(x)  # Layer 1
+    y = torch.cat((y, x), dim=1)
+```
+
+In this case, `in_sequences` would be  `[1, 0]` since `y` (the output of layer 1) precedes `x` (the output of layer 0) in the `torch.cat()` statement.
 
 Example:
   `in_sequences: [2, 3]` 
@@ -1793,7 +1742,7 @@ Example:
 
 ##### `streaming` (Optional)
 
-`streaming` specifies that the layer is using streaming mode. this is necessary when the input data dimensions exceed the available data memory. When enabling `streaming`, all prior layers have to enable `streaming` as well. `streaming` can be enabled for up to 8 layers.
+`streaming` specifies that the layer is using [streaming mode](#Streaming Mode). This is necessary when the input data dimensions exceed the available data memory. When enabling `streaming`, all prior layers have to enable `streaming` as well. `streaming` can be enabled for up to 8 layers.
 
 Example:
 	`streaming: true`
@@ -1815,7 +1764,7 @@ Example:
 
 ##### `bias_group` (Optional)
 
-For layers that use a bias, this key can specify one or more bias memories that should be used. By default, the software uses a “Fit First Descending (FFD)” allocation algorithm that considers largest bias lengths first, and then the layer number, and places each bias in the available group with the most available space, descending to the smallest bias length.
+For layers that use a bias, this key can specify one or more bias memories that should be used. By default, the software uses a “Fit First Descending (FFD)” allocation algorithm that considers the largest bias lengths first, and then the layer number, and places each bias in the available group with the most available space, descending to the smallest bias length.
 
 “Available groups” is the complete list of groups used by the network (in any layer). `bias_group` must reference one or more of these available groups.
 
@@ -1823,6 +1772,11 @@ For layers that use a bias, this key can specify one or more bias memories that 
 
 Example:
 	`bias_group: 0`
+
+##### Dropout and Batch Normalization
+
+* Dropout is only used during training, and corresponding YAML entries are not needed.
+* Batch normalization (“batchnorm”) is fused into the preceding layer’s weights and bias values (see [Batch Normalization](#Batch Normalization)), and YAML entries are not needed.
 
 #### Example
 
@@ -1893,7 +1847,7 @@ Many networks use residual connections. In the following example, the convolutio
 
 <img src="docs/residual-basic.png" alt="residual-basic" style="zoom:33%;" />
 
-On MAX78000/MAX78002, the element-wise addition works on “interleaved data”, i.e., each machine fetch gathers one operand.
+On MAX78000/MAX78002, the element-wise addition works on “interleaved data,” i.e., each machine fetch gathers one operand.
 
 In order to achieve this, a layer must be inserted that does nothing else but reformat the data into interleaved format using the `write_gap` keyword (this operation happens in parallel and is fast).
 
@@ -1979,7 +1933,7 @@ Adding new datasets to the Network Loader is implemented as follows:
 
 #### Generating a Random Sample Input
 
-To generate a random sample input, use a short NumPy script. In the MNIST example:
+To generate a random sample input, use a short NumPy script. In the grayscale MNIST example:
 
 ```python
 import os
@@ -1988,6 +1942,8 @@ import numpy as np
 a = np.random.randint(-128, 127, size=(1, 28, 28), dtype=np.int64)
 np.save(os.path.join('tests', 'sample_mnist'), a, allow_pickle=False, fix_imports=False)
 ```
+
+For RGB image inputs, there are three channels. For example, a 3×80×60 (C×H×W) input is created using `size=(3, 80, 60)`.
 
 #### Saving a Sample Input from Training Data
 
@@ -2092,10 +2048,10 @@ To run another inference, ensure all groups are disabled (stopping the state mac
 
 #### Overview of the Functions in main.c
 
-The generated code is split between API code (in `cnn.c`) and data dependent code in `main.c` or `main_riscv.c`. The data dependent code is based on a known-answer test. The `main()` function shows the proper sequence of steps to load and configure the CNN accelerator, run it, unload it, and verify the result.
+The generated code is split between API code (in `cnn.c`) and data-dependent code in `main.c` or `main_riscv.c`. The data-dependent code is based on a known-answer test. The `main()` function shows the proper sequence of steps to load and configure the CNN accelerator, run it, unload it, and verify the result.
 
 `void load_input(void);`
-Load the example input. This function can serve as a template for loading data into the CNN accelerator. Note that the clocks and power to the accelerator must be enabled first. If this is skipped, the device may hang and the [recovery procedure](https://github.com/MaximIntegratedAI/MaximAI_Documentation/tree/master/MAX78000_Feather#how-to-unlock-a-max78000-that-can-no-longer-be-programmed) may have to be used.
+Load the example input. This function can serve as a template for loading data into the CNN accelerator. Note that the clocks and power to the accelerator must be enabled first. If this is skipped, the device may appear to hang and the [recovery procedure](https://github.com/MaximIntegratedAI/MaximAI_Documentation/tree/master/MAX78000_Feather#how-to-unlock-a-max78000-that-can-no-longer-be-programmed) may have to be used.
 
 `int check_output(void);`
 This function verifies that the known-answer test works correctly in hardware (using the example input). This function is typically not needed in the final application.
@@ -2106,9 +2062,9 @@ This is the main function and can serve as a template for the user application. 
 
 #### Overview of the Generated API Functions
 
-The API code (in `cnn.c` by default) is auto-generated. It is data independent, but differs depending on the network. This simplifies replacing the network while keeping the remainder of the code intact.
+The API code (in `cnn.c` by default) is auto-generated. It is data-independent, but differs depending on the network. This simplifies replacing the network while keeping the remainder of the code intact.
 
-The functions that do not return `void` return either `CNN_FAIL` or `CNN_OK` as specified in the auto-generated `cnn.h` header file. The header file also contains a definition for the number of outputs of the network (`CNN_NUM_OUTPUTS`). In limited circumstances, this can make the wrapper code somewhat network independent.
+The functions that do not return `void` return either `CNN_FAIL` or `CNN_OK` as specified in the auto-generated `cnn.h` header file. The header file also contains a definition for the number of outputs of the network (`CNN_NUM_OUTPUTS`). In limited circumstances, this can make the wrapper code somewhat network-independent.
 
 `int cnn_enable(uint32_t clock_source, uint32_t clock_divider);`
 Enable clocks (from `clock_source` with `clock_divider`) and power to the accelerator; also enable the accelerator interrupt. By default, on MAX78000, the accelerator runs at 50 MHz (APB clock or PCLK divided by 1).
@@ -2154,32 +2110,33 @@ Turn off the boost circuit connected to `port`.`pin`.
 
 `ai8xize.py` can generate a call to a software Softmax function using the command line switch `--softmax`. That function is provided in the `assets/device-all` folder. To use the provided software Softmax on MAX78000/MAX78002, the last layer output should be 32-bit wide (`output_width: 32`).
 
-The software Softmax function is optimized for processing time and it quantizes the input. When the last layer uses weights that are not 8-bits, the software function used will shift the input values first.
+The software Softmax function is optimized for processing time, and it quantizes the input. When the last layer uses weights that are not 8-bits, the software function used will shift the input values first.
 
 ![softmax](docs/softmax.png)
 
 
 #### Generated Files and Upgrading the CNN Model
 
-The generated C code comprises the following files. Some of the files are customized based in the project name, and some are custom for a combination of project name and weight/sample data inputs:
+The generated C code comprises the following files. Some of the files are customized based on the project name, and some are custom for a combination of project name and weight/sample data inputs:
 
-| File name    | Source                           | Project specific? | Model/weights change? |
-| ------------ | -------------------------------- | ----------------- | --------------------- |
-| Makefile     | template in assets/embedded-ai87 | Yes               | No                    |
-| cnn.c        | generated                        | Yes               | **Yes**               |
-| cnn.h        | template in assets/device-all    | Yes               | **Yes**               |
-| weights.h    | generated                        | Yes               | **Yes**               |
-| log.txt      | generated                        | Yes               | **Yes**               |
-| main.c       | generated                        | Yes               | No                    |
-| sampledata.h | generated                        | Yes               | No                    |
-| softmax.c    | assets/device-all                | No                | No                    |
-| model.launch | template in assets/eclipse       | Yes               | No                    |
-| .cproject    | template in assets/eclipse       | Yes               | No                    |
-| .project     | template in assets/eclipse       | Yes               | No                    |
+| File name      | Source                           | Project specific? | Model/weights change? |
+| -------------- | -------------------------------- | ----------------- | --------------------- |
+| Makefile       | template in assets/embedded-ai87 | Yes               | No                    |
+| cnn.c          | generated                        | Yes               | **Yes**               |
+| cnn.h          | template in assets/device-all    | Yes               | **Yes**               |
+| weights.h      | generated                        | Yes               | **Yes**               |
+| log.txt        | generated                        | Yes               | **Yes**               |
+| main.c         | generated                        | Yes               | No                    |
+| sampledata.h   | generated                        | Yes               | No                    |
+| sampleoutput.h | generated                        | Yes               | **Yes**               |
+| softmax.c      | assets/device-all                | No                | No                    |
+| model.launch   | template in assets/eclipse       | Yes               | No                    |
+| .cproject      | template in assets/eclipse       | Yes               | No                    |
+| .project       | template in assets/eclipse       | Yes               | No                    |
 
 In order to upgrade an embedded project after retraining the model, point the network generator to a new empty directory and regenerate. Then, copy the four files that will have changed to your original project — `cnn.c`, `cnn.h`, `weights.h`, and `log.txt`. This allows for persistent customization of the I/O code and project (for example, in `main.c` and additional files) while allowing easy model upgrades.
 
-The generator also adds all files from the `assets/eclipse`, `assets/device-all`, and `assets/embedded-ai87` folders. These files (when starting with `template` in their name) will be automatically customized to include project specific information as shown in the following table:
+The generator also adds all files from the `assets/eclipse`, `assets/device-all`, and `assets/embedded-ai87` folders. These files (when starting with `template` in their name) will be automatically customized to include project-specific information as shown in the following table:
 
 | Key                   | Replaced by                                                  |
 | --------------------- | ------------------------------------------------------------ |
@@ -2218,16 +2175,16 @@ arm-none-eabi/bin/ld: region `FLASH' overflowed by 600176 bytes
 collect2: error: ld returned 1 exit status
 ```
 
-The most likely reason is that the input is too large (from `sampledata.h`), or that the expected output is too large. It is important to note that this only affects the generated code with the built-in known-answer test (KAT) that will not be part of the user application since normal input and output data are not predefined in Flash memory.
+The most likely reason is that the input is too large (from `sampledata.h`), or that the expected output (in `sampleoutput.h`) is too large. It is important to note that this only affects the generated code with the built-in known-answer test (KAT) that will not be part of the user application since normal input and output data are not predefined in Flash memory.
 
 To deal with this issue, there are several options:
 
 * The sample input data can be stored in external memory. This requires modifications to the generated code. Please see the SDK examples to learn how to access external memory.
 * The sample input data can be programmatically generated. Typically, this requires manual modification of the generated code, and a corresponding modification of the sample input file.
   The generator also contains a built-in generator (supported *only* when using `—fifo`, and only for HWC inputs); the command line option `--synthesize-input` uses only the first few words of the sample input data, and then adds the specified value N (for example, 0x112233 if three input channels are used) to each subsequent set of M 32-bit words. M can be specified using `--synthesize-words` and defaults to 8. Note that M must be a divisor of the number of pixels per channel.
-* The output check can be truncated. The command line option `--max-checklines` checks only the first N words of output data (for example, 1024).
+* The output check can be truncated. The command line option `--max-verify-length` checks only the first N words of output data (for example, 1024). To completely disable the output check, use `--no-kat`.
 * For 8-bit output values, `--mlator` typically generates more compact code.
-* Change the compiler optimization level in `Makefile`. To change the default optimization levels, modify `MXC_OPTIMIZE_CFLAGS` in `assets/embedded-ai85/templateMakefile` for Arm code and  `assets/embedded-riscv-ai85/templateMakefile.RISCV` for RISC-V code. Both `-O1` and `-Os` may result in smaller code compared to `-O2`.
+* Change the compiler optimization level in `Makefile`. To change the default optimization levels, modify `MXC_OPTIMIZE_CFLAGS` in `assets/embedded-ai85/templateMakefile` for Arm code and `assets/embedded-riscv-ai85/templateMakefile.RISCV` for RISC-V code. Both `-O1` and `-Os` may result in smaller code compared to `-O2`.
 * If the last layer has large-dimension, large-channel output, the `cnn_unload()` code in `cnn.c` may cause memory segment overflows not only in Flash, but also in the target buffer in SRAM (`ml_data32[]` or `ml_data[]` in `main.c`). In this case, manual code edits are required to perform multiple partial unloads in sequence.
 
 #### Debugging Techniques
@@ -2236,16 +2193,21 @@ There can be many reasons why the known-answer test (KAT) fails for a given netw
 
 * For very short and small networks, disable the use of WFI instructions while waiting for completion of the CNN computations by using the command line option `--no-wfi`. *Explanation: In these cases, the network terminates more quickly than the time it takes between testing for completion and executing the WFI instruction, so the WFI instruction is never interrupted and the code may appear to hang.*
   
-* For very large and deep networks, enable the boost power supply using the `--boost` command line option. On the EVkit, the boost supply is connected to port pin P2.5, so the command line option is  `--boost 2.5`.
+* The `--no-wfi` option can also be useful when trying to debug code, since the debugger loses connection when the device enters sleep mode using `__WFI()`.
   
-* The default compiler optimization level is `-O2`, and incorrect code may be generated under rare circumstances. Lower the optimization level in the generated `Makefile` to `-O1`, clean (`make distclean && make clean`) and rebuild the project (`make`). If this solves the problem, one of the possible reasons is that code is missing the `volatile`  keyword for certain variables.
-  To permanently adjust the default compiler optimization level, modify `MXC_OPTIMIZE_CFLAGS` in  `assets/embedded-ai85/templateMakefile` for Arm code and  `assets/embedded-riscv-ai85/templateMakefile.RISCV` for RISC-V code.
+* By default, there is a two-second delay at the beginning of the code. This time allows the debugger to take control before the device enters any kind of sleep mode. `--no-wfi` disables sleep mode. The time delay can be modified using the `--debugwait` option.
+  If the delay is too short or skipped altogether, and the device does not wake at the end of execution, the device may appear to hang and the [recovery procedure](https://github.com/MaximIntegratedAI/MaximAI_Documentation/tree/master/MAX78000_Feather#how-to-unlock-a-max78000-that-can-no-longer-be-programmed) may have to be used in order to load new code or to debug code.
+  
+* For very large and deep networks, enable the boost power supply using the `--boost` command line option. On the EVkit, the boost supply is connected to port pin P2.5, so the command line option is `--boost 2.5`.
+  
+* The default compiler optimization level is `-O2`, and incorrect code may be generated under rare circumstances. Lower the optimization level in the generated `Makefile` to `-O1`, clean (`make distclean && make clean`), and rebuild the project (`make`). If this solves the problem, one of the possible reasons is that code is missing the `volatile` keyword for certain variables.
+  To permanently adjust the default compiler optimization level, modify `MXC_OPTIMIZE_CFLAGS` in `assets/embedded-ai85/templateMakefile` for Arm code and `assets/embedded-riscv-ai85/templateMakefile.RISCV` for RISC-V code.
 
-* `--stop-after N` where `N` is a layer number may help finding the problematic layer by terminating the network early without having to retrain and without having to change the weight input file. Note that this may also require `--max-checklines` as [described above](#Handling Linker Flash Section Overflows) since intermediate outputs tend to be large.
+* `--stop-after N` where `N` is a layer number may help to find the problematic layer by terminating the network early without having to retrain and without having to change the weight input file. Note that this may also require `--max-verify-length` as [described above](#Handling Linker Flash Section Overflows) since intermediate outputs tend to be large, and additionally `--no-unload` to suppress generation of the `cnn_unload()` function.
 
 * `--no-bias LIST` where `LIST` is a comma-separated list of layers (e.g., `0,1,2,3`) can rule out problems due to the bias. This option zeros out the bias for the given layers without having to remove bias values from the weight input file. 
 
-* `--ignore-streaming` ignores all `streaming` statements in the YAML file. Note that this typically only works when the sample input is replaced with a different, lower-dimension sample input (for example, use 3×32×32 instead of 3×128×128).
+* `--ignore-streaming` ignores all `streaming` statements in the YAML file. Note that this typically only works when the sample input is replaced with a different, lower-dimension sample input (for example, use 3×32×32 instead of 3×128×128), and does not support fully connected layers without retraining (use `--stop-after` to remove final layers). Ensure that the network (or partial network when using `--stop-after`) does not produce all-zero intermediate data or final outputs when using reduced-dimension inputs. The log file (`log.txt` by default) will contain the necessary information.
 
   
 
