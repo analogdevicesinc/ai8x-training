@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_June 16, 2021_
+_June 21, 2021_
 
 The Maxim Integrated AI project is comprised of five repositories:
 
@@ -152,14 +152,20 @@ On Linux:
 $ curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash  # NOTE: Verify contents of the script before running it!!
 ```
 
-Then, add to either `~/.bash_profile`, `~/.bashrc`, or `~/.profile` (as shown by the terminal output of the previous step):
-
+Then, follow the terminal output of the pyenv-installer and add pyenv to your shell by modifying one or more of `~/.bash_profile`, `~/.bashrc`, `~/.zshrc`, `~/.profile`, or `~/.zprofile`. The instructions differ depending on the shell (bash or zsh). To display the instructions again at any later time:
 ```shell
-eval "$(pyenv init -)"
-eval "$(pyenv virtualenv-init -)"
-```
+$ pyenv init
 
-If you use zsh as the shell (default on macOS), add these same commands to `~/.zprofile` or `~/.zshrc` in addition to adding them to the bash startup scripts.
+# (The below instructions are intended for common
+# shell setups. See the README for more guidance
+# if they don't apply and/or don't work for you.)
+
+# Add pyenv executable to PATH and
+# enable shims by adding the following
+# to ~/.profile and ~/.zprofile:
+...
+...
+```
 
 Next, close the Terminal, open a new Terminal and install Python 3.8.10.
 
@@ -677,7 +683,7 @@ Example:
 
 #### CHW (Channels-Height-Width)
 
-The input layer can alternatively also use the CHW format (a sequence of channels). The highest frequency in this data format is the width or X-axis (W), and the lowest frequency is the channel. Assuming an RGB input, all red pixels are followed by all green pixels, followed by all blue pixels.
+The input layer (and *only* the input layer) can alternatively also use the CHW format (a sequence of channels). The highest frequency in this data format is the width or X-axis (W), and the lowest frequency is the channel. Assuming an RGB input, all red pixels are followed by all green pixels, followed by all blue pixels.
 
 Example:
 
@@ -687,9 +693,11 @@ Example:
 
 #### Considerations for Choosing an Input Format
 
-The accelerator supports both HWC and CHW input formats to avoid unnecessary data manipulation. Internal layers always use the HWC format.
+The accelerator supports both HWC and CHW input formats to avoid unnecessary data manipulation. Choose the format that results in the least amount of data movement for a given input.
 
-In general, HWC is faster since each memory read can deliver data to up to four processors in parallel. On the other hand, four processors must share one data memory instance, which reduces the maximum allowable dimensions.
+Internal layers and the output layer always use the HWC format.
+
+In general, HWC is faster since each memory read can deliver data to up to four processors in parallel. On the other hand, four processors must share one data memory instance, which reduces the maximum allowable dimensions of the input layer.
 
 #### CHW Input Data Format and Consequences for Weight Memory Layout
 
@@ -1128,6 +1136,8 @@ The `quantize.py` software has the following important command line arguments:
 
 *Note: The syntax for the optional YAML file is described below. The same file can be used for both `quantize.py` and `ai8xize.py`.*
 
+`quantize.py` does not need access to the dataset.
+
 #### Example and Evaluation
 
 Copy the working and tested weight files into the `trained/` folder of the `ai8x-synthesis` project.
@@ -1158,13 +1168,25 @@ In all cases, ensure that the quantizer writes out a checkpoint file that the Ne
 
 ### Adding New Network Models and New Datasets to the Training Process
 
+#### Model
+
 The following step is needed to add new network models:
 
-* Implement a new network model based on the constraints described earlier, see [Custom nn.Modules](#custom-nnmodules) (and `models/ai85net.py` for an example). The file must include the `models` data structure that describes the model (name, minimum number of inputs, and whether it can handle 1D or 2D inputs). `models` can list multiple models in the same file.
+Implement a new network model based on the constraints described earlier, see [Custom nn.Modules](#custom-nnmodules) (and `models/ai85net.py` for an example). 
 
-The following steps are needed for new data formats and datasets:
+##### `models` Data Structure
+
+The file must include the `models` data structure that describes the model. `models` can list multiple models in the same file.
+
+For each model, three fields are required in the data structure:
+
+* The `name` field assigns a name to the model for discovery by `train.py`, for example “`resnet5`”.
+* The `min_input` field describes the minimum width for 2D models, it is typically `1` *(when the input `W` dimension is smaller than `min_input`, it is padded to `min_input`)*.
+* The `dim` field is either `1` (the model handles 1D inputs) or `2` (the model handles 2D inputs).
 
 #### Data Loader
+
+The following steps are needed for new data formats and datasets:
 
 Develop a data loader in PyTorch, see https://pytorch.org/tutorials/beginner/data_loading_tutorial.html. See `datasets/mnist.py` for an example.
 
@@ -1184,15 +1206,15 @@ In many cases, image data is delivered as fewer than 8 bits per channel (for exa
 
 On the other hand, a different sensor may produce unsigned data values in the full 8-bit range $[0, 255]$. This range must be mapped to $[–128, +127]$ to match hardware and the trained model. The mapping can be performed during inference by subtracting 128 from each input byte, but this requires extra processing time during inference.
 
-#### `datasets` Data Structure
+##### `datasets` Data Structure
 
 Add the new data loader to a new file in the `datasets` directory (for example `datasets/mnist.py`). The file must include the `datasets` data structure that describes the dataset and points to the new loader. `datasets` can list multiple datasets in the same file.
 
-The `input` key describes the dimensionality of the data, and the first dimension is passed as `num_channels` to the model, whereas the remaining dimensions are passed as `dimension`. For example, `'input': (1, 28, 28)` will be passed to the model as `num_channels=1` and `dimensions=(28,28)`.
+* The `input` field describes the dimensionality of the data, and the first dimension is passed as `num_channels` to the model, whereas the remaining dimensions are passed as `dimension`. For example, `'input': (1, 28, 28)` will be passed to the model as `num_channels=1` and `dimensions=(28,28)`.
 
-The optional `regression` key in the structure can be set to `True` to automatically select the `--regression` command line argument. `regression` defaults to `False`.
+* The optional `regression` field in the structure can be set to `True` to automatically select the `--regression` command line argument. `regression` defaults to `False`.
 
-The optional `visualize` key can point to a custom visualization function used when creating `--embedding`. The input to the function (format NCHW for 2D data, or NCL for 1D data) is a batch of data (with N ≤ 100). The default handles square RGB or monochrome images. For any other data, a custom function must be supplied.
+* The optional `visualize` field can point to a custom visualization function used when creating `--embedding`. The input to the function (format NCHW for 2D data, or NCL for 1D data) is a batch of data (with N ≤ 100). The default handles square RGB or monochrome images. For any other data, a custom function must be supplied.
 
 #### Training and Verification Data
 
