@@ -2,7 +2,6 @@
 *.mem
 *.prof
 /.mypy_cache
-/.python-version
 /.vscode
 /ai84-cifar10.pth.tar
 /ai84-cifar10-bias.pth.tar

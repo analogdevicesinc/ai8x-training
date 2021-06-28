@@ -1,7 +1,7 @@
 # FaceID Data Generation
 
 This folder contains scripts to generate data to train and test models for FaceID model using the following datasets:
- - VGGFace-2: A large-scale face recognition dataset. [http://www.robots.ox.ac.uk/~vgg/data/vgg_face2/](http://www.robots.ox.ac.uk/~vgg/data/vgg_face2/)
+ - VGGFace-2: A large-scale face recognition dataset. [https://www.robots.ox.ac.uk/~vgg/data/](https://www.robots.ox.ac.uk/~vgg/data/)
  - YouTubeFaces: A database of face videos designed for studying the problem of unconstrained face recognition. [https://www.cs.tau.ac.il/~wolf/ytfaces/](https://www.cs.tau.ac.il/~wolf/ytfaces/)
 
 ## Dataset Generation
@@ -11,7 +11,7 @@ This folder contains scripts to generate data to train and test models for FaceI
 
 \
 Follow these steps for both train and test sets.
-1. Download train and test the dataset from [here](http://www.robots.ox.ac.uk/~vgg/data/vgg_face2/) and extract the tar.gz files. into the same folder.
+1. Download train and test the *VGG Face 2 Dataset* from [https://www.robots.ox.ac.uk/~vgg/data/](https://www.robots.ox.ac.uk/~vgg/data/) and extract the .tar.gz files. into the same folder.
 2. Run gen_vggface2_embeddings.py:
    ```
    python gen_vggface2_embeddings.py -r <path_to_vggface2_dataset_folder> -d <path_to_store_generated_dataset> --type <train/test>
@@ -37,4 +37,5 @@ Follow these steps.
    python merge_youtubefaces_dataset.py -p <path_to_store_generated_dataset> --type test
    ```
 
-**Note:** The default paths for generated dataset is set to AI8X_TRAINING_HOME/data so the data loaders can load them with default parameters. If the destination folder is changed, the --data <folder_to_generated_dataset> option shoudl be added to the model training script. 
+**Note:** The default paths for generated dataset is set to AI8X_TRAINING_HOME/data so the data loaders can load them with default parameters. If the destination folder is changed, the
+--data <folder_to_generated_dataset> option should be added to the model training script. 
