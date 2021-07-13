@@ -643,21 +643,21 @@ def KWS_35_get_unquantized_datasets(data, load_train=True, load_test=True):
 datasets = [
     {
         'name': 'KWS',  # 6 keywords
-        'input': (512, 64, 1),
+        'input': (512, 64),
         'output': (0, 1, 2, 3, 4, 5, 6),
         'weight': (1, 1, 1, 1, 1, 1, 0.06),
         'loader': KWS_get_datasets,
     },
     {
         'name': 'KWS_20',  # 20 keywords
-        'input': (128, 128, 1),
+        'input': (128, 128),
         'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20),
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.14),
         'loader': KWS_20_get_datasets,
     },
     {
         'name': 'KWS_35_unquantized',  # 35 keywords
-        'input': (128, 128, 1),
+        'input': (128, 128),
         'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
                    21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34),
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,

@@ -244,6 +244,8 @@ def main():
        or ('regression' in selected_source and selected_source['regression']):
         args.regression = True
     dimensions = selected_source['input']
+    if len(dimensions) == 2:
+        dimensions += (1, )
     args.dimensions = dimensions
 
     args.datasets_fn = selected_source['loader']

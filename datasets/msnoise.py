@@ -425,13 +425,13 @@ def MSnoise_get_unquantized_datasets(data, load_train=True, load_test=True):
 datasets = [
     {
         'name': 'MSnoise',
-        'input': (128, 128, 1),
+        'input': (128, 128),
         'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15),
         'loader': MSnoise_get_datasets,
     },
     {
         'name': 'MSnoise_unquantized',
-        'input': (128, 128, 1),
+        'input': (128, 128),
         'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
                    16, 17, 18, 19, 20, 21, 22, 23, 24, 25),
         'loader': MSnoise_get_unquantized_datasets,
