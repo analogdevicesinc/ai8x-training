@@ -485,7 +485,7 @@ def main():
         with collectors_context(activations_collectors["train"]) as collectors:
             train(train_loader, model, criterion, optimizer, epoch, compression_scheduler,
                   loggers=all_loggers, args=args)
-            distiller.log_weights_sparsity(model, epoch, loggers=all_loggers)
+            # distiller.log_weights_sparsity(model, epoch, loggers=all_loggers)
             distiller.log_activation_statistics(epoch, "train", loggers=all_tbloggers,
                                                 collector=collectors["sparsity"])
             if args.masks_sparsity:
