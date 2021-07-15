@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_June 21, 2021_
+_July 14, 2021_
 
 The Maxim Integrated AI project is comprised of five repositories:
 
@@ -136,9 +136,9 @@ $ sudo dnf install openssl-devel zlib-devel \
 
 #### Python 3.8
 
-*The software in this project uses Python 3.8.10 or a later 3.8.x version.*
+*The software in this project uses Python 3.8.11 or a later 3.8.x version.*
 
-It is not necessary to install Python 3.8.10 system-wide, or to rely on the system-provided Python. To manage Python versions, use `pyenv` (https://github.com/pyenv/pyenv).
+It is not necessary to install Python 3.8.11 system-wide, or to rely on the system-provided Python. To manage Python versions, use `pyenv` (https://github.com/pyenv/pyenv).
 
 On macOS (no CUDA support available):
 
@@ -167,7 +167,7 @@ $ pyenv init
 ...
 ```
 
-Next, close the Terminal, open a new Terminal and install Python 3.8.10.
+Next, close the Terminal, open a new Terminal and install Python 3.8.11.
 
 On macOS:
 
@@ -179,13 +179,13 @@ $ env \
   PKG_CONFIG_PATH="$(brew --prefix tcl-tk)/lib/pkgconfig" \
   CFLAGS="-I$(brew --prefix tcl-tk)/include" \
   PYTHON_CONFIGURE_OPTS="--with-tcltk-includes='-I$(brew --prefix tcl-tk)/include' --with-tcltk-libs='-L$(brew --prefix tcl-tk)/lib -ltcl8.6 -ltk8.6'" \
-  pyenv install 3.8.10
+  pyenv install 3.8.11
 ```
 
 On Linux:
 
 ```shell
-$ pyenv install 3.8.10
+$ pyenv install 3.8.11
 ```
 
 #### git Environment
@@ -225,8 +225,8 @@ Change to the project root and run the following commands. Use your GitHub crede
 
 ```shell
 $ cd $AI_PROJECT_ROOT
-$ git clone https://github.com/MaximIntegratedAI/ai8x-training.git
-$ git clone https://github.com/MaximIntegratedAI/ai8x-synthesis.git
+$ git clone --recursive https://github.com/MaximIntegratedAI/ai8x-training.git
+$ git clone --recursive https://github.com/MaximIntegratedAI/ai8x-synthesis.git
 ```
 
 #### Creating the Virtual Environment
@@ -245,8 +245,7 @@ $ git checkout develop  # optional
 Then continue with the following:
 
 ```shell
-$ git submodule update --init
-$ pyenv local 3.8.10
+$ pyenv local 3.8.11
 $ python3 -m venv .
 $ source bin/activate
 (ai8x-training) $ pip3 install -U pip wheel setuptools
@@ -305,11 +304,11 @@ On Windows, please *also* use the Maintenance Tool as documented in the [Maxim M
 
 ##### Python Version Updates
 
-Updating Python may require updating `pyenv` first. Should `pyenv install 3.8.10` fail,
+Updating Python may require updating `pyenv` first. Should `pyenv install 3.8.11` fail,
 
 ```shell
-$ pyenv install 3.8.10
-python-build: definition not found: 3.8.10
+$ pyenv install 3.8.11
+python-build: definition not found: 3.8.11
 ```
 
 then `pyenv` must be updated. On macOS, use:
@@ -332,12 +331,12 @@ $
 The update should now succeed:
 
 ```shell
-$ pyenv install 3.8.10
-Downloading Python-3.8.10.tar.xz...
--> https://www.python.org/ftp/python/3.8.10/Python-3.8.10.tar.xz
-Installing Python-3.8.10...
+$ pyenv install 3.8.11
+Downloading Python-3.8.11.tar.xz...
+-> https://www.python.org/ftp/python/3.8.11/Python-3.8.11.tar.xz
+Installing Python-3.8.11...
 ...
-$ pyenv local 3.8.10
+$ pyenv local 3.8.11
 ```
 
 
@@ -368,8 +367,7 @@ $ git checkout develop  # optional
 Then continue:
 
 ```shell
-$ git submodule update --init
-$ pyenv local 3.8.10
+$ pyenv local 3.8.11
 $ python3 -m venv .
 $ source bin/activate
 (ai8x-synthesis) $ pip3 install -U pip setuptools
@@ -414,7 +412,7 @@ if [ $? -eq 1 ] ; then
 fi
 ```
 
-The debugger requires OpenOCD. On Windows, an OpenOCD executable is installed with the SDK. On macOS and Linux, the OpenOCD fork from [https://github.com/MaximIntegratedMicros/openocd.git](https://github.com/MaximIntegratedMicros/openocd.git) must be used. An Ubuntu Linux binary is available at https://github.com/MaximIntegratedAI/MAX78000_SDK/blob/master/Tools/OpenOCD/openocd. *Note: A copy of the configuration files and a `run-openocd-maxdap` script are contained in the `hardware` folder of the `ai8x-synthesis` project.*
+The debugger requires OpenOCD. On Windows, an OpenOCD executable is installed with the SDK. On macOS and Linux, scripts and binaries are provided in the `openocd` folder of the `ai8x-synthesis` project, see [openocd/Readme.md](openocd/Readme.md).
 
 `gen-demos-max78000.sh` will create code that is compatible with the SDK and copy it into the SDK’s Example directories.
 
@@ -432,7 +430,7 @@ To minimize data movement, the accelerator is optimized for convolutions with in
 
 ![CNNInFlight](docs/CNNInFlight.png)
 
-The MAX78000/MAX78002 accelerators contain 64 parallel processors. There are four groups that contain 16 processors each.
+The MAX78000/MAX78002 accelerators contain 64 parallel processors. There are four quadrants that contain 16 processors each.
 
 Each processor includes a pooling unit and a convolutional engine with dedicated weight memory:
 
@@ -450,8 +448,8 @@ Data memory, weight memory, and processors are interdependent.
 In the MAX78000/MAX78002 accelerator, processors are organized as follows:
 
 * Each processor is connected to its own dedicated weight memory instance.
-* Four processors share one data memory instance.
-* A group of sixteen processors shares certain common controls and can be operated as a slave to another group, or independently/separately.
+* A group of four processors shares one data memory instance.
+* A quadrant of sixteen processors shares certain common controls and can be operated tethered to another quadrant, or independently/separately.
 
 Any given processor has visibility of:
 
@@ -460,9 +458,11 @@ Any given processor has visibility of:
 
 #### Weight Memory
 
-For each of the four 16-processor groups, weight memory and processors can be visualized as follows. Assuming one input channel processed by processor 0, and 8 output channels, the 8 shaded kernels will be used:
+For each of the four 16-processor quadrants, weight memory and processors can be visualized as follows. Assuming one input channel processed by processor 0, and 8 output channels, the 8 shaded kernels will be used:
 
 ![Weight Memory Map](docs/KernelMemory.png)
+
+*Note: Weights that are not 3×3×8 (= 72-bits) per kernel are packed to save space.*
 
 #### Data Memory
 
@@ -807,6 +807,7 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   * Streaming is limited to 8 consecutive layers or fewer, and is limited to four FIFOs (up to 4 input channels in CHW and up to 16 channels in HWC format), see [FIFOs](#FIFOs).
   * For streaming layers, bias values may not be added correctly in all cases.
   * The *final* streaming layer must use padding.
+  * Layers that use 1×1 kernels without padding are automatically replaced with equivalent layers that use 3×3 kernels with padding.
   
 * The weight memory supports up to 768 * 64 3×3 Q7 kernels (see [Number Format](#Number-Format)).
   When using 1-, 2- or 4-bit weights, the capacity increases accordingly.
@@ -860,6 +861,122 @@ The `ai84net.py` and `ai85net.py` files contain models that fit into AI84’s we
 To train the FP32 model for MNIST on MAX78000, run `scripts/train_mnist.sh` from the `ai8x-training` project. This script will place checkpoint files into the log directory. Training makes use of the Distiller framework, but the `train.py` software has been modified slightly to improve it and add some MAX78000/MAX78002 specifics.
 
 Since training can take hours or days, the training script does not overwrite any weights previously produced. Results are placed in sub-directories under `logs/` named with the date and time when training began. The latest results are always soft-linked to by `latest-log_dir` and `latest_log_file`.
+
+#### Example Training Session
+
+Using the MNIST dataset and a simple model as an example, run `scripts/train_mnist.sh`. The following is the shortened output of an MNIST training session:
+
+```shell
+(ai8x-training) $ scripts/train_mnist.sh 
+Configuring device: MAX78000, simulate=False.
+Log file for this run: logs/2021.07.13-111453/2021.07.13-111453.log
+{'start_epoch': 10, 'weight_bits': 8}
+Optimizer Type: <class 'torch.optim.sgd.SGD'>
+Optimizer Args: {'lr': 0.1, 'momentum': 0.9, 'dampening': 0, 'weight_decay': 0.0001, 'nesterov': False}
+Downloading https://ossci-datasets.s3.amazonaws.com/mnist/train-images-idx3-ubyte.gz
+Downloading https://ossci-datasets.s3.amazonaws.com/mnist/train-images-idx3-ubyte.gz to data/MNIST/raw/train-images-idx3-ubyte.gz
+9913344it [00:01, 5712259.71it/s]                                                                                                                                                                                                                           
+Extracting data/MNIST/raw/train-images-idx3-ubyte.gz to data/MNIST/raw
+
+...
+
+Dataset sizes:
+	training=54000
+	validation=6000
+	test=10000
+Reading compression schedule from: schedule.yaml
+
+
+Training epoch: 54000 samples (256 per mini-batch)
+Named tensors and all their associated APIs are an experimental feature and subject to change. Please do not use them for anything important until they are released as stable. (Triggered internally at  /pytorch/c10/core/TensorImpl.h:1156.)
+
+Epoch: [0][   10/  211]    Overall Loss 2.298435    Objective Loss 2.298435    Top1 13.710937    Top5 52.070313    LR 0.100000    Time 0.054167    
+Epoch: [0][   20/  211]    Overall Loss 2.267082    Objective Loss 2.267082    Top1 16.464844    Top5 58.535156    LR 0.100000    Time 0.039278    
+...
+Epoch: [0][  211/  211]    Overall Loss 0.867936    Objective Loss 0.867936    Top1 71.101852    Top5 92.837037    LR 0.100000    Time 0.025054    
+
+--- validate (epoch=0)-----------
+6000 samples (256 per mini-batch)
+Epoch: [0][   10/   24]    Loss 0.295286    Top1 91.367188    Top5 99.492188    
+Epoch: [0][   20/   24]    Loss 0.293729    Top1 91.054688    Top5 99.550781    
+Epoch: [0][   24/   24]    Loss 0.296180    Top1 91.000000    Top5 99.550000    
+==> Top1: 91.000    Top5: 99.550    Loss: 0.296
+
+==> Confusion:
+[[581   2   3   1   2   3   4   3   2   4]
+ [  0 675   4   1   3   0   1   4   0   0]
+ [  5   6 501  21  11   2   4  25   7   4]
+ [  1   4   7 549   3   5   0  11   2   1]
+ [  2   6   7   0 525   1   3   9   0  12]
+ [  0   8   2  10   5 464   3   8   6  12]
+ [ 13  18   1   0  10   8 574   0   6   1]
+ [  1  11   8   7   3   4   0 588   0   3]
+ [ 26   4   7   5   9   9  16   5 482  21]
+ [  4   9   5   7  36   8   0  19   6 521]]
+
+==> Best [Top1: 91.000   Top5: 99.550   Sparsity:0.00   Params: 71148 on epoch: 0]
+Saving checkpoint to: logs/2021.07.13-111453/checkpoint.pth.tar
+
+...
+
+Training epoch: 54000 samples (256 per mini-batch)
+Epoch: [199][   10/  211]    Overall Loss 0.033614    Objective Loss 0.033614    Top1 98.984375    Top5 100.000000    LR 0.000100    Time 0.052778    
+...
+Epoch: [199][  211/  211]    Overall Loss 0.027310    Objective Loss 0.027310    Top1 99.181481    Top5 99.992593    LR 0.000100    Time 0.024874    
+
+--- validate (epoch=199)-----------
+6000 samples (256 per mini-batch)
+Epoch: [199][   10/   24]    Loss 0.027533    Top1 98.984375    Top5 100.000000    
+Epoch: [199][   20/   24]    Loss 0.028965    Top1 98.984375    Top5 100.000000    
+Epoch: [199][   24/   24]    Loss 0.028365    Top1 98.983333    Top5 100.000000    
+==> Top1: 98.983    Top5: 100.000    Loss: 0.028
+
+==> Confusion:
+[[599   0   1   1   0   0   3   0   0   1]
+ [  0 685   0   1   0   0   0   2   0   0]
+ [  0   1 581   0   0   0   0   2   2   0]
+ [  0   0   1 578   0   2   0   1   1   0]
+ [  0   1   1   0 558   0   0   0   1   4]
+ [  1   0   0   2   0 513   1   0   1   0]
+ [  2   1   0   0   1   0 625   0   2   0]
+ [  0   1   3   1   0   0   0 619   0   1]
+ [  1   0   1   1   1   1   2   0 577   0]
+ [  0   0   0   0   2   1   0   6   2 604]]
+
+==> Best [Top1: 99.283   Top5: 100.000   Sparsity:0.00   Params: 71148 on epoch: 180]
+Saving checkpoint to: logs/2021.07.13-111453/qat_checkpoint.pth.tar
+--- test ---------------------
+10000 samples (256 per mini-batch)
+Test: [   10/   40]    Loss 0.017528    Top1 99.453125    Top5 100.000000    
+Test: [   20/   40]    Loss 0.015671    Top1 99.492188    Top5 100.000000    
+Test: [   30/   40]    Loss 0.013522    Top1 99.583333    Top5 100.000000    
+Test: [   40/   40]    Loss 0.013415    Top1 99.590000    Top5 100.000000    
+==> Top1: 99.590    Top5: 100.000    Loss: 0.013
+
+==> Confusion:
+[[ 980    0    0    0    0    0    0    0    0    0]
+ [   0 1133    1    0    0    0    0    1    0    0]
+ [   1    0 1025    1    0    0    0    5    0    0]
+ [   0    0    0 1010    0    0    0    0    0    0]
+ [   0    0    0    0  978    0    2    0    0    2]
+ [   0    0    0    3    0  888    1    0    0    0]
+ [   0    1    0    0    1    2  953    0    1    0]
+ [   0    1    0    0    0    0    0 1026    0    1]
+ [   0    0    2    1    1    1    0    1  967    1]
+ [   0    0    0    0    5    2    0    3    0  999]]
+
+
+Log file for this run: logs/2021.07.13-111453/2021.07.13-111453.log
+
+```
+
+For classification, the “Top-1” score refers to the percentage of samples that returned the correct class (the correct target label), while “Top-5” is the percentage of samples the correct answer was one of the five highest ranked predictions. The “Loss” shows the output of the loss function that the training session aims to minimize (the “loss” numbers may be larger than 1, depending on the dataset and model). “LR” is the learning rate, and depending on the learning rate schedule used, LR may decrease as training progresses.
+
+The “Confusion Matrix” shows both the target (expected) label on the vertical (Y) axis, as well as the highest ranked prediction on the horizontal (X) axis. If the network returns 100% expected labels, then only the diagonal (top left to bottom right) will contain values greater than 0.
+
+When enabling TensorBoard (see [TensorBoard](#TensorBoard)), these and other statistics are also available in graphical form:
+
+![confusionmatrix](docs/confusionmatrix.png)
 
 ### Command Line Arguments
 
@@ -1036,7 +1153,7 @@ Both TensorBoard and [Manifold](#Manifold) can be used for model comparison and 
 
 #### TensorBoard
 
-TensorBoard is built into `train.py`. When enabled using `--enable-tensorboard`, it provides a local web server that can be started before, during, or after training, and it picks up all data that is written to the `logs/` directory. 
+[TensorBoard](https://www.tensorflow.org/tensorboard/) support is built into `train.py`. When enabled using `--enable-tensorboard`, it provides a local web server that can be started before, during, or after training, and it picks up all data that is written to the `logs/` directory. 
 
 For classification models, TensorBoard supports the optional `--param-hist` and `--embedding` command line arguments. `--embedding` randomly selects up to 100 data points from the last batch of each verification epoch. These can be viewed in the “projector” tab in TensorBoard.
 
@@ -1050,6 +1167,12 @@ TensorBoard 2.2.2 at http://127.0.0.1:6006/ (Press CTRL+C to quit)
 On a shared system, add the `--port 0` command line option.
 
 The training progress can be observed by starting TensorBoard and pointing a web browser to the port indicated.
+
+##### Examples
+
+TensorBoard produces graphs and displays metrics that may help optimize the training process, and can compare the performance of multiple training sessions and their settings. Additionally, TensorBoard can show a graphical representation of the model and its parameters. For more information, please see the [TensorBoard web site](https://www.tensorflow.org/tensorboard/).
+
+<img src="docs/lr.png" alt="learning rate" style="zoom: 50%;" /><img src="docs/top1.png" alt="top-1" style="zoom:50%;" /><img src="docs/objectiveloss.png" alt="objective loss" style="zoom:42%;" /><img src="docs/histogram.png" alt="histogram" style="zoom:50%;" /><img src="docs/model.png" alt="model" style="zoom:50%;" />
 
 ##### Remote Access to TensorBoard
 
@@ -1233,6 +1356,16 @@ The [Netron tool](https://github.com/lutzroeder/Netron) can visualize networks, 
 ```
 
 
+### Troubleshooting
+
+The behavior of a training session might change when Quantization Aware Training is enabled, either by no longer learning or by returning unacceptable results when evaluating the quantized weights on the test set.
+
+While there can be multiple reasons for this, check two important settings that can influence the training behavior:
+
+* The initial learning rate may be set too high. Reduce LR by a factor of 10 or 100 by specifying a smaller initial `--lr` on the command line, and possibly by reducing the epoch `milestones` for further reduction of the learning rate in the scheduler file specified by `—compress`. Note that the the selected optimizer and the batch size both affect the learning rate.
+* The epoch when QAT is engaged may be set too low. Increase `start_epoch` in the QAT scheduler file specified by `--qat-policy`, and increase the total number of training epochs by increasing the value specified by the `--epochs` command line argument and by editing the `ending_epoch` in the scheduler file specified by `--compress`.
+
+
 
 ### Neural Architecture Search (NAS)
 
@@ -1396,7 +1529,7 @@ The following table describes the most important command line arguments for `ai8
 | `--debug-computation`    | Debug computation (SLOW)                                     |                                 |
 | `--stop-after`           | Stop after layer                                             | `--stop-after 2`                |
 | `--one-shot`             | Use layer-by-layer one-shot mechanism                        |                                 |
-| `--ignore-bias-groups`   | Do not force `bias_group` to only available x16 groups       |                                 |
+| `--ignore-bias-groups`   | Do not force `bias_group` to only available x16 quadrants |                                 |
 | *Streaming tweaks*       |                                                              |                                 |
 | `--overlap-data`         | Allow output to overwrite input                              |                                 |
 | `--override-start`       | Override auto-computed streaming start value (x8 hex)        |                                 |
@@ -1786,9 +1919,9 @@ Example:
 
 ##### `bias_group` (Optional)
 
-For layers that use a bias, this key can specify one or more bias memories that should be used. By default, the software uses a “Fit First Descending (FFD)” allocation algorithm that considers the largest bias lengths first, and then the layer number, and places each bias in the available group with the most available space, descending to the smallest bias length.
+For layers that use a bias, this key can specify one or more bias memories that should be used. By default, the software uses a “Fit First Descending (FFD)” allocation algorithm that considers the largest bias lengths first, and then the layer number, and places each bias in the available quadrant with the most available space, descending to the smallest bias length.
 
-“Available groups” is the complete list of groups used by the network (in any layer). `bias_group` must reference one or more of these available groups.
+“Available quadrants” is the complete list of quadrants used by the network (in any layer). `bias_group` must reference one or more of these available quadrants.
 
 `bias_group` can be a list of integers or a single integer.
 
@@ -2065,7 +2198,7 @@ To start the accelerator, use `cnn_start()`. The `load_input()` function is call
 
 The MAX78000/MAX78002 accelerator can generate an interrupt on completion, and it will set a status bit (see `cnn.c`). The resulting data can now be unloaded from the accelerator (code for this is also auto-generated in `cnn_unload()`).
 
-To run another inference, ensure all groups are disabled (stopping the state machine, as shown in `cnn_init()`). Next, load the new input data and start processing.
+To run another inference, ensure all quadrants are disabled (stopping the state machine, as shown in `cnn_init()`). Next, load the new input data and start processing.
 
 
 #### Overview of the Functions in main.c
@@ -2225,6 +2358,8 @@ There can be many reasons why the known-answer test (KAT) fails for a given netw
 * The default compiler optimization level is `-O2`, and incorrect code may be generated under rare circumstances. Lower the optimization level in the generated `Makefile` to `-O1`, clean (`make distclean && make clean`), and rebuild the project (`make`). If this solves the problem, one of the possible reasons is that code is missing the `volatile` keyword for certain variables.
   To permanently adjust the default compiler optimization level, modify `MXC_OPTIMIZE_CFLAGS` in `assets/embedded-ai85/templateMakefile` for Arm code and `assets/embedded-riscv-ai85/templateMakefile.RISCV` for RISC-V code.
 
+* When allocating large amounts of data on the stack, ensure the stack is sized appropriately. The stack size is configured in the linker file (by default, part of the SDK).
+  
 * `--stop-after N` where `N` is a layer number may help to find the problematic layer by terminating the network early without having to retrain and without having to change the weight input file. Note that this may also require `--max-verify-length` as [described above](#Handling Linker Flash Section Overflows) since intermediate outputs tend to be large, and additionally `--no-unload` to suppress generation of the `cnn_unload()` function.
 
 * `--no-bias LIST` where `LIST` is a comma-separated list of layers (e.g., `0,1,2,3`) can rule out problems due to the bias. This option zeros out the bias for the given layers without having to remove bias values from the weight input file. 
@@ -2264,181 +2399,183 @@ The following tables show the AHB memory addresses for the MAX78000 accelerator:
 
 Total: 512 KiB (16 instances of 8192 × 32)
 
-| **Group** | **Instance** | **Address Range**       |
-| --------- | ------------ | ----------------------- |
-| 0         | 0            | 0x50400000 - 0x50407FFF |
-| 0         | 1            | 0x50408000 - 0x5040FFFF |
-| 0         | 2            | 0x50410000 - 0x50417FFF |
-| 0         | 3            | 0x50418000 - 0x5041FFFF |
-| 1         | 0            | 0x50800000 - 0x50807FFF |
-| 1         | 1            | 0x50808000 - 0x5080FFFF |
-| 1         | 2            | 0x50810000 - 0x50817FFF |
-| 1         | 3            | 0x50818000 - 0x5081FFFF |
-| 2         | 0            | 0x50C00000 - 0x50C07FFF |
-| 2         | 1            | 0x50C08000 - 0x50C0FFFF |
-| 2         | 2            | 0x50C10000 - 0x50C17FFF |
-| 2         | 3            | 0x50C18000 - 0x50C1FFFF |
-| 3         | 0            | 0x51000000 - 0x51007FFF |
-| 3         | 1            | 0x51008000 - 0x5100FFFF |
-| 3         | 2            | 0x51010000 - 0x51017FFF |
-| 3         | 3            | 0x51018000 - 0x5101FFFF |
+| **Quadrant** | **Instance** | **Address Range**       |
+| ------------ | ------------ | ----------------------- |
+| 0            | 0            | 0x50400000 - 0x50407FFF |
+| 0            | 1            | 0x50408000 - 0x5040FFFF |
+| 0            | 2            | 0x50410000 - 0x50417FFF |
+| 0            | 3            | 0x50418000 - 0x5041FFFF |
+| 1            | 0            | 0x50800000 - 0x50807FFF |
+| 1            | 1            | 0x50808000 - 0x5080FFFF |
+| 1            | 2            | 0x50810000 - 0x50817FFF |
+| 1            | 3            | 0x50818000 - 0x5081FFFF |
+| 2            | 0            | 0x50C00000 - 0x50C07FFF |
+| 2            | 1            | 0x50C08000 - 0x50C0FFFF |
+| 2            | 2            | 0x50C10000 - 0x50C17FFF |
+| 2            | 3            | 0x50C18000 - 0x50C1FFFF |
+| 3            | 0            | 0x51000000 - 0x51007FFF |
+| 3            | 1            | 0x51008000 - 0x5100FFFF |
+| 3            | 2            | 0x51010000 - 0x51017FFF |
+| 3            | 3            | 0x51018000 - 0x5101FFFF |
 
 ### TRAM
 
 Total: 384 KiB (64 instances of 3072 × 16)
 
-| **Group** | **Instance** | **Address Range\***     |
-| --------- | ------------ | ----------------------- |
-| 0         | 0            | 0x50110000 - 0x50112FFF |
-| 0         | 1            | 0x50114000 - 0x50116FFF |
-| 0         | 2            | 0x50118000 - 0x5011AFFF |
-| 0         | 3            | 0x5011C000 - 0x5011EFFF |
-| 0         | 4            | 0x50120000 - 0x50122FFF |
-| 0         | 5            | 0x50124000 - 0x50126FFF |
-| 0         | 6            | 0x50128000 - 0x5012AFFF |
-| 0         | 7            | 0x5012C000 - 0x5012EFFF |
-| 0         | 8            | 0x50130000 - 0x50132FFF |
-| 0         | 9            | 0x50134000 - 0x50136FFF |
-| 0         | 10           | 0x50138000 - 0x5013AFFF |
-| 0         | 11           | 0x5013C000 - 0x5013EFFF |
-| 0         | 12           | 0x50140000 - 0x50142FFF |
-| 0         | 13           | 0x50144000 - 0x50146FFF |
-| 0         | 14           | 0x50148000 - 0x5014AFFF |
-| 0         | 15           | 0x5014C000 - 0x5014EFFF |
-| 1         | 0            | 0x50510000 - 0x50512FFF |
-| 1         | 1            | 0x50514000 - 0x50516FFF |
-| 1         | 2            | 0x50518000 - 0x5051AFFF |
-| 1         | 3            | 0x5051C000 - 0x5051EFFF |
-| 1         | 4            | 0x50520000 - 0x50522FFF |
-| 1         | 5            | 0x50524000 - 0x50526FFF |
-| 1         | 6            | 0x50528000 - 0x5052AFFF |
-| 1         | 7            | 0x5052C000 - 0x5052EFFF |
-| 1         | 8            | 0x50530000 - 0x50532FFF |
-| 1         | 9            | 0x50534000 - 0x50536FFF |
-| 1         | 10           | 0x50538000 - 0x5053AFFF |
-| 1         | 11           | 0x5053C000 - 0x5053EFFF |
-| 1         | 12           | 0x50540000 - 0x50542FFF |
-| 1         | 13           | 0x50544000 - 0x50546FFF |
-| 1         | 14           | 0x50548000 - 0x5054AFFF |
-| 1         | 15           | 0x5054C000 - 0x5054EFFF |
-| 2         | 0            | 0x50910000 - 0x50912FFF |
-| 2         | 1            | 0x50914000 - 0x50916FFF |
-| 2         | 2            | 0x50918000 - 0x5091AFFF |
-| 2         | 3            | 0x5091C000 - 0x5091EFFF |
-| 2         | 4            | 0x50920000 - 0x50922FFF |
-| 2         | 5            | 0x50924000 - 0x50926FFF |
-| 2         | 6            | 0x50928000 - 0x5092AFFF |
-| 2         | 7            | 0x5092C000 - 0x5092EFFF |
-| 2         | 8            | 0x50930000 - 0x50932FFF |
-| 2         | 9            | 0x50934000 - 0x50936FFF |
-| 2         | 10           | 0x50938000 - 0x5093AFFF |
-| 2         | 11           | 0x5093C000 - 0x5093EFFF |
-| 2         | 12           | 0x50940000 - 0x50942FFF |
-| 2         | 13           | 0x50944000 - 0x50946FFF |
-| 2         | 14           | 0x50948000 - 0x5094AFFF |
-| 2         | 15           | 0x5094C000 - 0x5094EFFF |
-| 3         | 0            | 0x50D10000 - 0x50D12FFF |
-| 3         | 1            | 0x50D14000 - 0x50D16FFF |
-| 3         | 2            | 0x50D18000 - 0x50D1AFFF |
-| 3         | 3            | 0x50D1C000 - 0x50D1EFFF |
-| 3         | 4            | 0x50D20000 - 0x50D22FFF |
-| 3         | 5            | 0x50D24000 - 0x50D26FFF |
-| 3         | 6            | 0x50D28000 - 0x50D2AFFF |
-| 3         | 7            | 0x50D2C000 - 0x50D2EFFF |
-| 3         | 8            | 0x50D30000 - 0x50D32FFF |
-| 3         | 9            | 0x50D34000 - 0x50D36FFF |
-| 3         | 10           | 0x50D38000 - 0x50D3AFFF |
-| 3         | 11           | 0x50D3C000 - 0x50D3EFFF |
-| 3         | 12           | 0x50D40000 - 0x50D42FFF |
-| 3         | 13           | 0x50D44000 - 0x50D46FFF |
-| 3         | 14           | 0x50D48000 - 0x50D4AFFF |
-| 3         | 15           | 0x50D4C000 - 0x50D4EFFF |
+| **Quadrant** | **Instance** | **Address Range\***     |
+| ------------ | ------------ | ----------------------- |
+| 0            | 0            | 0x50110000 - 0x50112FFF |
+| 0            | 1            | 0x50114000 - 0x50116FFF |
+| 0            | 2            | 0x50118000 - 0x5011AFFF |
+| 0            | 3            | 0x5011C000 - 0x5011EFFF |
+| 0            | 4            | 0x50120000 - 0x50122FFF |
+| 0            | 5            | 0x50124000 - 0x50126FFF |
+| 0            | 6            | 0x50128000 - 0x5012AFFF |
+| 0            | 7            | 0x5012C000 - 0x5012EFFF |
+| 0            | 8            | 0x50130000 - 0x50132FFF |
+| 0            | 9            | 0x50134000 - 0x50136FFF |
+| 0            | 10           | 0x50138000 - 0x5013AFFF |
+| 0            | 11           | 0x5013C000 - 0x5013EFFF |
+| 0            | 12           | 0x50140000 - 0x50142FFF |
+| 0            | 13           | 0x50144000 - 0x50146FFF |
+| 0            | 14           | 0x50148000 - 0x5014AFFF |
+| 0            | 15           | 0x5014C000 - 0x5014EFFF |
+| 1            | 0            | 0x50510000 - 0x50512FFF |
+| 1            | 1            | 0x50514000 - 0x50516FFF |
+| 1            | 2            | 0x50518000 - 0x5051AFFF |
+| 1            | 3            | 0x5051C000 - 0x5051EFFF |
+| 1            | 4            | 0x50520000 - 0x50522FFF |
+| 1            | 5            | 0x50524000 - 0x50526FFF |
+| 1            | 6            | 0x50528000 - 0x5052AFFF |
+| 1            | 7            | 0x5052C000 - 0x5052EFFF |
+| 1            | 8            | 0x50530000 - 0x50532FFF |
+| 1            | 9            | 0x50534000 - 0x50536FFF |
+| 1            | 10           | 0x50538000 - 0x5053AFFF |
+| 1            | 11           | 0x5053C000 - 0x5053EFFF |
+| 1            | 12           | 0x50540000 - 0x50542FFF |
+| 1            | 13           | 0x50544000 - 0x50546FFF |
+| 1            | 14           | 0x50548000 - 0x5054AFFF |
+| 1            | 15           | 0x5054C000 - 0x5054EFFF |
+| 2            | 0            | 0x50910000 - 0x50912FFF |
+| 2            | 1            | 0x50914000 - 0x50916FFF |
+| 2            | 2            | 0x50918000 - 0x5091AFFF |
+| 2            | 3            | 0x5091C000 - 0x5091EFFF |
+| 2            | 4            | 0x50920000 - 0x50922FFF |
+| 2            | 5            | 0x50924000 - 0x50926FFF |
+| 2            | 6            | 0x50928000 - 0x5092AFFF |
+| 2            | 7            | 0x5092C000 - 0x5092EFFF |
+| 2            | 8            | 0x50930000 - 0x50932FFF |
+| 2            | 9            | 0x50934000 - 0x50936FFF |
+| 2            | 10           | 0x50938000 - 0x5093AFFF |
+| 2            | 11           | 0x5093C000 - 0x5093EFFF |
+| 2            | 12           | 0x50940000 - 0x50942FFF |
+| 2            | 13           | 0x50944000 - 0x50946FFF |
+| 2            | 14           | 0x50948000 - 0x5094AFFF |
+| 2            | 15           | 0x5094C000 - 0x5094EFFF |
+| 3            | 0            | 0x50D10000 - 0x50D12FFF |
+| 3            | 1            | 0x50D14000 - 0x50D16FFF |
+| 3            | 2            | 0x50D18000 - 0x50D1AFFF |
+| 3            | 3            | 0x50D1C000 - 0x50D1EFFF |
+| 3            | 4            | 0x50D20000 - 0x50D22FFF |
+| 3            | 5            | 0x50D24000 - 0x50D26FFF |
+| 3            | 6            | 0x50D28000 - 0x50D2AFFF |
+| 3            | 7            | 0x50D2C000 - 0x50D2EFFF |
+| 3            | 8            | 0x50D30000 - 0x50D32FFF |
+| 3            | 9            | 0x50D34000 - 0x50D36FFF |
+| 3            | 10           | 0x50D38000 - 0x50D3AFFF |
+| 3            | 11           | 0x50D3C000 - 0x50D3EFFF |
+| 3            | 12           | 0x50D40000 - 0x50D42FFF |
+| 3            | 13           | 0x50D44000 - 0x50D46FFF |
+| 3            | 14           | 0x50D48000 - 0x50D4AFFF |
+| 3            | 15           | 0x50D4C000 - 0x50D4EFFF |
 
-**using 32 bits of address space for each 16-bit memory*
+**using 32 bits of address space for each 16-bit word*
 
-### Kernel memory (“MRAM”)
+### Kernel memory (MRAM)
 
 Total: 432 KiB (64 instances of 768 × 72)
 
-| **Group** | **Instance** | **Address Range\***     |
-| --------- | ------------ | ----------------------- |
-| 0         | 0            | 0x50180000 - 0x50182FFF |
-| 0         | 1            | 0x50184000 - 0x50186FFF |
-| 0         | 2            | 0x50188000 - 0x5018AFFF |
-| 0         | 3            | 0x5018c000 - 0x5018DFFF |
-| 0         | 4            | 0x50190000 - 0x50191FFF |
-| 0         | 5            | 0x50194000 - 0x50196FFF |
-| 0         | 6            | 0x50198000 - 0x5019AFFF |
-| 0         | 7            | 0x5019C000 - 0x5019DFFF |
-| 0         | 8            | 0x501A0000 - 0x501A2FFF |
-| 0         | 9            | 0x501A4000 - 0x501A6FFF |
-| 0         | 10           | 0x501A8000 - 0x501AAFFF |
-| 0         | 11           | 0x501AC000 - 0x501ADFFF |
-| 0         | 12           | 0x501B0000 - 0x501B2FFF |
-| 0         | 13           | 0x501B4000 - 0x501B6FFF |
-| 0         | 14           | 0x501B8000 - 0x501BAFFF |
-| 0         | 15           | 0x501BC000 - 0x501BDFFF |
-| 1         | 0            | 0x50580000 - 0x50582FFF |
-| 1         | 1            | 0x50584000 - 0x50586FFF |
-| 1         | 2            | 0x50588000 - 0x5058AFFF |
-| 1         | 3            | 0x5058C000 - 0x5058DFFF |
-| 1         | 4            | 0x50590000 - 0x50591FFF |
-| 1         | 5            | 0x50594000 - 0x50596FFF |
-| 1         | 6            | 0x50598000 - 0x5059AFFF |
-| 1         | 7            | 0x5059C000 - 0x5059DFFF |
-| 1         | 8            | 0x505A0000 - 0x505A2FFF |
-| 1         | 9            | 0x505A4000 - 0x505A6FFF |
-| 1         | 10           | 0x505A8000 - 0x505AAFFF |
-| 1         | 11           | 0x505AC000 - 0x505ADFFF |
-| 1         | 12           | 0x505B0000 - 0x505B2FFF |
-| 1         | 13           | 0x505B4000 - 0x505B6FFF |
-| 1         | 14           | 0x505B8000 - 0x505BAFFF |
-| 1         | 15           | 0x505BC000 - 0x505BDFFF |
-| 2         | 0            | 0x50980000 - 0x50982FFF |
-| 2         | 1            | 0x50984000 - 0x50986FFF |
-| 2         | 2            | 0x50988000 - 0x5098AFFF |
-| 2         | 3            | 0x5098C000 - 0x5098DFFF |
-| 2         | 4            | 0x50990000 - 0x50991FFF |
-| 2         | 5            | 0x50994000 - 0x50996FFF |
-| 2         | 6            | 0x50998000 - 0x5099AFFF |
-| 2         | 7            | 0x5099C000 - 0x5099DFFF |
-| 2         | 8            | 0x509A0000 - 0x509A2FFF |
-| 2         | 9            | 0x509A4000 - 0x509A6FFF |
-| 2         | 10           | 0x509A8000 - 0x509AAFFF |
-| 2         | 11           | 0x509AC000 - 0x509ADFFF |
-| 2         | 12           | 0x509B0000 - 0x509B2FFF |
-| 2         | 13           | 0x509B4000 - 0x509B6FFF |
-| 2         | 14           | 0x509B8000 - 0x509BAFFF |
-| 2         | 15           | 0x509BC000 - 0x509BDFFF |
-| 3         | 0            | 0x50D80000 - 0x50D82FFF |
-| 3         | 1            | 0x50D84000 - 0x50D86FFF |
-| 3         | 2            | 0x50D88000 - 0x50D8AFFF |
-| 3         | 3            | 0x50D8C000 - 0x50D8DFFF |
-| 3         | 4            | 0x50D90000 - 0x50D91FFF |
-| 3         | 5            | 0x50D94000 - 0x50D96FFF |
-| 3         | 6            | 0x50D98000 - 0x50D9AFFF |
-| 3         | 7            | 0x50D9C000 - 0x50D9DFFF |
-| 3         | 8            | 0x50DA0000 - 0x50DA2FFF |
-| 3         | 9            | 0x50DA4000 - 0x50DA6FFF |
-| 3         | 10           | 0x50DA8000 - 0x50DAAFFF |
-| 3         | 11           | 0x50DAC000 - 0x50DADFFF |
-| 3         | 12           | 0x50DB0000 - 0x50DB2FFF |
-| 3         | 13           | 0x50DB4000 - 0x50DB6FFF |
-| 3         | 14           | 0x50DB8000 - 0x50DBAFFF |
-| 3         | 15           | 0x50DBC000 - 0x50DBDFFF |
+| **Quadrant** | **Instance** | **Address Range\***     |
+| ------------ | ------------ | ----------------------- |
+| 0            | 0            | 0x50180000 - 0x50182FFF |
+| 0            | 1            | 0x50184000 - 0x50186FFF |
+| 0            | 2            | 0x50188000 - 0x5018AFFF |
+| 0            | 3            | 0x5018C000 - 0x5018EFFF |
+| 0            | 4            | 0x50190000 - 0x50192FFF |
+| 0            | 5            | 0x50194000 - 0x50196FFF |
+| 0            | 6            | 0x50198000 - 0x5019AFFF |
+| 0            | 7            | 0x5019C000 - 0x5019EFFF |
+| 0            | 8            | 0x501A0000 - 0x501A2FFF |
+| 0            | 9            | 0x501A4000 - 0x501A6FFF |
+| 0            | 10           | 0x501A8000 - 0x501AAFFF |
+| 0            | 11           | 0x501AC000 - 0x501AEFFF |
+| 0            | 12           | 0x501B0000 - 0x501B2FFF |
+| 0            | 13           | 0x501B4000 - 0x501B6FFF |
+| 0            | 14           | 0x501B8000 - 0x501BAFFF |
+| 0            | 15           | 0x501BC000 - 0x501BEFFF |
+| 1            | 0            | 0x50580000 - 0x50582FFF |
+| 1            | 1            | 0x50584000 - 0x50586FFF |
+| 1            | 2            | 0x50588000 - 0x5058AFFF |
+| 1            | 3            | 0x5058C000 - 0x5058EFFF |
+| 1            | 4            | 0x50590000 - 0x50592FFF |
+| 1            | 5            | 0x50594000 - 0x50596FFF |
+| 1            | 6            | 0x50598000 - 0x5059AFFF |
+| 1            | 7            | 0x5059C000 - 0x5059EFFF |
+| 1            | 8            | 0x505A0000 - 0x505A2FFF |
+| 1            | 9            | 0x505A4000 - 0x505A6FFF |
+| 1            | 10           | 0x505A8000 - 0x505AAFFF |
+| 1            | 11           | 0x505AC000 - 0x505AEFFF |
+| 1            | 12           | 0x505B0000 - 0x505B2FFF |
+| 1            | 13           | 0x505B4000 - 0x505B6FFF |
+| 1            | 14           | 0x505B8000 - 0x505BAFFF |
+| 1            | 15           | 0x505BC000 - 0x505BEFFF |
+| 2            | 0            | 0x50980000 - 0x50982FFF |
+| 2            | 1            | 0x50984000 - 0x50986FFF |
+| 2            | 2            | 0x50988000 - 0x5098AFFF |
+| 2            | 3            | 0x5098C000 - 0x5098EFFF |
+| 2            | 4            | 0x50990000 - 0x50992FFF |
+| 2            | 5            | 0x50994000 - 0x50996FFF |
+| 2            | 6            | 0x50998000 - 0x5099AFFF |
+| 2            | 7            | 0x5099C000 - 0x5099EFFF |
+| 2            | 8            | 0x509A0000 - 0x509A2FFF |
+| 2            | 9            | 0x509A4000 - 0x509A6FFF |
+| 2            | 10           | 0x509A8000 - 0x509AAFFF |
+| 2            | 11           | 0x509AC000 - 0x509AEFFF |
+| 2            | 12           | 0x509B0000 - 0x509B2FFF |
+| 2            | 13           | 0x509B4000 - 0x509B6FFF |
+| 2            | 14           | 0x509B8000 - 0x509BAFFF |
+| 2            | 15           | 0x509BC000 - 0x509BEFFF |
+| 3            | 0            | 0x50D80000 - 0x50D82FFF |
+| 3            | 1            | 0x50D84000 - 0x50D86FFF |
+| 3            | 2            | 0x50D88000 - 0x50D8AFFF |
+| 3            | 3            | 0x50D8C000 - 0x50D8EFFF |
+| 3            | 4            | 0x50D90000 - 0x50D92FFF |
+| 3            | 5            | 0x50D94000 - 0x50D96FFF |
+| 3            | 6            | 0x50D98000 - 0x50D9AFFF |
+| 3            | 7            | 0x50D9C000 - 0x50D9EFFF |
+| 3            | 8            | 0x50DA0000 - 0x50DA2FFF |
+| 3            | 9            | 0x50DA4000 - 0x50DA6FFF |
+| 3            | 10           | 0x50DA8000 - 0x50DAAFFF |
+| 3            | 11           | 0x50DAC000 - 0x50DAEFFF |
+| 3            | 12           | 0x50DB0000 - 0x50DB2FFF |
+| 3            | 13           | 0x50DB4000 - 0x50DB6FFF |
+| 3            | 14           | 0x50DB8000 - 0x50DBAFFF |
+| 3            | 15           | 0x50DBC000 - 0x50DBEFFF |
 
-**using 128 bits of address space for each 72-bit memory*
+**using 128 bits of address space for each 72-bit word*
 
-### Bias memory
+### Bias memory (BRAM)
 
-Total: 2 KiB (4 instances of 128 × 32) 
+Total: 2 KiB (4 instances of 512 × 8) 
 
-| **Group** | **Address Range**       |
-| --------- | ----------------------- |
-| 0         | 0x50108000 - 0x50109FFF |
-| 1         | 0x50508000 - 0x50509FFF |
-| 2         | 0x50908000 - 0x50909FFF |
-| 3         | 0x50D08000 - 0x50D09FFF |
+| **Quadrant** | **Address Range***      |
+| ------------ | ----------------------- |
+| 0            | 0x50108000 - 0x501087FF |
+| 1            | 0x50508000 - 0x505087FF |
+| 2            | 0x50908000 - 0x509087FF |
+| 3            | 0x50D08000 - 0x50D087FF |
+
+**using 32 bits of address space for each 8-bit value*
 
 ---
 
