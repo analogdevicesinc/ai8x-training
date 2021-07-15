@@ -131,7 +131,7 @@ def afsk_get_datasets(data, load_train=True, load_test=True):
 datasets = [
     {
         'name': 'AFSK',
-        'input': (1, 22, 1),
+        'input': (1, 22),
         'output': ('zerobit', 'onebit'),
         'loader': afsk_get_datasets
     },

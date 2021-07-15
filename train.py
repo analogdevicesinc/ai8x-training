@@ -184,6 +184,14 @@ def main():
     if args.shap > 0:
         args.batch_size = 100 + args.shap
 
+    if args.optimizer is None:
+        print('WARNING: --optimizer not set, selecting SGD.')
+        args.optimizer = 'SGD'
+
+    if args.lr is None:
+        print('WARNING: Initial learning rate (--lr) not set, selecting 0.1.')
+        args.lr = 0.1
+
     msglogger = apputils.config_pylogger(os.path.join(script_dir, 'logging.conf'), args.name,
                                          args.output_dir)
 
@@ -244,6 +252,8 @@ def main():
        or ('regression' in selected_source and selected_source['regression']):
         args.regression = True
     dimensions = selected_source['input']
+    if len(dimensions) == 2:
+        dimensions += (1, )
     args.dimensions = dimensions
 
     args.datasets_fn = selected_source['loader']
@@ -483,7 +493,7 @@ def main():
         with collectors_context(activations_collectors["train"]) as collectors:
             train(train_loader, model, criterion, optimizer, epoch, compression_scheduler,
                   loggers=all_loggers, args=args)
-            distiller.log_weights_sparsity(model, epoch, loggers=all_loggers)
+            # distiller.log_weights_sparsity(model, epoch, loggers=all_loggers)
             distiller.log_activation_statistics(epoch, "train", loggers=all_tbloggers,
                                                 collector=collectors["sparsity"])
             if args.masks_sparsity:
