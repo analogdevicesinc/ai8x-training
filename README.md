@@ -1231,7 +1231,17 @@ For both approaches, the `quantize.py` software quantizes an existing PyTorch ch
 
 #### Quantization-Aware Training (QAT)
 
-Quantization-aware training is the better performing approach. It is enabled by default. QAT learns additional parameters during training that help with quantization (see [Weights: Quantization-Aware Training (QAT)](#Weights: Quantization-Aware Training (QAT)). No additional arguments are needed for `quantize.py`.
+Quantization-aware training is the better performing approach. It is enabled by default. QAT learns additional parameters during training that help with quantization (see [Weights: Quantization-Aware Training (QAT)](#Weights: Quantization-Aware Training (QAT)). No additional arguments (other than input, output, and device) are needed for `quantize.py`.
+
+The input checkpoint to `quantize.py` is either `qat_best.pth.tar`, the best QAT epoch’s checkpoint, or `qat_checkpoint.pth.tar`, the final QAT epoch’s checkpoint.
+
+Example:
+
+```shell
+(ai8x-synthesis) $ ./quantize.py proj/qat_best.pth.tar proj/proj_q8.pth.tar --device MAX78000
+```
+
+
 
 #### Post-Training Quantization
 
@@ -1240,6 +1250,17 @@ This approach is also called *”naive quantization”*. It should be used when 
 While several approaches for clipping are implemented in `quantize.py`, clipping with a simple fixed scale factor performs best, based on experimental results. The approach requires the clamping operators implemented in `ai8x.py`.
 
 Note that the “optimum” scale factor for simple clipping is highly dependent on the model and weight data. For the MNIST example, a `--scale 0.85` works well. For the CIFAR-100 example on the other hand, Top-1 performance is 30 points better with `--scale 1.0`.
+
+The input checkpoint to `quantize.py` for post-training quantization is typically `best.pth.tar`, the best epoch’s checkpoint, or `checkpoint.pth.tar`, the final epoch’s checkpoint.
+
+Example:
+
+```shell
+(ai8x-synthesis) $ ./quantize.py proj2/best.pth.tar proj2/proj2_q8.pth.tar \
+--device MAX78000 --scale 0.85 --clip-method SCALE
+```
+
+
 
 #### Command Line Arguments
 
@@ -1259,7 +1280,7 @@ The `quantize.py` software has the following important command line arguments:
 
 *Note: The syntax for the optional YAML file is described below. The same file can be used for both `quantize.py` and `ai8xize.py`.*
 
-`quantize.py` does not need access to the dataset.
+*Note:* `quantize.py` does <u>not</u> need access to the dataset.
 
 #### Example and Evaluation
 
