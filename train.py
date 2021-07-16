@@ -185,11 +185,13 @@ def main():
         args.batch_size = 100 + args.shap
 
     if args.optimizer is None:
-        print('WARNING: --optimizer not set, selecting SGD.')
+        if not args.evaluate:
+            print('WARNING: --optimizer not set, selecting SGD.')
         args.optimizer = 'SGD'
 
     if args.lr is None:
-        print('WARNING: Initial learning rate (--lr) not set, selecting 0.1.')
+        if not args.evaluate:
+            print('WARNING: Initial learning rate (--lr) not set, selecting 0.1.')
         args.lr = 0.1
 
     msglogger = apputils.config_pylogger(os.path.join(script_dir, 'logging.conf'), args.name,
