@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_July 14, 2021_
+_July 16, 2021_
 
 The Maxim Integrated AI project is comprised of five repositories:
 
@@ -1295,7 +1295,30 @@ In all cases, ensure that the quantizer writes out a checkpoint file that the Ne
 
 The following step is needed to add new network models:
 
-Implement a new network model based on the constraints described earlier, see [Custom nn.Modules](#custom-nnmodules) (and `models/ai85net.py` for an example). 
+Implement a new network model based on the constraints described earlier, see [Custom nn.Modules](#custom-nnmodules) (and `models/ai85net.py` for an example).
+
+##### Model Instantiation and Initialization
+
+To support *evaluation* of the quantized model using PyTorch, the model must be instantiated and initialized using all parameters supplied by `train.py`, and the parameters must be passed to the individual *nn.Modules*.
+
+Example:
+
+```python
+class NewModel(nn.Module):
+    def __init__(self, num_classes=10, num_channels=3, dimensions=(64, 64), bias=False, **kwargs):
+        super().__init__()
+        self.conv1 = ai8x.FusedConv2dReLU(..., bias=bias, **kwargs)
+				...
+
+    def forward(self, x):
+      	...
+        
+def newmodel(pretrained=False, **kwargs):
+    ...
+    return NewModel(**kwargs)
+```
+
+Note the  `__init(...)__` function signature, the extra arguments to `ai8x.FusedConv2dReLU(...)` and the `NewModel(**kwargs)` instantiation.
 
 ##### `models` Data Structure
 
@@ -1303,9 +1326,13 @@ The file must include the `models` data structure that describes the model. `mod
 
 For each model, three fields are required in the data structure:
 
-* The `name` field assigns a name to the model for discovery by `train.py`, for example “`resnet5`”.
+* The `name` field assigns a name to the model for discovery by `train.py`, for example “`resnet5`”. *Note: The `name` must be unique.*
 * The `min_input` field describes the minimum width for 2D models, it is typically `1` *(when the input `W` dimension is smaller than `min_input`, it is padded to `min_input`)*.
 * The `dim` field is either `1` (the model handles 1D inputs) or `2` (the model handles 2D inputs).
+
+##### Model File Location
+
+Place the new model file (with its unique model name as specified by `name` in the data structure described above) into the `models` folder. `train.py` will now be able to discover and use the new model by specifying `--model modelname`.
 
 #### Data Loader
 
@@ -1333,10 +1360,9 @@ On the other hand, a different sensor may produce unsigned data values in the fu
 
 Add the new data loader to a new file in the `datasets` directory (for example `datasets/mnist.py`). The file must include the `datasets` data structure that describes the dataset and points to the new loader. `datasets` can list multiple datasets in the same file.
 
-* The `input` field describes the dimensionality of the data, and the first dimension is passed as `num_channels` to the model, whereas the remaining dimensions are passed as `dimension`. For example, `'input': (1, 28, 28)` will be passed to the model as `num_channels=1` and `dimensions=(28,28)`.
-
+* The `name` field assigns a name to the dataset for discovery by `train.py`, for example “`MNIST`”. *Note: The `name` must be unique.*
+* The `input` field describes the dimensionality of the data, and the first dimension is passed as `num_channels` to the model, whereas the remaining dimensions are passed as `dimension`. For example, `'input': (1, 28, 28)` will be passed to the model as `num_channels=1` and `dimensions=(28, 28)`. One-dimensional input uses a single “dimension”, for example `'input': (2, 512)` will be passed to the model as `num_channels=2` and `dimensions=(512, )`.
 * The optional `regression` field in the structure can be set to `True` to automatically select the `--regression` command line argument. `regression` defaults to `False`.
-
 * The optional `visualize` field can point to a custom visualization function used when creating `--embedding`. The input to the function (format NCHW for 2D data, or NCL for 1D data) is a batch of data (with N ≤ 100). The default handles square RGB or monochrome images. For any other data, a custom function must be supplied.
 
 #### Training and Verification Data
