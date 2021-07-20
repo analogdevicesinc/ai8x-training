@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_July 16, 2021_
+_July 20, 2021_
 
 The Maxim Integrated AI project is comprised of five repositories:
 
@@ -52,7 +52,7 @@ where “....” is the project root, for example `~/Documents/Source/AI`.
 
 ### Prerequisites
 
-This software currently supports Ubuntu Linux 18.04 LTS and 20.04 LTS. The server version is sufficient, see https://ubuntu.com/download/server. *Alternatively, Ubuntu Linux can also be used inside the Windows Subsystem for Linux (WSL2) by following 
+This software currently supports Ubuntu Linux 20.04 LTS. The server version is sufficient, see https://ubuntu.com/download/server. *Alternatively, Ubuntu Linux can also be used inside the Windows Subsystem for Linux (WSL2) by following 
 https://docs.nvidia.com/cuda/wsl-user-guide/. However, please note that WSL2 with CUDA is a pre-release and unexpected behavior may occur.*
 
 When going beyond simple models, model training does not work well without CUDA hardware acceleration. The network loader (“izer”) does not require CUDA, and very simple models can also be trained on systems without CUDA.
@@ -134,7 +134,7 @@ $ sudo dnf install openssl-devel zlib-devel \
   libsndfile libsndfile-devel portaudio-devel
 ```
 
-#### Python 3.8
+#### Python 3.8 / pyenv
 
 *The software in this project uses Python 3.8.11 or a later 3.8.x version.*
 
@@ -242,10 +242,24 @@ If you want to use the “develop” branch, switch to “develop” using this 
 $ git checkout develop  # optional
 ```
 
-Then continue with the following:
+Next, set the local directory to use Python 3.8.11.
 
 ```shell
 $ pyenv local 3.8.11
+```
+
+And verify that the correct Python version is used:
+
+```shell
+$ python3 --version
+Python 3.8.11
+```
+
+If this does <u>*not*</u> return the correct version, please install and initialize [pyenv](#Python 3.8 / pyenv).
+
+Then continue with the following:
+
+```shell
 $ python3 -m venv .
 $ source bin/activate
 (ai8x-training) $ pip3 install -U pip wheel setuptools
@@ -457,6 +471,8 @@ Any given processor has visibility of:
 * The data memory instance it shares with three other processors.
 
 #### Weight Memory
+
+*Note: Depending on context, weights may also be referred to as “kernels” or “masks”. Additionally, weights are also part of a network’s “parameters”.*
 
 For each of the four 16-processor quadrants, weight memory and processors can be visualized as follows. Assuming one input channel processed by processor 0, and 8 output channels, the 8 shaded kernels will be used:
 
@@ -1031,7 +1047,7 @@ The ONNX model export (via `--summary onnx` or `--summary onnx_simplified`) is p
 ```
 $ nvidia-smi
 +-----------------------------------------------------------------------------+
-| NVIDIA-SMI 430.50       Driver Version: 430.50       CUDA Version: 10.1     |
+|  NVIDIA-SMI 470.42.01    Driver Version: 470.42.01    CUDA Version: 11.4    |
 |-------------------------------+----------------------+----------------------+
 | GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
 | Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
@@ -1157,11 +1173,13 @@ Both TensorBoard and [Manifold](#Manifold) can be used for model comparison and 
 
 For classification models, TensorBoard supports the optional `--param-hist` and `--embedding` command line arguments. `--embedding` randomly selects up to 100 data points from the last batch of each verification epoch. These can be viewed in the “projector” tab in TensorBoard.
 
+`--pr-curves` adds support for displaying precision-recall curves.
+
 To start the TensorBoard server, use a second terminal window:
 
 ```shell
 (ai8x-training) $ tensorboard --logdir='./logs'
-TensorBoard 2.2.2 at http://127.0.0.1:6006/ (Press CTRL+C to quit)
+TensorBoard 2.4.1 at http://127.0.0.1:6006/ (Press CTRL+C to quit)
 ```
 
 On a shared system, add the `--port 0` command line option.
@@ -1170,9 +1188,9 @@ The training progress can be observed by starting TensorBoard and pointing a web
 
 ##### Examples
 
-TensorBoard produces graphs and displays metrics that may help optimize the training process, and can compare the performance of multiple training sessions and their settings. Additionally, TensorBoard can show a graphical representation of the model and its parameters. For more information, please see the [TensorBoard web site](https://www.tensorflow.org/tensorboard/).
+TensorBoard produces graphs and displays metrics that may help optimize the training process, and can compare the performance of multiple training sessions and their settings. Additionally, TensorBoard can show a graphical representation of the model and its parameters, and help discover labeling errors. For more information, please see the [TensorBoard web site](https://www.tensorflow.org/tensorboard/).
 
-<img src="docs/lr.png" alt="learning rate" style="zoom: 50%;" /><img src="docs/top1.png" alt="top-1" style="zoom:50%;" /><img src="docs/objectiveloss.png" alt="objective loss" style="zoom:42%;" /><img src="docs/histogram.png" alt="histogram" style="zoom:50%;" /><img src="docs/model.png" alt="model" style="zoom:50%;" />
+<img src="docs/lr.png" alt="learning rate" style="zoom: 50%;" /><img src="docs/top1.png" alt="top-1" style="zoom:50%;" /><img src="docs/objectiveloss.png" alt="objective loss" style="zoom:42%;" /><img src="docs/histogram.png" alt="histogram" style="zoom:50%;" /><img src="docs/model.png" alt="model" style="zoom:50%;" /><img src="docs/projector.png" alt="projector" style="zoom:50%;" />
 
 ##### Remote Access to TensorBoard
 
@@ -1290,13 +1308,50 @@ Example for MNIST:
 
 ```shell
 (ai8x-synthesis) $ scripts/quantize_mnist.sh
+Configuring device: MAX78000
+Converting checkpoint file trained/ai85-mnist-qat8.pth.tar to trained/ai85-mnist-qat8-q.pth.tar
+
+Model keys (state_dict):
+conv1.output_shift, conv1.weight_bits, conv1.bias_bits, conv1.quantize_activation, conv1.adjust_output_shift, conv1.op.weight, conv2.output_shift, conv2.weight_bits, conv2.bias_bits, conv2.quantize_activation, conv2.adjust_output_shift, conv2.op.weight, conv3.output_shift, conv3.weight_bits, conv3.bias_bits, conv3.quantize_activation, conv3.adjust_output_shift, conv3.op.weight, conv4.output_shift, conv4.weight_bits, conv4.bias_bits, conv4.quantize_activation, conv4.adjust_output_shift, conv4.op.weight, fc.output_shift, fc.weight_bits, fc.bias_bits, fc.quantize_activation, fc.adjust_output_shift, fc.op.weight, fc.op.bias, conv1.shift_quantile, conv2.shift_quantile, conv3.shift_quantile, conv4.shift_quantile, fc.shift_quantile
+conv1.op.weight avg_max: 0.34562021 max: 0.51949096 mean: 0.02374955 factor: [128.] bits: 8
+conv2.op.weight avg_max: 0.2302317 max: 0.269847 mean: -0.021919029 factor: [256.] bits: 8
+conv3.op.weight avg_max: 0.42106587 max: 0.49686784 mean: -0.021314206 factor: [256.] bits: 8
+conv4.op.weight avg_max: 0.49237916 max: 0.5019533 mean: 0.010923488 factor: [128.] bits: 8
+fc.op.weight avg_max: 0.9884483 max: 1.0039074 mean: -0.0033990005 factor: [64.] bits: 8
+fc.op.bias avg_max: 0.00029080958 max: 0.26957372 mean: -0.00029080958 factor: [64.] bits: 8
 ```
 
-To evaluate the quantized network for MAX78000 (run from the training project):
+To evaluate the quantized network for MAX78000 (**run from the training project**):
 
 ```shell
 (ai8x-training) $ scripts/evaluate_mnist.sh
+...
+--- test ---------------------
+10000 samples (256 per mini-batch)
+Named tensors and all their associated APIs are an experimental feature and subject to change. Please do not use them for anything important until they are released as stable. (Triggered internally at  /pytorch/c10/core/TensorImpl.h:1156.)
+
+Test: [   10/   40]    Loss 0.007288    Top1 99.531250    Top5 100.000000    
+Test: [   20/   40]    Loss 0.010161    Top1 99.414062    Top5 100.000000    
+Test: [   30/   40]    Loss 0.007681    Top1 99.492188    Top5 100.000000    
+Test: [   40/   40]    Loss 0.009589    Top1 99.440000    Top5 100.000000    
+==> Top1: 99.440    Top5: 100.000    Loss: 0.010
+
+==> Confusion:
+[[ 978    0    1    0    0    0    0    0    1    0]
+ [   0 1132    1    1    0    0    1    0    0    0]
+ [   0    0 1028    0    0    0    0    4    0    0]
+ [   0    1    0 1007    0    1    0    1    0    0]
+ [   0    0    1    0  977    0    1    0    1    2]
+ [   1    0    0    3    0  884    3    0    0    1]
+ [   3    0    1    0    1    3  949    0    1    0]
+ [   0    2    1    0    0    0    0 1024    0    1]
+ [   0    0    2    1    1    1    0    0  968    1]
+ [   0    0    0    0    7    1    0    4    0  997]]
+
+Log file for this run: 2021.07.20-123302/2021.07.20-123302.log
 ```
+
+*Note that the “Loss” output is not always directly comparable to the unquantized network, depending on the loss function itself.*
 
 #### Alternative Quantization Approaches
 
@@ -2131,9 +2186,13 @@ Adding new datasets to the Network Loader is implemented as follows:
    fc.linear.bias   
    ```
 
-3. Provide a sample input. The sample input is used to generate a known-answer test (self test). The sample input is provided as a NumPy “pickle” — add `sample_dset.npy` for the dataset named `dset` to the `tests` directory. This file can be generated by saving a sample in CHW format (no batch dimension) using `numpy.save()`, see below.
+3. Provide a sample input. The sample input is used to generate a known-answer test (self test) against the predicted label. The purpose of the sample input is to ensure that the generated code matches the model — it does <u>*not*</u> ensure that the model is of good quality. However, it can help finding issues in the YAML description of the model.
 
-   For example, the MNIST 1×28×28 image sample would be stored in `tests/sample_mnist.npy` in an `np.array` with shape `[1, 28, 28]` and datatype `<i8`. The file can be random, or can be obtained from the `train.py` software.
+   The sample input is provided as a NumPy “pickle” — add `sample_dset.npy` for the dataset named `dset` to the `tests` directory. This file can be generated by saving a sample in CHW format (no batch dimension) using `numpy.save()`, see below.
+   
+   For example, the MNIST 1×28×28 image sample would be stored in `tests/sample_mnist.npy` in an `np.array` with shape `[1, 28, 28]` and datatype `>i8` (`np.int64`). The file can contain random integers, or it can be obtained from the `train.py` software.
+   
+   *Note: To convert an existing sample input file to `np.int64`, use the `tests/convert_sample.py` script.*
 
 #### Generating a Random Sample Input
 
@@ -2147,7 +2206,8 @@ a = np.random.randint(-128, 127, size=(1, 28, 28), dtype=np.int64)
 np.save(os.path.join('tests', 'sample_mnist'), a, allow_pickle=False, fix_imports=False)
 ```
 
-For RGB image inputs, there are three channels. For example, a 3×80×60 (C×H×W) input is created using `size=(3, 80, 60)`.
+For RGB image inputs, there are three channels. For example, a 3×80×60 (C×H×W) input is created using `size=(3, 80, 60)`. 
+**Note:** The array must be of data type `np.int64`.
 
 #### Saving a Sample Input from Training Data
 
