@@ -221,6 +221,9 @@ def main():
         cudnn.benchmark = True
 
     if args.cpu or not torch.cuda.is_available():
+        if not args.cpu:
+            # Print warning if no hardware acceleration
+            print("WARNING: CUDA hardware acceleration is not available, training will be slow")
         # Set GPU index to -1 if using CPU
         args.device = 'cpu'
         args.gpus = -1
