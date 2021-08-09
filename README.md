@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_July 20, 2021_
+_August 9, 2021_
 
 The Maxim Integrated AI project is comprised of five repositories:
 
@@ -52,18 +52,71 @@ where “....” is the project root, for example `~/Documents/Source/AI`.
 
 ### Prerequisites
 
-This software currently supports Ubuntu Linux 20.04 LTS. The server version is sufficient, see https://ubuntu.com/download/server. *Alternatively, Ubuntu Linux can also be used inside the Windows Subsystem for Linux (WSL2) by following 
-https://docs.nvidia.com/cuda/wsl-user-guide/. However, please note that WSL2 with CUDA is a pre-release and unexpected behavior may occur.*
+This software requires PyTorch. *For TensorFlow / Keras, please use the `develop-tf` branch.*
 
-When going beyond simple models, model training does not work well without CUDA hardware acceleration. The network loader (“izer”) does not require CUDA, and very simple models can also be trained on systems without CUDA.
+PyTorch operating system and hardware support are constantly evolving. This document does not cover all possible combinations of operating system and hardware, and there is only one officially supported platform.
 
-*Recommendation:* Install the latest version of CUDA 11 on Ubuntu 20.04 LTS. See https://developer.nvidia.com/cuda-toolkit-archive.
+#### Platform Recommendation and Full Support
 
-*Note: When using multiple GPUs, the software will automatically use all available GPUs and distribute the workload. To prevent this, set the `CUDA_VISIBLE_DEVICES` environment variable. Use the `--gpus` command line argument to set the default GPU.*
+Full support and documentation are provided for the following platform:
+
+* CPU: 64-bit amd64/x86_64 “PC” with [Ubuntu Linux 20.04 LTS](https://ubuntu.com/download/server)
+* GPU for hardware acceleration (optional): Nvidia with [CUDA 11](https://developer.nvidia.com/cuda-toolkit-archive)
+* [PyTorch 1.8.1 (LTS)](https://pytorch.org/get-started/locally/) on Python 3.8.11
+
+Limited support and advice for using other hardware and software combinations is available as follows.
+
+#### Operating System Support
+
+##### Linux
+
+**The only officially supported platform for model training** is Ubuntu Linux 20.04 LTS on amd64/x86_64, either the desktop or the [server version](https://ubuntu.com/download/server).
+
+*Note that hardware acceleration/CUDA is <u>not available</u> in PyTorch for Raspberry Pi 4 and other <u>aarch64/arm64</u> devices, even those running Ubuntu Linux 20.04. See also [Development on Raspberry Pi 4 and 400](docs/RaspberryPi.md) (unsupported).*
+
+This document also provides instructions for installing on RedHat Enterprise Linux / CentOS 8 with limited support.
+
+##### Windows
+
+Ubuntu Linux 20.04 can be used inside the Windows Subsystem for Linux (WSL2) by following
+https://docs.nvidia.com/cuda/wsl-user-guide/.
+*Please note that WSL2 with CUDA is a pre-release, and unexpected behavior may occur, for example unwanted upgrades to a pre-release of the operating system.*
+
+##### macOS
+
+The software works on macOS, but model training suffers from the lack of hardware acceleration.
+
+##### Virtual Machines (Unsupported)
+
+This software works inside a virtual machine running Ubuntu Linux 20.04. However, GPU passthrough is typically <u>not available</u> for Linux VMs, so there will be no CUDA hardware acceleration. Certain Nvidia cards support [vGPU software](https://www.nvidia.com/en-us/data-center/graphics-cards-for-virtualization/); see also [vGPUs and CUDA](https://docs.nvidia.com/cuda/vGPU/), but vGPU features may come at substantial additional cost and vGPU software is not covered by this document.
+
+##### Docker Containers (Unsupported)
+
+This software also works inside Docker containers. However, CUDA support inside containers requires Nvidia Docker ([see blog entry](https://developer.nvidia.com/blog/nvidia-docker-gpu-server-application-deployment-made-easy/)) and is not covered by this document.
+
+#### PyTorch and Python
+
+The officially supported version of [PyTorch is 1.8.1 (LTS)](https://pytorch.org/get-started/locally/) running on Python 3.8.11. Newer versions will typically work, but are not covered by support, documentation, and installation scripts.
+
+#### Hardware Acceleration
+
+When going beyond simple models, model training does not work well without CUDA hardware acceleration. The network loader (“izer”) does <u>not</u> require CUDA, and very simple models can also be trained on systems without CUDA.
+
+* CUDA requires Nvidia GPUs.
+
+* There is a PyTorch pre-release with ROCm acceleration for certain AMD GPUs on Linux ([see blog entry](https://pytorch.org/blog/pytorch-for-amd-rocm-platform-now-available-as-python-package/)), but this is not currently covered by the installation instructions in this document, and it is not supported.
+
+* There is neither CUDA nor ROCm support on macOS, and therefore no hardware acceleration.
+
+* PyTorch does not include CUDA support for aarch64/arm64 systems. *Rebuilding PyTorch from source is not covered by this document.*
+
+##### Using Multiple GPUs
+
+When using multiple GPUs (graphics cards), the software will automatically use all available GPUs and distribute the workload. To prevent this (for example, when the GPUs are not balanced), set the `CUDA_VISIBLE_DEVICES` environment variable. Use the `--gpus` command line argument to set the default GPU.
 
 #### Shared (Multi-User) and Remote Systems
 
-On a shared (multi-user) system that has previously been set up, only local installation is needed. CUDA and any `apt-get` or `brew` tasks are not necessary.
+On a shared (multi-user) system that has previously been set up, only local installation is needed. CUDA and any `apt-get` or `brew` tasks are not necessary, with the exception of the CUDA [Environment Setup](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#environment-setup).
 
 The `screen` command (or alternatively, the more powerful `tmux`) can be used inside a remote terminal to disconnect a session from the controlling terminal, so that a long running training session doesn’t abort due to network issues, or local power saving. In addition, screen can log all console output to a text file.
 
@@ -78,17 +131,25 @@ Ctrl+A,D to disconnect
 
 `man screen` and `man tmux` describe the software in more detail.
 
-#### Recommended Software
+#### Additional Software
 
 The following software is optional, and can be replaced with other similar software of the user’s choosing.
 
-1. Visual Studio Code (Editor, Free), https://code.visualstudio.com, with the “Remote - SSH” plugin
-2. Typora (Markdown Editor, Free during beta), http://typora.io
-3. CoolTerm (Serial Terminal, Free), http://freeware.the-meiers.org
-   or Serial ($30), https://apps.apple.com/us/app/serial/id877615577?mt=12
-4. Git Fork (Graphical Git Client, $50), https://git-fork.com
-   or GitHub Desktop (Graphical Git Client, Free), https://desktop.github.com
-5. Beyond Compare (Diff and Merge Tool, $60), https://scootersoftware.com
+1. Code Editor
+   Visual Studio Code (free), https://code.visualstudio.com or the VSCodium version, https://vscodium.com, with the “Remote - SSH” plugin; *to use Visual Studio Code on Windows as a full development environment (including debug), see https://github.com/MaximIntegratedTechSupport/VSCode-Maxim*
+   Sublime Text ($100), https://www.sublimetext.com
+2. Markdown Editor
+   Typora (free during beta), http://typora.io
+3. Serial Terminal
+   CoolTerm (free), http://freeware.the-meiers.org
+   Serial ($30), https://apps.apple.com/us/app/serial/id877615577?mt=12
+   Putty (free), https://www.chiark.greenend.org.uk/~sgtatham/putty/latest.html
+   Tera Term (free), https://osdn.net/projects/ttssh2/releases/
+4. Graphical Git Client
+   GitHub Desktop (free), https://desktop.github.com
+   Git Fork ($50), https://git-fork.com
+5. Diff and Merge Tool
+   Beyond Compare ($60), https://scootersoftware.com
 
 ### Project Installation
 
@@ -214,10 +275,6 @@ Nirvana Distiller is package for neural network compression and quantization. Ne
 #### Manifold
 
 Manifold is a model-agnostic visual debugging tool for machine learning. The [Manifold guide](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/Guides/Manifold.md) shows how to integrate this optional package into the training software.
-
-#### Windows Systems
-
-Windows/MS-DOS is not supported for training networks at this time. *This includes the Windows Subsystem for Linux (WSL) since it currently lacks CUDA support.*
 
 ### Upstream Code
 
@@ -870,6 +927,37 @@ The example shows a fractionally-strided convolution with a stride of 2, a pad o
 
 ## Model Training and Quantization
 
+#### Hardware Acceleration
+
+If hardware acceleration is not available, skip the following two steps and continue with [Training Script](#Training Script).
+
+1. Before the first training session, check that CUDA hardware acceleration is available using `nvidia-smi -q`:
+
+```shell
+(ai8x-training) $ nvidia-smi -q
+...
+Driver Version                            : 470.57.02
+CUDA Version                              : 11.4
+
+Attached GPUs                             : 1
+GPU 00000000:01:00.0
+    Product Name                          : NVIDIA TITAN RTX
+    Product Brand                         : Titan
+...
+```
+
+2. Verify that PyTorch recognizes CUDA:
+
+```shell
+(ai8x-training) $ ./check_cuda.py
+System:            linux
+Python version:    3.8.11 (default, Jul 14 2021, 12:46:05) [GCC 9.3.0]
+PyTorch version:   1.8.1+cu111
+CUDA acceleration: available in PyTorch
+```
+
+#### Training Script
+
 The main training software is `train.py`. It drives the training aspects, including model creation, checkpointing, model save, and status display (see `--help` for the many supported options, and the `scripts/train_*.sh` scripts for example usage).
 
 The `ai84net.py` and `ai85net.py` files contain models that fit into AI84’s weight memory. These models rely on the MAX78000/MAX78002 hardware operators that are defined in `ai8x.py`.
@@ -1066,6 +1154,27 @@ The `ai8x.py` file contains customized PyTorch classes (subclasses of `torch.nn.
 2. Rounding and clipping that matches the hardware.
 3. Support for quantized operation (when using the `-8` command line argument).
 
+##### set_device()
+
+`ai8x.py` defines the `set_device()` function which configures the training system:
+
+```python
+def set_device(
+        device,
+        simulate,
+        round_avg,
+        verbose=True,
+):
+```
+
+where *device* is `85` (the MAX78000 device code), *simulate* is `True` when clipping and rounding are set to simulate hardware behavior, and *round_avg* picks one of the two hardware rounding modes for AvgPool.
+
+##### update_model()
+
+ai8x.py defines `update_model()`. This function is called after loading a checkpoint file, and recursively applies output shift, weight scaling, and quantization clamping to the model.
+
+
+
 #### List of Predefined Modules
 
 The following modules are predefined:
@@ -1116,7 +1225,9 @@ The following modules are predefined:
 
 Dropout modules such as `torch.nn.Dropout()` and `torch.nn.Dropout2d()` are automatically disabled during inference, and can therefore be used for training without affecting inference.
 
-#### view and reshape
+*Note: Using [batch normalization](#Batch Normalization) in conjunction with dropout can sometimes degrade training results.*
+
+#### view() and reshape()
 
 There are two supported cases for `view()` or `reshape()`.
 
@@ -1162,6 +1273,8 @@ After fusing/folding, the network will no longer contain any batchnorm layers. T
 
 * When using [Quantization-Aware Training (QAT)](#Quantization-Aware Training (QAT)), batchnorm layers <u>are automatically folded</u> during training and no further action is needed.
 * When using [Post-Training Quantization](#Post-Training Quantization), the `batchnormfuser.py` script (see [BatchNorm Fusing](#BatchNorm-Fusing)) must be called before `quantize.py` to explicitly fuse the batchnorm layers.
+
+*Note: Using batch normalization in conjunction with [dropout](#Dropout) can sometimes degrade training results.*
 
 ### Model Comparison and Feature Attribution
 
@@ -1426,13 +1539,13 @@ The loader returns a tuple of two PyTorch Datasets for training and test data.
 
 ##### Normalizing Input Data
 
-For training, input data is expected to be in the range $[–\frac{128}{128}, +\frac{127}{128}]$. When evaluating quantized weights, or when running on hardware, input data is instead expected to be in the native MAX7800X range of $[–128, +127]$. Conversely, the majority of PyTorch datasets are PIL images of range $[0, 1]$. The respective data loaders therefore call the `ai8x.normalize()` function, which expects an input of 0 to 1 and normalizes the data to either of these output ranges.
+For training, input data is expected to be in the range $[–\frac{128}{128}, +\frac{127}{128}]$​. When evaluating quantized weights, or when running on hardware, input data is instead expected to be in the native MAX7800X range of $[–128, +127]$​. Conversely, the majority of PyTorch datasets are PIL images of range $[0, 1]$​​. The respective data loaders therefore call the `ai8x.normalize()` function, which expects an input of 0 to 1 and normalizes the data, automatically switching between the two supported data ranges.
 
 When running inference on MAX7800X hardware, it is important to take the native data format into account, and it is desirable to perform as little preprocessing as possible during inference. For example, an image sensor may return “signed” data in the range $[–128, +127]$ for each color. No additional preprocessing or mapping is needed for this sensor since the model was trained with this data range.
 
 In many cases, image data is delivered as fewer than 8 bits per channel (for example, RGB565). In these cases, retraining the model with this limited range  (0 to 31 for 5-bit color and 0 to 63 for 6-bit color, respectively) can potentially eliminate the need for inference-time preprocessing.
 
-On the other hand, a different sensor may produce unsigned data values in the full 8-bit range $[0, 255]$. This range must be mapped to $[–128, +127]$ to match hardware and the trained model. The mapping can be performed during inference by subtracting 128 from each input byte, but this requires extra processing time during inference.
+On the other hand, a different sensor may produce unsigned data values in the full 8-bit range $[0, 255]$. This range must be mapped to $[–128, +127]$ to match hardware and the trained model. The mapping can be performed during inference by subtracting 128 from each input byte, but this requires extra (pre-)processing time during inference.
 
 ##### `datasets` Data Structure
 
@@ -1756,9 +1869,7 @@ The `bias` configuration is only used for test data. *To use bias with trained n
 
 ##### `dataset` (Mandatory)
 
-`dataset` configures the data set for the network. This determines the input data size and dimensions as well as the number of input channels.
-
-Data sets are for example `mnist`, `fashionmnist`, and `cifar-10`.
+`dataset` configures the data set for the network. Data sets are for example `mnist`, `fashionmnist`, and `cifar-10`. This key is descriptive only, it does not configure input or output dimensions or channel count.
 
 ##### `output_map` (Optional)
 
