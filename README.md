@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_August 5, 2021_
+_August 9, 2021_
 
 The Maxim Integrated AI project is comprised of five repositories:
 
@@ -80,7 +80,7 @@ This document also provides instructions for installing on RedHat Enterprise Lin
 
 Ubuntu Linux 20.04 can be used inside the Windows Subsystem for Linux (WSL2) by following
 https://docs.nvidia.com/cuda/wsl-user-guide/.
-*Please note that WSL2 with CUDA is a pre-release, and unexpected behavior may occur.*
+*Please note that WSL2 with CUDA is a pre-release, and unexpected behavior may occur, for example unwanted upgrades to a pre-release of the operating system.*
 
 ##### macOS
 
@@ -1225,7 +1225,9 @@ The following modules are predefined:
 
 Dropout modules such as `torch.nn.Dropout()` and `torch.nn.Dropout2d()` are automatically disabled during inference, and can therefore be used for training without affecting inference.
 
-#### view and reshape
+*Note: Using [batch normalization](#Batch Normalization) in conjunction with dropout can sometimes degrade training results.*
+
+#### view() and reshape()
 
 There are two supported cases for `view()` or `reshape()`.
 
@@ -1271,6 +1273,8 @@ After fusing/folding, the network will no longer contain any batchnorm layers. T
 
 * When using [Quantization-Aware Training (QAT)](#Quantization-Aware Training (QAT)), batchnorm layers <u>are automatically folded</u> during training and no further action is needed.
 * When using [Post-Training Quantization](#Post-Training Quantization), the `batchnormfuser.py` script (see [BatchNorm Fusing](#BatchNorm-Fusing)) must be called before `quantize.py` to explicitly fuse the batchnorm layers.
+
+*Note: Using batch normalization in conjunction with [dropout](#Dropout) can sometimes degrade training results.*
 
 ### Model Comparison and Feature Attribution
 
@@ -1535,13 +1539,13 @@ The loader returns a tuple of two PyTorch Datasets for training and test data.
 
 ##### Normalizing Input Data
 
-For training, input data is expected to be in the range $[–\frac{128}{128}, +\frac{127}{128}]$. When evaluating quantized weights, or when running on hardware, input data is instead expected to be in the native MAX7800X range of $[–128, +127]$. Conversely, the majority of PyTorch datasets are PIL images of range $[0, 1]$. The respective data loaders therefore call the `ai8x.normalize()` function, which expects an input of 0 to 1 and normalizes the data to either of these output ranges.
+For training, input data is expected to be in the range $[–\frac{128}{128}, +\frac{127}{128}]$​. When evaluating quantized weights, or when running on hardware, input data is instead expected to be in the native MAX7800X range of $[–128, +127]$​. Conversely, the majority of PyTorch datasets are PIL images of range $[0, 1]$​​. The respective data loaders therefore call the `ai8x.normalize()` function, which expects an input of 0 to 1 and normalizes the data, automatically switching between the two supported data ranges.
 
 When running inference on MAX7800X hardware, it is important to take the native data format into account, and it is desirable to perform as little preprocessing as possible during inference. For example, an image sensor may return “signed” data in the range $[–128, +127]$ for each color. No additional preprocessing or mapping is needed for this sensor since the model was trained with this data range.
 
 In many cases, image data is delivered as fewer than 8 bits per channel (for example, RGB565). In these cases, retraining the model with this limited range  (0 to 31 for 5-bit color and 0 to 63 for 6-bit color, respectively) can potentially eliminate the need for inference-time preprocessing.
 
-On the other hand, a different sensor may produce unsigned data values in the full 8-bit range $[0, 255]$. This range must be mapped to $[–128, +127]$ to match hardware and the trained model. The mapping can be performed during inference by subtracting 128 from each input byte, but this requires extra processing time during inference.
+On the other hand, a different sensor may produce unsigned data values in the full 8-bit range $[0, 255]$. This range must be mapped to $[–128, +127]$ to match hardware and the trained model. The mapping can be performed during inference by subtracting 128 from each input byte, but this requires extra (pre-)processing time during inference.
 
 ##### `datasets` Data Structure
 
