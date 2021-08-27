@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -99,15 +99,12 @@ datasets = [
     {
         'name': 'asl_big',
         'input': (3, 64, 64), 
-        #'input': (3, 32, 32),
         'output': ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j',
                    'k', 'l', 'm', 'n', 'nothing', 'o', 'p', 'q', 'r', 's', 't',
                    'u', 'v', 'w', 'x', 'y', 'z'),
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                    1, 1, 1, 1, 1, 1),
-       #'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
-        #'output': ('cow', 'Horse', 'human'),
         'loader': asl_get_datasets,
     },
 ]
