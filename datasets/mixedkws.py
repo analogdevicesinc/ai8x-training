@@ -442,56 +442,56 @@ def MixedKWS_20_get_datasets_100dB(data, load_train=True, load_test=True):
 datasets = [
     {
         'name': 'MixedKWS20_0dB',  # 20 keywords
-        'input': (128, 128, 1),
+        'input': (128, 128),
         'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20),
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.14),
         'loader': MixedKWS_20_get_datasets_0dB,
     },
     {
         'name': 'MixedKWS20_5dB',  # 20 keywords
-        'input': (128, 128, 1),
+        'input': (128, 128),
         'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20),
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.14),
         'loader': MixedKWS_20_get_datasets_5dB,
     },
     {
         'name': 'MixedKWS20_10dB',  # 20 keywords
-        'input': (128, 128, 1),
+        'input': (128, 128),
         'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20),
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.14),
         'loader': MixedKWS_20_get_datasets_10dB,
     },
     {
         'name': 'MixedKWS20_15dB',  # 20 keywords
-        'input': (128, 128, 1),
+        'input': (128, 128),
         'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20),
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.14),
         'loader': MixedKWS_20_get_datasets_15dB,
     },
     {
         'name': 'MixedKWS20_20dB',  # 20 keywords
-        'input': (128, 128, 1),
+        'input': (128, 128),
         'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20),
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.14),
         'loader': MixedKWS_20_get_datasets_20dB,
     },
     {
         'name': 'MixedKWS20_25dB',  # 20 keywords
-        'input': (128, 128, 1),
+        'input': (128, 128),
         'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20),
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.14),
         'loader': MixedKWS_20_get_datasets_25dB,
     },
     {
         'name': 'MixedKWS20_30dB',  # 20 keywords
-        'input': (128, 128, 1),
+        'input': (128, 128),
         'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20),
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.14),
         'loader': MixedKWS_20_get_datasets_30dB,
     },
     {
         'name': 'MixedKWS20_100dB',  # 20 keywords
-        'input': (128, 128, 1),
+        'input': (128, 128),
         'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20),
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.14),
         'loader': MixedKWS_20_get_datasets_100dB,

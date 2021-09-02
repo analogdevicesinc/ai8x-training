@@ -81,10 +81,23 @@ def get_parser(model_names, dataset_names):
                           help='path to YAML file that defines the '
                                'QAT (quantization-aware training) policy')
 
+    ofa_args = parser.add_argument_group('NAS Training Arguments')
+    ofa_args.add_argument('--nas', action='store_true', default=False,
+                          help='enables NAS (network architecture search) training')
+    ofa_args.add_argument('--nas-kd-resume-from', default='', type=str, metavar='PATH',
+                          help='path to checkpoint from which to load NAS teacher weights')
+    ofa_args.add_argument('--nas-policy', dest='nas_policy', default='',
+                          help='path to YAML file that defines the '
+                               'NAS (network architecture search) policy')
+    ofa_args.add_argument('--nas-stage-transition-list', dest='nas_stage_transition_list',
+                          default=None, help='list of tuples to define epochs to change the '
+                                             'stages and levels of NAS sampling policy. '
+                                             'Use --nas-policy option instead!')
+
     optimizer_args = parser.add_argument_group('Optimizer Arguments')
-    optimizer_args.add_argument('--optimizer', default='SGD',
+    optimizer_args.add_argument('--optimizer',
                                 help='optimizer for training (default: SGD)')
-    optimizer_args.add_argument('--lr', '--learning-rate', default=0.1,
+    optimizer_args.add_argument('--lr', '--learning-rate',
                                 type=float, metavar='LR', help='initial learning rate')
     optimizer_args.add_argument('--momentum', default=0.9, type=float,
                                 metavar='M', help='momentum')
