@@ -12,8 +12,9 @@ ASL Datasets
 import os
 import sys
 import torchvision
-import ai8x
 from torchvision import transforms
+import ai8x
+
 
 def asl_get_datasets(data, load_train=True, load_test=True):
     """
@@ -48,7 +49,7 @@ def asl_get_datasets(data, load_train=True, load_test=True):
             transforms.ColorJitter(
                 brightness=(0.3, .8),
                 contrast=(.7, 1),
-               saturation=0.2,
+                saturation=0.2,
                 ),
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomApply(([
