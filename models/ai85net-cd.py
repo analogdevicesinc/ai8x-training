@@ -55,6 +55,10 @@ class AI85CatsDogsNet(nn.Module):
 
         self.fc = ai8x.Linear(fc_inputs*dim*dim, num_classes, bias=True, **kwargs)
 
+        self.dropout1 = nn.Dropout2d(0.35)
+        self.dropout2 = nn.Dropout2d(0.20)
+        self.dropout3 = nn.Dropout2d(0.10)
+
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
@@ -62,10 +66,14 @@ class AI85CatsDogsNet(nn.Module):
     def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
         x = self.conv1(x)
+        x = self.dropout1(x)
         x = self.conv2(x)
         x = self.conv3(x)
+        x = self.dropout2(x)
         x = self.conv4(x)
+        x = self.dropout3(x)
         x = self.conv5(x)
+        x = self.dropout3(x)
         x = self.conv6(x)
         x = x.view(x.size(0), -1)
         x = self.fc(x)

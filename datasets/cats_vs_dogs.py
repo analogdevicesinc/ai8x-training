@@ -35,14 +35,17 @@ def catsdogs_get_datasets(data, load_train=True, load_test=True):
         is_dir = os.path.isdir(dataset_path)
 
         if not is_dir:
-            print("******************************************")
+            print("\n******************************************")
             print("Please follow instructions below:")
-            print("Download the dataset in the current working directory by visiting this link"
+            print("Download the dataset in the \'ai8x-training\' directory by visiting this link"
                   "\'https://www.kaggle.com/c/dogs-vs-cats/data\'")
             print("and click the \'Download all\' button")
             print("If you do not have a Kaggle account, sign-up first.")
-            print("Unzip \'dogs-vs-cats.zip\' and you will see train.zip, test1.zip and .csv "
-                  " file. Unzip the train.zip file and re-run the script")
+            print("Unzip \'dogs-vs-cats.zip\' and you will see train.zip"
+                  " file. Unzip the train.zip file inside \'dogs-vs-cats\' directory.")
+            print("This script splits the data from \'ai8x-training/dogs-vs-cats/train\'"
+                  "directory into training and test data.")
+            print("Re-run the script.")
             print("******************************************")
             sys.exit("Dataset not found..")
         else:
@@ -91,7 +94,6 @@ def catsdogs_get_datasets(data, load_train=True, load_test=True):
     if load_train:
         train_transform = transforms.Compose([
             transforms.Resize((64, 64)),
-            transforms.RandomAffine(degrees=20, translate=(0.1, 0.1), shear=5),
             transforms.ToTensor(),
             ai8x.normalize(args=args)
         ])
