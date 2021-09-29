@@ -735,7 +735,7 @@ def train(train_loader, model, criterion, optimizer, epoch,
                     classerr.add(output.data, target)
                 else:
                     classerr.add(output.data.permute(0, 2, 3, 1).flatten(start_dim=0, end_dim=2),
-                                target.flatten())
+                                 target.flatten())
                 if not args.regression:
                     acc_stats.append([classerr.value(1), classerr.value(min(args.num_classes, 5))])
                 else:
@@ -796,13 +796,13 @@ def train(train_loader, model, criterion, optimizer, epoch,
                         if args.num_classes > 5:
                             errs['Top5'] = classerr.value(5)
                     else:
-                        errs['Top1'] = -1. # instead of None as the logger accepts only numbers
-                        errs['Top5'] = -1. # instead of None as the logger accepts only numbers
+                        errs['Top1'] = -1.  # instead of None as the logger accepts only numbers
+                        errs['Top5'] = -1.  # instead of None as the logger accepts only numbers
                 else:
                     if classerr.n != 0:
                         errs['MSE'] = classerr.value()
                     else:
-                        errs['MSE'] = -1. # instead of None as the logger accepts only numbers
+                        errs['MSE'] = -1.   # instead of None as the logger accepts only numbers
             else:
                 # for Early Exit case, the Top1 and Top5 stats are computed for each exit.
                 for exitnum in range(args.num_exits):

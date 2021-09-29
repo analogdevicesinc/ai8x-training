@@ -54,7 +54,7 @@ class AI85UNetSmall(nn.Module):
         self.conv = ai8x.FusedConv2dBN(16, num_classes, 1, stride=1, padding=0,
                                        bias=bias, batchnorm='NoAffine', **kwargs)
 
-    def forward(self, x): # pylint: disable=arguments-differ
+    def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
         # Run CNN
         enc1 = self.enc1(x)
@@ -117,7 +117,7 @@ class AI85UNetMedium(nn.Module):
         self.conv = ai8x.FusedConv2dBN(32, num_classes, 1, stride=1, padding=0,
                                        bias=bias, batchnorm='NoAffine', **kwargs)
 
-    def forward(self, x): # pylint: disable=arguments-differ
+    def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
         # Run CNN
         enc1 = self.enc1(x)
@@ -199,34 +199,34 @@ class AI85UNetLarge(nn.Module):
         self.conv = ai8x.FusedConv2dBN(64, self.num_final_channels, 1, stride=1, padding=0,
                                        bias=bias, batchnorm='NoAffine', **kwargs)
 
-    def forward(self, x): # pylint: disable=arguments-differ
+    def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
         # Run CNN
         x = self.prep0(x)
         x = self.prep1(x)
         x = self.prep2(x)
 
-        enc1 = self.enc1(x) #8x(dim1)x(dim2)
-        enc2 = self.enc2(enc1) #28x(dim1/2)x(dim2/2)
-        enc3 = self.enc3(enc2) #56x(dim1/4)x(dim2/4)
+        enc1 = self.enc1(x)                    # 8x(dim1)x(dim2)
+        enc2 = self.enc2(enc1)                 # 28x(dim1/2)x(dim2/2)
+        enc3 = self.enc3(enc2)                 # 56x(dim1/4)x(dim2/4)
 
-        bottleneck = self.bneck(enc3) #112x(dim1/8)x(dim2/8)
+        bottleneck = self.bneck(enc3)          # 112x(dim1/8)x(dim2/8)
 
-        dec3 = self.upconv3(bottleneck) #56x(dim1/4)x(dim2/4)
-        dec3 = torch.cat((dec3, enc3), dim=1) #112x(dim1/4)x(dim2/4)
-        dec3 = self.dec3(dec3) #56x(dim1/4)x(dim2/4)
-        dec2 = self.upconv2(dec3) #28x(dim1/2)x(dim2/2)
-        dec2 = torch.cat((dec2, enc2), dim=1) #56(dim1/2)x(dim2/2)
-        dec2 = self.dec2(dec2) #28x(dim1/2)x(dim2/2)
-        dec1 = self.upconv1(dec2) #8x(dim1)x(dim2)
-        dec1 = torch.cat((dec1, enc1), dim=1) #16x(dim1)x(dim2)
-        dec1 = self.dec1(dec1) #48x(dim1)x(dim2)
-        dec0 = self.dec0(dec1) #64x(dim1)x(dim2)
+        dec3 = self.upconv3(bottleneck)        # 56x(dim1/4)x(dim2/4)
+        dec3 = torch.cat((dec3, enc3), dim=1)  # 112x(dim1/4)x(dim2/4)
+        dec3 = self.dec3(dec3)                 # 56x(dim1/4)x(dim2/4)
+        dec2 = self.upconv2(dec3)              # 28x(dim1/2)x(dim2/2)
+        dec2 = torch.cat((dec2, enc2), dim=1)  # 56(dim1/2)x(dim2/2)
+        dec2 = self.dec2(dec2)                 # 28x(dim1/2)x(dim2/2)
+        dec1 = self.upconv1(dec2)              # 8x(dim1)x(dim2)
+        dec1 = torch.cat((dec1, enc1), dim=1)  # 16x(dim1)x(dim2)
+        dec1 = self.dec1(dec1)                 # 48x(dim1)x(dim2)
+        dec0 = self.dec0(dec1)                 # 64x(dim1)x(dim2)
 
         dec0 = self.conv_p1(dec0)
         dec0 = self.conv_p2(dec0)
         dec0 = self.conv_p3(dec0)
-        dec0 = self.conv(dec0) #num_final_channelsx(dim1)x(dim2)
+        dec0 = self.conv(dec0)                 # num_final_channelsx(dim1)x(dim2)
 
         if self.fold_ratio > 1:
             dec0_u = torch.zeros((dec0.shape[0], self.num_classes, dec0.shape[2]*self.fold_ratio,

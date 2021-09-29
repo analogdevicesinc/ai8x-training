@@ -66,7 +66,7 @@ class CamVidDataset(Dataset):
             img = np.asarray(Image.open(os.path.join(img_folder, img_file)))
             if im_scale != 1:
                 img = img[::im_scale, ::im_scale, :]
-            img = self.__normalize(img.astype(np.float32))
+            img = CamVidDataset.normalize(img.astype(np.float32))
             data_name = os.path.splitext(img_file)[0]
             lbl_rgb = np.asarray(Image.open(os.path.join(lbl_folder, data_name + '_L.png')))
             if im_scale != 1:
@@ -97,11 +97,12 @@ class CamVidDataset(Dataset):
                         img_crop_folded = None
                         for i in range(fold_ratio):
                             for j in range(fold_ratio):
+                                img_crop_subsample = img_crop[i::fold_ratio, j::fold_ratio, :]
                                 if img_crop_folded is not None:
                                     img_crop_folded = np.concatenate((img_crop_folded,
-                                        img_crop[i::fold_ratio, j::fold_ratio, :]), axis=2)
+                                                                      img_crop_subsample), axis=2)
                                 else:
-                                    img_crop_folded = img_crop[i::fold_ratio, j::fold_ratio, :]
+                                    img_crop_folded = img_crop_subsample
                         self.img_list.append(img_crop_folded)
                         self.lbl_list.append(lbl_crop)
 
@@ -152,10 +153,10 @@ class CamVidDataset(Dataset):
                 new_class_label += 1
 
             self.lbl_list[i][(self.lbl_list[i] < initial_new_class_label)] = new_class_label
-            #self.lbl_list[i] -= initial_new_class_label
             self.lbl_list[i] = copy.deepcopy(self.lbl_list[i] - initial_new_class_label)
 
-    def __normalize(self, data):
+    @staticmethod
+    def normalize(data):
         return data / 256.
 
     def __len__(self):
