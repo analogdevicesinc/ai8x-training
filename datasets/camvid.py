@@ -157,6 +157,7 @@ class CamVidDataset(Dataset):
 
     @staticmethod
     def normalize(data):
+        """Normalizes data to the range [0, 1)"""
         return data / 256.
 
     def __len__(self):
