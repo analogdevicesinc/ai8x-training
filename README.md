@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_August 25, 2021_
+_September 30, 2021_
 
 The Maxim Integrated AI project is comprised of five repositories:
 
@@ -227,6 +227,8 @@ $ pyenv init
 ...
 ...
 ```
+
+*Note: Installing both conda and pyenv in parallel may cause issues. Ensure that the pyenv initialization tasks are executed <u>before</u> any conda related tasks.*
 
 Next, close the Terminal, open a new Terminal and install Python 3.8.11.
 
@@ -537,7 +539,7 @@ For each of the four 16-processor quadrants, weight memory and processors can be
 
 ![Weight Memory Map](docs/KernelMemory.png)
 
-*Note: Weights that are not 3×3×8 (= 72-bits) per kernel are packed to save space.*
+*Note: Weights that are not 3×3×8 (= 72-bits) per kernel are packed to save space. For example, when using 1×1 8-bit kernels, 9 kernels will be packed into a single 72-bit memory word.*
 
 #### Data Memory
 
@@ -827,15 +829,17 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
 
 * `Conv2d`:
   
-  * Kernel sizes must be 1×1 or 3×3.
+  * Kernel sizes must be 1×1 or 3×3. *Note: Stacked 3×3 kernels can achieve the effect of larger kernels. For example, two consecutive layers with 3×3 kernels have the same receptive field as a 5×5 kernel. To achieve the same activation as a 5×5 kernel, additional layers are necessary.*
   * Padding can be 0, 1, or 2. Padding always uses zeros.
   * Stride is fixed to [1, 1].
+  * Dilation is fixed to 1.
   
 * `Conv1d`:
   
   * Kernel sizes must be 1 through 9.
   * Padding can be 0, 1, or 2.
   * Stride is fixed to 1.
+  * Dilation is fixed to 1 for kernels with size greater than 3.
   
 * `ConvTranspose2d`:
 
@@ -907,7 +911,7 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   
 * Since the internal network format is HWC in groups of four channels, output concatenation only works properly when all components of the concatenation other than the last have multiples of four channels.
 
-* Dilation, groups, and depth-wise convolutions are not supported. *Note: Batch normalization should be folded into the weights, see [Batch Normalization](#Batch-Normalization).*
+* Groups, and depth-wise convolutions are not supported. *Note: Batch normalization should be folded into the weights, see [Batch Normalization](#Batch-Normalization).*
 
 ### Fully Connected (Linear) Layers
 
@@ -1107,6 +1111,7 @@ The following table describes the most important command line arguments for `tra
 | `--qat-policy`             | Define QAT policy in YAML file (default: qat_policy.yaml). Use ‘’None” to disable QAT. | `--qat-policy qat_policy.yaml` |
 | `--nas`                    | Enable network architecture search                           |                                 |
 | `--nas-policy`             | Define NAS policy in YAML file                               | `--nas-policy nas/nas_policy.yaml` |
+| `--regression` | Select regression instead of classification (changes Loss function, and log output) |  |
 | *Display and statistics*   |                                                              |                                 |
 | `--enable-tensorboard`     | Enable logging to TensorBoard (default: disabled)            |                                 |
 | `--confusion`              | Display the confusion matrix                                 |                                 |
@@ -1122,7 +1127,7 @@ The following table describes the most important command line arguments for `tra
 | `--exp-load-weights-from`  | Load weights from file                                       |                                 |
 | *Export*                   |                                                              |                                 |
 | `--summary onnx`           | Export trained model to ONNX (default name: to model.onnx) — *see description below* |         |
-| `--summary onnx_simplified` | Export trained model to simplified ONNX file (default name: model.onnx) |                     |
+| `--summary onnx_simplified` | Export trained model to simplified [ONNX](https://onnx.ai/) file (default name: model.onnx) |                     |
 | `--summary-filename`       | Change the file name for the exported model                  | `--summary-filename mnist.onnx` |
 | `--save-sample`            | Save data[index] from the test set to a NumPy pickle for use as sample data | `--save-sample 10` |
 
@@ -1768,7 +1773,8 @@ The following table describes the most important command line arguments for `ai8
 | `--softmax`              | Add software Softmax functions to generated code             |                                 |
 | `--boost`                | Turn on a port pin to boost the CNN supply                   | `--boost 2.5`                   |
 | `--timer`                | Insert code to time the inference using a timer              | `--timer 0`                     |
-| `--no-wfi`               | Do not use WFI instructions when waiting for CNN completion  |                                 |
+| `--no-wfi`               | Do not use WFI (wait for interrupt) instructions when waiting for CNN completion |                                 |
+| `--define` | Additional preprocessor defines | `--define "FAST GOOD"` |
 | *File names*             |                                                              |                                 |
 | `--c-filename`           | Main C file name base (default: main.c)                      | `--c-filename main.c`           |
 | `--api-filename`         | API C file name (default: cnn.c)                             | `--api-filename cnn.c`          |
@@ -1812,7 +1818,7 @@ The following table describes the most important command line arguments for `ai8
 | `--input-offset`         | First layer input offset (x8 hex, defaults to 0x0000)        | `--input-offset 2000`           |
 | `--mlator-noverify`      | Do not check both mlator and non-mlator output               |                                 |
 | `--write-zero-registers` | Write registers even if the value is zero                    |                                 |
-| `--init-tram`            | Initialize TRAM to 0                                         |                                 |
+| `--init-tram`            | Initialize TRAM (compute cache) to 0                         |                                 |
 | `--zero-sram`            | Zero memories                                                |                                 |
 | `--zero-unused`          | Zero unused registers                                        |                                 |
 | `--ready-sel`            | Specify memory waitstates                                    |                                 |
@@ -1994,7 +2000,7 @@ When this key is not specified, a warning is displayed, and `Conv2d` is selected
 | `Conv2d`                  | 2D convolution over an input composed of several input planes |
 | `ConvTranspose2d`         | 2D transposed convolution (upsampling) over an input composed of several input planes |
 | `None` or `Passthrough`   | No operation *(note: input and output processors must be the same)* |
-| `Linear` or `FC` or `MLP` | Linear transformation to the incoming data                   |
+| `Linear` or `FC` or `MLP` | Linear transformation to the incoming data (fully connected layer) |
 | `Add`                     | Element-wise addition                                        |
 | `Sub`                     | Element-wise subtraction                                     |
 | `Xor`                     | Element-wise binary XOR                                      |
@@ -2009,6 +2015,13 @@ Element-wise operations can also be added “in-flight” to `Conv2d`. In this c
 
 Example:
   `eltwise: add`
+
+##### `dilation` (Optional)
+
+Specifies the dilation for Conv1d operations (default: `1`).
+
+Example:
+	`dilation: 7`
 
 ##### `pool_first` (Optional)
 
@@ -2253,7 +2266,7 @@ layers:
   operation: none
 - flatten: true
   out_offset: 0x0000
-  op: mlp
+  op: mlp  # The fully connected (FC) layer L5
   processors: 0x000000000000ff00
   output_width: 32
 ```
@@ -2541,31 +2554,41 @@ The software Softmax function is optimized for processing time, and it quantizes
 
 The generated C code comprises the following files. Some of the files are customized based on the project name, and some are custom for a combination of project name and weight/sample data inputs:
 
-| File name      | Source                           | Project specific? | Model/weights change? |
-| -------------- | -------------------------------- | ----------------- | --------------------- |
-| Makefile       | template in assets/embedded-ai87 | Yes               | No                    |
-| cnn.c          | generated                        | Yes               | **Yes**               |
-| cnn.h          | template in assets/device-all    | Yes               | **Yes**               |
-| weights.h      | generated                        | Yes               | **Yes**               |
-| log.txt        | generated                        | Yes               | **Yes**               |
-| main.c         | generated                        | Yes               | No                    |
-| sampledata.h   | generated                        | Yes               | No                    |
-| sampleoutput.h | generated                        | Yes               | **Yes**               |
-| softmax.c      | assets/device-all                | No                | No                    |
-| model.launch   | template in assets/eclipse       | Yes               | No                    |
-| .cproject      | template in assets/eclipse       | Yes               | No                    |
-| .project       | template in assets/eclipse       | Yes               | No                    |
+| File name      | Source                                | Project specific? | Model/weights change? |
+| -------------- | ------------------------------------- | ----------------- | --------------------- |
+| Makefile*      | template(s) in assets/embedded-*      | Yes               | No                    |
+| cnn.c          | generated                             | Yes               | **Yes**               |
+| cnn.h          | template in assets/device-all         | Yes               | **Yes**               |
+| weights.h      | generated                             | Yes               | **Yes**               |
+| log.txt        | generated                             | Yes               | **Yes**               |
+| main.c         | generated                             | Yes               | No                    |
+| sampledata.h   | generated                             | Yes               | No                    |
+| sampleoutput.h | generated                             | Yes               | **Yes**               |
+| softmax.c      | assets/device-all                     | No                | No                    |
+| model.launch   | template in assets/eclipse            | Yes               | No                    |
+| .cproject      | template in assets/eclipse            | Yes               | No                    |
+| .project       | template in assets/eclipse            | Yes               | No                    |
+| .settings/*    | templates in assets/eclipse/.settings | Yes               | No                    |
 
 In order to upgrade an embedded project after retraining the model, point the network generator to a new empty directory and regenerate. Then, copy the four files that will have changed to your original project — `cnn.c`, `cnn.h`, `weights.h`, and `log.txt`. This allows for persistent customization of the I/O code and project (for example, in `main.c` and additional files) while allowing easy model upgrades.
 
-The generator also adds all files from the `assets/eclipse`, `assets/device-all`, and `assets/embedded-ai87` folders. These files (when starting with `template` in their name) will be automatically customized to include project-specific information as shown in the following table:
+The generator also adds all files from the `assets/eclipse`, `assets/device-all`, and `assets/embedded-*` folders. These files (when starting with `template` in their name) will be automatically customized to include project-specific information as shown in the following table:
 
-| Key                   | Replaced by                                                  |
-| --------------------- | ------------------------------------------------------------ |
-| `##__PROJ_NAME__##`   | Project name (works on file names as well as the file contents) |
-| `##__ELF_FILE__##`    | Output elf (binary) file name                                |
-| `##__BOARD__##`       | Board name (e.g., `EvKit_V1`)                                |
-| `##__FILE_INSERT__##` | Network statistics and timer                                 |
+| Key                       | Replaced by                                                  |
+| ------------------------- | ------------------------------------------------------------ |
+| `##__PROJ_NAME__##`       | Project name (works on file names as well as the file contents), from `--prefix` |
+| `##__ELF_FILE__##`        | Output elf (binary) file name (`PROJECT.elf` or `PROJECT-combined.elf`) |
+| `##__BOARD__##`           | Board name (e.g., `EvKit_V1`), from `--board-name`                   |
+| `##__FILE_INSERT__##`     | Network statistics and timer                                 |
+| `##__OPENOCD_PARAMS__##` | OpenOCD arguments (e.g., `-f interface/cmsis-dap.cfg -f target/max7800x.cfg`), from `--eclipse-openocd-args` |
+| `##__TARGET_UC__##` | Upper case device name (e.g., `MAX78000`), from `--device` |
+| `##__TARGET_LC__##` | Lower case device name (e.g., `max78000`), from `--device` |
+| `##__ADDITIONAL_INCLUDES__##` | Additional include files, from `--eclipse-includes`  (default: empty) |
+| `##__GCC_PREFIX__##` | `arm-non-eabi-` or `riscv-none-embed-` |
+| `##__DEFINE__##`<br />*or* `##__GCC_SUFFIX__##` | Additional #defines (e.g., `-D SUPERSPEED`), from `--define` (default: empty) |
+| `##__DEFINE_ARM__##`<br />*or* `##__ARM_DEFINES__##` | Replace default ARM #defines, from `--define-default-arm` (default: `"MXC_ASSERT_ENABLE ARM_MATH_CM4"`) |
+| `##__DEFINE_RISCV__##`<br />*or* `##__RISC_DEFINES__##` | Replace default RISC-V #defines, from `--define-default-riscv` (default: `"MXC_ASSERT_ENABLE RV32"`) |
+| `##__ADDITIONAL_VARS__##` | Additional variables, from `--eclipse-variables` (default: empty) |
 
 ##### Contents of the device-all Folder
 
@@ -2574,10 +2597,10 @@ The generator also adds all files from the `assets/eclipse`, `assets/device-all`
 
 #### Determining the Compiled Flash Image Size
 
-The generated `.elf` file (either `max78000.elf` or `max78000-combined.elf`) contains debug and other meta information. To determine the true Flash image size, either examine the `.map` file, or convert the `.elf` to a binary image and examine the resulting image.
+The generated `.elf` file (either `build/PROJECT.elf` or `build/PROJECT-combined.elf` when building for RISC-V) contains debug and other meta information. To determine the true Flash image size, either examine the `.map` file, or convert the `.elf` to a binary image and examine the resulting image.
 
 ```shell
-% arm-none-eabi-objcopy -I elf32-littlearm build/max78000.elf -O binary temp.bin                     
+% arm-none-eabi-objcopy -I elf32-littlearm build/mnist.elf -O binary temp.bin                     
 % ls -la temp.bin
 -rwxr-xr-x  1 user  staff  321968 Jan  1 11:11 temp.bin
 ```
@@ -2591,8 +2614,8 @@ $ make
   CC    main.c
   CC    cnn.c
   ...
-  LD    build/max78000.elf 
-arm-none-eabi/bin/ld: build/max78000.elf section `.text' will not fit in region `FLASH'
+  LD    build/mnist.elf 
+arm-none-eabi/bin/ld: build/mnist.elf section `.text' will not fit in region `FLASH'
 arm-none-eabi/bin/ld: region `FLASH' overflowed by 600176 bytes
 collect2: error: ld returned 1 exit status
 ```
@@ -2613,7 +2636,7 @@ To deal with this issue, there are several options:
 
 There can be many reasons why the known-answer test (KAT) fails for a given network with an error message, or where the KAT does not complete. The following techniques may help in narrowing down where in the network or the YAML description of the network the error occurs:
 
-* For very short and small networks, disable the use of WFI instructions while waiting for completion of the CNN computations by using the command line option `--no-wfi`. *Explanation: In these cases, the network terminates more quickly than the time it takes between testing for completion and executing the WFI instruction, so the WFI instruction is never interrupted and the code may appear to hang.*
+* For very short and small networks, disable the use of WFI (wait for interrupt) instructions while waiting for completion of the CNN computations by using the command line option `--no-wfi`. *Explanation: In these cases, the network terminates more quickly than the time it takes between testing for completion and executing the WFI instruction, so the WFI instruction is never interrupted and the code may appear to hang.*
   
 * The `--no-wfi` option can also be useful when trying to debug code, since the debugger loses connection when the device enters sleep mode using `__WFI()`.
   
@@ -2687,7 +2710,7 @@ Total: 512 KiB (16 instances of 8192 × 32)
 | 3            | 2            | 0x51010000 - 0x51017FFF |
 | 3            | 3            | 0x51018000 - 0x5101FFFF |
 
-### TRAM
+### TRAM (Compute Cache)
 
 Total: 384 KiB (64 instances of 3072 × 16)
 
@@ -2861,12 +2884,11 @@ Code should not generate any warnings in any of the tools (some of the component
 (ai8x-synthesis) $ pip3 install flake8 pylint mypy isort
 ```
 
-The GitHub projects use the [GitHub Super-Linter](https://github.com/github/super-linter) to automatically verify push operations and pull requests. The Super-Linter can be installed locally, see [installation instructions](https://github.com/github/super-linter/blob/master/docs/run-linter-locally.md).
-To run locally, create a clean copy of the repository and run the following command from the project directory (i.e., `ai8x-training` or `ai8x-synthesis`): 
+The GitHub projects use the [GitHub Super-Linter](https://github.com/github/super-linter) to automatically verify push operations and pull requests. The Super-Linter can be installed locally using [podman](https://podman.io) (or Docker), see [installation instructions](https://github.com/github/super-linter/blob/master/docs/run-linter-locally.md).
+To run locally, create a clean copy of the repository and run the following command from the project directory (i.e., `ai8x-training` or `ai8x-synthesis`):
 
 ```shell
-$ docker pull github/super-linter:latest
-$ docker run --rm -e RUN_LOCAL=true -e VALIDATE_MARKDOWN=false -e VALIDATE_PYTHON_BLACK=false -e VALIDATE_ANSIBLE=false -e VALIDATE_EDITORCONFIG=false -e VALIDATE_JSCPD=false -e FILTER_REGEX_EXCLUDE="attic/.*|inspect_ckpt.py" -v `pwd`:/tmp/lint github/super-linter
+$ podman run --rm -e RUN_LOCAL=true -e VALIDATE_MARKDOWN=false -e VALIDATE_PYTHON_BLACK=false -e VALIDATE_ANSIBLE=false -e VALIDATE_EDITORCONFIG=false -e VALIDATE_JSCPD=false -e VALIDATE_CPP=false -e VALIDATE_ANSIBLE=false -e FILTER_REGEX_EXCLUDE="attic/.*|inspect_ckpt.py" -v `pwd`:/tmp/lint docker.io/github/super-linter:v3
 ```
 
 ### Submitting Changes
