@@ -1049,7 +1049,7 @@ class Conv1d(QuantizationAwareModule):
             assert dev.device != 84 or kernel_size == 9
             assert dev.device == 84 or kernel_size in [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
-            assert dilation == 1 or (kernel_size <= 3 and padding <= 1)
+            assert (kernel_size - 1) * dilation < 9 or padding == 0 and kernel_size <= 3
 
             opn = nn.Conv1d(in_channels, out_channels, kernel_size, stride=stride,
                             padding=padding, dilation=dilation, bias=bias)
