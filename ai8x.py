@@ -537,6 +537,7 @@ class Conv2d(QuantizationAwareModule):
             pool_stride=2,
             stride=1,
             padding=0,
+            dilation=1,
             bias=True,
             activation=None,
             wide=False,
@@ -592,6 +593,8 @@ class Conv2d(QuantizationAwareModule):
 
         assert 0 <= padding <= 2
 
+        assert dilation == 1
+
         if pooling == 'Max':
             pool = nn.MaxPool2d(kernel_size=pool_size, stride=pool_stride, padding=0)
         elif pooling == 'Avg':
@@ -618,13 +621,13 @@ class Conv2d(QuantizationAwareModule):
             if op == 'Conv2d':
                 opn = nn.Conv2d(in_channels, out_channels,
                                 kernel_size=kernel_size, stride=stride,
-                                padding=padding, bias=bias)
+                                padding=padding, dilation=dilation, bias=bias)
             elif op == 'ConvTranspose2d':
                 assert dev.device != 84
                 opn = nn.ConvTranspose2d(in_channels, out_channels,
                                          kernel_size=kernel_size, stride=stride,
                                          output_padding=1,
-                                         padding=padding, bias=bias)
+                                         padding=padding, dilation=dilation, bias=bias)
             else:
                 raise ValueError('Unsupported operation')
         else:
@@ -997,6 +1000,7 @@ class Conv1d(QuantizationAwareModule):
             pool_stride=2,
             stride=3,
             padding=0,
+            dilation=1,
             bias=True,
             activation=None,
             wide=False,
@@ -1045,8 +1049,10 @@ class Conv1d(QuantizationAwareModule):
             assert dev.device != 84 or kernel_size == 9
             assert dev.device == 84 or kernel_size in [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
+            assert (kernel_size - 1) * dilation < 9 or padding == 0 and kernel_size <= 3
+
             opn = nn.Conv1d(in_channels, out_channels, kernel_size, stride=stride,
-                            padding=padding, bias=bias)
+                            padding=padding, dilation=dilation, bias=bias)
         else:
             opn = None
 
