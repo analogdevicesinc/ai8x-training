@@ -35,4 +35,6 @@ scripts/train_kws20_v3.sh "$@"
 echo "-----------------------------"
 echo "Training faceid model"
 scripts/train_faceid.sh "$@"
-
+echo "-----------------------------"
+echo "Training unet model"
+scripts/train_camvid_unet.sh "$@"
