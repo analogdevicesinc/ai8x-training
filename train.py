@@ -796,13 +796,13 @@ def train(train_loader, model, criterion, optimizer, epoch,
                         if args.num_classes > 5:
                             errs['Top5'] = classerr.value(5)
                     else:
-                        errs['Top1'] = -1.  # instead of None as the logger accepts only numbers
-                        errs['Top5'] = -1.  # instead of None as the logger accepts only numbers
+                        errs['Top1'] = None
+                        errs['Top5'] = None
                 else:
                     if classerr.n != 0:
                         errs['MSE'] = classerr.value()
                     else:
-                        errs['MSE'] = -1.   # instead of None as the logger accepts only numbers
+                        errs['MSE'] = None
             else:
                 # for Early Exit case, the Top1 and Top5 stats are computed for each exit.
                 for exitnum in range(args.num_exits):
@@ -1539,9 +1539,15 @@ def update_old_model_params(model_path, model_new):
     """Adds missing model parameters added with default values.
     This is mainly due to the saved checkpoint is from previous versions of the repo.
     New model is saved to `model_path` and the old model copied into the same file_path with
-    `__obselete__` prefix."""
+    `__obsolete__` prefix."""
     is_model_old = False
-    model_old = torch.load(model_path)
+    model_old = torch.load(model_path,
+                           map_location=lambda storage, loc: storage)
+    # Fix up any instances of DataParallel
+    old_dict = model_old['state_dict'].copy()
+    for _, k in enumerate(old_dict):
+        if k.startswith('module.'):
+            model_old['state_dict'][k[7:]] = old_dict[k]
     for new_key, new_val in model_new.state_dict().items():
         if new_key not in model_old['state_dict'] and 'bn' not in new_key:
             is_model_old = True
@@ -1552,7 +1558,7 @@ def update_old_model_params(model_path, model_new):
 
     if is_model_old:
         dir_path, file_name = os.path.split(model_path)
-        new_file_name = '__obselete__' + file_name
+        new_file_name = '__obsolete__' + file_name
         old_model_path = os.path.join(dir_path, new_file_name)
         os.rename(model_path, old_model_path)
         torch.save(model_old, model_path)

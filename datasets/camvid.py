@@ -116,7 +116,7 @@ class CamVidDataset(Dataset):
         if self.__check_exists():
             return True
 
-        print('Download the archieve file from https://www.kaggle.com/carlolepelaars/camvid/'
+        print('Download the archive file from https://www.kaggle.com/carlolepelaars/camvid/'
               'download and extract to path data/CamVid. The download process may require '
               'additional authentication.')
         return False
