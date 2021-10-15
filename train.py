@@ -1539,9 +1539,15 @@ def update_old_model_params(model_path, model_new):
     """Adds missing model parameters added with default values.
     This is mainly due to the saved checkpoint is from previous versions of the repo.
     New model is saved to `model_path` and the old model copied into the same file_path with
-    `__obselete__` prefix."""
+    `__obsolete__` prefix."""
     is_model_old = False
-    model_old = torch.load(model_path)
+    model_old = torch.load(model_path,
+                           map_location=lambda storage, loc: storage)
+    # Fix up any instances of DataParallel
+    old_dict = model_old['state_dict'].copy()
+    for _, k in enumerate(old_dict):
+        if k.startswith('module.'):
+            model_old['state_dict'][k[7:]] = old_dict[k]
     for new_key, new_val in model_new.state_dict().items():
         if new_key not in model_old['state_dict'] and 'bn' not in new_key:
             is_model_old = True
@@ -1552,7 +1558,7 @@ def update_old_model_params(model_path, model_new):
 
     if is_model_old:
         dir_path, file_name = os.path.split(model_path)
-        new_file_name = '__obselete__' + file_name
+        new_file_name = '__obsolete__' + file_name
         old_model_path = os.path.join(dir_path, new_file_name)
         os.rename(model_path, old_model_path)
         torch.save(model_old, model_path)
