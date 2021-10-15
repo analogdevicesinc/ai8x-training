@@ -796,13 +796,13 @@ def train(train_loader, model, criterion, optimizer, epoch,
                         if args.num_classes > 5:
                             errs['Top5'] = classerr.value(5)
                     else:
-                        errs['Top1'] = -1.  # instead of None as the logger accepts only numbers
-                        errs['Top5'] = -1.  # instead of None as the logger accepts only numbers
+                        errs['Top1'] = None
+                        errs['Top5'] = None
                 else:
                     if classerr.n != 0:
                         errs['MSE'] = classerr.value()
                     else:
-                        errs['MSE'] = -1.   # instead of None as the logger accepts only numbers
+                        errs['MSE'] = None
             else:
                 # for Early Exit case, the Top1 and Top5 stats are computed for each exit.
                 for exitnum in range(args.num_exits):
