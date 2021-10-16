@@ -204,6 +204,9 @@ def get_parser(model_names, dataset_names):
     parser.add_argument('--pr-curves', dest='display_prcurves', default=False,
                         action='store_true',
                         help='Display the precision-recall curves')
+    parser.add_argument('--show-train-accuracy', default='last_batch',
+                        choices=['none', 'last_batch', 'full'], help='Option for accuracy '
+                        'calculation on training dataset. Options: none | last_batch | full')
     mgroup = parser.add_mutually_exclusive_group()
     mgroup.add_argument('--no-tensorboard', default=True, action='store_false',
                         help='Disable TensorBoard (default)')

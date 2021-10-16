@@ -42,7 +42,7 @@ class CamVidDataset(Dataset):
                   'Wall': 32}
 
     def __init__(self, root_dir, d_type, classes=None, download=True, transform=None, im_scale=1,
-                 im_size=(80, 80), im_overlap=(20, 20)):
+                 im_size=(80, 80), im_overlap=(20, 20), fold_ratio=1):
         self.transform = transform
         self.classes = classes
 
@@ -66,6 +66,7 @@ class CamVidDataset(Dataset):
             img = np.asarray(Image.open(os.path.join(img_folder, img_file)))
             if im_scale != 1:
                 img = img[::im_scale, ::im_scale, :]
+            img = CamVidDataset.normalize(img.astype(np.float32))
             data_name = os.path.splitext(img_file)[0]
             lbl_rgb = np.asarray(Image.open(os.path.join(lbl_folder, data_name + '_L.png')))
             if im_scale != 1:
@@ -77,19 +78,34 @@ class CamVidDataset(Dataset):
                 res = (label_idx+1) * res.all(axis=2)
                 lbl += res.astype(np.uint8)
 
-            x_start = y_start = 0
+            y_start = 0
             while y_start < img.shape[0]:
+                x_start = 0
                 y_end = y_start + im_size[0]
-                if y_end >= img.shape[0]:
+                if y_end > img.shape[0]:
                     break
                 while x_start < img.shape[1]:
                     x_end = x_start + im_size[1]
-                    if x_end >= img.shape[1]:
+                    if x_end > img.shape[1]:
                         break
                     img_crop = copy.deepcopy(img[y_start:y_end, x_start:x_end, :])
                     lbl_crop = copy.deepcopy(lbl[y_start:y_end, x_start:x_end])
-                    self.img_list.append(img_crop)
-                    self.lbl_list.append(lbl_crop)
+                    if fold_ratio == 1:
+                        self.img_list.append(img_crop)
+                        self.lbl_list.append(lbl_crop)
+                    else:
+                        img_crop_folded = None
+                        for i in range(fold_ratio):
+                            for j in range(fold_ratio):
+                                img_crop_subsample = img_crop[i::fold_ratio, j::fold_ratio, :]
+                                if img_crop_folded is not None:
+                                    img_crop_folded = np.concatenate((img_crop_folded,
+                                                                      img_crop_subsample), axis=2)
+                                else:
+                                    img_crop_folded = img_crop_subsample
+                        self.img_list.append(img_crop_folded)
+                        self.lbl_list.append(lbl_crop)
+
                     x_start = x_end - im_overlap[1]
                 y_start = y_end - im_overlap[0]
 
@@ -100,7 +116,7 @@ class CamVidDataset(Dataset):
         if self.__check_exists():
             return True
 
-        print('Download the archieve file from https://www.kaggle.com/carlolepelaars/camvid/'
+        print('Download the archive file from https://www.kaggle.com/carlolepelaars/camvid/'
               'download and extract to path data/CamVid. The download process may require '
               'additional authentication.')
         return False
@@ -128,16 +144,21 @@ class CamVidDataset(Dataset):
         for i in range(len(self.lbl_list)):
             initial_new_class_label = len(self.class_dict) + 5
             new_class_label = initial_new_class_label
-            for c in self.classes:
-                if c not in self.class_dict.keys():
-                    print('Class is not in the data: %s' % c)
+            for l_class in self.classes:
+                if l_class not in self.class_dict.keys():
+                    print('Class is not in the data: %s' % l_class)
                     return
 
-                self.lbl_list[i][(self.lbl_list[i] == self.class_dict[c])] = new_class_label
+                self.lbl_list[i][(self.lbl_list[i] == self.class_dict[l_class])] = new_class_label
                 new_class_label += 1
 
             self.lbl_list[i][(self.lbl_list[i] < initial_new_class_label)] = new_class_label
-            self.lbl_list[i] -= initial_new_class_label
+            self.lbl_list[i] = copy.deepcopy(self.lbl_list[i] - initial_new_class_label)
+
+    @staticmethod
+    def normalize(data):
+        """Normalizes data to the range [0, 1)"""
+        return data / 256.
 
     def __len__(self):
         return len(self.img_list)
@@ -148,9 +169,9 @@ class CamVidDataset(Dataset):
         return img, self.lbl_list[idx].astype(np.long)
 
 
-def camvid_get_datasets(data, load_train=True, load_test=True, num_classes=33):
+def camvid_get_datasets_s80(data, load_train=True, load_test=True, num_classes=33):
     """
-    Load the CamVid dataset.
+    Load the CamVid dataset in 3x80x80 size.
 
     The dataset originally includes 33 keywords. A dataset is formed with 4 or 34 classes which
     includes 3, or 33 of the original keywords and the rest of the dataset is used to form the
@@ -175,6 +196,58 @@ def camvid_get_datasets(data, load_train=True, load_test=True, num_classes=33):
         ])
 
         train_dataset = CamVidDataset(root_dir=os.path.join(data_dir, 'CamVid'), d_type='train',
+                                      im_size=[80, 80], im_overlap=[20, 20], classes=classes,
+                                      download=True, transform=train_transform)
+    else:
+        train_dataset = None
+
+    if load_test:
+        test_transform = transforms.Compose([
+            transforms.ToTensor(),
+            ai8x.normalize(args=args)
+        ])
+
+        test_dataset = CamVidDataset(root_dir=os.path.join(data_dir, 'CamVid'), d_type='test',
+                                     im_size=[80, 80], im_overlap=[20, 20], classes=classes,
+                                     download=True, transform=test_transform)
+
+        if args.truncate_testset:
+            test_dataset.img_list = test_dataset.img_list[:1]
+    else:
+        test_dataset = None
+
+    return train_dataset, test_dataset
+
+
+def camvid_get_datasets_s352(data, load_train=True, load_test=True, num_classes=33):
+    """
+    Load the CamVid dataset in 48x88x88 format which are composed of 3x352x352 images folded
+    with a fold_ratio of 4.
+
+    The dataset originally includes 33 keywords. A dataset is formed with 4 or 34 classes which
+    includes 3, or 33 of the original keywords and the rest of the dataset is used to form the
+    last class, i.e class of the others.
+
+    The dataset is split into training+validation and test sets. 90:10 training+validation:test
+    split is used by default.
+    """
+    (data_dir, args) = data
+
+    if num_classes == 3:
+        classes = ['Building', 'Sky', 'Tree']
+    elif num_classes == 33:
+        classes = None
+    else:
+        raise ValueError(f'Unsupported num_classes {num_classes}')
+
+    if load_train:
+        train_transform = transforms.Compose([
+            transforms.ToTensor(),
+            ai8x.normalize(args=args)
+        ])
+
+        train_dataset = CamVidDataset(root_dir=os.path.join(data_dir, 'CamVid'), d_type='train',
+                                      im_size=[352, 352], im_overlap=[168, 150], fold_ratio=4,
                                       classes=classes, download=True, transform=train_transform)
     else:
         train_dataset = None
@@ -186,6 +259,7 @@ def camvid_get_datasets(data, load_train=True, load_test=True, num_classes=33):
         ])
 
         test_dataset = CamVidDataset(root_dir=os.path.join(data_dir, 'CamVid'), d_type='test',
+                                     im_size=[352, 352], im_overlap=[0, 54], fold_ratio=4,
                                      classes=classes, download=True, transform=test_transform)
 
         if args.truncate_testset:
@@ -196,16 +270,37 @@ def camvid_get_datasets(data, load_train=True, load_test=True, num_classes=33):
     return train_dataset, test_dataset
 
 
-def camvid_3_get_datasets(data, load_train=True, load_test=True):
+def camvid_get_datasets_s80_c3(data, load_train=True, load_test=True):
     """
-    Load the Camvid dataset for 3 classes.
+    Load the Camvid dataset for 3 classes in 3x80x80 images.
     """
-    return camvid_get_datasets(data, load_train, load_test, num_classes=3)
+    return camvid_get_datasets_s80(data, load_train, load_test, num_classes=3)
+
+
+def camvid_get_datasets_s80_c33(data, load_train=True, load_test=True):
+    """
+    Load the Camvid dataset for 33 classes in 3x80x80 images.
+    """
+    return camvid_get_datasets_s80(data, load_train, load_test, num_classes=33)
+
+
+def camvid_get_datasets_s352_c3(data, load_train=True, load_test=True):
+    """
+    Load the Camvid dataset for 3 classes in 48x88x88 images.
+    """
+    return camvid_get_datasets_s352(data, load_train, load_test, num_classes=3)
+
+
+def camvid_get_datasets_s352_c33(data, load_train=True, load_test=True):
+    """
+    Load the Camvid dataset for 33 classes in 48x88x88 images.
+    """
+    return camvid_get_datasets_s352(data, load_train, load_test, num_classes=33)
 
 
 datasets = [
     {
-        'name': 'CamVidAll',
+        'name': 'CamVid_s80_c33',
         'input': (3, 80, 80),
         'output': ('None', 'Animal', 'Archway', 'Bicyclist', 'Bridge', 'Building', 'Car',
                    'CartLuggagePram', 'Child', 'Column_Pole', 'Fence', 'LaneMkgsDriv',
@@ -213,13 +308,31 @@ datasets = [
                    'ParkingBlock', 'Pedestrian', 'Road', 'RoadShoulder', 'Sidewalk', 'SignSymbol',
                    'Sky', 'SUVPickupTruck', 'TrafficCone', 'TrafficLight', 'Train', 'Tree',
                    'Truck_Bus', 'Tunnel', 'VegetationMisc', 'Void', 'Wall'),
-        'loader': camvid_get_datasets,
+        'loader': camvid_get_datasets_s80_c33,
     },
     {
-        'name': 'CamVid_3',  # 3 classes
+        'name': 'CamVid_s80_c3',  # 3 classes
         'input': (3, 80, 80),
         'output': (0, 1, 2, 3),
         'weight': (1, 1, 1, 0.14),
-        'loader': camvid_3_get_datasets,
+        'loader': camvid_get_datasets_s80_c3,
     },
+    {
+        'name': 'CamVid_s352_c33',
+        'input': (48, 88, 88),
+        'output': ('None', 'Animal', 'Archway', 'Bicyclist', 'Bridge', 'Building', 'Car',
+                   'CartLuggagePram', 'Child', 'Column_Pole', 'Fence', 'LaneMkgsDriv',
+                   'LaneMkgsNonDriv', 'Misc_Text', 'MotorcycleScooter', 'OtherMoving',
+                   'ParkingBlock', 'Pedestrian', 'Road', 'RoadShoulder', 'Sidewalk', 'SignSymbol',
+                   'Sky', 'SUVPickupTruck', 'TrafficCone', 'TrafficLight', 'Train', 'Tree',
+                   'Truck_Bus', 'Tunnel', 'VegetationMisc', 'Void', 'Wall'),
+        'loader': camvid_get_datasets_s352_c33,
+    },
+    {
+        'name': 'CamVid_s352_c3',  # 3 classes
+        'input': (48, 88, 88),
+        'output': (0, 1, 2, 3),
+        'weight': (1, 1, 1, 1),
+        'loader': camvid_get_datasets_s352_c3,
+    }
 ]

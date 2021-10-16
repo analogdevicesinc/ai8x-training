@@ -726,16 +726,20 @@ def train(train_loader, model, criterion, optimizer, epoch,
 
         if not args.earlyexit_lossweights:
             loss = criterion(output, target)
-            # Measure accuracy
-            if len(output.data.shape) <= 2:
-                classerr.add(output.data, target)
-            else:
-                classerr.add(output.data.permute(0, 2, 3, 1).flatten(start_dim=0, end_dim=2),
-                             target.flatten())
-            if not args.regression:
-                acc_stats.append([classerr.value(1), classerr.value(min(args.num_classes, 5))])
-            else:
-                acc_stats.append([classerr.value()])
+            # Measure accuracy if the conditions are set. For `Last Batch` only accuracy
+            # calculateion last two batches are used as the last batch might include just a few
+            # samples.
+            if args.show_train_accuracy == 'full' or \
+               (args.show_train_accuracy == 'last_batch' and train_step >= len(train_loader)-2):
+                if len(output.data.shape) <= 2:
+                    classerr.add(output.data, target)
+                else:
+                    classerr.add(output.data.permute(0, 2, 3, 1).flatten(start_dim=0, end_dim=2),
+                                 target.flatten())
+                if not args.regression:
+                    acc_stats.append([classerr.value(1), classerr.value(min(args.num_classes, 5))])
+                else:
+                    acc_stats.append([classerr.value()])
         else:
             # Measure accuracy and record loss
             loss = earlyexit_loss(output, target, criterion, args)
@@ -787,11 +791,18 @@ def train(train_loader, model, criterion, optimizer, epoch,
             errs = OrderedDict()
             if not args.earlyexit_lossweights:
                 if not args.regression:
-                    errs['Top1'] = classerr.value(1)
-                    if args.num_classes > 5:
-                        errs['Top5'] = classerr.value(5)
+                    if classerr.n != 0:
+                        errs['Top1'] = classerr.value(1)
+                        if args.num_classes > 5:
+                            errs['Top5'] = classerr.value(5)
+                    else:
+                        errs['Top1'] = None
+                        errs['Top5'] = None
                 else:
-                    errs['MSE'] = classerr.value()
+                    if classerr.n != 0:
+                        errs['MSE'] = classerr.value()
+                    else:
+                        errs['MSE'] = None
             else:
                 # for Early Exit case, the Top1 and Top5 stats are computed for each exit.
                 for exitnum in range(args.num_exits):
@@ -1528,9 +1539,15 @@ def update_old_model_params(model_path, model_new):
     """Adds missing model parameters added with default values.
     This is mainly due to the saved checkpoint is from previous versions of the repo.
     New model is saved to `model_path` and the old model copied into the same file_path with
-    `__obselete__` prefix."""
+    `__obsolete__` prefix."""
     is_model_old = False
-    model_old = torch.load(model_path)
+    model_old = torch.load(model_path,
+                           map_location=lambda storage, loc: storage)
+    # Fix up any instances of DataParallel
+    old_dict = model_old['state_dict'].copy()
+    for _, k in enumerate(old_dict):
+        if k.startswith('module.'):
+            model_old['state_dict'][k[7:]] = old_dict[k]
     for new_key, new_val in model_new.state_dict().items():
         if new_key not in model_old['state_dict'] and 'bn' not in new_key:
             is_model_old = True
@@ -1541,7 +1558,7 @@ def update_old_model_params(model_path, model_new):
 
     if is_model_old:
         dir_path, file_name = os.path.split(model_path)
-        new_file_name = '__obselete__' + file_name
+        new_file_name = '__obsolete__' + file_name
         old_model_path = os.path.join(dir_path, new_file_name)
         os.rename(model_path, old_model_path)
         torch.save(model_old, model_path)
