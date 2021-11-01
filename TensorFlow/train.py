@@ -24,6 +24,8 @@ import tensorflow as tf
 
 # following piece it to init seed to make reproducible results
 os.environ['PYTHONHASHSEED'] = '0'
+# setup deterministic TF2 operations
+os.environ['TF_DETERMINISTIC_OPS'] = '1'
 np.random.seed(10)
 rn.seed(100)
 tf.random.set_seed(7)
