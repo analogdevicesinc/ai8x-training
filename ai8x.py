@@ -1473,7 +1473,7 @@ def fuse_bn_layers(m):
 
                 r_mean = target_attr.bn.running_mean
                 r_var = target_attr.bn.running_var
-                r_std = torch.rsqrt(r_var + target_attr.bn.eps)
+                r_inv_std = torch.rsqrt(r_var + target_attr.bn.eps)
                 beta = target_attr.bn.weight
                 gamma = target_attr.bn.bias
 
@@ -1485,8 +1485,8 @@ def fuse_bn_layers(m):
                 beta = 0.25 * beta
                 gamma = 0.25 * gamma
 
-                w_new = w * (beta * r_std).reshape((w.shape[0],) + (1,) * (len(w.shape) - 1))
-                b_new = (b - r_mean) * r_std * beta + gamma
+                w_new = w * (beta * r_inv_std).reshape((w.shape[0],) + (1,) * (len(w.shape) - 1))
+                b_new = (b - r_mean) * r_inv_std * beta + gamma
 
                 target_attr.op.weight.data = w_new
                 target_attr.op.bias.data = b_new
