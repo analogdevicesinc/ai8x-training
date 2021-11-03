@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 ###################################################################################################
 #
-# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2021 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -58,7 +58,7 @@ class AutoGen:
             self.write_line('#####################################################' +
                             '##############################################')
             self.write_line('#')
-            self.write_line('# Copyright (C) Maxim Integrated Products,' +
+            self.write_line('# Copyright (C) 2021 Maxim Integrated Products,' +
                             ' Inc. All Rights Reserved.')
             self.write_line('#')
             self.write_line('# Maxim Integrated Products, Inc. Default Copyright Notice:')
