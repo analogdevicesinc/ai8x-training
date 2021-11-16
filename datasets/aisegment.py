@@ -30,27 +30,27 @@ class AISegment(Dataset):
     """
     AISegment Human Portrait Matting Dataset
     (https://www.kaggle.com/laurentmih/AISegmentcom-matting-human-datasets/).
-    Image files are in RGB format and corresponding portrait matting files are in RGBA
-    format where alpha channel is 0 or 255 for background and portrait respectively.
+    The image files are in RGB format and corresponding portrait matting files are in RGBA
+    format where the alpha channel is 0 or 255 for background and portrait respectively.
 
     Available classes: Background, Portrait
 
-    If memory based approach is selected, 20.000 images are used and single square cropped
-    image is used per each.
-    If disk based approach is selected, 'num_of_cropped_img' images are cropped from
-    original image to generate square images.
-    The cropped image/s are then downsampled and corresponding
-    binary labels are generated. (See __gen_dataset function for details)
+    If the memory based approach is selected, 20,000 images are used and a single square cropped
+    image is generated per source image.
+    If the disk based approach is selected, `num_of_cropped_img` images are cropped from
+    the original image to generate square images.
+    The cropped image(s) are then downsampled and corresponding
+    binary labels are generated (see the `__gen_dataset()` function for details)
 
-    im_size determines the image resolution for dowsampled square images
-    and can be specified to (80, 80) or (352, 352).
+    `im_size` determines the image resolution for dowsampled square images
+    and can be specified as (80, 80) or (352, 352).
 
-    Seperates available dataset items into test and train sets using 'train_ratio'.
+    The code seperates available dataset items into test and train sets using `train_ratio`.
 
-    For low resolution (80, 80) version, data loader uses memory based approach where as
-    for the high resolution (352, 352) version, memory or disk based approach is employed
-    using use_memory initialization parameter. If both memory based approach and high
-    resolution is selected, 'num_of_imgs_to_use_hr' images are processed not to increase
+    For the low resolution (80, 80) version, the data loader uses a memory based approach, whereas
+    for the high resolution (352, 352) version, a memory or disk based approach is employed
+    selected by the `use_memory` initialization parameter. If both memory based approach and high
+    resolution are selected, `num_of_imgs_to_use_hr` images are processed in order to limit
     memory consumption.
     """
 
@@ -79,13 +79,10 @@ class AISegment(Dataset):
         raw_matting_folder = os.path.join(root_dir, self.__class__.__name__, 'matting')
 
         if not os.path.exists(raw_img_folder) or not os.path.exists(raw_matting_folder):
-
-            print()
-            print('Download the archieve file from: '
+            print('\nDownload the archive file from: '
                   'https://www.kaggle.com/laurentmih/AISegmentcom-matting-human-datasets/')
-            print('Extract downloaded archieve to path [data_dir]/AISegment.')
+            print('Extract the downloaded archive to path [data_dir]/AISegment.')
             print('The download process may require additional authentication.')
-            print()
 
             sys.exit()
 
@@ -94,8 +91,8 @@ class AISegment(Dataset):
         vertical_crop_area = AISegment.org_img_dim[0] - AISegment.img_crp_dim[0]
 
         if vertical_crop_area % (AISegment.num_of_cropped_imgs - 1) != 0:
-            raise ValueError('The number of cropped images should be set such that the first'
-                             'image is fit to top and the last one to bottom')
+            raise ValueError('The number of cropped images should be set such that the first '
+                             'image is fit to top and the last one to bottom.')
 
         self.transform = transform
         self.img_ds_dim = im_size
@@ -105,10 +102,10 @@ class AISegment(Dataset):
 
         # Path management section:
         # Paths generated for:
-        # 1) processed trin/test folders: pickle images for each file will be stored under if disk
+        # 1) Processed train/test folders: pickle images for each file will be stored under if disk
         #    based approach is selected
-        # 2) 2 pickle files for dataset information dataframes for test and train
-        # 3) 2 pickle files for storing all data in a single file for test and train if memory
+        # 2) Two pickle files for dataset information dataframes for test and train
+        # 3) Two pickle files for storing all data in a single file for test and train if memory
         #    based approach is selected
         resolution_str = '{}x{}'.format(im_size[0], im_size[0])
 
@@ -143,7 +140,7 @@ class AISegment(Dataset):
         if not os.path.isfile(train_dataset_info_file_path) or \
            not os.path.isfile(test_dataset_info_file_path):
 
-            print('Creating dataset information files ...')
+            print('Creating dataset information files...')
 
             train_img_files_info = pd.DataFrame()
             test_img_files_info = pd.DataFrame()
@@ -164,7 +161,7 @@ class AISegment(Dataset):
                     # Determine training or test dataset
                     img_name = os.path.splitext(os.path.basename(file_name))[0]
 
-                    # Keep crp indexes and place all cropped image/s in the same test/train set
+                    # Keep crop indexes and place all cropped image/s in the same test/train set
                     if hash(img_name) % 10 < 10 * AISegment.train_ratio:
                         for img_crop_idx in range(AISegment.num_of_cropped_imgs):
                             train_img_files_info.loc[i, 'img_file_path'] = img_file_path
@@ -185,16 +182,16 @@ class AISegment(Dataset):
             # Save training and test dataset file information data frames to disk
             train_img_files_info.to_pickle(train_dataset_info_file_path)
             test_img_files_info.to_pickle(test_dataset_info_file_path)
-            print('Created dataset information files ...')
+            print('Created dataset information files...')
 
         else:
-            print('Dataset information file exists and reused ...')
+            print('Dataset information file exists and reused...')
             train_img_files_info = pd.read_pickle(train_dataset_info_file_path)
             test_img_files_info = pd.read_pickle(test_dataset_info_file_path)
 
         # Select dataset information file name,
         # processed dataset file name which will be used when memory based approach is in use and
-        # processed folder path that will store pkl files under when disk based approach is in use.
+        # processed folder path that will store pkl files when disk based approach is in use.
         if self.d_type == 'train':
             self.img_files_info = train_img_files_info
             self.dataset_pkl_file_path = train_dataset_pkl_file_path
@@ -214,9 +211,7 @@ class AISegment(Dataset):
 
     def __create_pkl_files(self):
         if self.__check_pkl_files_exist():
-            print()
-            print('Pickle files of images are already generated ...')
-            print()
+            print('\nPickle files of images are already generated...\n')
 
             if self.is_memory_based_approach_in_use:
                 (self.img_list, self.lbl_list) = \
@@ -294,10 +289,7 @@ class AISegment(Dataset):
         return img_folded
 
     def __gen_datasets(self):
-
-        print()
-        print('Generating dataset pickle file/s from the raw data files ...')
-        print()
+        print('\nGenerating dataset pickle file(s) from the raw data files...\n')
 
         total_num_of_processed_files = 0
         for _, row in self.img_files_info.iterrows():
@@ -332,22 +324,20 @@ class AISegment(Dataset):
                 if not self.is_high_res_in_use:
                     self.img_list.append(img_crp_folded)
                     self.lbl_list.append(img_crp_lbl)
-
                 else:
-
-                    # In memory based approach and for high resolution images, not all cropped
-                    # images are moved to test or training set. Instead, only randomly selected one
-                    # is used to sample more different images:
+                    # For the memory based approach and for high resolution images, not all cropped
+                    # images are moved to test or training set. Instead, only a randomly selected
+                    # image is used to sample more different images
                     if img_crp_idx == 0:
-                        # Generate random number for the croppe dimages batch at the start
+                        # Generate random number for the cropped images batch at the start
                         idx_to_add = np.random.choice(AISegment.num_of_cropped_imgs, 1)
 
                     if img_crp_idx == idx_to_add:
                         self.img_list.append(img_crp_folded)
                         self.lbl_list.append(img_crp_lbl)
 
-                        # In memory based approach, and for high resolution images, not all images
-                        # are processed but the first num_of_imgs_to_use_hr:
+                        # For the memory based approach, and for high resolution images, not all
+                        # images are processed, only the first `num_of_imgs_to_use_hr`
                         if len(self.img_list) == AISegment.num_of_imgs_to_use_hr:
                             break
             else:
@@ -356,13 +346,11 @@ class AISegment(Dataset):
 
             total_num_of_processed_files = total_num_of_processed_files + 1
 
-        # Save pickle files in memory based approach:
+        # Save pickle files in memory based approach
         if self.is_memory_based_approach_in_use:
             pickle.dump((self.img_list, self.lbl_list), open(self.dataset_pkl_file_path, 'wb'))
 
-        print()
-        print('Total number of processed files: {}'.format(total_num_of_processed_files))
-        print()
+        print('\nTotal number of processed files: {}\n'.format(total_num_of_processed_files))
 
     def __len__(self):
         if self.is_truncated:
@@ -405,9 +393,10 @@ def AISegment_get_datasets(data, load_train=True, load_test=True, im_size=(80, 8
     RGB value for portrait.
 
     As the AISegment dataset does not have explicit test/train separation, the dataset
-    is here split into training + validation and test sets using given ratio (90:10 by default).
+    is split into training + validation and test sets using given ratio (90:10 by default).
 
-    Images will have im_size resolution and data loader will use memory or disk wrt use_memory
+    Images will have `im_size` resolution and the data loader will use memory or disk as set by
+    `use_memory`.
     """
     (data_dir, args) = data
 
@@ -420,8 +409,7 @@ def AISegment_get_datasets(data, load_train=True, load_test=True, im_size=(80, 8
         train_dataset = AISegment(root_dir=data_dir, d_type='train',
                                   transform=train_transform,
                                   im_size=im_size, fold_ratio=fold_ratio, use_memory=use_memory)
-        print('Train dataset length:  %s ' % train_dataset.__len__())
-        print()
+        print('Train dataset length: %s\n' % train_dataset.__len__())
     else:
         train_dataset = None
 
@@ -435,8 +423,7 @@ def AISegment_get_datasets(data, load_train=True, load_test=True, im_size=(80, 8
                                  transform=test_transform,
                                  im_size=im_size, fold_ratio=fold_ratio, use_memory=use_memory)
 
-        print('Test dataset length:  %s ' % test_dataset.__len__())
-        print()
+        print('Test dataset length: %s\n' % test_dataset.__len__())
     else:
         test_dataset = None
 
