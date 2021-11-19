@@ -235,7 +235,7 @@ def quantize_clamp(wide, quantize_activation=False):
                 max_val=2**(dev.ACTIVATION_BITS-1)-1,
             )
         else:
-            quantize = Quantize(num_bits=dev.DATA_BITS, num_extra_bit_shift=1)
+            quantize = Quantize(num_bits=1)
             clamp = Clamp(
                 min_val=-(2**(dev.FULL_ACC_BITS-1)),
                 max_val=2**(dev.FULL_ACC_BITS-1)-1,
@@ -517,7 +517,10 @@ class QuantizationAwareModule(nn.Module):
                           self.op.dilation, self.op.groups)
             if self.bn is not None:
                 x = self.bn(x) / 4
-            x = self.clamp(self.quantize(self.activate(self.scale(x, out_scale))))
+            if not self.wide:
+                # The device does not apply output shift in wide mode
+                x = self.scale(x, out_scale)
+            x = self.clamp(self.quantize(self.activate(x)))
         return x
 
 
