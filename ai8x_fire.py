@@ -1,13 +1,13 @@
 ###################################################################################################
 #
-# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2020-2021 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
 #
 ###################################################################################################
 """
-Contains the limits of the AI85 implementation and custom PyTorch modules that take
+Contains the limits of the MAX7800X implementation and custom PyTorch modules that take
 the limits into account.
 """
 

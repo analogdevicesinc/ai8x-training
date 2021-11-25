@@ -235,7 +235,7 @@ def quantize_clamp(wide, quantize_activation=False):
                 max_val=2**(dev.ACTIVATION_BITS-1)-1,
             )
         else:
-            quantize = Quantize(num_bits=dev.DATA_BITS, num_extra_bit_shift=1)
+            quantize = Quantize(num_bits=1)
             clamp = Clamp(
                 min_val=-(2**(dev.FULL_ACC_BITS-1)),
                 max_val=2**(dev.FULL_ACC_BITS-1)-1,
@@ -517,7 +517,10 @@ class QuantizationAwareModule(nn.Module):
                           self.op.dilation, self.op.groups)
             if self.bn is not None:
                 x = self.bn(x) / 4
-            x = self.clamp(self.quantize(self.activate(self.scale(x, out_scale))))
+            if not self.wide:
+                # The device does not apply output shift in wide mode
+                x = self.scale(x, out_scale)
+            x = self.clamp(self.quantize(self.activate(x)))
         return x
 
 
@@ -1473,7 +1476,7 @@ def fuse_bn_layers(m):
 
                 r_mean = target_attr.bn.running_mean
                 r_var = target_attr.bn.running_var
-                r_std = torch.sqrt(r_var + 1e-20)
+                r_inv_std = torch.rsqrt(r_var + target_attr.bn.eps)
                 beta = target_attr.bn.weight
                 gamma = target_attr.bn.bias
 
@@ -1485,8 +1488,8 @@ def fuse_bn_layers(m):
                 beta = 0.25 * beta
                 gamma = 0.25 * gamma
 
-                w_new = w * (beta / r_std).reshape((w.shape[0],) + (1,) * (len(w.shape) - 1))
-                b_new = (b - r_mean)/r_std * beta + gamma
+                w_new = w * (beta * r_inv_std).reshape((w.shape[0],) + (1,) * (len(w.shape) - 1))
+                b_new = (b - r_mean) * r_inv_std * beta + gamma
 
                 target_attr.op.weight.data = w_new
                 target_attr.op.bias.data = b_new
