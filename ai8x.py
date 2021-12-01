@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2020-2021 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -11,7 +11,7 @@ Contains the limits of the MAX78000 implementations and custom PyTorch modules t
 the limits into account.
 """
 import torch
-import torch.nn as nn
+from torch import nn
 from torch.autograd import Function
 from torch.nn import functional as F
 
@@ -530,7 +530,7 @@ class Conv2d(QuantizationAwareModule):
     2D pooling ('Avg', 'Max' or None) optionally followed by
     2D convolution/transposed 2D convolution and activation ('ReLU', 'Abs', None)
     """
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
             self,
             in_channels,
             out_channels,
@@ -550,7 +550,7 @@ class Conv2d(QuantizationAwareModule):
             bias_bits=None,
             quantize_activation=False,
             groups=1,
-            eps=1e-05, 
+            eps=1e-05,
             momentum=0.05
     ):
         assert not wide or activation is None
@@ -1556,46 +1556,51 @@ class MBConvBlock(nn.Module):
                  out_channels,
                  kernel_size=3,
                  stride=1,
-                 padding=0,
                  bias=False,
-                 se_ratio=None, 
+                 se_ratio=None,
                  expand_ratio=1,
                  fused=False,
                  **kwargs):
         super().__init__()
-        
+
         self.has_se = (se_ratio is not None) and (0 < se_ratio <= 1)
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.stride = stride
         self.expand_ratio = expand_ratio
         self.fused = fused
-  
+
         # Expansion phase (Inverted Bottleneck)
         inp = in_channels  # number of input channels
         out = in_channels * expand_ratio  # number of output channels
         if expand_ratio != 1:
             if fused is True:
-              self.expand_conv = FusedConv2dBNReLU(inp, out, kernel_size=kernel_size, padding=1, batchnorm='Affine', bias=bias, eps=1e-03, momentum=0.01)
+                self.expand_conv = FusedConv2dBNReLU(inp, out, kernel_size=kernel_size,
+                                                     padding=1, batchnorm='Affine', bias=bias,
+                                                     eps=1e-03, momentum=0.01, **kwargs)
             else:
-              self.expand_conv = FusedConv2dBNReLU(inp, out, 1, batchnorm='Affine', bias=bias, eps=1e-03, momentum=0.01)
-            
+                self.expand_conv = FusedConv2dBNReLU(inp, out, 1,
+                                                     batchnorm='Affine', bias=bias,
+                                                     eps=1e-03, momentum=0.01, **kwargs)
         # Depthwise Convolution phase
         if fused is not True:
-          self.depthwise_conv = FusedConv2dBNReLU(
-              in_channels=out, out_channels=out, groups=out, padding=1,# groups makes it depthwise
-              kernel_size=kernel_size, stride=stride, batchnorm='Affine', bias=bias, eps=1e-03, momentum=0.01, **kwargs)
-
+            self.depthwise_conv = FusedConv2dBNReLU(in_channels=out, out_channels=out,
+                                                    groups=out,  # groups makes it depthwise
+                                                    padding=1, kernel_size=kernel_size,
+                                                    stride=stride, batchnorm='Affine', bias=bias,
+                                                    eps=1e-03, momentum=0.01, **kwargs)
         # Squeeze and Excitation phase
         if self.has_se:
             num_squeezed_channels = max(1, int(in_channels * se_ratio))
-            self.se_reduce = FusedConv2dReLU(in_channels=out, out_channels=num_squeezed_channels, kernel_size=1, stride=1, bias=bias, **kwargs)
-            self.se_expand = Conv2d(in_channels=num_squeezed_channels, out_channels=out, kernel_size=1, stride=1, bias=bias, **kwargs)
-
+            self.se_reduce = FusedConv2dReLU(in_channels=out, out_channels=num_squeezed_channels,
+                                             kernel_size=1, stride=1, bias=bias, **kwargs)
+            self.se_expand = Conv2d(in_channels=num_squeezed_channels, out_channels=out,
+                                    kernel_size=1, stride=1, bias=bias, **kwargs)
         # Output Convolution phase
         final_out = out_channels
-        self.project_conv = FusedConv2dBN(in_channels=out, out_channels=final_out, kernel_size=1, batchnorm='Affine', bias=bias, eps=1e-03, momentum=0.01, **kwargs)
-
+        self.project_conv = FusedConv2dBN(in_channels=out, out_channels=final_out, kernel_size=1,
+                                          batchnorm='Affine', bias=bias,
+                                          eps=1e-03, momentum=0.01, **kwargs)
         # Skip connection
         self.resid = Add()
 
@@ -1607,30 +1612,23 @@ class MBConvBlock(nn.Module):
         Returns:
             Output of this block after processing.
         """
-
         # Expansion Convolution layer
         x = inputs
         if self.expand_ratio != 1:
             x = self.expand_conv(inputs)
-
         # Depthwise Convolution layer
         if self.fused is not True:
-          x = self.depthwise_conv(x)
-
+            x = self.depthwise_conv(x)
         # Squeeze and Excitation layers
         if self.has_se:
             x_squeezed = F.adaptive_avg_pool2d(x, 1)
             x_squeezed = self.se_reduce(x_squeezed)
             x_squeezed = self.se_expand(x_squeezed)
             x = torch.sigmoid(x_squeezed) * x
-        
         # Output Convolution layer
         x = self.project_conv(x)
-
         # Skip connection
         input_filters, output_filters = self.in_channels, self.out_channels
         if self.stride == 1 and input_filters == output_filters:
             x = self.resid(x, inputs)
         return x
-       
-
