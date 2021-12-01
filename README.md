@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_September 30, 2021_
+_December 1, 2021_
 
 The Maxim Integrated AI project is comprised of five repositories:
 
@@ -26,11 +26,11 @@ See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a descr
 
 This document covers several of Maxim’s ultra-low power machine learning accelerator systems. They are sometimes referred to by their die types. The following shows the die types and their corresponding part numbers:
 
-| Die Type | Part Number(s)            |
-| -------- | ------------------------- |
-| *AI84*   | *Unreleased test chip*    |
-| **AI85** | **MAX78000**              |
-| AI87     | MAX78002 (in development) |
+| Die Type | Part Number(s)                 |
+| -------- | ------------------------------ |
+| *AI84*   | *Unreleased test chip*         |
+| **AI85** | **MAX78000**                   |
+| AI87     | MAX78002 (engineering samples) |
 
 ## Overview
 
@@ -54,15 +54,15 @@ where “....” is the project root, for example `~/Documents/Source/AI`.
 
 This software requires PyTorch. *For TensorFlow / Keras, please use the `develop-tf` branch.*
 
-PyTorch operating system and hardware support are constantly evolving. This document does not cover all possible combinations of operating system and hardware, and there is only one officially supported platform.
+PyTorch operating system and hardware support are constantly evolving. This document does not cover all possible combinations of operating system and hardware. Instead, this document describes how to install PyTorch on one officially supported platform.
 
 #### Platform Recommendation and Full Support
 
 Full support and documentation are provided for the following platform:
 
 * CPU: 64-bit amd64/x86_64 “PC” with [Ubuntu Linux 20.04 LTS](https://ubuntu.com/download/server)
-* GPU for hardware acceleration (optional): Nvidia with [CUDA 11](https://developer.nvidia.com/cuda-toolkit-archive)
-* [PyTorch 1.8.1 (LTS)](https://pytorch.org/get-started/locally/) on Python 3.8.11
+* GPU for hardware acceleration (optional but highly recommended): Nvidia with [CUDA 11](https://developer.nvidia.com/cuda-toolkit-archive)
+* [PyTorch 1.8.1 (LTS)](https://pytorch.org/get-started/locally/) on Python 3.8.x
 
 Limited support and advice for using other hardware and software combinations is available as follows.
 
@@ -72,15 +72,13 @@ Limited support and advice for using other hardware and software combinations is
 
 **The only officially supported platform for model training** is Ubuntu Linux 20.04 LTS on amd64/x86_64, either the desktop or the [server version](https://ubuntu.com/download/server).
 
-*Note that hardware acceleration/CUDA is <u>not available</u> in PyTorch for Raspberry Pi 4 and other <u>aarch64/arm64</u> devices, even those running Ubuntu Linux 20.04. See also [Development on Raspberry Pi 4 and 400](docs/RaspberryPi.md) (unsupported).*
+*Note that hardware acceleration/CUDA is <u>not available</u> in PyTorch for Raspberry Pi 4 and other <u>aarch64/arm64</u> devices, even those running Ubuntu Linux 20.04. See also [Development on Raspberry Pi 4 and 400](https://github.com/MaximIntegratedAI/ai8x-synthesis/blob/develop/docs/RaspberryPi.md) (unsupported).*
 
 This document also provides instructions for installing on RedHat Enterprise Linux / CentOS 8 with limited support.
 
 ##### Windows
 
-Ubuntu Linux 20.04 can be used inside the Windows Subsystem for Linux (WSL2) by following
-https://docs.nvidia.com/cuda/wsl-user-guide/.
-*Please note that WSL2 with CUDA is a pre-release, and unexpected behavior may occur, for example unwanted upgrades to a pre-release of the operating system.*
+On Windows 10 version 21H2 or newer, and Windows 11, after installing the Windows Subsystem for Linux (WSL2), Ubuntu Linux 20.04 can be used inside Windows with full CUDA acceleration, please see *[Windows Subsystem for Linux](https://github.com/MaximIntegratedAI/ai8x-synthesis/blob/develop/docs/WSL2.md) (unsupported).*
 
 ##### macOS
 
@@ -96,7 +94,7 @@ This software also works inside Docker containers. However, CUDA support inside 
 
 #### PyTorch and Python
 
-The officially supported version of [PyTorch is 1.8.1 (LTS)](https://pytorch.org/get-started/locally/) running on Python 3.8.11. Newer versions will typically work, but are not covered by support, documentation, and installation scripts.
+The officially supported version of [PyTorch is 1.8.1 (LTS)](https://pytorch.org/get-started/locally/) running on Python 3.8.x. Newer versions will typically work, but are not covered by support, documentation, and installation scripts.
 
 #### Hardware Acceleration
 
@@ -106,7 +104,7 @@ When going beyond simple models, model training does not work well without CUDA 
 
 * There is a PyTorch pre-release with ROCm acceleration for certain AMD GPUs on Linux ([see blog entry](https://pytorch.org/blog/pytorch-for-amd-rocm-platform-now-available-as-python-package/)), but this is not currently covered by the installation instructions in this document, and it is not supported.
 
-* There is neither CUDA nor ROCm support on macOS, and therefore no hardware acceleration.
+* There is neither CUDA nor ROCm nor Neural Engine support on macOS, and therefore no hardware acceleration.
 
 * PyTorch does not include CUDA support for aarch64/arm64 systems. *Rebuilding PyTorch from source is not covered by this document.*
 
@@ -139,7 +137,7 @@ The following software is optional, and can be replaced with other similar softw
    Visual Studio Code (free), https://code.visualstudio.com or the VSCodium version, https://vscodium.com, with the “Remote - SSH” plugin; *to use Visual Studio Code on Windows as a full development environment (including debug), see https://github.com/MaximIntegratedTechSupport/VSCode-Maxim*
    Sublime Text ($100), https://www.sublimetext.com
 2. Markdown Editor
-   Typora (free during beta), http://typora.io
+   Typora ($15), http://typora.io
 3. Serial Terminal
    CoolTerm (free), http://freeware.the-meiers.org
    Serial ($30), https://apps.apple.com/us/app/serial/id877615577?mt=12
@@ -295,10 +293,10 @@ To create the virtual environment and install basic wheels:
 ```shell
 $ cd ai8x-training
 ```
-If you want to use the “develop” branch, switch to “develop” using this optional step:
+The default branch is “develop” which is updated most frequently. If you want to use the “master” branch instead, switch to “master” using this optional step:
 
 ```shell
-$ git checkout develop  # optional
+$ git checkout master  # optional
 ```
 
 Next, set the local directory to use Python 3.8.11.
@@ -342,10 +340,10 @@ For all other systems, including CUDA 10.2 on Linux:
 
 ##### Repository Branches
 
-By default, the main branch is checked out. This branch has been tested more rigorously than the `develop` branch. `develop`, on the other hand, contains the latest improvements to the project. To switch to `develop`, use the following command:
+By default, the `develop` branch is checked out. This branch is the most frequently updated branch and it contains the latest improvements to the project. To switch to the main branch that is updated less frequently, but may be more stable, use the following command:
 
 ```shell
-(ai8x-training) $ git checkout develop
+(ai8x-training) $ git checkout master
 ```
 
 ###### TensorFlow / Keras
@@ -433,10 +431,10 @@ $ cd $AI_PROJECT_ROOT
 $ cd ai8x-synthesis
 ```
 
-If you want to use the “develop” branch, switch to “develop” using this optional step:
+If you want to use the main branch, switch to “master” using this optional step:
 
 ```shell
-$ git checkout develop  # optional
+$ git checkout master  # optional
 ```
 
 Then continue:
