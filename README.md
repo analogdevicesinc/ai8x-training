@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_December 1, 2021_
+_December 7, 2021_
 
 The Maxim Integrated AI project is comprised of five repositories:
 
@@ -78,7 +78,7 @@ This document also provides instructions for installing on RedHat Enterprise Lin
 
 ##### Windows
 
-On Windows 10 version 21H2 or newer, and Windows 11, after installing the Windows Subsystem for Linux (WSL2), Ubuntu Linux 20.04 can be used inside Windows with full CUDA acceleration, please see *[Windows Subsystem for Linux](https://github.com/MaximIntegratedAI/ai8x-synthesis/blob/develop/docs/WSL2.md) (unsupported).*
+On Windows 10 version 21H2 or newer, and Windows 11, after installing the Windows Subsystem for Linux (WSL2), Ubuntu Linux 20.04 can be used inside Windows with full CUDA acceleration, please see *[Windows Subsystem for Linux](https://github.com/MaximIntegratedAI/ai8x-synthesis/blob/develop/docs/WSL2.md).* For the remainder of this document, follow the steps for Ubuntu Linux.
 
 ##### macOS
 
@@ -308,9 +308,9 @@ $ pyenv local 3.8.11
 And verify that the correct Python version is used:
 
 ```shell
-$ which python3
-..../.pyenv/shims/python3
-$ python3 --version
+$ which python
+..../.pyenv/shims/python
+$ python --version
 Python 3.8.11
 ```
 
@@ -319,8 +319,8 @@ If this does <u>*not*</u> return the correct path <u>*and*</u> version, please i
 Then continue with the following:
 
 ```shell
-$ python3 -m venv .
-$ source bin/activate
+$ python -m venv venv --prompt ai8x-training
+$ source venv/bin/activate
 (ai8x-training) $ pip3 install -U pip wheel setuptools
 ```
 
@@ -441,8 +441,8 @@ Then continue:
 
 ```shell
 $ pyenv local 3.8.11
-$ python3 -m venv .
-$ source bin/activate
+$ python -m venv venv --prompt ai8x-synthesis
+$ source venv/bin/activate
 (ai8x-synthesis) $ pip3 install -U pip setuptools
 (ai8x-synthesis) $ pip3 install -r requirements.txt
 ```
@@ -953,7 +953,7 @@ GPU 00000000:01:00.0
 2. Verify that PyTorch recognizes CUDA:
 
 ```shell
-(ai8x-training) $ python3 check_cuda.py
+(ai8x-training) $ python check_cuda.py
 System:            linux
 Python version:    3.8.11 (default, Jul 14 2021, 12:46:05) [GCC 9.3.0]
 PyTorch version:   1.8.1+cu111
@@ -1341,7 +1341,7 @@ The training software integrates code to generate SHAP plots (see https://github
 The `train.py` program can create plots using the `--shap` command line argument in combination with `--evaluate`:
 
 ```shell
-$ python3 train.py --model ai85net5 --dataset CIFAR10 --confusion --evaluate --device MAX78000 --exp-load-weights-from logs/CIFAR-new/best.pth.tar --shap 3
+$ python train.py --model ai85net5 --dataset CIFAR10 --confusion --evaluate --device MAX78000 --exp-load-weights-from logs/CIFAR-new/best.pth.tar --shap 3
 ```
 
 This will create a plot with a random selection of 3 test images. The plot shows ten outputs (the ten classes) for the three different input images on the left. Red pixels increase the model’s output while blue pixels decrease the output. The sum of the SHAP values equals the difference between the expected model output (averaged over the background dataset) and the current model output.
@@ -1384,7 +1384,7 @@ The input checkpoint to `quantize.py` is either `qat_best.pth.tar`, the best QAT
 Example:
 
 ```shell
-(ai8x-synthesis) $ python3 quantize.py proj/qat_best.pth.tar proj/proj_q8.pth.tar --device MAX78000
+(ai8x-synthesis) $ python quantize.py proj/qat_best.pth.tar proj/proj_q8.pth.tar --device MAX78000
 ```
 
 
@@ -1402,7 +1402,7 @@ The input checkpoint to `quantize.py` for post-training quantization is typicall
 Example:
 
 ```shell
-(ai8x-synthesis) $ python3 quantize.py proj2/best.pth.tar proj2/proj2_q8.pth.tar \
+(ai8x-synthesis) $ python quantize.py proj2/best.pth.tar proj2/proj2_q8.pth.tar \
 --device MAX78000 --scale 0.85 --clip-method SCALE
 ```
 
@@ -1620,7 +1620,7 @@ Train the new network/new dataset. See `scripts/train_mnist.sh` for a command li
 The [Netron tool](https://github.com/lutzroeder/Netron) can visualize networks, similar to what is available within Tensorboard. To use Netron, use `train.py` to export the trained network to ONNX, and upload the ONNX file.
 
 ```shell
-(ai8x-training) $ python3 train.py --model ai85net5 --dataset MNIST --evaluate --exp-load-weights-from checkpoint.pth.tar --device MAX78000 --summary onnx
+(ai8x-training) $ python train.py --model ai85net5 --dataset MNIST --evaluate --exp-load-weights-from checkpoint.pth.tar --device MAX78000 --summary onnx
 ```
 
 
@@ -1882,7 +1882,7 @@ layers:
 To generate an embedded MAX78000 demo in the `demos/ai85-mnist/` folder, use the following command line:
 
 ```shell
-(ai8x-synthesize) $ python3 ai8xize.py --verbose --test-dir demos --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000 --compact-data --mexpress --softmax
+(ai8x-synthesize) $ python ai8xize.py --verbose --test-dir demos --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000 --compact-data --mexpress --softmax
 ```
 
 Running this command will combine the network described above with a fully connected software classification layer. The generated code will include all loading, unloading, and configuration steps.
@@ -1890,7 +1890,7 @@ Running this command will combine the network described above with a fully conne
 To generate an RTL simulation for the same network and sample data in the directory `tests/ai85-mnist-....` (where .... is an autogenerated string based on the network topology), use:
 
 ```shell
-(ai8x-synthesize) $ python3 ai8xize.py --rtl --verbose --autogen rtlsim --test-dir rtlsim --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000
+(ai8x-synthesize) $ python ai8xize.py --rtl --verbose --autogen rtlsim --test-dir rtlsim --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000
 ```
 
 
@@ -2390,9 +2390,9 @@ For RGB image inputs, there are three channels. For example, a 3×80×60 (C×H×
 
 1. Switch to training project directory and activate the environment:
    ```shell
-   (ai8x-synthesis) $ deactivate`
+   (ai8x-synthesis) $ deactivate
    $ cd ../ai8x-training
-   $ source bin/activate
+   $ source venv/bin/activate
    ```
 2. Create an evaluation script and run it:
    ```shell
