@@ -9,7 +9,6 @@
 /logs
 /ninja-python-distributions
 /pip-selfcheck.json
-/pyvenv.cfg
 /sensitivity.csv
 /sensitivity.png
 /tensorflow
