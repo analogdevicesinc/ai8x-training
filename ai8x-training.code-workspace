@@ -5,7 +5,7 @@
 		}
 	],
 	"settings": {
-		"python.pythonPath": "./bin/python3",
+		"python.pythonPath": "venv/bin/python",
 		"python.linting.flake8Enabled": true,
 		"python.linting.pylintArgs": [
 			"--rcfile=.pylintrc"
