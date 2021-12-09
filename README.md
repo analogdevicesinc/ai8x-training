@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_December 1, 2021_
+_December 9, 2021_
 
 The Maxim Integrated AI project is comprised of five repositories:
 
@@ -78,7 +78,9 @@ This document also provides instructions for installing on RedHat Enterprise Lin
 
 ##### Windows
 
-On Windows 10 version 21H2 or newer, and Windows 11, after installing the Windows Subsystem for Linux (WSL2), Ubuntu Linux 20.04 can be used inside Windows with full CUDA acceleration, please see *[Windows Subsystem for Linux](https://github.com/MaximIntegratedAI/ai8x-synthesis/blob/develop/docs/WSL2.md) (unsupported).*
+On Windows 10 version 21H2 or newer, and Windows 11, after installing the Windows Subsystem for Linux (WSL2), Ubuntu Linux 20.04 can be used inside Windows with full CUDA acceleration, please see *[Windows Subsystem for Linux](https://github.com/MaximIntegratedAI/ai8x-synthesis/blob/develop/docs/WSL2.md).* For the remainder of this document, follow the steps for Ubuntu Linux.
+
+If WSL2 is not available, it is also possible (but not recommended due to inherent compatibility issues and slightly degraded performance) to run this software natively on Windows. Please see *[Native Windows Installation](https://github.com/MaximIntegratedAI/ai8x-synthesis/blob/develop/docs/Windows.md)*.
 
 ##### macOS
 
@@ -86,7 +88,7 @@ The software works on macOS, but model training suffers from the lack of hardwar
 
 ##### Virtual Machines (Unsupported)
 
-This software works inside a virtual machine running Ubuntu Linux 20.04. However, GPU passthrough is typically <u>not available</u> for Linux VMs, so there will be no CUDA hardware acceleration. Certain Nvidia cards support [vGPU software](https://www.nvidia.com/en-us/data-center/graphics-cards-for-virtualization/); see also [vGPUs and CUDA](https://docs.nvidia.com/cuda/vGPU/), but vGPU features may come at substantial additional cost and vGPU software is not covered by this document.
+This software works inside a virtual machine running Ubuntu Linux 20.04. However, GPU passthrough is potentially difficult to set up and <u>not always available</u> for Linux VMs, so there may be no CUDA hardware acceleration. Certain Nvidia cards support [vGPU software](https://www.nvidia.com/en-us/data-center/graphics-cards-for-virtualization/); see also [vGPUs and CUDA](https://docs.nvidia.com/cuda/vGPU/), but vGPU features may come at substantial additional cost and vGPU software is not covered by this document.
 
 ##### Docker Containers (Unsupported)
 
@@ -163,7 +165,7 @@ On macOS (no CUDA support available) use:
 $ brew install libomp libsndfile tcl-tk
 ```
 
-##### Linux (Ubuntu)
+##### Linux (Ubuntu), including WSL2
 
 ```shell
 $ sudo apt-get install -y make build-essential libssl-dev zlib1g-dev \
@@ -193,11 +195,22 @@ $ sudo dnf install openssl-devel zlib-devel \
   libsndfile libsndfile-devel portaudio-devel
 ```
 
-#### Python 3.8 / pyenv
+#### Python 3.8
 
 *The software in this project uses Python 3.8.11 or a later 3.8.x version.*
 
-It is not necessary to install Python 3.8.11 system-wide, or to rely on the system-provided Python. To manage Python versions, use `pyenv` (https://github.com/pyenv/pyenv).
+First, check the default Python version:
+
+```shell
+$ python --version
+Python 2.7.18
+```
+
+This particular version will not function correctly with the MAX7800X tools. If the result is Python **3.8**.x, skip ahead to [git Environment](#git Environment). For any other version (for example, 2.7, 3.7, 3.9, 3.10), continue here.
+
+##### pyenv
+
+It is not necessary to install Python 3.8 system-wide, or to rely on the system-provided Python. To manage Python versions, instead use `pyenv` (https://github.com/pyenv/pyenv).
 
 On macOS (no CUDA support available):
 
@@ -211,9 +224,22 @@ On Linux:
 $ curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash  # NOTE: Verify contents of the script before running it!!
 ```
 
-Then, follow the terminal output of the pyenv-installer and add pyenv to your shell by modifying one or more of `~/.bash_profile`, `~/.bashrc`, `~/.zshrc`, `~/.profile`, or `~/.zprofile`. The instructions differ depending on the shell (bash or zsh). To display the instructions again at any later time:
+Then, follow the terminal output of the pyenv-installer and add pyenv to your shell by modifying one or more of `~/.bash_profile`, `~/.bashrc`, `~/.zshrc`, `~/.profile`, or `~/.zprofile`. The instructions differ depending on the shell (bash or zsh).
+
+For example, on *Ubuntu 20.04 inside WSL2* add the following to `~/.bashrc`:
+
 ```shell
-$ pyenv init
+# WSL2
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init --path)"
+eval "$(pyenv virtualenv-init -)"
+```
+
+To display the instructions again at any later time:
+
+```shell
+$ ~/.pyenv/bin/pyenv init
 
 # (The below instructions are intended for common
 # shell setups. See the README for more guidance
@@ -243,7 +269,7 @@ $ env \
   pyenv install 3.8.11
 ```
 
-On Linux:
+On Linux, including WSL2:
 
 ```shell
 $ pyenv install 3.8.11
@@ -258,16 +284,6 @@ $ git config --global user.email "first.last@maximintegrated.com"
 $ git config --global user.name "First Last"
 ```
 
-#### Project Root
-
-For convenience, define a shell variable named `AI_PROJECT_ROOT`:
-
-```shell
-$ export AI_PROJECT_ROOT="$HOME/Documents/Source/AI"
-```
-
-Add this line to `~/.profile` (and on macOS, to `~/.zprofile`).
-
 #### Nervana Distiller
 
 Nirvana Distiller is package for neural network compression and quantization. Network compression can reduce the memory footprint of a neural network, increase its inference speed and save energy. Distiller is automatically installed as a git sub-module with the other packages.
@@ -281,7 +297,7 @@ Manifold is a model-agnostic visual debugging tool for machine learning. The [Ma
 Change to the project root and run the following commands. Use your GitHub credentials if prompted.
 
 ```shell
-$ cd $AI_PROJECT_ROOT
+$ cd <your/project>
 $ git clone --recursive https://github.com/MaximIntegratedAI/ai8x-training.git
 $ git clone --recursive https://github.com/MaximIntegratedAI/ai8x-synthesis.git
 ```
@@ -293,58 +309,61 @@ To create the virtual environment and install basic wheels:
 ```shell
 $ cd ai8x-training
 ```
-The default branch is “develop” which is updated most frequently. If you want to use the “master” branch instead, switch to “master” using this optional step:
+The default branch is “develop” which is updated most frequently. If you want to use the “master” branch instead, switch to “master” using `git checkout master`.
 
-```shell
-$ git checkout master  # optional
-```
-
-Next, set the local directory to use Python 3.8.11.
+If using pyenv, set the local directory to use Python 3.8.11.
 
 ```shell
 $ pyenv local 3.8.11
 ```
 
-And verify that the correct Python version is used:
+In all cases, verify that a 3.8.x version of Python is used:
 
 ```shell
-$ which python3
-..../.pyenv/shims/python3
-$ python3 --version
+$ python --version
 Python 3.8.11
 ```
 
-If this does <u>*not*</u> return the correct path <u>*and*</u> version, please install and initialize [pyenv](#Python 3.8 / pyenv).
+If this does <u>*not*</u> return version 3.8.x, please install and initialize [pyenv](#Python 3.8).
 
 Then continue with the following:
 
 ```shell
-$ python3 -m venv .
-$ source bin/activate
+$ python -m venv venv --prompt ai8x-training
+```
+
+On macOS and Linux, including WSL2, activate the environment using
+```shell
+$ source venv/bin/activate
+```
+On native Windows, instead use:
+```shell
+$ source venv/Scripts/activate
+```
+The continue with
+```shell
 (ai8x-training) $ pip3 install -U pip wheel setuptools
 ```
 
-The next step differs depending on whether the system uses Linux with CUDA 11.x, or any other setup.
+The next step differs depending on whether the system uses CUDA 11.x, or not.
 
-For CUDA 11.x on Linux:
-
+For CUDA 11.x on Linux, including WSL2:
 ```shell
 (ai8x-training) $ pip3 install -r requirements-cu11.txt
 ```
+For CUDA 11.x on native Windows:
+```shell
+(ai8x-training) $ pip3 install -r requirements-win-cu11.txt
+```
 
-For all other systems, including CUDA 10.2 on Linux:
-
+For all other systems, including macOS, and CUDA 10.2 on Linux:
 ```shell
 (ai8x-training) $ pip3 install -r requirements.txt
 ```
 
 ##### Repository Branches
 
-By default, the `develop` branch is checked out. This branch is the most frequently updated branch and it contains the latest improvements to the project. To switch to the main branch that is updated less frequently, but may be more stable, use the following command:
-
-```shell
-(ai8x-training) $ git checkout master
-```
+By default, the `develop` branch is checked out. This branch is the most frequently updated branch and it contains the latest improvements to the project. To switch to the main branch that is updated less frequently, but may be more stable, use the command `git checkout master`.
 
 ###### TensorFlow / Keras
 
@@ -392,7 +411,7 @@ $ brew update && brew upgrade pyenv
 $
 ```
 
-On Linux, use:
+On Linux (including WSL2), use:
 
 ```shell
 $ cd $(pyenv root) && git pull && cd -
@@ -427,22 +446,42 @@ Start by deactivating the `ai8x-training` environment if it is active.
 Then, create a second virtual environment:
 
 ```shell
-$ cd $AI_PROJECT_ROOT
+$ cd <your/project>
 $ cd ai8x-synthesis
 ```
 
-If you want to use the main branch, switch to “master” using this optional step:
+If you want to use the main branch, switch to “master” using the optional command `git checkout master`.
 
+If using pyenv, run:
 ```shell
-$ git checkout master  # optional
+$ pyenv local 3.8.11
 ```
+
+In all cases, make sure Python 3.8.x is the active version:
+```shell
+$ python --version
+Python 3.8.11
+```
+
+If this does <u>*not*</u> return version 3.8.x, please install and initialize [pyenv](#Python 3.8).
 
 Then continue:
 
 ```shell
-$ pyenv local 3.8.11
-$ python3 -m venv .
-$ source bin/activate
+$ python -m venv venv --prompt ai8x-synthesis
+```
+
+Activate the virtual environment. On macOS and Linux (including WSL2), use
+```shell
+$ source venv/bin/activate
+```
+On native Windows, instead use
+```shell
+$ source venv/Scripts/activate
+```
+
+For all systems, continue with:
+```shell
 (ai8x-synthesis) $ pip3 install -U pip setuptools
 (ai8x-synthesis) $ pip3 install -r requirements.txt
 ```
@@ -953,7 +992,7 @@ GPU 00000000:01:00.0
 2. Verify that PyTorch recognizes CUDA:
 
 ```shell
-(ai8x-training) $ python3 check_cuda.py
+(ai8x-training) $ python check_cuda.py
 System:            linux
 Python version:    3.8.11 (default, Jul 14 2021, 12:46:05) [GCC 9.3.0]
 PyTorch version:   1.8.1+cu111
@@ -969,6 +1008,16 @@ The `ai84net.py` and `ai85net.py` files contain models that fit into AI84’s we
 To train the FP32 model for MNIST on MAX78000, run `scripts/train_mnist.sh` from the `ai8x-training` project. This script will place checkpoint files into the log directory. Training makes use of the Distiller framework, but the `train.py` software has been modified slightly to improve it and add some MAX78000/MAX78002 specifics.
 
 Since training can take hours or days, the training script does not overwrite any weights previously produced. Results are placed in sub-directories under `logs/` named with the date and time when training began. The latest results are always soft-linked to by `latest-log_dir` and `latest_log_file`.
+
+##### Troubleshooting
+
+1. If the training script returns `ModuleNotFoundError: No module named 'numpy'`, please activate the virtual environment using `source venv/bin/activate`, or on native Windows without WSL2, `source venv/scripts/activate`.
+
+2. If the training script crashes, or if it returns an internal error (such as `CUDNN_STATUS_INTERNAL_ERROR`), it may be necessary to limit the number of PyTorch workers to 1 (this has been observed running on native Windows). Add `--workers=1` when running any training script, for example;
+
+```shell
+$ scripts/train_mnist.sh --workers=1
+```
 
 #### Example Training Session
 
@@ -1341,7 +1390,7 @@ The training software integrates code to generate SHAP plots (see https://github
 The `train.py` program can create plots using the `--shap` command line argument in combination with `--evaluate`:
 
 ```shell
-$ python3 train.py --model ai85net5 --dataset CIFAR10 --confusion --evaluate --device MAX78000 --exp-load-weights-from logs/CIFAR-new/best.pth.tar --shap 3
+$ python train.py --model ai85net5 --dataset CIFAR10 --confusion --evaluate --device MAX78000 --exp-load-weights-from logs/CIFAR-new/best.pth.tar --shap 3
 ```
 
 This will create a plot with a random selection of 3 test images. The plot shows ten outputs (the ten classes) for the three different input images on the left. Red pixels increase the model’s output while blue pixels decrease the output. The sum of the SHAP values equals the difference between the expected model output (averaged over the background dataset) and the current model output.
@@ -1384,7 +1433,7 @@ The input checkpoint to `quantize.py` is either `qat_best.pth.tar`, the best QAT
 Example:
 
 ```shell
-(ai8x-synthesis) $ python3 quantize.py proj/qat_best.pth.tar proj/proj_q8.pth.tar --device MAX78000
+(ai8x-synthesis) $ python quantize.py proj/qat_best.pth.tar proj/proj_q8.pth.tar --device MAX78000
 ```
 
 
@@ -1402,7 +1451,7 @@ The input checkpoint to `quantize.py` for post-training quantization is typicall
 Example:
 
 ```shell
-(ai8x-synthesis) $ python3 quantize.py proj2/best.pth.tar proj2/proj2_q8.pth.tar \
+(ai8x-synthesis) $ python quantize.py proj2/best.pth.tar proj2/proj2_q8.pth.tar \
 --device MAX78000 --scale 0.85 --clip-method SCALE
 ```
 
@@ -1620,7 +1669,7 @@ Train the new network/new dataset. See `scripts/train_mnist.sh` for a command li
 The [Netron tool](https://github.com/lutzroeder/Netron) can visualize networks, similar to what is available within Tensorboard. To use Netron, use `train.py` to export the trained network to ONNX, and upload the ONNX file.
 
 ```shell
-(ai8x-training) $ python3 train.py --model ai85net5 --dataset MNIST --evaluate --exp-load-weights-from checkpoint.pth.tar --device MAX78000 --summary onnx
+(ai8x-training) $ python train.py --model ai85net5 --dataset MNIST --evaluate --exp-load-weights-from checkpoint.pth.tar --device MAX78000 --summary onnx
 ```
 
 
@@ -1882,7 +1931,7 @@ layers:
 To generate an embedded MAX78000 demo in the `demos/ai85-mnist/` folder, use the following command line:
 
 ```shell
-(ai8x-synthesize) $ python3 ai8xize.py --verbose --test-dir demos --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000 --compact-data --mexpress --softmax
+(ai8x-synthesize) $ python ai8xize.py --verbose --test-dir demos --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000 --compact-data --mexpress --softmax
 ```
 
 Running this command will combine the network described above with a fully connected software classification layer. The generated code will include all loading, unloading, and configuration steps.
@@ -1890,7 +1939,7 @@ Running this command will combine the network described above with a fully conne
 To generate an RTL simulation for the same network and sample data in the directory `tests/ai85-mnist-....` (where .... is an autogenerated string based on the network topology), use:
 
 ```shell
-(ai8x-synthesize) $ python3 ai8xize.py --rtl --verbose --autogen rtlsim --test-dir rtlsim --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000
+(ai8x-synthesize) $ python ai8xize.py --rtl --verbose --autogen rtlsim --test-dir rtlsim --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000
 ```
 
 
@@ -2390,9 +2439,9 @@ For RGB image inputs, there are three channels. For example, a 3×80×60 (C×H×
 
 1. Switch to training project directory and activate the environment:
    ```shell
-   (ai8x-synthesis) $ deactivate`
+   (ai8x-synthesis) $ deactivate
    $ cd ../ai8x-training
-   $ source bin/activate
+   $ source venv/bin/activate
    ```
 2. Create an evaluation script and run it:
    ```shell
