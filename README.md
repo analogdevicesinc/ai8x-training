@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_December 8, 2021_
+_December 9, 2021_
 
 The Maxim Integrated AI project is comprised of five repositories:
 
@@ -224,9 +224,22 @@ On Linux:
 $ curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash  # NOTE: Verify contents of the script before running it!!
 ```
 
-Then, follow the terminal output of the pyenv-installer and add pyenv to your shell by modifying one or more of `~/.bash_profile`, `~/.bashrc`, `~/.zshrc`, `~/.profile`, or `~/.zprofile`. The instructions differ depending on the shell (bash or zsh). To display the instructions again at any later time:
+Then, follow the terminal output of the pyenv-installer and add pyenv to your shell by modifying one or more of `~/.bash_profile`, `~/.bashrc`, `~/.zshrc`, `~/.profile`, or `~/.zprofile`. The instructions differ depending on the shell (bash or zsh).
+
+For example, on *Ubuntu 20.04 inside WSL2* add the following to `~/.bashrc`:
+
 ```shell
-$ pyenv init
+# WSL2
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init --path)"
+eval "$(pyenv virtualenv-init -)"
+```
+
+To display the instructions again at any later time:
+
+```shell
+$ ~/.pyenv/bin/pyenv init
 
 # (The below instructions are intended for common
 # shell setups. See the README for more guidance
@@ -298,7 +311,7 @@ $ cd ai8x-training
 ```
 The default branch is “develop” which is updated most frequently. If you want to use the “master” branch instead, switch to “master” using `git checkout master`.
 
-When using pyenv, set the local directory to use Python 3.8.11.
+If using pyenv, set the local directory to use Python 3.8.11.
 
 ```shell
 $ pyenv local 3.8.11
@@ -439,7 +452,7 @@ $ cd ai8x-synthesis
 
 If you want to use the main branch, switch to “master” using the optional command `git checkout master`.
 
-When using pyenv, run:
+If using pyenv, run:
 ```shell
 $ pyenv local 3.8.11
 ```
@@ -998,7 +1011,9 @@ Since training can take hours or days, the training script does not overwrite an
 
 ##### Troubleshooting
 
-If the training script crashes, or if it returns an internal error (such as `CUDNN_STATUS_INTERNAL_ERROR`), it may be necessary to limit the number of PyTorch workers to 1 (this has been observed running on native Windows). Add `--workers=1` when running any training script, for example;
+1. If the training script returns `ModuleNotFoundError: No module named 'numpy'`, please activate the virtual environment using `source venv/bin/activate`, or on native Windows without WSL2, `source venv/scripts/activate`.
+
+2. If the training script crashes, or if it returns an internal error (such as `CUDNN_STATUS_INTERNAL_ERROR`), it may be necessary to limit the number of PyTorch workers to 1 (this has been observed running on native Windows). Add `--workers=1` when running any training script, for example;
 
 ```shell
 $ scripts/train_mnist.sh --workers=1
