@@ -357,7 +357,7 @@ class One(nn.Module):
 
 class WeightScale(nn.Module):
     """
-    Calculate the weight scale (square root of the output shift)
+    Calculate the weight scale (reciprocal of 2 to the power of the output shift)
     """
     def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
         """Forward prop"""
@@ -366,7 +366,7 @@ class WeightScale(nn.Module):
 
 class OutputScale(nn.Module):
     """
-    Calculate the output scale (square of the output shift)
+    Calculate the output scale (2 to the power of the output shift)
     """
     def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
         """Forward prop"""
