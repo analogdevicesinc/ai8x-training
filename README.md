@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_December 9, 2021_
+_December 14, 2021_
 
 The Maxim Integrated AI project is comprised of five repositories:
 
@@ -204,9 +204,12 @@ First, check the default Python version:
 ```shell
 $ python --version
 Python 2.7.18
+# wrong version, pyenv required
 ```
 
 This particular version will not function correctly with the MAX7800X tools. If the result is Python **3.8**.x, skip ahead to [git Environment](#git Environment). For any other version (for example, 2.7, 3.7, 3.9, 3.10), continue here.
+
+*Note: For the purposes of the MAX7800X tools, “python3” is not a substitute for “python”. Please install pyenv when “python” does not return version 3.8.x, <u>even if</u> “python3” is available.*
 
 ##### pyenv
 
@@ -332,7 +335,10 @@ Then continue with the following:
 $ python -m venv venv --prompt ai8x-training
 ```
 
+If this command returns an error message similar to *“The virtual environment was not created successfully because ensurepip is not available,”* please install and initialize [pyenv](#Python 3.8). 
+
 On macOS and Linux, including WSL2, activate the environment using
+
 ```shell
 $ source venv/bin/activate
 ```
