@@ -56,7 +56,7 @@ def prepare_loss_plot():
         temp_line = None
         cur_line = None
 
-        with open(log_file_path, 'r') as f:
+        with open(log_file_path, mode='r', encoding='utf-8') as f:
             while True:
                 if cur_line is not None:
                     if temp_line is not None:

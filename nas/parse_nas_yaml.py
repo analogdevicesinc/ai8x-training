@@ -18,7 +18,7 @@ def parse(yaml_file):
     Parses `yaml_file` that defines the OFA policy
     """
     policy = None
-    with open(yaml_file, 'r') as stream:
+    with open(yaml_file, mode='r', encoding='utf-8') as stream:
         try:
             policy = yaml.safe_load(stream)
         except yaml.YAMLError as exc:

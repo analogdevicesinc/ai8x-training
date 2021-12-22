@@ -105,7 +105,7 @@ def main(source_path, dest_path):
 
     # set device
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    print('Running on device: {}'.format(device))
+    print(f'Running on device: {device}')
 
     # create models
     mtcnn = MTCNN(
@@ -124,11 +124,11 @@ def main(source_path, dest_path):
 
     for f_n, face_file in enumerate(subj_name_list):
         if (f_n % 100) == 0:
-            print('Subject %d of %d' % (f_n, len(subj_name_list)))
+            print(f'Subject {f_n} of {len(subj_name_list)}')
         f_path = os.path.join(frame_dir, face_file)
         if os.path.isfile(f_path):
             if face_file.endswith('txt'):
-                with open(f_path, 'r') as file:
+                with open(f_path, mode='r', encoding='utf-8') as file:
                     lines = file.readlines()
                     num_persons += 1
                     for line in lines:
@@ -179,11 +179,11 @@ def main(source_path, dest_path):
                                                                new_file_name)
                                 np.save(cropped_im_path, img_arr[img_idx])
 
-    print('Number of People: %d' % num_persons)
-    print('Number of Faces: %d' % num_faces)
+    print(f'Number of People: {num_persons}')
+    print(f'Number of Faces: {num_faces}')
 
     # save embeddings to json file
-    with open(os.path.join(dest_path, 'embeddings.json'), 'w') as out_file:
+    with open(os.path.join(dest_path, 'embeddings.json'), mode='w', encoding='utf-8') as out_file:
         json.dump(embedding_dict, out_file)
 
 

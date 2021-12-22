@@ -13,7 +13,7 @@ Simplified version of the network proposed in [1].
 [1] HasanPour, Seyyed Hossein, et al. "Lets keep it simple, using simple architectures to
     outperform deeper and more complex architectures." arXiv preprint arXiv:1608.06037 (2016).
 """
-import torch.nn as nn
+from torch import nn
 
 import ai8x
 

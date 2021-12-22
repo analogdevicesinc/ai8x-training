@@ -24,7 +24,7 @@ def save_dataset(data, merged_data_path, part_no):
     """
     Function to save merged file.
     """
-    merged_file_path = os.path.join(merged_data_path, 'whole_set_%02d.pkl' % part_no)
+    merged_file_path = os.path.join(merged_data_path, f'whole_set_{part_no:02d}.pkl')
     with open(merged_file_path, 'wb') as handle:
         pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -41,12 +41,12 @@ def main(data_path):  # pylint: disable=too-many-locals
     part_no = 0
 
     embedding_path = os.path.join(data_path, 'temp', 'embeddings.json')
-    with open(embedding_path) as file:
+    with open(embedding_path, encoding='utf-8') as file:
         embeddings = json.load(file)
 
     for i, (subj, val) in enumerate(embeddings.items()):  # pylint: disable=too-many-nested-blocks
         if (i % 200) == 0:
-            print('%d of %d' % (i, len(embeddings)))
+            print(f'{i} of {len(embeddings)}')
             if i > 0:
                 save_dataset(dataset, data_path, part_no)
                 dataset = {}

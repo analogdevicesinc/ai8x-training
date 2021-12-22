@@ -11,7 +11,7 @@ FaceID network for AI85/AI86
 
 Optionally quantize/clamp activations
 """
-import torch.nn as nn
+from torch import nn
 
 import ai8x
 

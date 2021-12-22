@@ -9,7 +9,7 @@
 """
 The CIFAR network found by NAS.
 """
-import torch.nn as nn
+from torch import nn
 
 import ai8x
 

@@ -53,7 +53,7 @@ class AutoGen:
 
     def generate(self):
         """Function that fills the model file"""
-        with open(self.file_path, "w+") as self.f:
+        with open(self.file_path, mode='w+', encoding='utf-8') as self.f:
             ind = '    '
             self.write_line('#####################################################' +
                             '##############################################')
@@ -152,7 +152,7 @@ def main(arguments):
     """
     inp_path = arguments.input_filepath
     model_name_base = arguments.model_name
-    with open(inp_path) as f:
+    with open(inp_path, encoding='utf-8') as f:
         arch_dict_list = json.load(f)
     for idx, arch_dict in enumerate(arch_dict_list):
         model_name = model_name_base+'_'+str(idx+1)

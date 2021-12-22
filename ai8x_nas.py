@@ -18,8 +18,8 @@ import abc
 import random
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
 import ai8x
 from ai8x import get_activation, quantize_clamp, quantize_clamp_pool
@@ -86,7 +86,7 @@ class OnceForAllModule(nn.Module):
                 assert False, f'Unknown operation for OFA module: {op}'
 
             # parameters to store in the checkpoint file
-            self.max_kernel_size = nn.Parameter(data=torch.tensor(self.max_kernel_size),
+            self.max_kernel_size = nn.Parameter(data=torch.Tensor(self.max_kernel_size),
                                                 requires_grad=False)
             self.kernel_list = nn.Parameter(data=torch.Tensor(self.kernel_list),
                                             requires_grad=False)

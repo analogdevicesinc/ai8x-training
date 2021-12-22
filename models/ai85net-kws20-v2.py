@@ -9,7 +9,7 @@
 """
 Keyword spotting network for AI85/AI86
 """
-import torch.nn as nn
+from torch import nn
 
 import ai8x
 
