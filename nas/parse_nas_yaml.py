@@ -26,8 +26,7 @@ def parse(yaml_file):
 
     print(policy)
 
-    if policy:
-        if 'start_epoch' not in policy:
-            assert False, '`start_epoch` must be defined in OFA policy'
+    if policy and 'start_epoch' not in policy:
+        assert False, '`start_epoch` must be defined in OFA policy'
 
     return policy

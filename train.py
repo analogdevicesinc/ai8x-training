@@ -318,8 +318,10 @@ def main():
         if qat_policy is not None:
             checkpoint = torch.load(args.resumed_checkpoint_path,
                                     map_location=lambda storage, loc: storage)
+            # pylint: disable=unsubscriptable-object
             if checkpoint.get('epoch', None) >= qat_policy['start_epoch']:
                 ai8x.fuse_bn_layers(model)
+            # pylint: enable=unsubscriptable-object
         model, compression_scheduler, optimizer, start_epoch = apputils.load_checkpoint(
             model, args.resumed_checkpoint_path, model_device=args.device)
         ai8x.update_model(model)
@@ -474,6 +476,7 @@ def main():
 
     vloss = 10**6
     for epoch in range(start_epoch, ending_epoch):
+        # pylint: disable=unsubscriptable-object
         if qat_policy is not None and epoch > 0 and epoch == qat_policy['start_epoch']:
             # Fuse the BN parameters into conv layers before Quantization Aware Training (QAT)
             ai8x.fuse_bn_layers(model)
@@ -490,6 +493,7 @@ def main():
                 args.name = f'{args.name}_qat'
             else:
                 args.name = 'qat'
+        # pylint: enable=unsubscriptable-object
 
         # This is the main training loop.
         msglogger.info('\n')

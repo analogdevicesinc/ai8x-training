@@ -117,7 +117,7 @@ def main(source_path, dest_path):  # pylint: disable=too-many-locals
             os.makedirs(prcssd_folder_path)
         else:
             continue
-        embedding_dict = dict()
+        embedding_dict = {}
         for image in os.listdir(folder_path):
             image_path = os.path.join(folder_path, image)
             img = imread(image_path)
