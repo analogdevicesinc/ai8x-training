@@ -107,7 +107,7 @@ class AISegment(Dataset):
         # 2) Two pickle files for dataset information dataframes for test and train
         # 3) Two pickle files for storing all data in a single file for test and train if memory
         #    based approach is selected
-        resolution_str = f'{im_size[0]}x{im_size[0]}'
+        resolution_str = f'{im_size[0]}x{im_size[1]}'
 
         self.processed_train_data_folder = \
             os.path.join(root_dir, self.__class__.__name__,
@@ -127,10 +127,10 @@ class AISegment(Dataset):
         # file per training/test
         train_dataset_pkl_file_path = \
             os.path.join(root_dir, self.__class__.__name__,
-                         f'train_set_{im_size[0]}x{im_size[0]}.pkl')
+                         f'train_set_{im_size[0]}x{im_size[1]}.pkl')
         test_dataset_pkl_file_path = \
             os.path.join(root_dir, self.__class__.__name__,
-                         f'test_set_{im_size[0]}x{im_size[0]}.pkl')
+                         f'test_set_{im_size[0]}x{im_size[1]}.pkl')
 
         # These image and label lists will only be in use when memory based approach is selected
         self.img_list = []
