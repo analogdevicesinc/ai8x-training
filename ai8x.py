@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2020-2021 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2020-2022 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -45,7 +45,7 @@ class QuantizationFunction(Function):
         """Forward prop"""
         if dev.simulate:
             if bits > 1:
-                return x.add(.5).div(2**(bits+extra_bit_shift-1)).add(.5).floor()
+                return x.div(2**(bits+extra_bit_shift-1)).add(.5).floor()
             if bits < 1:
                 return x.mul(2**(1-bits-extra_bit_shift)).add(.5).floor()
             return x.add(.5).floor()
@@ -224,7 +224,7 @@ class FloorQatONNX(nn.Module):
         return x.mul(factor).floor().div(factor)
 
 
-def quantize_clamp(wide, quantize_activation=False):
+def quantize_clamp(wide, quantize_activation=False, weight_bits=8):
     """
     Return new Quantization and Clamp objects.
     """
@@ -236,7 +236,7 @@ def quantize_clamp(wide, quantize_activation=False):
                 max_val=2**(dev.ACTIVATION_BITS-1)-1,
             )
         else:
-            quantize = Quantize(num_bits=1)
+            quantize = Quantize(num_bits=dev.DATA_BITS - weight_bits + 1)
             clamp = Clamp(
                 min_val=-(2**(dev.FULL_ACC_BITS-1)),
                 max_val=2**(dev.FULL_ACC_BITS-1)-1,
@@ -295,7 +295,7 @@ def quantize_clamp_parameters(weight_bits, bias_bits):
     """
     if dev.simulate:
         quantize_weight = Quantize(num_bits=weight_bits-dev.DATA_BITS+1)
-        quantize_bias = Quantize(num_bits=weight_bits-dev.DATA_BITS+1)
+        quantize_bias = Quantize(num_bits=2*(weight_bits-dev.DATA_BITS)+1)
         clamp_weight = Empty()
         clamp_bias = Empty()
     else:
@@ -424,7 +424,7 @@ class QuantizationAwareModule(nn.Module):
         super().__init__()
 
         assert weight_bits in [None, 1, 2, 4, 8], f'Weight bits cannot be {weight_bits}'
-        assert bias_bits in [None, 8], f'Bias bits cannot be {bias_bits}'
+        assert bias_bits in [None, 1, 2, 4, 8], f'Bias bits cannot be {bias_bits}'
 
         self.quantize = None
         self.clamp = None
@@ -458,7 +458,7 @@ class QuantizationAwareModule(nn.Module):
             self.bias_bits = nn.Parameter(torch.Tensor([0]), requires_grad=False)
             self.quantize_activation = nn.Parameter(torch.Tensor([False]), requires_grad=False)
             self.adjust_output_shift = nn.Parameter(torch.Tensor([False]), requires_grad=False)
-        elif weight_bits in [1, 2, 4, 8] and bias_bits == 8 and quantize_activation:
+        elif weight_bits in [1, 2, 4, 8] and bias_bits in [1, 2, 4, 8] and quantize_activation:
             self.weight_bits = nn.Parameter(torch.Tensor([weight_bits]), requires_grad=False)
             self.bias_bits = nn.Parameter(torch.Tensor([bias_bits]), requires_grad=False)
             self.quantize_activation = nn.Parameter(torch.Tensor([True]), requires_grad=False)
@@ -488,7 +488,8 @@ class QuantizationAwareModule(nn.Module):
             quantize_clamp_parameters(self.weight_bits.detach().item(),
                                       self.bias_bits.detach().item())
         self.quantize, self.clamp = \
-            quantize_clamp(self.wide, self.quantize_activation.detach().item())
+            quantize_clamp(self.wide, self.quantize_activation.detach().item(),
+                           self.weight_bits.detach().item())
         self.quantize_pool, self.clamp_pool = \
             quantize_clamp_pool(self.pooling, self.quantize_activation.detach().item())
 
@@ -1431,19 +1432,21 @@ def initiate_qat(m, qat_policy):
             target_attr = getattr(m, attr_str)
             if isinstance(target_attr, QuantizationAwareModule):
                 if 'shift_quantile' in qat_policy:
-                    target_attr.init_module(qat_policy['weight_bits'], 8,
+                    target_attr.init_module(qat_policy['weight_bits'],
+                                            qat_policy['weight_bits'],
                                             True, qat_policy['shift_quantile'])
                 else:
-                    target_attr.init_module(qat_policy['weight_bits'], 8, True, 1.0)
+                    target_attr.init_module(qat_policy['weight_bits'],
+                                            qat_policy['weight_bits'], True, 1.0)
                 if 'overrides' in qat_policy:
                     if attr_str in qat_policy['overrides']:
                         weight_field = qat_policy['overrides'][attr_str]['weight_bits']
                         if 'shift_quantile' in qat_policy:
-                            target_attr.init_module(weight_field, 8,
+                            target_attr.init_module(weight_field, weight_field,
                                                     True, qat_policy['shift_quantile'])
                         else:
                             target_attr.init_module(weight_field,
-                                                    8, True, 1.0)
+                                                    weight_field, True, 1.0)
 
                 setattr(m, attr_str, target_attr)
 
