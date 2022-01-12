@@ -1,6 +1,6 @@
 # MAX78000 Model Training and Synthesis
 
-_December 22, 2021_
+_January 12, 2022_
 
 The Maxim Integrated AI project is comprised of five repositories:
 
@@ -510,7 +510,7 @@ The Arm embedded compiler can be downloaded from [https://developer.arm.com/tool
 
 The RISC-V embedded compiler can be downloaded from [https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/](https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/). *The SDK has been tested with version 8.3.0-1.1 of the RISC-V embedded compiler. Newer versions may or may not work correctly.*
 
-Add the following to your `~/.profile` (and on macOS, to `~/.zprofile`), adjusting for the actual `PATH` to the compilers:
+Add the following to your `~/.profile` (and on macOS, to `~/.zprofile`), adjusting for the actual `PATH` to the compilers and the `MAXIM_PATH` to the `sdk` folder:
 
 ```shell
 echo $PATH | grep -q -s "/usr/local/gcc-arm-none-eabi-9-2019-q4-major/bin"
@@ -528,6 +528,8 @@ if [ $? -eq 1 ] ; then
     RISCVGCC_DIR=/usr/local/riscv-none-embed-gcc/8.3.0-1.1
     export RISCVGCC_DIR
 fi
+
+export MAXIM_PATH="$HOME/..../ai8x-synthesis/sdk"
 ```
 
 The debugger requires OpenOCD. On Windows, an OpenOCD executable is installed with the SDK. On macOS and Linux, scripts and binaries are provided in the `openocd` folder of the `ai8x-synthesis` project, see [openocd/Readme.md](openocd/Readme.md).
@@ -2941,7 +2943,7 @@ The GitHub projects use the [GitHub Super-Linter](https://github.com/github/supe
 To run locally, create a clean copy of the repository and run the following command from the project directory (i.e., `ai8x-training` or `ai8x-synthesis`):
 
 ```shell
-$ podman run --rm -e RUN_LOCAL=true -e VALIDATE_MARKDOWN=false -e VALIDATE_PYTHON_BLACK=false -e VALIDATE_ANSIBLE=false -e VALIDATE_EDITORCONFIG=false -e VALIDATE_JSCPD=false -e VALIDATE_CPP=false -e VALIDATE_ANSIBLE=false -e VALIDATE_NATURAL_LANGUAGE=false -e VALIDATE_CLANG_FORMAT=false -e FILTER_REGEX_EXCLUDE="attic/.*|inspect_ckpt.py" -v `pwd`:/tmp/lint ghcr.io/github/super-linter:v4
+$ podman run --rm -e RUN_LOCAL=true -e VALIDATE_MARKDOWN=false -e VALIDATE_PYTHON_BLACK=false -e VALIDATE_ANSIBLE=false -e VALIDATE_EDITORCONFIG=false -e VALIDATE_JSCPD=false -e VALIDATE_CPP=false -e VALIDATE_ANSIBLE=false -e VALIDATE_NATURAL_LANGUAGE=false -e VALIDATE_CLANG_FORMAT=false -e VALIDATE_GITHUB_ACTIONS=false -e FILTER_REGEX_EXCLUDE="attic/.*|inspect_ckpt.py" -v `pwd`:/tmp/lint ghcr.io/github/super-linter:v4
 ```
 
 ### Submitting Changes
