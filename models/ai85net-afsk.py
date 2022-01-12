@@ -9,7 +9,7 @@
 """
 AI85 demonstration network
 """
-import torch.nn as nn
+from torch import nn
 
 import ai8x
 

@@ -12,7 +12,7 @@ the limits into account.
 """
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 import ai8x
 

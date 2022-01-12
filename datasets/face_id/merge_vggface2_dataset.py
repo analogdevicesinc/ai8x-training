@@ -24,7 +24,7 @@ def save_dataset(data, merged_data_path, part_no):
     """
     Function to save merged file.
     """
-    merged_file_path = os.path.join(merged_data_path, 'whole_set_%02d.pkl' % part_no)
+    merged_file_path = os.path.join(merged_data_path, f'whole_set_{part_no:02d}.pkl')
     with open(merged_file_path, 'wb') as handle:
         pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -42,11 +42,11 @@ def main(data_path):  # pylint: disable=too-many-locals
 
     for i, subj in enumerate(subj_list):
         if subj == 'merged':
-            print('Folder %s skipped' % subj)
+            print(f'Folder {subj} skipped')
             continue
 
         if (i % 250) == 0:
-            print('%d of %d' % (i, len(subj_list)))
+            print(f'{i} of {subj_list}')
             if i > 0:
                 save_dataset(dataset, data_path, part_no)
                 dataset = {}
@@ -60,12 +60,12 @@ def main(data_path):  # pylint: disable=too-many-locals
             continue
 
         if not os.listdir(subj_path):
-            print('Empty folder: %s' % subj_path)
+            print(f'Empty folder: {subj_path}')
             num_empty_subjs += 1
             continue
 
         embedding_path = os.path.join(subj_path, 'embeddings.json')
-        with open(embedding_path) as file:
+        with open(embedding_path, encoding='utf-8') as file:
             embeddings = json.load(file)
 
         for img_name, emb in embeddings.items():

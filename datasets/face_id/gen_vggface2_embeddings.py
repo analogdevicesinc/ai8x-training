@@ -97,7 +97,7 @@ def main(source_path, dest_path):  # pylint: disable=too-many-locals
     """
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    print('Running on device: {}'.format(device))
+    print(f'Running on device: {device}')
 
     mtcnn = MTCNN(
         image_size=80, margin=0, min_face_size=20,
@@ -110,14 +110,14 @@ def main(source_path, dest_path):  # pylint: disable=too-many-locals
     data_dir_list = os.listdir(source_path)
     for i, folder in enumerate(data_dir_list):
         if i % 10 == 0:
-            print('%d of %d' % (i, len(data_dir_list)))
+            print(f'{i} of {len(data_dir_list)}')
         folder_path = os.path.join(source_path, folder)
         prcssd_folder_path = os.path.join(dest_path, folder)
         if not os.path.exists(prcssd_folder_path):
             os.makedirs(prcssd_folder_path)
         else:
             continue
-        embedding_dict = dict()
+        embedding_dict = {}
         for image in os.listdir(folder_path):
             image_path = os.path.join(folder_path, image)
             img = imread(image_path)
@@ -134,7 +134,11 @@ def main(source_path, dest_path):  # pylint: disable=too-many-locals
                     np.save(new_img_path, new_img)
                     embedding_dict[new_img_name] = embedding_list
         json_bin = json.dumps(embedding_dict)
-        with open(os.path.join(prcssd_folder_path, "embeddings.json"), "w") as out_file:
+        with open(
+            os.path.join(prcssd_folder_path, 'embeddings.json'),
+            mode='w',
+            encoding='utf-8',
+        ) as out_file:
             out_file.write(json_bin)
 
 

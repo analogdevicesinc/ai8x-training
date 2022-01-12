@@ -13,7 +13,7 @@ import copy
 import random
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 import ai8x
 from ai8x_nas import (FusedConv1dBNReLU, FusedConv1dReLU, FusedConv2dBNReLU, FusedConv2dReLU,

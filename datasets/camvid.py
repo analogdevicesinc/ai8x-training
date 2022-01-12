@@ -125,7 +125,7 @@ class CamVidDataset(Dataset):
         return os.path.exists(self.class_dict_file)
 
     def __create_mask_dict(self, img_dims):
-        with open(self.class_dict_file, newline='') as csvfile:
+        with open(self.class_dict_file, newline='', encoding='utf-8') as csvfile:
             spamreader = csv.reader(csvfile)
             for row in spamreader:
                 if row[0] == 'name':
@@ -141,19 +141,19 @@ class CamVidDataset(Dataset):
 
     def __filter_classes(self):
         print('\n')
-        for i in range(len(self.lbl_list)):
+        for _, e in enumerate(self.lbl_list):
             initial_new_class_label = len(self.class_dict) + 5
             new_class_label = initial_new_class_label
             for l_class in self.classes:
-                if l_class not in self.class_dict.keys():
-                    print('Class is not in the data: %s' % l_class)
+                if l_class not in self.class_dict:
+                    print(f'Class is not in the data: {l_class}')
                     return
 
-                self.lbl_list[i][(self.lbl_list[i] == self.class_dict[l_class])] = new_class_label
+                e[(e == self.class_dict[l_class])] = new_class_label
                 new_class_label += 1
 
-            self.lbl_list[i][(self.lbl_list[i] < initial_new_class_label)] = new_class_label
-            self.lbl_list[i] = copy.deepcopy(self.lbl_list[i] - initial_new_class_label)
+            e[(e < initial_new_class_label)] = new_class_label
+            e = copy.deepcopy(e - initial_new_class_label)
 
     @staticmethod
     def normalize(data):

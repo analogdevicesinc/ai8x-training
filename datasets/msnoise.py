@@ -28,6 +28,7 @@ import errno
 import json
 import os
 import sys
+import urllib
 import warnings
 
 import numpy as np
@@ -35,7 +36,6 @@ import torch
 from torchvision import transforms
 
 import librosa
-from six.moves import urllib
 
 import ai8x
 
@@ -133,7 +133,7 @@ class MSnoise:
         response = urllib.request.urlretrieve(api_url)
 
         total_files = 0
-        with open(response[0], "r") as f:
+        with open(response[0], mode='r', encoding='utf-8') as f:
             data = json.load(f)
             total_files += len(data)
             for file in data:
@@ -169,7 +169,7 @@ class MSnoise:
         elif self.d_type == 'test':
             idx_to_select = (self.data_type == 1)[:, -1]
         else:
-            print('Unknown data type: %s' % self.d_type)
+            print(f'Unknown data type: {self.d_type}')
             return
 
         print(self.data.shape)
@@ -182,18 +182,18 @@ class MSnoise:
         initial_new_class_label = len(self.class_dict)
         new_class_label = initial_new_class_label
         for c in self.classes:
-            if c not in self.class_dict.keys():
-                print('Class is not in the data: %s' % c)
+            if c not in self.class_dict:
+                print(f'Class is not in the data: {c}')
                 return
             # else:
-            print('Class %s, %d' % (c, self.class_dict[c]))
+            print(f'Class {c}, {self.class_dict[c]}')
             num_elems = (self.targets == self.class_dict[c]).cpu().sum()
-            print('Number of elements in class %s: %d' % (c, num_elems))
+            print(f'Number of elements in class {c}: {num_elems}')
             self.targets[(self.targets == self.class_dict[c])] = new_class_label
             new_class_label += 1
 
         num_elems = (self.targets < initial_new_class_label).cpu().sum()
-        print('Number of elements in class unknown: %d' % (num_elems))
+        print(f'Number of elements in class unknown: {num_elems}')
         self.targets[(self.targets < initial_new_class_label)] = new_class_label
         if self.remove_unknowns:
             idx_to_remove = (self.targets == new_class_label)[:, -1]
@@ -237,7 +237,7 @@ class MSnoise:
             overlap = int(np.ceil(row_len * overlap_ratio))
             num_rows = int(np.ceil(exp_len / (row_len - overlap)))
             data_len = int((num_rows*row_len - (num_rows-1)*overlap))
-            print('data_len: %s' % data_len)
+            print(f'data_len: {data_len}')
 
             # Cleaning the duplicate labels
             train_list = sorted(os.listdir(self.noise_train_folder))

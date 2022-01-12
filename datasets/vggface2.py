@@ -50,7 +50,7 @@ class VGGFace2Dataset(data.Dataset):
         print('Data loading...')
         for n_file, data_file in enumerate(data_file_list):
             if ((n_file+1) % 5) == 0:
-                print('\t%d of %d' % (n_file+1, len(data_file_list)))
+                print(f'\t{n_file+1} of {len(data_file_list)}')
             f_path = os.path.join(data_folder, data_file)
 
             with open(f_path, 'rb') as f:
@@ -66,7 +66,7 @@ class VGGFace2Dataset(data.Dataset):
                 subj_idx += resample_subj
 
         t_end = time.time()
-        print('%d of data samples loaded in %.4f sec.' % (n_elems, t_end-t_start))
+        print(f'{n_elems} of data samples loaded in {t_end-t_start:.4f} seconds.')
 
     def __normalize_data(self, data_item):  # pylint: disable=no-self-use
         data_item = data_item.astype(np.float32)
