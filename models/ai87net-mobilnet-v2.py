@@ -12,7 +12,7 @@ MobileNet v2 network for AI8X defined in [1]
 [1] MobileNetV2: Inverted Residuals and Linear Bottlenecks, Sandler M, Howard A, Zhu M,
 Zhmoginov A, Chen LC. arXiv preprint. arXiv:1801.04381, 2018.
 """
-import torch.nn as nn
+from torch import nn
 
 import ai8x
 import ai8x_blocks
@@ -47,7 +47,7 @@ class AI87MobileNetV2(nn.Module):
             self._create_bottleneck_stage(setting, bias, depthwise_bias, **kwargs)
 
         self.post_stage = ai8x.FusedConv2dReLU(bottleneck_settings[-1][2], last_layer_width, 1,
-                                                 padding=0, stride=1, bias=False, **kwargs)
+                                               padding=0, stride=1, bias=False, **kwargs)
 
         self.classifier = ai8x.FusedAvgPoolConv2d(last_layer_width, num_classes, 1, padding=0,
                                                   stride=1, pool_size=avg_pool_size,
