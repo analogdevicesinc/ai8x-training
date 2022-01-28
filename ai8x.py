@@ -10,6 +10,7 @@
 Contains the limits of the MAX78000 implementations and custom PyTorch modules that take
 the limits into account.
 """
+
 import torch
 from torch import nn
 from torch.autograd import Function
@@ -96,6 +97,26 @@ class FloorFunction(Function):
         return x
 
 
+class AvgPoolFloorFunction(Function):
+    """
+    Custom MAX78000 autograd function
+    The forward pass returns the integer floor for positive numbers and integer
+    ceil for negative numbers.
+    The backward pass is straight through.
+    """
+    @staticmethod
+    def forward(_, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
+        return torch.where(x > 0, torch.floor(x), torch.ceil(x))
+
+    @staticmethod
+    def backward(_, x):  # pylint: disable=arguments-differ
+        """Backprop"""
+        # Straight through - return as many input gradients as there were arguments;
+        # gradients of non-Tensor arguments to forward must be None.
+        return x
+
+
 class Floor(nn.Module):
     """
     Post-pooling integer quantization module
@@ -104,6 +125,16 @@ class Floor(nn.Module):
     def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
         """Forward prop"""
         return FloorFunction.apply(x)
+
+
+class AvgPoolFloor(nn.Module):
+    """
+    Post-pooling integer quantization module
+    Apply the custom autograd function
+    """
+    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+        """Forward prop"""
+        return AvgPoolFloorFunction.apply(x)
 
 
 class FloorONNX(nn.Module):
@@ -211,7 +242,7 @@ class FloorQat(nn.Module):
     def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
         """Forward prop"""
         factor = 2**(dev.ACTIVATION_BITS - 1)
-        return FloorFunction.apply(x.mul(factor)).div(factor)
+        return AvgPoolFloorFunction.apply(x.mul(factor)).div(factor)
 
 
 class FloorQatONNX(nn.Module):
@@ -269,7 +300,7 @@ def quantize_clamp_pool(pooling, quantize_activation=False):
     """
     if dev.simulate:
         if pooling == 'Avg':
-            quantize = Round() if dev.round_avg else Floor()
+            quantize = Round() if dev.round_avg else AvgPoolFloor()
             clamp = Clamp(
                 min_val=-(2**(dev.DATA_BITS-1)),
                 max_val=2**(dev.DATA_BITS-1)-1,
@@ -1527,7 +1558,10 @@ def onnx_export_prep(m, simplify=False):
                     setattr(m, attr_str, ScalerONNX())
                 elif isinstance(target_attr, Floor):
                     setattr(m, attr_str, FloorONNX())
-            elif isinstance(target_attr, (Quantize, Clamp, Round, Floor, FloorQat, RoundQat)):
+                elif isinstance(target_attr, AvgPoolFloor):
+                    setattr(m, attr_str, FloorONNX())
+            elif isinstance(target_attr, (Quantize, Clamp, Round,
+                                          AvgPoolFloor, Floor, FloorQat, RoundQat)):
                 setattr(m, attr_str, Empty())
             elif isinstance(target_attr, OutputShift):
                 setattr(m, attr_str, OutputShiftONNX())
