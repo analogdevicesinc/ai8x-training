@@ -12,6 +12,7 @@ Cifar-100 Efficient net v.2
 from torch import nn
 
 import ai8x
+import ai8x_blocks
 
 
 class AI87EfficientNetV2(nn.Module):
@@ -34,24 +35,24 @@ class AI87EfficientNetV2(nn.Module):
                                                        padding=1, bias=bias, eps=1e-03,
                                                        momentum=0.01, **kwargs)
         # Series of MBConv blocks
-        self.mb_conv1 = ai8x.MBConvBlock(32, 16, 3, bias=bias, se_ratio=None,
-                                         expand_ratio=1, fused=True, **kwargs)
-        self.mb_conv2 = ai8x.MBConvBlock(16, 32, 3, bias=bias, se_ratio=None,
-                                         expand_ratio=4, fused=True, **kwargs)
-        self.mb_conv3 = ai8x.MBConvBlock(32, 32, 3, bias=bias, se_ratio=None,
-                                         expand_ratio=4, fused=True, **kwargs)
-        self.mb_conv4 = ai8x.MBConvBlock(32, 48, 3, bias=bias, se_ratio=None,
-                                         expand_ratio=4, fused=True, **kwargs)
-        self.mb_conv5 = ai8x.MBConvBlock(48, 48, 3, bias=bias, se_ratio=None,
-                                         expand_ratio=4, fused=True, **kwargs)
-        self.mb_conv6 = ai8x.MBConvBlock(48, 96, 3, bias=bias, se_ratio=None,
-                                         expand_ratio=4, fused=False, **kwargs)
-        self.mb_conv7 = ai8x.MBConvBlock(96, 96, 3, bias=bias, se_ratio=None,
-                                         expand_ratio=4, fused=False, **kwargs)
-        self.mb_conv8 = ai8x.MBConvBlock(96, 128, 3, bias=bias, se_ratio=None,
-                                         expand_ratio=4, fused=False, **kwargs)
-        self.mb_conv9 = ai8x.MBConvBlock(128, 128, 3, bias=bias, se_ratio=None,
-                                         expand_ratio=4, fused=False, **kwargs)
+        self.mb_conv1 = ai8x_blocks.MBConvBlock(32, 16, 3, bias=bias, se_ratio=None,
+                                                expand_ratio=1, fused=True, **kwargs)
+        self.mb_conv2 = ai8x_blocks.MBConvBlock(16, 32, 3, bias=bias, se_ratio=None,
+                                                expand_ratio=4, fused=True, **kwargs)
+        self.mb_conv3 = ai8x_blocks.MBConvBlock(32, 32, 3, bias=bias, se_ratio=None,
+                                                expand_ratio=4, fused=True, **kwargs)
+        self.mb_conv4 = ai8x_blocks.MBConvBlock(32, 48, 3, bias=bias, se_ratio=None,
+                                                expand_ratio=4, fused=True, **kwargs)
+        self.mb_conv5 = ai8x_blocks.MBConvBlock(48, 48, 3, bias=bias, se_ratio=None,
+                                                expand_ratio=4, fused=True, **kwargs)
+        self.mb_conv6 = ai8x_blocks.MBConvBlock(48, 96, 3, bias=bias, se_ratio=None,
+                                                expand_ratio=4, fused=False, **kwargs)
+        self.mb_conv7 = ai8x_blocks.MBConvBlock(96, 96, 3, bias=bias, se_ratio=None,
+                                                expand_ratio=4, fused=False, **kwargs)
+        self.mb_conv8 = ai8x_blocks.MBConvBlock(96, 128, 3, bias=bias, se_ratio=None,
+                                                expand_ratio=4, fused=False, **kwargs)
+        self.mb_conv9 = ai8x_blocks.MBConvBlock(128, 128, 3, bias=bias, se_ratio=None,
+                                                expand_ratio=4, fused=False, **kwargs)
         # Head Layer
         self.conv_head = ai8x.FusedConv2dBNReLU(128, 1024, 1, stride=1, batchnorm='Affine',
                                                 padding=0, bias=bias, eps=1e-03,

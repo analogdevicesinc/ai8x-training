@@ -13,7 +13,6 @@ the limits into account.
 import torch
 from torch import nn
 from torch.autograd import Function
-from torch.nn import functional as F
 
 import devices
 
@@ -812,6 +811,78 @@ class FusedConv2dAbs(Conv2d):
         super().__init__(*args, activation='Abs', **kwargs)
 
 
+class DepthwiseConv2d(Conv2d):
+    """
+    AI8X - Fused 2D Depthwise Convolution and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, groups=args[0], **kwargs)
+
+
+class FusedDepthwiseConv2dReLU(FusedConv2dReLU):
+    """
+    AI8X - Fused 2D Depthwise Convolution and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, groups=args[0], **kwargs)
+
+
+class FusedDepthwiseConv2dBNReLU(FusedConv2dBNReLU):
+    """
+    AI8X - Fused 2D Convolution and BatchNorm and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, groups=args[0], **kwargs)
+
+
+class FusedAvgPoolDepthwiseConv2d(FusedAvgPoolConv2d):
+    """
+    AI8X - Fused 2D Avg Pool, 2D Convolution and no activation
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, groups=args[0], **kwargs)
+
+
+class FusedAvgPoolDepthwiseConv2dReLU(FusedAvgPoolConv2dReLU):
+    """
+    AI8X - Fused 2D Avg Pool, 2D Convolution and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, groups=args[0], **kwargs)
+
+
+class FusedAvgPoolDepthwiseConv2dBNReLU(FusedAvgPoolConv2dBNReLU):
+    """
+    AI8X - Fused 2D Avg Pool, 2D Convolution, BatchNorm and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, groups=args[0], **kwargs)
+
+
+class FusedMaxPoolDepthwiseConv2d(FusedMaxPoolConv2d):
+    """
+    AI8X - Fused 2D Avg Pool, 2D Convolution and no activation
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, groups=args[0], **kwargs)
+
+
+class FusedMaxPoolDepthwiseConv2dReLU(FusedMaxPoolConv2dReLU):
+    """
+    AI8X - Fused 2D Avg Pool, 2D Convolution and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, groups=args[0], **kwargs)
+
+
+class FusedMaxPoolDepthwiseConv2dBNReLU(FusedMaxPoolConv2dBNReLU):
+    """
+    AI8X - Fused 2D Avg Pool, 2D Convolution, BatchNorm and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, groups=args[0], **kwargs)
+
+
 class ConvTranspose2d(Conv2d):
     """
     2D pooling ('Avg', 'Max' or None) optionally followed by
@@ -1377,7 +1448,7 @@ class DevAI85(Device):
 
 class DevAI87(DevAI85):
     """
-    Implementation limits for AI87. For now, the same as MAX78000.
+    Implementation limits for MAX78002. For now, the same as MAX78000.
     """
     def __str__(self):
         return self.__class__.__name__
@@ -1535,103 +1606,3 @@ def onnx_export_prep(m, simplify=False):
                 setattr(m, attr_str, ScalerONNX())
 
     m.apply(_onnx_export_prep)
-
-
-class MBConvBlock(nn.Module):
-    """Mobile Inverted Residual Bottleneck Block.
-
-    Args:
-        image_size (tuple or list): [image_height, image_width].
-        in_channels: number of input channels
-        out_channels: number of output channels
-        kernel_size: kernel size (default 3)
-        stride: stride size (default 1)
-        se_ratio: squeeze and excitation (SE) ratio (0-1)
-        expand_ratio: expansion ratio (default 1)
-        fused: eliminates depthwise convolution layer
-
-    References:
-        [1] https://arxiv.org/pdf/2104.00298.pdf (EfficientNetV2)
-    """
-
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 kernel_size=3,
-                 stride=1,
-                 bias=False,
-                 se_ratio=None,
-                 expand_ratio=1,
-                 fused=False,
-                 **kwargs):
-        super().__init__()
-
-        self.has_se = (se_ratio is not None) and (0 < se_ratio <= 1)
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-        self.stride = stride
-        self.expand_ratio = expand_ratio
-        self.fused = fused
-
-        # Expansion phase (Inverted Bottleneck)
-        inp = in_channels  # number of input channels
-        out = in_channels * expand_ratio  # number of output channels
-        if expand_ratio != 1:
-            if fused is True:
-                self.expand_conv = FusedConv2dBNReLU(inp, out, kernel_size=kernel_size,
-                                                     padding=1, batchnorm='Affine', bias=bias,
-                                                     eps=1e-03, momentum=0.01, **kwargs)
-            else:
-                self.expand_conv = FusedConv2dBNReLU(inp, out, 1,
-                                                     batchnorm='Affine', bias=bias,
-                                                     eps=1e-03, momentum=0.01, **kwargs)
-        # Depthwise Convolution phase
-        if fused is not True:
-            self.depthwise_conv = FusedConv2dBNReLU(in_channels=out, out_channels=out,
-                                                    groups=out,  # groups makes it depthwise
-                                                    padding=1, kernel_size=kernel_size,
-                                                    stride=stride, batchnorm='Affine', bias=bias,
-                                                    eps=1e-03, momentum=0.01, **kwargs)
-        # Squeeze and Excitation phase
-        if self.has_se:
-            num_squeezed_channels = max(1, int(in_channels * se_ratio))
-            self.se_reduce = FusedConv2dReLU(in_channels=out, out_channels=num_squeezed_channels,
-                                             kernel_size=1, stride=1, bias=bias, **kwargs)
-            self.se_expand = Conv2d(in_channels=num_squeezed_channels, out_channels=out,
-                                    kernel_size=1, stride=1, bias=bias, **kwargs)
-        # Output Convolution phase
-        final_out = out_channels
-        self.project_conv = FusedConv2dBN(in_channels=out, out_channels=final_out, kernel_size=1,
-                                          batchnorm='Affine', bias=bias,
-                                          eps=1e-03, momentum=0.01, **kwargs)
-        # Skip connection
-        self.resid = Add()
-
-    def forward(self, inputs):
-        """MBConvBlock's forward function.
-
-        Args:
-            inputs (tensor): Input tensor.
-        Returns:
-            Output of this block after processing.
-        """
-        # Expansion Convolution layer
-        x = inputs
-        if self.expand_ratio != 1:
-            x = self.expand_conv(inputs)
-        # Depthwise Convolution layer
-        if self.fused is not True:
-            x = self.depthwise_conv(x)
-        # Squeeze and Excitation layers
-        if self.has_se:
-            x_squeezed = F.adaptive_avg_pool2d(x, 1)
-            x_squeezed = self.se_reduce(x_squeezed)
-            x_squeezed = self.se_expand(x_squeezed)
-            x = torch.sigmoid(x_squeezed) * x
-        # Output Convolution layer
-        x = self.project_conv(x)
-        # Skip connection
-        input_filters, output_filters = self.in_channels, self.out_channels
-        if self.stride == 1 and input_filters == output_filters:
-            x = self.resid(x, inputs)
-        return x
