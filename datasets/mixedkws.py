@@ -118,7 +118,7 @@ class MixedKWS:
         elif self.d_type == 'test':
             idx_to_select = (self.data_type == 1)[:, -1]
         else:
-            print('Unknown data type: %s' % self.d_type)
+            print(f'Unknown data type: {self.d_type}')
             return
 
         print(self.data.shape)
@@ -131,18 +131,18 @@ class MixedKWS:
         initial_new_class_label = len(self.class_dict)
         new_class_label = initial_new_class_label
         for c in self.classes:
-            if c not in self.class_dict.keys():
-                print('Class is not in the data: %s' % c)
+            if c not in self.class_dict:
+                print(f'Class is not in the data: {c}')
                 return
             # else:
-            print('Class %s, %d' % (c, self.class_dict[c]))
+            print(f'Class {c}, {self.class_dict[c]}')
             num_elems = (self.targets == self.class_dict[c]).cpu().sum()
-            print('Number of elements in class %s: %d' % (c, num_elems))
+            print(f'Number of elements in class {c}: {num_elems}')
             self.targets[(self.targets == self.class_dict[c])] = new_class_label
             new_class_label += 1
 
         num_elems = (self.targets < initial_new_class_label).cpu().sum()
-        print('Number of elements in class unknown: %d' % (num_elems))
+        print(f'Number of elements in class unknown: {num_elems}')
         self.targets[(self.targets < initial_new_class_label)] = new_class_label
         self.targets -= initial_new_class_label
         print(np.unique(self.targets.data.cpu()))

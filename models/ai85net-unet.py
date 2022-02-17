@@ -10,7 +10,7 @@
 UNet network for MAX7800X
 """
 import torch
-import torch.nn as nn
+from torch import nn
 
 import ai8x
 

@@ -86,19 +86,18 @@ except (ModuleNotFoundError, AttributeError):
     pass
 
 import torch
-import torch.backends.cudnn as cudnn
-import torch.nn as nn
 import torch.nn.parallel
 import torch.optim
 import torch.utils.data
+from torch import nn
+from torch.backends import cudnn
 
 # pylint: disable=wrong-import-order
 import distiller
-import distiller.apputils as apputils
-import distiller.model_summaries as model_summaries
 import examples.auto_compression.amc as adc
 import shap
 import torchnet.meter as tnt
+from distiller import apputils, model_summaries
 from distiller.data_loggers import PythonLogger, TensorBoardLogger
 # pylint: disable=no-name-in-module
 from distiller.data_loggers.collector import (QuantCalibrationStatsCollector,
@@ -238,9 +237,8 @@ def main():
             available_gpus = torch.cuda.device_count()
             for dev_id in args.gpus:
                 if dev_id >= available_gpus:
-                    raise ValueError('ERROR: GPU device ID {0} requested, but only {1} '
-                                     'devices available'
-                                     .format(dev_id, available_gpus))
+                    raise ValueError(f'ERROR: GPU device ID {dev_id} requested, but only '
+                                     f'{available_gpus} devices available')
             # Set default device in case the first one on the list != 0
             torch.cuda.set_device(args.gpus[0])
 
@@ -320,8 +318,10 @@ def main():
         if qat_policy is not None:
             checkpoint = torch.load(args.resumed_checkpoint_path,
                                     map_location=lambda storage, loc: storage)
+            # pylint: disable=unsubscriptable-object
             if checkpoint.get('epoch', None) >= qat_policy['start_epoch']:
                 ai8x.fuse_bn_layers(model)
+            # pylint: enable=unsubscriptable-object
         model, compression_scheduler, optimizer, start_epoch = apputils.load_checkpoint(
             model, args.resumed_checkpoint_path, model_device=args.device)
         ai8x.update_model(model)
@@ -330,8 +330,10 @@ def main():
         if qat_policy is not None:
             checkpoint = torch.load(args.load_model_path,
                                     map_location=lambda storage, loc: storage)
+            # pylint: disable=unsubscriptable-object
             if checkpoint.get('epoch', None) >= qat_policy['start_epoch']:
                 ai8x.fuse_bn_layers(model)
+            # pylint: enable=unsubscriptable-object
         model = apputils.load_lean_checkpoint(model, args.load_model_path,
                                               model_device=args.device)
         ai8x.update_model(model)
@@ -376,8 +378,7 @@ def main():
 
     if args.qe_calibration:
         msglogger.info('Quantization calibration stats collection enabled:')
-        msglogger.info('\tStats will be collected for {:.1%} '
-                       'of test dataset'.format(args.qe_calibration))
+        msglogger.info('\tStats will be collected for %.1f%% of test dataset', args.qe_calibration)
         msglogger.info('\tSetting constant seeds and converting model to serialized execution')
         distiller.set_deterministic()
         model = distiller.make_non_parallel_copy(model)
@@ -423,8 +424,8 @@ def main():
                                  args.dataset, optimizer=None)
         apputils.save_checkpoint(0, args.cnn, model, optimizer=None,
                                  scheduler=compression_scheduler,
-                                 name="{}_thinned".format(args.resumed_checkpoint_path.
-                                                          replace(".pth.tar", "")),
+                                 name=f'{args.resumed_checkpoint_path.replace(".pth.tar", "")}'
+                                      '_thinned',
                                  dir=msglogger.logdir)
         print("Note: your model may have collapsed to random inference, "
               "so you may want to fine-tune")
@@ -445,8 +446,8 @@ def main():
         msglogger.info('\tTeacher Model: %s', args.kd_teacher)
         msglogger.info('\tTemperature: %s', args.kd_temp)
         msglogger.info('\tLoss Weights (distillation | student | teacher): %s',
-                       ' | '.join(['{:.2f}'.format(val) for val in dlw]))
-        msglogger.info('\tStarting from Epoch: %s', args.kd_start_epoch)
+                       ' | '.join([f'{val:.2f}' for val in dlw]))
+        msglogger.info('\tStarting from Epoch: %d', args.kd_start_epoch)
 
     if start_epoch >= ending_epoch:
         msglogger.error('epoch count is too low, starting epoch is %d but total epochs set '
@@ -458,7 +459,10 @@ def main():
                                         'OnceForAllModel interface for NAS training!'
         if nas_policy:
             args.nas_stage_transition_list = create_nas_training_stage_list(model, nas_policy)
-            args.nas_kd_params = nas_policy['kd_params'] if 'kd_params' in nas_policy else None
+            # pylint: disable=unsubscriptable-object
+            args.nas_kd_params = nas_policy['kd_params'] \
+                if nas_policy and 'kd_params' in nas_policy else None
+            # pylint: enable=unsubscriptable-object
             if args.nas_kd_resume_from == '':
                 args.nas_kd_policy = None
             else:
@@ -472,6 +476,7 @@ def main():
 
     vloss = 10**6
     for epoch in range(start_epoch, ending_epoch):
+        # pylint: disable=unsubscriptable-object
         if qat_policy is not None and epoch > 0 and epoch == qat_policy['start_epoch']:
             # Fuse the BN parameters into conv layers before Quantization Aware Training (QAT)
             ai8x.fuse_bn_layers(model)
@@ -488,6 +493,7 @@ def main():
                 args.name = f'{args.name}_qat'
             else:
                 args.name = 'qat'
+        # pylint: enable=unsubscriptable-object
 
         # This is the main training loop.
         msglogger.info('\n')
@@ -505,9 +511,11 @@ def main():
                 msglogger.info(distiller.masks_sparsity_tbl_summary(model, compression_scheduler))
 
         # evaluate on validation set
+        # pylint: disable=unsubscriptable-object
         run_validation = not args.nas or (args.nas and (epoch < nas_policy['start_epoch']))
         run_nas_validation = args.nas and (epoch >= nas_policy['start_epoch']) and \
             ((epoch+1) % nas_policy['validation_freq'] == 0)
+        # pylint: enable=unsubscriptable-object
 
         if run_validation or run_nas_validation:
             checkpoint_name = args.name
@@ -641,8 +649,8 @@ def create_nas_kd_policy(model, compression_scheduler, epoch, next_state_start_e
     msglogger.info('\nStudent-Teacher knowledge distillation enabled for NAS:')
     msglogger.info('\tStart Epoch: %d, End Epoch: %d', epoch, next_state_start_epoch)
     msglogger.info('\tTemperature: %s', args.nas_kd_params['temperature'])
-    msglogger.info('\tLoss Weights (distillation | student | teacher): %s',
-                   ' | '.join(['{:.2f}'.format(val) for val in dlw]))
+    msglogger.info("\tLoss Weights (distillation | student | teacher): %s",
+                   ' | '.join([f'{val:.2f}' for val in dlw]))
 
 
 def train(train_loader, model, criterion, optimizer, epoch,
@@ -866,11 +874,11 @@ def test(test_loader, model, criterion, loggers, activations_collectors, args):
             with torch.no_grad():
                 global weight_min, weight_max, weight_count  # pylint: disable=global-statement
                 global weight_sum, weight_stddev, weight_mean  # pylint: disable=global-statement
-                weight_min = torch.tensor(float('inf'))  # pylint: disable=not-callable
-                weight_max = torch.tensor(float('-inf'))  # pylint: disable=not-callable
-                weight_count = torch.tensor(0, dtype=torch.int)  # pylint: disable=not-callable
-                weight_sum = torch.tensor(0.0)  # pylint: disable=not-callable
-                weight_stddev = torch.tensor(0.0)  # pylint: disable=not-callable
+                weight_min = torch.Tensor(float('inf'))
+                weight_max = torch.Tensor(float('-inf'))
+                weight_count = torch.Tensor(0, dtype=torch.int)
+                weight_sum = torch.Tensor(0.0)
+                weight_stddev = torch.Tensor(0.0)
 
                 def traverse_pass1(m):
                     """
@@ -893,7 +901,7 @@ def test(test_loader, model, criterion, loggers, activations_collectors, args):
                     """
                     Traverse model to build weight stats
                     """
-                    global weight_stddev, weight_mean  # pylint: disable=global-statement
+                    global weight_stddev  # pylint: disable=global-statement
                     if isinstance(m, nn.Conv2d):
                         weight_stddev += ((m.weight.flatten() - weight_mean) ** 2).sum()
                         if hasattr(m, 'bias') and m.bias is not None:
@@ -937,11 +945,11 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                     f.write(f'{args.labels[i.int()]}\n')
 
     if args.csv_prefix is not None:
-        with open(f'{args.csv_prefix}_ytrue.csv', 'w') as f_ytrue:
+        with open(f'{args.csv_prefix}_ytrue.csv', mode='w', encoding='utf-8') as f_ytrue:
             f_ytrue.write('truth\n')
-        with open(f'{args.csv_prefix}_ypred.csv', 'w') as f_ypred:
+        with open(f'{args.csv_prefix}_ypred.csv', mode='w', encoding='utf-8') as f_ypred:
             f_ypred.write(','.join(args.labels) + '\n')
-        with open(f'{args.csv_prefix}_x.csv', 'w') as f_x:
+        with open(f'{args.csv_prefix}_x.csv', mode='w', encoding='utf-8') as f_x:
             for i in range(args.dimensions[0]-1):
                 f_x.write(f'x_{i}_mean,')
             f_x.write(f'x_{args.dimensions[0]-1}_mean\n')
@@ -1207,7 +1215,9 @@ def earlyexit_validate_loss(output, target, _criterion, args):
 
     for exitnum in range(args.num_exits):
         # calculate losses at each sample separately in the minibatch.
-        args.loss_exits[exitnum] = earlyexit_validate_criterion(output[exitnum], target)
+        args.loss_exits[exitnum] = earlyexit_validate_criterion(  # pylint: disable=not-callable
+            output[exitnum], target
+        )
         # for batch_size > 1, we need to reduce this down to an average over the batch
         args.losses_exits[exitnum].add(torch.mean(args.loss_exits[exitnum]).cpu())
 
@@ -1218,7 +1228,7 @@ def earlyexit_validate_loss(output, target, _criterion, args):
             if args.loss_exits[exitnum][batch_index] < args.earlyexit_thresholds[exitnum]:
                 # take the results from early exit since lower than threshold
                 args.exiterrors[exitnum].add(
-                    torch.tensor(  # pylint: disable=not-callable
+                    torch.Tensor(
                         np.array(output[exitnum].data[batch_index].cpu(), ndmin=2)
                     ),
                     torch.full([1], target[batch_index], dtype=torch.long))
@@ -1229,7 +1239,7 @@ def earlyexit_validate_loss(output, target, _criterion, args):
         if not earlyexit_taken:
             exitnum = args.num_exits - 1
             args.exiterrors[exitnum].add(
-                torch.tensor(  # pylint: disable=not-callable
+                torch.Tensor(
                     np.array(output[exitnum].data[batch_index].cpu(), ndmin=2)
                 ),
                 torch.full([1], target[batch_index], dtype=torch.long))

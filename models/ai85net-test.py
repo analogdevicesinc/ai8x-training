@@ -11,10 +11,10 @@ Test networks for AI85/AI86
 
 Optionally quantize/clamp activations
 """
-import torch.nn as nn
+from torch import nn
 
 import ai8x
-import ai8x_fire
+import ai8x_blocks
 
 
 class AI85NetWide(nn.Module):
@@ -231,37 +231,37 @@ class AI85SqueezeNet(nn.Module):
         dim1 //= 2
         dim2 //= 2
         # 64x16x16
-        self.fire1 = ai8x_fire.Fire(in_planes=64, squeeze_planes=16, expand1x1_planes=64,
-                                    expand3x3_planes=64, bias=bias, **kwargs)
+        self.fire1 = ai8x_blocks.Fire(in_planes=64, squeeze_planes=16, expand1x1_planes=64,
+                                      expand3x3_planes=64, bias=bias, **kwargs)
         # 128x16x16
-        self.fire2 = ai8x_fire.Fire(in_planes=128, squeeze_planes=16, expand1x1_planes=64,
-                                    expand3x3_planes=64, bias=bias, **kwargs)
+        self.fire2 = ai8x_blocks.Fire(in_planes=128, squeeze_planes=16, expand1x1_planes=64,
+                                      expand3x3_planes=64, bias=bias, **kwargs)
         # 128x16x16
         self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)  # check if kernel size=3
         dim1 //= 2
         dim2 //= 2
         # 128x8x8
-        self.fire3 = ai8x_fire.Fire(in_planes=128, squeeze_planes=32, expand1x1_planes=128,
-                                    expand3x3_planes=128, bias=bias, **kwargs)
+        self.fire3 = ai8x_blocks.Fire(in_planes=128, squeeze_planes=32, expand1x1_planes=128,
+                                      expand3x3_planes=128, bias=bias, **kwargs)
         # 256x8x8
-        self.fire4 = ai8x_fire.Fire(in_planes=256, squeeze_planes=32, expand1x1_planes=128,
-                                    expand3x3_planes=128, bias=bias, **kwargs)
+        self.fire4 = ai8x_blocks.Fire(in_planes=256, squeeze_planes=32, expand1x1_planes=128,
+                                      expand3x3_planes=128, bias=bias, **kwargs)
         # 256x8x8
         self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)  # check if kernel size=3
         dim1 //= 2
         dim2 //= 2
         # 256x4x4
-        self.fire5 = ai8x_fire.Fire(in_planes=256, squeeze_planes=48, expand1x1_planes=192,
-                                    expand3x3_planes=192, bias=bias, **kwargs)
+        self.fire5 = ai8x_blocks.Fire(in_planes=256, squeeze_planes=48, expand1x1_planes=192,
+                                      expand3x3_planes=192, bias=bias, **kwargs)
         # 384x4x4
-        self.fire6 = ai8x_fire.Fire(in_planes=384, squeeze_planes=48, expand1x1_planes=192,
-                                    expand3x3_planes=192, bias=bias, **kwargs)
+        self.fire6 = ai8x_blocks.Fire(in_planes=384, squeeze_planes=48, expand1x1_planes=192,
+                                      expand3x3_planes=192, bias=bias, **kwargs)
         # 384x4x4
-        self.fire7 = ai8x_fire.Fire(in_planes=384, squeeze_planes=48, expand1x1_planes=256,
-                                    expand3x3_planes=256, bias=bias, **kwargs)
+        self.fire7 = ai8x_blocks.Fire(in_planes=384, squeeze_planes=48, expand1x1_planes=256,
+                                      expand3x3_planes=256, bias=bias, **kwargs)
         # 512x4x4
-        self.fire8 = ai8x_fire.Fire(in_planes=512, squeeze_planes=64, expand1x1_planes=256,
-                                    expand3x3_planes=256, bias=bias, **kwargs)
+        self.fire8 = ai8x_blocks.Fire(in_planes=512, squeeze_planes=64, expand1x1_planes=256,
+                                      expand3x3_planes=256, bias=bias, **kwargs)
         # 512x4x4
         # self.conv2 = ai8x.FusedAvgPoolConv2dReLU(in_channels=512, out_channels=num_classes,
         #                                          kernel_size=1, pool_size=4, pool_stride=4)

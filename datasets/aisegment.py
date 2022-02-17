@@ -107,7 +107,7 @@ class AISegment(Dataset):
         # 2) Two pickle files for dataset information dataframes for test and train
         # 3) Two pickle files for storing all data in a single file for test and train if memory
         #    based approach is selected
-        resolution_str = '{}x{}'.format(im_size[0], im_size[0])
+        resolution_str = f'{im_size[0]}x{im_size[1]}'
 
         self.processed_train_data_folder = \
             os.path.join(root_dir, self.__class__.__name__,
@@ -127,10 +127,10 @@ class AISegment(Dataset):
         # file per training/test
         train_dataset_pkl_file_path = \
             os.path.join(root_dir, self.__class__.__name__,
-                         'train_set_{}x{}.pkl'.format(im_size[0], im_size[0]))
+                         f'train_set_{im_size[0]}x{im_size[1]}.pkl')
         test_dataset_pkl_file_path = \
             os.path.join(root_dir, self.__class__.__name__,
-                         'test_set_{}x{}.pkl'.format(im_size[0], im_size[0]))
+                         f'test_set_{im_size[0]}x{im_size[1]}.pkl')
 
         # These image and label lists will only be in use when memory based approach is selected
         self.img_list = []
@@ -167,7 +167,7 @@ class AISegment(Dataset):
                             train_img_files_info.loc[i, 'img_file_path'] = img_file_path
                             train_img_files_info.loc[i, 'lbl_file_path'] = matting_file_path
                             train_img_files_info.loc[i, 'pickle_file_name'] = \
-                                img_name + '_{}.pkl'.format(img_crop_idx)
+                                img_name + f'_{img_crop_idx}.pkl'
                             train_img_files_info.loc[i, 'crp_idx'] = img_crop_idx
                             i = i + 1
                     else:
@@ -175,7 +175,7 @@ class AISegment(Dataset):
                             test_img_files_info.loc[j, 'img_file_path'] = img_file_path
                             test_img_files_info.loc[j, 'lbl_file_path'] = matting_file_path
                             test_img_files_info.loc[j, 'pickle_file_name'] = \
-                                img_name + '_{}.pkl'.format(img_crop_idx)
+                                img_name + f'_{img_crop_idx}.pkl'
                             test_img_files_info.loc[j, 'crp_idx'] = img_crop_idx
                             j = j + 1
 
@@ -203,7 +203,7 @@ class AISegment(Dataset):
             self.processed_folder_path = self.processed_test_data_folder
 
         else:
-            print('Unknown data type: %s' % self.d_type)
+            print(f'Unknown data type: {self.d_type}')
             return
 
         self.__create_pkl_files()
@@ -350,7 +350,7 @@ class AISegment(Dataset):
         if self.is_memory_based_approach_in_use:
             pickle.dump((self.img_list, self.lbl_list), open(self.dataset_pkl_file_path, 'wb'))
 
-        print('\nTotal number of processed files: {}\n'.format(total_num_of_processed_files))
+        print(f'\nTotal number of processed files: {total_num_of_processed_files}\n')
 
     def __len__(self):
         if self.is_truncated:
@@ -409,7 +409,7 @@ def AISegment_get_datasets(data, load_train=True, load_test=True, im_size=(80, 8
         train_dataset = AISegment(root_dir=data_dir, d_type='train',
                                   transform=train_transform,
                                   im_size=im_size, fold_ratio=fold_ratio, use_memory=use_memory)
-        print('Train dataset length: %s\n' % train_dataset.__len__())
+        print(f'Train dataset length: {train_dataset.__len__()}\n')
     else:
         train_dataset = None
 
@@ -423,7 +423,7 @@ def AISegment_get_datasets(data, load_train=True, load_test=True, im_size=(80, 8
                                  transform=test_transform,
                                  im_size=im_size, fold_ratio=fold_ratio, use_memory=use_memory)
 
-        print('Test dataset length: %s\n' % test_dataset.__len__())
+        print(f'Test dataset length: {test_dataset.__len__()}\n')
     else:
         test_dataset = None
 

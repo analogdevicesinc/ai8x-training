@@ -133,7 +133,7 @@ def get_parser(model_names, dataset_names):
     parser.add_argument('--shap', default=0, type=int,
                         help='select # of images from the test set and plot SHAP after evaluation')
     parser.add_argument('--activation-stats', '--act-stats', nargs='+', metavar='PHASE',
-                        default=list(),
+                        default=[],
                         help='collect activation statistics on phases: train, valid, and/or test'
                              ' (WARNING: this slows down training)')
     parser.add_argument('--masks-sparsity', dest='masks_sparsity', action='store_true',

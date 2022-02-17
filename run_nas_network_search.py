@@ -216,7 +216,7 @@ def generate_out_file(arch_list, num_elems, in_shape, model_type, file_path):
     json_file_content = json.dumps(file_content, indent=4)
     json_file_content = format_json_data(json_file_content)
 
-    with open(file_path, 'w') as fp:
+    with open(file_path, mode='w', encoding='utf-8') as fp:
         fp.write(json_file_content)
 
 

@@ -29,6 +29,7 @@ import hashlib
 import os
 import tarfile
 import time
+import urllib
 import warnings
 
 import numpy as np
@@ -38,7 +39,6 @@ from torchvision import transforms
 
 import librosa
 import pytsmod as tsm
-from six.moves import urllib
 
 import ai8x
 
@@ -241,7 +241,7 @@ class KWS:
             with tarfile.open(from_path, 'r:gz') as tar:
                 tar.extractall(path=to_path)
         else:
-            raise ValueError("Extraction of {} not supported".format(from_path))
+            raise ValueError(f"Extraction of {from_path} not supported")
 
         if remove_finished:
             os.remove(from_path)
@@ -257,7 +257,7 @@ class KWS:
         self.__download_url(url, download_root, filename, md5)
 
         archive = os.path.join(download_root, filename)
-        print("Extracting {} to {}".format(archive, extract_root))
+        print(f"Extracting {archive} to {extract_root}")
         self.__extract_archive(archive, extract_root, remove_finished)
 
     def __filter_dtype(self):
@@ -266,7 +266,7 @@ class KWS:
         elif self.d_type == 'test':
             idx_to_select = (self.data_type == 1)[:, -1]
         else:
-            print('Unknown data type: %s' % self.d_type)
+            print(f'Unknown data type: {self.d_type}')
             return
 
         print(self.data.shape)
@@ -279,18 +279,18 @@ class KWS:
         initial_new_class_label = len(self.class_dict)
         new_class_label = initial_new_class_label
         for c in self.classes:
-            if c not in self.class_dict.keys():
-                print('Class is not in the data: %s' % c)
+            if c not in self.class_dict:
+                print(f'Class is not in the data: {c}')
                 return
             # else:
-            print('Class %s, %d' % (c, self.class_dict[c]))
+            print(f'Class {c}, {self.class_dict[c]}')
             num_elems = (self.targets == self.class_dict[c]).cpu().sum()
-            print('Number of elements in class %s: %d' % (c, num_elems))
+            print(f'Number of elements in class {c}: {num_elems}')
             self.targets[(self.targets == self.class_dict[c])] = new_class_label
             new_class_label += 1
 
         num_elems = (self.targets < initial_new_class_label).cpu().sum()
-        print('Number of elements in class unknown: %d' % (num_elems))
+        print(f'Number of elements in class unknown: {num_elems}')
         self.targets[(self.targets < initial_new_class_label)] = new_class_label
         self.targets -= initial_new_class_label
         print(np.unique(self.targets.data.cpu()))
@@ -409,13 +409,13 @@ class KWS:
             overlap = int(np.ceil(row_len * overlap_ratio))
             num_rows = int(np.ceil(exp_len / (row_len - overlap)))
             data_len = int((num_rows*row_len - (num_rows-1)*overlap))
-            print('data_len: %s' % data_len)
+            print(f'data_len: {data_len}')
 
             # show the size of dataset for each keyword
             print('------------- Label Size ---------------')
             for i, label in enumerate(labels):
                 record_list = os.listdir(os.path.join(self.raw_folder, label))
-                print('%8s:  \t%d' % (label, len(record_list)))
+                print(f'{label:8s}:  \t{len(record_list)}')
             print('------------------------------------------')
 
             for i, label in enumerate(labels):
@@ -440,7 +440,7 @@ class KWS:
                 test_count = 0
                 for r, record_name in enumerate(record_list):
                     if r % 1000 == 0:
-                        print('\t%d of %d' % (r + 1, len(record_list)))
+                        print(f'\t{r + 1} of {len(record_list)}')
 
                     if hash(record_name) % 10 < 9:
                         d_typ = np.uint8(0)  # train+val
@@ -476,7 +476,7 @@ class KWS:
                                 data_in[data_idx, :, n_r] = audio_chunk
 
                 dur = time.time() - time_s
-                print('Done in %.3fsecs.' % dur)
+                print(f'Finished in {dur:.3f} seconds.')
                 print(data_in.shape)
                 time_s = time.time()
                 if i == 0:
@@ -488,7 +488,7 @@ class KWS:
                     data_class_all = np.concatenate((data_class_all, data_class), axis=0)
                     data_type_all = np.concatenate((data_type_all, data_type), axis=0)
                 dur = time.time() - time_s
-                print('Data concat done in %.3fsecs.' % dur)
+                print(f'Data concatenation finished in {dur:.3f} seconds.')
 
             data_in_all = torch.from_numpy(data_in_all)
             data_class_all = torch.from_numpy(data_class_all)
@@ -497,8 +497,8 @@ class KWS:
             mfcc_dataset = (data_in_all, data_class_all, data_type_all)
             torch.save(mfcc_dataset, os.path.join(self.processed_folder, self.data_file))
 
-        print('Dataset created!')
-        print('Training+Validation: %d,  Test: %d' % (train_count, test_count))
+        print('Dataset created.')
+        print(f'Training+Validation: {train_count},  Test: {test_count}')
 
 
 class KWS_20(KWS):

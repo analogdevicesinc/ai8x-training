@@ -1,2 +1,2 @@
 #!/bin/sh
-python3 train.py --epochs 100 --optimizer Adam --lr 0.001 --deterministic --compress schedule-faceid.yaml --model ai85faceidnet --dataset FaceID --batch-size 100 --device MAX78000 --regression --print-freq 250 "$@"
+python train.py --epochs 100 --optimizer Adam --lr 0.001 --deterministic --compress schedule-faceid.yaml --model ai85faceidnet --dataset FaceID --batch-size 100 --device MAX78000 --regression --print-freq 250 "$@"

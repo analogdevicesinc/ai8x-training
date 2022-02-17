@@ -13,6 +13,7 @@ import errno
 import hashlib
 import os
 import tarfile
+import urllib
 import warnings
 
 import numpy as np
@@ -23,7 +24,6 @@ from torchvision import transforms
 import librosa
 import librosa.display
 from PIL import Image
-from six.moves import urllib
 
 import ai8x
 
@@ -78,7 +78,7 @@ class SpeechCom(torch.utils.data.Dataset):
         elif self.d_type == 'val':
             data_file = self.validation_file
         else:
-            print('Unknown data type: %s' % d_type)
+            print(f'Unknown data type: {d_type}')
             return
 
         self.data, self.targets = torch.load(os.path.join(self.processed_folder, data_file))
@@ -132,8 +132,8 @@ class SpeechCom(torch.utils.data.Dataset):
                                 test_images.append(S_8bit)
                                 test_labels.append(label)
 
-            print('%d of %d are rejected as no keyword is detected in the record.' %
-                  (silence_counter, total_counter))
+            print(f'{silence_counter} of {total_counter} are rejected as no '
+                  'keyword is detected in the record.')
 
             train_images = torch.from_numpy(np.array(train_images))
             val_images = torch.from_numpy(np.array(val_images))
@@ -241,7 +241,7 @@ class SpeechCom(torch.utils.data.Dataset):
             with tarfile.open(from_path, 'r:gz') as tar:
                 tar.extractall(path=to_path)
         else:
-            raise ValueError("Extraction of {} not supported".format(from_path))
+            raise ValueError(f"Extraction of {from_path} not supported")
 
         if remove_finished:
             os.remove(from_path)
@@ -257,25 +257,25 @@ class SpeechCom(torch.utils.data.Dataset):
         self.__download_url(url, download_root, filename, md5)
 
         archive = os.path.join(download_root, filename)
-        print("Extracting {} to {}".format(archive, extract_root))
+        print(f"Extracting {archive} to {extract_root}")
         self.__extract_archive(archive, extract_root, remove_finished)
 
     def __filter_classes(self):
         initial_new_class_label = len(self.class_dict)
         new_class_label = initial_new_class_label
         for c in self.classes:
-            if c not in self.class_dict.keys():
-                print('Class is not in the data: %s' % c)
+            if c not in self.class_dict:
+                print(f'Class is not in the data: {c}')
                 return
             # else:
-            print('Class %s, %d' % (c, self.class_dict[c]))
+            print(f'Class {c}, {self.class_dict[c]}')
             num_elems = (self.targets == self.class_dict[c]).cpu().sum()
-            print('Number of elements in class %s: %d' % (c, num_elems))
+            print(f'Number of elements in class {c}: {num_elems}')
             self.targets[(self.targets == self.class_dict[c])] = new_class_label
             new_class_label += 1
 
         num_elems = (self.targets < initial_new_class_label).cpu().sum()
-        print('Number of elements in class unknown: %d' % (num_elems))
+        print(f'Number of elements in class unknown: {num_elems}')
         self.targets[(self.targets < initial_new_class_label)] = new_class_label
         self.targets -= initial_new_class_label
         print(np.unique(self.targets.data.cpu()))
