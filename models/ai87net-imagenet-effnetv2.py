@@ -37,33 +37,33 @@ class AI87ImageNetEfficientNetV2(nn.Module):
         # 56x56
         # Series of MBConv blocks
         self.mb_conv1 = ai8x_blocks.MBConvBlock(32, 16, 3, bias=bias, se_ratio=None,
-                                         expand_ratio=1, fused=True, **kwargs)
+                                                expand_ratio=1, fused=True, **kwargs)
         self.mb_conv2 = ai8x_blocks.MBConvBlock(16, 32, 3, bias=bias, se_ratio=None,
-                                         expand_ratio=4, fused=True, **kwargs)
+                                                expand_ratio=4, fused=True, **kwargs)
         self.mb_conv3 = ai8x_blocks.MBConvBlock(32, 32, 3, bias=bias, se_ratio=None,
-                                         expand_ratio=4, fused=True, **kwargs)
+                                                expand_ratio=4, fused=True, **kwargs)
         self.mb_conv4 = ai8x_blocks.MBConvBlock(32, 48, 3, bias=bias, se_ratio=None,
-                                         expand_ratio=4, fused=True, **kwargs)
+                                                expand_ratio=4, fused=True, **kwargs)
         self.mb_conv5 = ai8x_blocks.MBConvBlock(48, 48, 3, bias=bias, se_ratio=None,
-                                         expand_ratio=4, fused=True, **kwargs)
+                                                expand_ratio=4, fused=True, **kwargs)
         self.mb_conv6 = ai8x_blocks.MBConvBlock(48, 48, 3, bias=bias, se_ratio=None,
-                                         expand_ratio=4, fused=True, **kwargs)
+                                                expand_ratio=4, fused=True, **kwargs)
         self.max_pooling1 = ai8x.MaxPool2d((2, 2))
-        # 28x28  
+        # 28x28
         self.mb_conv7 = ai8x_blocks.MBConvBlock(48, 96, 3, bias=bias, se_ratio=None,
-                                         expand_ratio=2, fused=False, **kwargs)
+                                                expand_ratio=2, fused=False, **kwargs)
         self.mb_conv8 = ai8x_blocks.MBConvBlock(96, 96, 3, bias=bias, se_ratio=None,
-                                         expand_ratio=2, fused=False, **kwargs)
+                                                expand_ratio=2, fused=False, **kwargs)
         self.mb_conv9 = ai8x_blocks.MBConvBlock(96, 128, 3, bias=bias, se_ratio=None,
-                                         expand_ratio=2, fused=False, **kwargs)
-        
+                                                expand_ratio=2, fused=False, **kwargs)
+
         self.conv10 = ai8x.FusedMaxPoolConv2dBNReLU(128, 128, 1, pool_size=2,
-                                                       pool_stride=2, stride=1, batchnorm='Affine',
-                                                       padding=0, bias=bias, eps=1e-03,
-                                                       momentum=0.01, **kwargs)
+                                                    pool_stride=2, stride=1, batchnorm='Affine',
+                                                    padding=0, bias=bias, eps=1e-03,
+                                                    momentum=0.01, **kwargs)
         # 14x14
         self.mb_conv11 = ai8x_blocks.MBConvBlock(128, 128, 3, bias=bias, se_ratio=None,
-                                         expand_ratio=4, fused=False, **kwargs)
+                                                 expand_ratio=4, fused=False, **kwargs)
         # Head Layer
         self.conv_head = ai8x.FusedConv2dBNReLU(128, 1024, 1, stride=1, batchnorm='Affine',
                                                 padding=0, bias=bias, eps=1e-03,
