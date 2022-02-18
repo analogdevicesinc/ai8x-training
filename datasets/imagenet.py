@@ -32,7 +32,6 @@ from torchvision import transforms
 import ai8x
 
 
-# def imagenet_get_datasets(data, load_train=True, load_test=True, input_size=224, folder=False):
 def imagenet_get_datasets(data, load_train=True, load_test=True, input_size=112, folder=False):
     """
     Load the ImageNet 2012 Classification dataset.
@@ -100,7 +99,6 @@ def imagenet_get_datasets(data, load_train=True, load_test=True, input_size=112,
     return train_dataset, test_dataset
 
 
-# def imagenetfolder_get_datasets(data, load_train=True, load_test=True, input_size=224):
 def imagenetfolder_get_datasets(data, load_train=True, load_test=True, input_size=112):
     """
     Load the ImageNet 2012 Classification dataset using ImageFolder.
@@ -113,7 +111,6 @@ def imagenetfolder_get_datasets(data, load_train=True, load_test=True, input_siz
 datasets = [
     {
         'name': 'ImageNet',
-        # 'input': (3, 224, 224),
         'input': (3, 112, 112),
         'output': list(map(str, range(1000))),
         'loader': imagenet_get_datasets,
