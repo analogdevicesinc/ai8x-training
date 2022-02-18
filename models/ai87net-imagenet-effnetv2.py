@@ -7,12 +7,13 @@
 #
 ###################################################################################################
 """
-ImageNet EfficientNet v.2
+ImageNet EfficientNet v.2 network implementation for MAX78002.
 """
 from torch import nn
 
 import ai8x
 import ai8x_blocks
+
 
 class AI87ImageNetEfficientNetV2(nn.Module):
     """
