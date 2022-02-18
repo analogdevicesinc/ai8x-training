@@ -32,7 +32,7 @@ from torchvision import transforms
 import ai8x
 
 
-def imagenet_get_datasets(data, load_train=True, load_test=True, input_size=224, folder=False):
+def imagenet_get_datasets(data, load_train=True, load_test=True, input_size=112, folder=False):
     """
     Load the ImageNet 2012 Classification dataset.
 
@@ -58,13 +58,13 @@ def imagenet_get_datasets(data, load_train=True, load_test=True, input_size=224,
 
         if not folder:
             train_dataset = torchvision.datasets.ImageNet(
-                data_dir,
+                os.path.join(data_dir, 'ImageNet'),
                 split='train',
                 transform=train_transform,
             )
         else:
             train_dataset = torchvision.datasets.ImageFolder(
-                os.path.join(data_dir, 'train'),
+                os.path.join(data_dir, 'ImageNet', 'train'),
                 transform=train_transform,
             )
     else:
@@ -81,13 +81,13 @@ def imagenet_get_datasets(data, load_train=True, load_test=True, input_size=224,
 
         if not folder:
             test_dataset = torchvision.datasets.ImageNet(
-                data_dir,
+                os.path.join(data_dir, 'ImageNet'),
                 split='val',
                 transform=test_transform,
             )
         else:
             test_dataset = torchvision.datasets.ImageFolder(
-                os.path.join(data_dir, 'val'),
+                os.path.join(data_dir, 'ImageNet', 'val'),
                 transform=test_transform,
             )
 
@@ -99,7 +99,7 @@ def imagenet_get_datasets(data, load_train=True, load_test=True, input_size=224,
     return train_dataset, test_dataset
 
 
-def imagenetfolder_get_datasets(data, load_train=True, load_test=True, input_size=224):
+def imagenetfolder_get_datasets(data, load_train=True, load_test=True, input_size=112):
     """
     Load the ImageNet 2012 Classification dataset using ImageFolder.
     _This function is used when the number of output classes is less than the default and
@@ -111,7 +111,7 @@ def imagenetfolder_get_datasets(data, load_train=True, load_test=True, input_siz
 datasets = [
     {
         'name': 'ImageNet',
-        'input': (3, 224, 224),
+        'input': (3, 112, 112),
         'output': list(map(str, range(1000))),
         'loader': imagenet_get_datasets,
     },
