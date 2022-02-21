@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-_February 15, 2022_
+_February 21, 2022_
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -1150,7 +1150,7 @@ Dataset sizes:
 	training=54000
 	validation=6000
 	test=10000
-Reading compression schedule from: schedule.yaml
+Reading compression schedule from: policies/schedule.yaml
 
 
 Training epoch: 54000 samples (256 per mini-batch)
@@ -1264,7 +1264,7 @@ The following table describes the most important command line arguments for `tra
 | `--lr`, `--learning-rate`  | Set initial learning rate                                    | `--lr 0.001`                    |
 | `--deterministic`          | Seed random number generators with fixed values              |                                 |
 | `--resume-from`            | Resume from previous checkpoint                              | `--resume-from chk.pth.tar`     |
-| `--qat-policy`             | Define QAT policy in YAML file (default: qat_policy.yaml). Use ‘’None” to disable QAT. | `--qat-policy qat_policy.yaml` |
+| `--qat-policy`             | Define QAT policy in YAML file (default: policies/qat_policy.yaml). Use ‘’None” to disable QAT. | `--qat-policy qat_policy.yaml` |
 | `--nas`                    | Enable network architecture search                           |                                 |
 | `--nas-policy`             | Define NAS policy in YAML file                               | `--nas-policy nas/nas_policy.yaml` |
 | `--regression` | Select regression instead of classification (changes Loss function, and log output) |  |
@@ -1422,7 +1422,7 @@ Quantization-aware training (QAT) is enabled by default. QAT is controlled by a 
 * `weight_bits` describes the number of bits available for weights.
 * `overrides` allows specifying the `weight_bits` on a per-layer basis.
 
-By default, weights are quantized to 8-bits after 10 epochs as specified in `qat_policy.yaml`. A more refined example that specifies weight sizes for individual layers can be seen in `qat_policy_cifar100.yaml`.
+By default, weights are quantized to 8-bits after 10 epochs as specified in `policies/qat_policy.yaml`. A more refined example that specifies weight sizes for individual layers can be seen in `policies/qat_policy_cifar100.yaml`.
 
 Quantization-aware training can be <u>disabled</u> by specifying `--qat-policy None`.
 

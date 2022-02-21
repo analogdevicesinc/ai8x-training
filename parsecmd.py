@@ -28,6 +28,7 @@ Command line parser for the Training/Quantization software.
 """
 
 import argparse
+import os
 
 # pylint: disable=wrong-import-order
 import distiller
@@ -77,7 +78,8 @@ def get_parser(model_names, dataset_names):
                              '(default: use "floor()")')
 
     qat_args = parser.add_argument_group('Quantization Arguments')
-    qat_args.add_argument('--qat-policy', dest='qat_policy', default='qat_policy.yaml',
+    qat_args.add_argument('--qat-policy', dest='qat_policy',
+                          default=os.path.join('policies', 'qat_policy.yaml'),
                           help='path to YAML file that defines the '
                                'QAT (quantization-aware training) policy')
 
