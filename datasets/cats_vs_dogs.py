@@ -36,13 +36,12 @@ def catsdogs_get_datasets(data, load_train=True, load_test=True):
 
         if not is_dir:
             print("******************************************")
-            print("Please follow instructions below:")
-            print("Download the dataset in the current working directory by visiting this link"
-                  "\'https://www.kaggle.com/c/dogs-vs-cats/data\'")
-            print("and click the \'Download all\' button")
-            print("If you do not have a Kaggle account, sign-up first.")
+            print("Download the dataset to the data/ directory by visiting the "
+                  "following link: https://www.kaggle.com/c/dogs-vs-cats/data")
+            print("and click the \'Download all\' button. "
+                  "If you do not have a Kaggle account, sign up first.")
             print("Unzip \'dogs-vs-cats.zip\' and you will see train.zip, test1.zip and .csv "
-                  " file. Unzip the train.zip file and re-run the script")
+                  "files. Unzip train.zip to data/cats_vs_dogs/ and re-run the script.")
             print("******************************************")
             sys.exit("Dataset not found..")
         else:
