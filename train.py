@@ -1586,8 +1586,8 @@ def update_old_model_params(model_path, model_new):
 if __name__ == '__main__':
     try:
         check_pytorch_version()
-        np.set_printoptions(threshold=np.inf, linewidth=190)
-        torch.set_printoptions(threshold=np.inf, linewidth=190)
+        np.set_printoptions(threshold=sys.maxsize, linewidth=190)
+        torch.set_printoptions(threshold=sys.maxsize, linewidth=190)
 
         # import builtins, sys
         # print(distiller.config.__name__)
