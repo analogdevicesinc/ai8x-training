@@ -140,7 +140,6 @@ class CamVidDataset(Dataset):
                 self.label_mask_dict[label] = label_mask
 
     def __filter_classes(self):
-        print('\n')
         for _, e in enumerate(self.lbl_list):
             initial_new_class_label = len(self.class_dict) + 5
             new_class_label = initial_new_class_label
@@ -153,7 +152,7 @@ class CamVidDataset(Dataset):
                 new_class_label += 1
 
             e[(e < initial_new_class_label)] = new_class_label
-            e = copy.deepcopy(e - initial_new_class_label)
+            e -= initial_new_class_label
 
     @staticmethod
     def normalize(data):
