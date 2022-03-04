@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2018-2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2018-2022 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -37,7 +37,9 @@ def confusion_matrix(cm, labels, normalize=False):
 
     np.set_printoptions(precision=2)
 
-    fig = matfig.Figure(figsize=(5, 5), dpi=96, facecolor='w', edgecolor='k')
+    figsize = min(20, max(5, len(labels) // 2))
+
+    fig = matfig.Figure(figsize=(figsize, figsize), dpi=96, facecolor='w', edgecolor='k')
     ax = fig.add_subplot(1, 1, 1)
     ax.imshow(cm, cmap='jet')
 
