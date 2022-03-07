@@ -95,13 +95,10 @@ class KWS:
         if download:
             self.__download()
 
-        print(self.t_type)
         self.data, self.targets, self.data_type = torch.load(os.path.join(
             self.processed_folder, self.data_file))
 
-        print(self.d_type)
-        print(self.data.shape)
-
+        print(f'\nProcessing {self.d_type}...')
         self.__filter_dtype()
         self.__filter_classes()
 
@@ -129,7 +126,7 @@ class KWS:
             elif 'mu' not in self.quantization:
                 self.quantization['mu'] = 255
         else:
-            print('No define quantization schema!, ',
+            print('Undefined quantization schema! ',
                   'Number of bits set to 8.')
             self.quantization = {'bits': 8, 'compand': False}
 
@@ -138,20 +135,20 @@ class KWS:
         if augmentation:
             if 'aug_num' not in augmentation:
                 print('No key `aug_num` in input augmentation dictionary! ',
-                      'It is set to 0.')
+                      'Using 0.')
                 self.augmentation['aug_num'] = 0
             elif self.augmentation['aug_num'] != 0:
                 if 'noise_var' not in augmentation:
                     print('No key `noise_var` in input augmentation dictionary! ',
-                          'It is set to defaults: [Min: 0., Max: 1.]')
+                          'Using defaults: [Min: 0., Max: 1.]')
                     self.augmentation['noise_var'] = {'min': 0., 'max': 1.}
                 if 'shift' not in augmentation:
                     print('No key `shift` in input augmentation dictionary! '
-                          'It is set to defaults: [Min:-0.1, Max: 0.1]')
+                          'Using defaults: [Min:-0.1, Max: 0.1]')
                     self.augmentation['shift'] = {'min': -0.1, 'max': 0.1}
                 if 'strech' not in augmentation:
                     print('No key `strech` in input augmentation dictionary! '
-                          'It is set to defaults: [Min: 0.8, Max: 1.3]')
+                          'Using defaults: [Min: 0.8, Max: 1.3]')
                     self.augmentation['strech'] = {'min': 0.8, 'max': 1.3}
 
     def __download(self):
@@ -269,7 +266,6 @@ class KWS:
             print(f'Unknown data type: {self.d_type}')
             return
 
-        print(self.data.shape)
         self.data = self.data[idx_to_select, :]
         self.targets = self.targets[idx_to_select, :]
         del self.data_type
@@ -280,21 +276,17 @@ class KWS:
         new_class_label = initial_new_class_label
         for c in self.classes:
             if c not in self.class_dict:
-                print(f'Class is not in the data: {c}')
+                print(f'Class {c} not found in data')
                 return
-            # else:
-            print(f'Class {c}, {self.class_dict[c]}')
             num_elems = (self.targets == self.class_dict[c]).cpu().sum()
-            print(f'Number of elements in class {c}: {num_elems}')
+            print(f'Class {c} (# {self.class_dict[c]}): {num_elems} elements')
             self.targets[(self.targets == self.class_dict[c])] = new_class_label
             new_class_label += 1
 
         num_elems = (self.targets < initial_new_class_label).cpu().sum()
-        print(f'Number of elements in class unknown: {num_elems}')
+        print(f'Class UNKNOWN: {num_elems} elements')
         self.targets[(self.targets < initial_new_class_label)] = new_class_label
         self.targets -= initial_new_class_label
-        print(np.unique(self.targets.data.cpu()))
-        print('\n')
 
     def __len__(self):
         return len(self.data)
@@ -303,11 +295,8 @@ class KWS:
         inp, target = self.data[index].type(torch.FloatTensor), int(self.targets[index])
         if not self.save_unquantized:
             inp /= 256
-        # print(inp)
-        # print("Shape 1:", inp.shape)
         if self.transform is not None:
             inp = self.transform(inp)
-        # print("Shape 2:", inp.shape)
         return inp, target
 
     @staticmethod
@@ -397,7 +386,7 @@ class KWS:
 
     def __gen_datasets(self, exp_len=16384, row_len=128, overlap_ratio=0):
         print('Generating dataset from raw data samples for the first time. ')
-        print('Warning: This process could take an hour!')
+        print('This process will take significant time (~60 minutes)...')
         with warnings.catch_warnings():
             warnings.simplefilter('error')
 
@@ -533,11 +522,9 @@ def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6):
         ai8x.normalize(args=args)
     ])
 
-    if num_classes == 6:
-        classes = ['up', 'down', 'left', 'right', 'stop', 'go']
-    elif num_classes == 20:
-        classes = ['up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
-                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero']
+    if num_classes in (6, 20):
+        classes = next((e for _, e in enumerate(datasets)
+                        if len(e['output']) - 1 == num_classes))['output'][:-1]
     else:
         raise ValueError(f'Unsupported num_classes {num_classes}')
 
@@ -593,18 +580,9 @@ def KWS_get_unquantized_datasets(data, load_train=True, load_test=True, num_clas
 
     transform = None
 
-    if num_classes == 6:
-        classes = ['up', 'down', 'left', 'right', 'stop', 'go']
-    elif num_classes == 20:
-        classes = ['up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
-                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero']
-    elif num_classes == 35:
-        classes = ['backward', 'bed', 'bird', 'cat', 'dog', 'down',
-                   'eight', 'five', 'follow', 'forward', 'four', 'go',
-                   'happy', 'house', 'learn', 'left', 'marvin', 'nine',
-                   'no', 'off', 'on', 'one', 'right', 'seven',
-                   'sheila', 'six', 'stop', 'three', 'tree', 'two',
-                   'up', 'visual', 'wow', 'yes', 'zero']
+    if num_classes in (6, 20, 35):
+        classes = next((e for _, e in enumerate(datasets)
+                        if len(e['output']) - 1 == num_classes))['output'][:-1]
     else:
         raise ValueError(f'Unsupported num_classes {num_classes}')
 
@@ -644,22 +622,28 @@ datasets = [
     {
         'name': 'KWS',  # 6 keywords
         'input': (512, 64),
-        'output': (0, 1, 2, 3, 4, 5, 6),
+        'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'UNKNOWN'),
         'weight': (1, 1, 1, 1, 1, 1, 0.06),
         'loader': KWS_get_datasets,
     },
     {
         'name': 'KWS_20',  # 20 keywords
         'input': (128, 128),
-        'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20),
+        'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
+                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
+                   'UNKNOWN'),
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.14),
         'loader': KWS_20_get_datasets,
     },
     {
         'name': 'KWS_35_unquantized',  # 35 keywords
         'input': (128, 128),
-        'output': (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-                   21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34),
+        'output': ('backward', 'bed', 'bird', 'cat', 'dog', 'down',
+                   'eight', 'five', 'follow', 'forward', 'four', 'go',
+                   'happy', 'house', 'learn', 'left', 'marvin', 'nine',
+                   'no', 'off', 'on', 'one', 'right', 'seven',
+                   'sheila', 'six', 'stop', 'three', 'tree', 'two',
+                   'up', 'visual', 'wow', 'yes', 'zero', 'UNKNOWN'),
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
         'loader': KWS_35_get_unquantized_datasets,
