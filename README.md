@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-_March 10, 2022_
+March 14, 2022
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -15,8 +15,8 @@ ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 5. The reference design repository, which contains host applications and sample applications for reference designs:
     [refdes](https://github.com/MaximIntegratedAI/refdes)
 
-_Open the `.md` version of this file in a markdown enabled viewer, for example Typora (http://typora.io).
-See https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet for a description of Markdown. A [PDF copy of this file](README.pdf) is available in this repository. The GitHub rendering of this document does not show the mathematical formulas nor the clickable table of contents._
+_Open the `.md` version of this file in a markdown enabled viewer, for example Typora (<http://typora.io>).
+See <https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet> for a description of Markdown. A [PDF copy of this file](README.pdf) is available in this repository. The GitHub rendering of this document does not show the mathematical formulas nor the clickable table of contents._
 
 ---
 
@@ -136,20 +136,20 @@ Ctrl+A,D to disconnect
 The following software is optional, and can be replaced with other similar software of the user’s choosing.
 
 1. Code Editor
-   Visual Studio Code (free), https://code.visualstudio.com or the VSCodium version, https://vscodium.com, with the “Remote - SSH” plugin; *to use Visual Studio Code on Windows as a full development environment (including debug), see https://github.com/MaximIntegratedTechSupport/VSCode-Maxim*
-   Sublime Text ($100), https://www.sublimetext.com
+   Visual Studio Code, <https://code.visualstudio.com> or the VSCodium version, <https://vscodium.com>, with the “Remote - SSH” plugin; *to use Visual Studio Code on Windows as a full development environment (including debug), see <https://github.com/MaximIntegratedTechSupport/VSCode-Maxim>*
+   Sublime Text, <https://www.sublimetext.com>
 2. Markdown Editor
-   Typora ($15), http://typora.io
+   Typora, <http://typora.io>
 3. Serial Terminal
-   CoolTerm (free), http://freeware.the-meiers.org
-   Serial ($30), https://apps.apple.com/us/app/serial/id877615577?mt=12
-   Putty (free), https://www.chiark.greenend.org.uk/~sgtatham/putty/latest.html
-   Tera Term (free), https://osdn.net/projects/ttssh2/releases/
+   CoolTerm, <http://freeware.the-meiers.org>
+   Serial, <https://apps.apple.com/us/app/serial/id877615577?mt=12>
+   Putty, <https://www.chiark.greenend.org.uk/~sgtatham/putty/latest.html>
+   Tera Term, <https://osdn.net/projects/ttssh2/releases/>
 4. Graphical Git Client
-   GitHub Desktop (free), https://desktop.github.com
-   Git Fork ($50), https://git-fork.com
+   GitHub Desktop, <https://desktop.github.com>
+   Git Fork, <https://git-fork.com>
 5. Diff and Merge Tool
-   Beyond Compare ($60), https://scootersoftware.com
+   Beyond Compare, <https://scootersoftware.com>
 
 ### Project Installation
 
@@ -213,7 +213,7 @@ This particular version will not function correctly with the MAX78000/MAX78002 t
 
 ##### pyenv
 
-It is not necessary to install Python 3.8 system-wide, or to rely on the system-provided Python. To manage Python versions, instead use `pyenv` (https://github.com/pyenv/pyenv).
+It is not necessary to install Python 3.8 system-wide, or to rely on the system-provided Python. To manage Python versions, instead use `pyenv` (<https://github.com/pyenv/pyenv>).
 
 On macOS (no CUDA support available):
 
@@ -779,7 +779,7 @@ The fast FIFO is selected using the `--fast-fifo` argument for `ai8xize.py`.
 
 ### Number Format
 
-All weights, bias values and data are stored and computed in Q7 format (signed two’s complement 8-bit integers, [–128...+127]). See https://en.wikipedia.org/wiki/Q_%28number_format%29.
+All weights, bias values and data are stored and computed in Q7 format (signed two’s complement 8-bit integers, [–128...+127]). See <https://en.wikipedia.org/wiki/Q_%28number_format%29>.
 
 The 8-bit value $w$ is defined as:
 
@@ -1558,7 +1558,7 @@ For more information, please also see [Quantization](#Quantization).
 
 #### Batch Normalization
 
-Batch normalization after `Conv1d` and `Conv2d` layers is supported using “fusing.” The fusing operation merges the effect of batch normalization layers into the parameters of the preceding convolutional layer, by modifying weights and bias values of that preceding layer. For detailed information about batch normalization fusing/fusion/folding, see Section 3.2 of the following paper: https://arxiv.org/pdf/1712.05877.pdf.
+Batch normalization after `Conv1d` and `Conv2d` layers is supported using “fusing.” The fusing operation merges the effect of batch normalization layers into the parameters of the preceding convolutional layer, by modifying weights and bias values of that preceding layer. For detailed information about batch normalization fusing/fusion/folding, see Section 3.2 of the following paper: <https://arxiv.org/pdf/1712.05877.pdf>.
 
 After fusing/folding, the network will no longer contain any batchnorm layers. The effects of batch normalization will instead be expressed by modified weights and biases of the preceding convolutional layer.
 
@@ -1622,7 +1622,7 @@ When using PuTTY, port forwarding is achieved as follows:
 
 #### SHAP — SHapely Additive exPlanations
 
-The training software integrates code to generate SHAP plots (see https://github.com/slundberg/shap). This  can help with feature attribution for input images.
+The training software integrates code to generate SHAP plots (see <https://github.com/slundberg/shap>). This  can help with feature attribution for input images.
 
 The `train.py` program can create plots using the `--shap` command line argument in combination with `--evaluate`:
 
@@ -1790,9 +1790,9 @@ If the model initially trains correctly, but the quantized performance is signif
 #### Alternative Quantization Approaches
 
 If quantization-aware training is not desired, post-training quantization can be improved using more sophisticated methods. For example, see
-https://github.com/pytorch/glow/blob/master/docs/Quantization.md,
-https://github.com/ARM-software/ML-examples/tree/master/cmsisnn-cifar10,
-https://github.com/ARM-software/ML-KWS-for-MCU/blob/master/Deployment/Quant_guide.md,
+<https://github.com/pytorch/glow/blob/master/docs/Quantization.md>,
+<https://github.com/ARM-software/ML-examples/tree/master/cmsisnn-cifar10>,
+<https://github.com/ARM-software/ML-KWS-for-MCU/blob/master/Deployment/Quant_guide.md>,
 or Distiller’s approach (installed with this software).
 
 Further, a quantized network can be refined using post-quantization training (see Distiller).
@@ -1852,7 +1852,7 @@ The application note [Data Loader Design for MAX78000 Model Training](https://ww
 
 In brief, the following steps are needed for new data formats and datasets:
 
-* Develop a data loader in PyTorch, see https://pytorch.org/tutorials/beginner/data_loading_tutorial.html. See `datasets/mnist.py` for an example.
+* Develop a data loader in PyTorch, see <https://pytorch.org/tutorials/beginner/data_loading_tutorial.html>. See `datasets/mnist.py` for an example.
 
 * The data loader must include a loader function, for example `mnist_get_datasets(data, load_train=True, load_test=True)`. `data` is a tuple of the specified data directory and the program arguments, and the two *bools* specify whether training and/or test data should be loaded.
 
@@ -2211,7 +2211,7 @@ To generate an RTL simulation for the same network and sample data in the direct
 
 ### Network Loader Configuration Language
 
-Network descriptions are written in YAML (see https://en.wikipedia.org/wiki/YAML). There are two sections in each file — global statements and a sequence of layer descriptions.
+Network descriptions are written in YAML (see <https://en.wikipedia.org/wiki/YAML>). There are two sections in each file — global statements and a sequence of layer descriptions.
 
 *Note: The network loader automatically checks the configuration file for syntax errors and prints warnings for non-fatal errors. To perform the same checks manually, run:* `yamllint configfile.yaml`
 
@@ -3050,7 +3050,7 @@ See the [benchmarking guide](https://github.com/MaximIntegratedAI/MaximAI_Docume
 
 ## Further Information
 
-Additional information about the evaluation kits, and the software development kit (SDK) is available on the web at https://github.com/MaximIntegratedAI/MaximAI_Documentation
+Additional information about the evaluation kits, and the software development kit (SDK) is available on the web at <https://github.com/MaximIntegratedAI/MaximAI_Documentation>.
 
 [AHB Addresses for MAX78000 and MAX78002](https://github.com/MaximIntegratedAI/ai8x-synthesis/blob/develop/docs/Windows.md)
 
@@ -3084,6 +3084,6 @@ Do not try to push any changes into the master branch. Instead, create a fork an
 *Note: After creating the fork, you must re-enable actions in the “Actions” tab of the repository on GitHub.*
 
 The following document has more information:
-https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/CONTRIBUTING.md
+<https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/CONTRIBUTING.md>
 
 ---

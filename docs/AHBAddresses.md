@@ -102,7 +102,7 @@ Total: 432 KiB (64 instances of 768 × 72)
 
 ### Bias memory (BRAM)
 
-Total: 2 KiB (4 instances of 512 × 8) 
+Total: 2 KiB (4 instances of 512 × 8)
 
 | Quadrant | Address Range\*          |
 | -------- | ----------------------- |
@@ -288,7 +288,7 @@ Total: 2,340 KiB (64×4 instances of 1024 × 72 + 4×4 instances of 256 × 72)
 
 ### Bias memory (BRAM)
 
-Total: 8 KiB (4×4 instances of 512 × 8) 
+Total: 8 KiB (4×4 instances of 512 × 8)
 
 | Quadrant | Instances | Address Range\*         |
 | -------- | --------- | ----------------------- |
