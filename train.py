@@ -981,6 +981,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
     end = time.time()
     class_probs = []
     class_preds = []
+    sample_saved = False  # Track if --save-sample has been done for this validation step
     for validation_step, (inputs, target) in enumerate(data_loader):
         with torch.no_grad():
             inputs, target = inputs.to(args.device), target.to(args.device)
@@ -994,9 +995,9 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                             and model.__dict__['_modules'][key].wide):
                         output /= 256.
 
-            if args.generate_sample is not None:
+            if args.generate_sample is not None and sample_saved is False:
                 sample.generate(args.generate_sample, inputs, target, output, args.dataset, False)
-                return .0, .0, .0
+                sample_saved = True
 
             if args.csv_prefix is not None:
                 save_tensor(inputs, f_x)
