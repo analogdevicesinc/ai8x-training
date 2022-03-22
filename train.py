@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 ###################################################################################################
 #
-# Copyright (C) 2019-2021 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2019-2022 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -995,7 +995,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                             and model.__dict__['_modules'][key].wide):
                         output /= 256.
 
-            if args.generate_sample is not None and sample_saved is False:
+            if args.generate_sample is not None and not sample_saved:
                 sample.generate(args.generate_sample, inputs, target, output, args.dataset, False)
                 sample_saved = True
 
