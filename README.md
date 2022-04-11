@@ -3103,7 +3103,7 @@ See the [benchmarking guide](https://github.com/MaximIntegratedAI/MaximAI_Docume
 
 Additional information about the evaluation kits, and the software development kit (SDK) is available on the web at <https://github.com/MaximIntegratedAI/MaximAI_Documentation>.
 
-[AHB Addresses for MAX78000 and MAX78002](https://github.com/MaximIntegratedAI/ai8x-synthesis/blob/develop/docs/Windows.md)
+[AHB Addresses for MAX78000 and MAX78002](docs/AHBAddresses.md)
 
 
 ---
