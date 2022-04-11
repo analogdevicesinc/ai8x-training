@@ -3,9 +3,9 @@ line-length: false
 emphasis-style: false
 no-inline-html:
   allowed_elements:
-  - u
-  - img
-  - br
+    - u
+    - img
+    - br
 no-multiple-blanks: false
 code-block-style: false
 commands-show-output: false

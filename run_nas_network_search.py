@@ -63,7 +63,7 @@ def get_evo_search_params(nas_policy):
                          'constraints': {'max_num_weights': 4.5e5}}
 
     if 'evolution_search' in nas_policy:
-        for key in evo_search_params:
+        for key, _ in evo_search_params.items():
             if key in nas_policy['evolution_search']:
                 evo_search_params[key] = nas_policy['evolution_search'][key]
 

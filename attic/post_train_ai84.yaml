@@ -1,3 +1,4 @@
+---
 quantizers:
   post_train_quantizer:
     class: PostTrainLinearQuantizerAI84
@@ -14,7 +15,7 @@ quantizers:
     # clip_n_stds: 3
     clip_acts: AVG
     no_clip_layers: fc
-    global_scale: False
+    global_scale: false
     # global_sat_scale: 25.0
     overrides:
       fc:
