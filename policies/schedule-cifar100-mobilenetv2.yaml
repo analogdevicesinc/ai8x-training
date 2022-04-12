@@ -1,3 +1,4 @@
+---
 lr_schedulers:
   training_lr:
     class: MultiStepLR

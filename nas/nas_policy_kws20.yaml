@@ -1,13 +1,14 @@
+---
 start_epoch: 200
 validation_freq: 250
 elastic_kernel:
-  leveling: False
+  leveling: false
   num_epochs: 2000
 elastic_depth:
-  leveling: True
+  leveling: true
   num_epochs: 1500
 elastic_width:
-  leveling: True
+  leveling: true
   num_epochs: 2000
 kd_params:
   teacher_model: 'full_model'  # 'prev_stage_model'

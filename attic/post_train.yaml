@@ -1,3 +1,4 @@
+---
 quantizers:
   post_train_quantizer:
     class: PostTrainLinearQuantizer
@@ -6,7 +7,7 @@ quantizers:
     bits_accum: 32
     # SYMMETRIC, ASYMMETRIC_UNSIGNED, ASYMMETRIC_SIGNED
     mode: SYMMETRIC
-    per_channel_wts: False
+    per_channel_wts: false
     # NONE, AVG, N_STD
     clip_acts: AVG
     no_clip_layers: fc

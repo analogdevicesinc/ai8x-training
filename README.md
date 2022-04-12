@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-April 6, 2022
+April 11, 2022
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -1421,7 +1421,7 @@ The following table describes the most important command line arguments for `tra
 | `--lr`, `--learning-rate`  | Set initial learning rate                                    | `--lr 0.001`                    |
 | `--deterministic`          | Seed random number generators with fixed values              |                                 |
 | `--resume-from`            | Resume from previous checkpoint                              | `--resume-from chk.pth.tar`     |
-| `--qat-policy`             | Define QAT policy in YAML file (default: policies/qat_policy.yaml). Use ‘’None” to disable QAT. | `--qat-policy qat_policy.yaml` |
+| `--qat-policy`             | Define QAT policy in YAML file (default: policies/qat_policy.yaml). Use “None” to disable QAT. | `--qat-policy qat_policy.yaml` |
 | `--nas`                    | Enable network architecture search                           |                                 |
 | `--nas-policy`             | Define NAS policy in YAML file                               | `--nas-policy nas/nas_policy.yaml` |
 | `--regression` | Select regression instead of classification (changes Loss function, and log output) |  |
@@ -2181,6 +2181,7 @@ The following is a detailed guide into all supported configuration options.
 An example network description for the ai85net5 architecture and MNIST is shown below:
 
 ```yaml
+---
 # CHW (big data) configuration for MNIST
   
 arch: ai85net5
@@ -2188,38 +2189,38 @@ dataset: MNIST
 
 # Define layer parameters in order of the layer sequence
 layers:
-- pad: 1
-  activate: ReLU
-  out_offset: 0x2000
-  processors: 0x0000000000000001
-  data_format: CHW
-  op: conv2d
-- max_pool: 2
-  pool_stride: 2
-  pad: 2
-  activate: ReLU
-  out_offset: 0
-  processors: 0xfffffffffffffff0
-  op: conv2d
-- max_pool: 2
-  pool_stride: 2
-  pad: 1
-  activate: ReLU
-  out_offset: 0x2000
-  processors: 0xfffffffffffffff0
-  op: conv2d
-- avg_pool: 2
-  pool_stride: 2
-  pad: 1
-  activate: ReLU
-  out_offset: 0
-  processors: 0x0ffffffffffffff0
-  op: conv2d
-- op: mlp
-  flatten: true
-  out_offset: 0x1000
-  output_width: 32
-  processors: 0x0000000000000fff
+  - pad: 1
+    activate: ReLU
+    out_offset: 0x2000
+    processors: 0x0000000000000001
+    data_format: CHW
+    op: conv2d
+  - max_pool: 2
+    pool_stride: 2
+    pad: 2
+    activate: ReLU
+    out_offset: 0
+    processors: 0xfffffffffffffff0
+    op: conv2d
+  - max_pool: 2
+    pool_stride: 2
+    pad: 1
+    activate: ReLU
+    out_offset: 0x2000
+    processors: 0xfffffffffffffff0
+    op: conv2d
+  - avg_pool: 2
+    pool_stride: 2
+    pad: 1
+    activate: ReLU
+    out_offset: 0
+    processors: 0x0ffffffffffffff0
+    op: conv2d
+  - op: mlp
+    flatten: true
+    out_offset: 0x1000
+    output_width: 32
+    processors: 0x0000000000000fff
 ```
 
 To generate an embedded MAX78000 demo in the `demos/ai85-mnist/` folder, use the following command line:
@@ -2592,11 +2593,11 @@ Example:
 
 By default, the final layer is used as the output layer. Output layers are checked using the known-answer test, and they are copied from hardware memory when `cnn_unload()` is called. The tool also checks that output layer data isn’t overwritten by any later layers.
 
-When specifying `output: True`, any layer (or a combination of layers) can be used as an output layer.
+When specifying `output: true`, any layer (or a combination of layers) can be used as an output layer.
 *Note:* When `unload:` is used, output layers are not used for generating `cnn_unload()`.
 
 Example:
-        `output: True`
+        `output: true`
 
 ##### Dropout and Batch Normalization
 
@@ -2610,62 +2611,63 @@ The following shows an example for a single “Fire” operation, the MAX78000/M
 <img src="docs/fireexample.png" alt="Fire example" style="zoom:35%;" />
 
 ```yaml
+---
 arch: ai85firetestnet
 dataset: CIFAR-10
 # Input dimensions are 3x32x32
 
 layers:
-### Fire
-# Squeeze (0)
-- avg_pool: 2
-  pool_stride: 2
-  pad: 0
-  in_offset: 0x1000
-  processors: 0x0000000000000007
-  data_format: HWC
-  out_offset: 0x0000
-  operation: conv2d
-  kernel_size: 1x1
-  activate: ReLU
-# Expand 1x1 (1)
-- in_offset: 0x0000
-  out_offset: 0x1000
-  processors: 0x0000000000000030
-  output_processors: 0x0000000000000f00
-  operation: conv2d
-  kernel_size: 1x1
-  pad: 0
-  activate: ReLU
-  name: expand_1x1
-# Expand 3x3 (2)
-- in_offset: 0x0000
-  out_offset: 0x1000
-  processors: 0x0000000000000030
-  output_processors: 0x000000000000f000
-  operation: conv2d
-  kernel_size: 3x3
-  activate: ReLU
-  in_sequences: 0
-  name: expand_3x3
-# Concatenate (3)
-- max_pool: 2
-  pool_stride: 2
-  in_offset: 0x1000
-  out_offset: 0x0000
-  processors: 0x000000000000ff00
-  operation: none
-  in_sequences: [expand_1x1, expand_3x3]
-### Additional layers (4, 5)
-- max_pool: 2
-  pool_stride: 2
-  out_offset: 0x1000
-  processors: 0x000000000000ff00
-  operation: none
-- flatten: true
-  out_offset: 0x0000
-  op: mlp  # The fully connected (FC) layer L5
-  processors: 0x000000000000ff00
-  output_width: 32
+  ### Fire
+  # Squeeze (0)
+  - avg_pool: 2
+    pool_stride: 2
+    pad: 0
+    in_offset: 0x1000
+    processors: 0x0000000000000007
+    data_format: HWC
+    out_offset: 0x0000
+    operation: conv2d
+    kernel_size: 1x1
+    activate: ReLU
+  # Expand 1x1 (1)
+  - in_offset: 0x0000
+    out_offset: 0x1000
+    processors: 0x0000000000000030
+    output_processors: 0x0000000000000f00
+    operation: conv2d
+    kernel_size: 1x1
+    pad: 0
+    activate: ReLU
+    name: expand_1x1
+  # Expand 3x3 (2)
+  - in_offset: 0x0000
+    out_offset: 0x1000
+    processors: 0x0000000000000030
+    output_processors: 0x000000000000f000
+    operation: conv2d
+    kernel_size: 3x3
+    activate: ReLU
+    in_sequences: 0
+    name: expand_3x3
+  # Concatenate (3)
+  - max_pool: 2
+    pool_stride: 2
+    in_offset: 0x1000
+    out_offset: 0x0000
+    processors: 0x000000000000ff00
+    operation: none
+    in_sequences: [expand_1x1, expand_3x3]
+  ### Additional layers (4, 5)
+  - max_pool: 2
+    pool_stride: 2
+    out_offset: 0x1000
+    processors: 0x000000000000ff00
+    operation: none
+  - flatten: true
+    out_offset: 0x0000
+    op: mlp  # The fully connected (FC) layer L5
+    processors: 0x000000000000ff00
+    output_width: 32
 ```
 
 #### Residual Connections
@@ -2679,38 +2681,42 @@ On MAX78000/MAX78002, the element-wise addition works on “interleaved data,”
 In order to achieve this, a layer must be inserted that does nothing else but reformat the data into interleaved format using the `write_gap` keyword (this operation happens in parallel and is fast).
 
 ```yaml
-# Layer 1
-- out_offset: 0x0000
-  processors: 0x0ffff00000000000
-  operation: conv2d
-  kernel_size: 3x3
-  pad: 1
-  activate: ReLU
-
-# Layer 2 - re-format data with gap
-- out_offset: 0x2000
-  processors: 0x00000000000fffff
-  output_processors: 0x00000000000fffff
-  operation: passthrough
-  write_gap: 1
-
-# Layer 3
-- in_offset: 0x0000
-  out_offset: 0x2004
-  processors: 0x00000000000fffff
-  operation: conv2d
-  kernel_size: 3x3
-  pad: 1
-  activate: ReLU
-  write_gap: 1
-
-# Layer 4 - Residual
-- in_sequences: [2, 3]
-  in_offset: 0x2000
-  out_offset: 0x0000
-  processors: 0x00000000000fffff
-  eltwise: add
+---
+...
+layers:
   ...
+  # Layer 1
+  - out_offset: 0x0000
+    processors: 0x0ffff00000000000
+    operation: conv2d
+    kernel_size: 3x3
+    pad: 1
+    activate: ReLU
+  
+  # Layer 2 - re-format data with gap
+  - out_offset: 0x2000
+    processors: 0x00000000000fffff
+    output_processors: 0x00000000000fffff
+    operation: passthrough
+    write_gap: 1
+  
+  # Layer 3
+  - in_offset: 0x0000
+    out_offset: 0x2004
+    processors: 0x00000000000fffff
+    operation: conv2d
+    kernel_size: 3x3
+    pad: 1
+    activate: ReLU
+    write_gap: 1
+  
+  # Layer 4 - Residual
+  - in_sequences: [2, 3]
+    in_offset: 0x2000
+    out_offset: 0x0000
+    processors: 0x00000000000fffff
+    eltwise: add
+    ...
 ```
 
 The same network can also be viewed graphically:
@@ -3097,7 +3103,7 @@ See the [benchmarking guide](https://github.com/MaximIntegratedAI/MaximAI_Docume
 
 Additional information about the evaluation kits, and the software development kit (SDK) is available on the web at <https://github.com/MaximIntegratedAI/MaximAI_Documentation>.
 
-[AHB Addresses for MAX78000 and MAX78002](https://github.com/MaximIntegratedAI/ai8x-synthesis/blob/develop/docs/Windows.md)
+[AHB Addresses for MAX78000 and MAX78002](docs/AHBAddresses.md)
 
 
 ---
