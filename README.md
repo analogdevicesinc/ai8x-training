@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-April 11, 2022
+April 13, 2022
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -519,7 +519,7 @@ With the installation of Training and Synthesis projects completed it is importa
 
 ### Embedded Software Development Kit (SDK)
 
-The Embedded SDK for MAX78000 and MAX78002 is used to compile, flash, and debug the output of the *ai8x-synthesis* (“izer”) tool. It contains the following components:
+The Embedded SDK for MAX78000 and MAX78002 is used to compile, flash, and debug the output of the *ai8x-synthesis* (“izer”) tool. It also enables general software development for the microcontroller cores of the MAX78000 and MAX78002. It consists of the following components:
 
 * Peripheral Drivers
 * Board Support Packages (BSPs)
@@ -533,122 +533,153 @@ The Embedded SDK for MAX78000 and MAX78002 is used to compile, flash, and debug 
 
 There are two ways to install the SDK.
 
-#### Method 1: Manual Installation
+#### Method 1: SDK Installer
+
+The Microcontroller SDK for MAX78000/MAX7802 (“MaximSDK”) is available via the installer links below. These installers require a GUI on your system.
+
+1. Download the MaximSDK installer for your operating system from one of the links below.
+    * [Windows](https://www.maximintegrated.com/content/maximintegrated/en/design/software-description.html/swpart=SFW0010820A)
+    * [Ubuntu Linux](https://www.maximintegrated.com/content/maximintegrated/en/design/software-description.html/swpart=SFW0018720A)
+    * [macOS](https://www.maximintegrated.com/content/maximintegrated/en/design/software-description.html/swpart=SFW0018610A)
+
+2. Run the installer executable. Note: On Linux, this may require making the file executable with the following command:
+
+    ```bash
+    $ chmod +x MaximMicrosSDK_linux.run
+    ```
+
+3. Follow the instructions in the installer to the component selection.
+
+4. Select the components to install. At _minimum_, the following components must be selected. This will enable command-line development.
+
+    * GNU RISC-V Embedded GCC
+    * GNU Tools for ARM Embedded Processors
+    * Open On-Chip Debugger
+    * MSYS2 (only on Windows)
+    * Microcontrollers
+      * MAX78000 Resources
+      * MAX78002 Resources
+    * Product Libs
+      * CMSIS Core Libraries
+      * Miscellaneous Drivers
+      * Peripheral Drivers
+
+5. (Optional) Select the “Eclipse” and/or “Visual Studio Code Support” components to add support for those IDEs.
+
+6. Continue through the instructions to complete the installation of the MaximSDK.
+
+7. (macOS only) Install OpenOCD dependencies using [Homebrew](https://brew.sh/)
+
+    ```shell
+    $ brew install libusb-compat libftdi hidapi libusb
+    ```
+
+8. (Linux and macOS only) Add the location of the toolchain binaries to the system `PATH`.
+
+    On Linux and macOS, copy the following contents into `~/.profile`...
+    On macOS, _also_ copy the following contents into `~/.zprofile`...
+    ...and change `MAXIM_PATH` to the installation location of the MaximSDK.
+
+    ```shell
+    # MaximSDK location
+    MAXIM_PATH=$HOME/MaximSDK  # Change me!
+    export MAXIM_PATH
+    
+    # Arm GCC
+    ARMGCC_DIR=$MAXIM_PATH/Tools/GNUTools/10.3
+    echo $PATH | grep -q -s "$ARMGCC_DIR/bin"
+    if [ $? -eq 1 ] ; then
+        PATH=$PATH:"$ARMGCC_DIR/bin"
+        export PATH
+        export ARMGCC_DIR
+    fi
+    
+    # RISC-V GCC
+    RISCVGCC_DIR=$MAXIM_PATH/Tools/xPack/riscv-none-embed-gcc/10.2.0-1.2
+    echo $PATH | grep -q -s "$RISCVGCC_DIR/bin"
+    if [ $? -eq 1 ] ; then
+        PATH=$PATH:"$RISCVGCC_DIR/bin"
+        export PATH
+        export RISCVGCC_DIR
+    fi
+    
+    # OpenOCD
+    OPENOCD_DIR=$MAXIM_PATH/Tools/OpenOCD
+    echo $PATH | grep -q -s "$OPENOCD_DIR"
+    if [ $? -eq 1 ] ; then
+        PATH=$PATH:$OPENOCD_DIR
+        export PATH
+        export OPENOCD_DIR
+    fi
+    ```
+
+    On Windows, this step is not necessary. However, “MaximSDK/Tools/MSYS2/msys.bat” file _must_ be used to launch the MSYS2 terminal for command-line development.
+
+Once the tools above have been installed, continue with [Final Check](#Final-Check).
+
+#### Method 2: Manual Installation
 
 The MAX78000/MAX78002 SDK is available as a git submodule of ai8x-synthesis. It is checked out automatically to a version compatible with the project into the folder `ai8x-synthesis/sdk`. This submodule contains all of the SDK's components _except_ the Arm GCC, RISC-V GCC, and Make. These must be downloaded and installed manually.
 
-The Arm embedded compiler can be downloaded from [https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads).
+1. Download and install the Arm Embedded GNU Toolchain from [https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads).
 
-* Recommended version: 10.3-2021.10 *(newer versions may or may not work correctly)*
-* Recommended installation location: `/usr/local/gcc-arm-none-eabi-10.3-2021.10/`
+    * Recommended version: 10.3-2021.10 *(newer versions may or may not work correctly)*
+    * Recommended installation location: `/usr/local/gcc-arm-none-eabi-10.3-2021.10/`
 
-The RISC-V embedded compiler can be downloaded from [https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/](https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/).
+2. Download and install the RISC-V Embedded GNU Toolchain from [https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/](https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/)
 
-* Recommended version: 10.2.0-1.2 *(newer versions may or may not work correctly)*
-* Recommended installation location: `/usr/local/riscv-none-embed-gcc/10.2.0-1.2/`
+    * Recommended version: 10.2.0-1.2 *(newer versions may or may not work correctly)*
+    * Recommended installation location: `/usr/local/riscv-none-embed-gcc/10.2.0-1.2/`
 
-“make” is available on most systems by default. If not, it can be installed via the system package manager (Linux and macOS) or [MSYS](https://www.msys2.org/) (Windows)
+3. Install GNU Make
 
-OpenOCD binaries are available in the “openocd” sub-folder of the ai8x-synthesis repository. However, some additional dependencies are required on most systems. See [openocd/Readme.md](openocd/Readme.md) for a list of packages to install, then return here to continue.
+    * (Linux/macOS) “make” is available on most systems by default. If not, it can be installed via the system package manager.
+    * (Windows) Install [MSYS2](https://www.msys2.org/) first, then install “make” using the MSYS2 package manager:
 
-##### System Path
+      ```shell
+      $ pacman -S --needed base filesystem msys2-runtime make
+      ```
 
-Next, add the location of the toolchain binaries to the system path.
+4. Install packages for OpenOCD. OpenOCD binaries are available in the “openocd” sub-folder of the ai8x-synthesis repository. However, some additional dependencies are required on most systems. See [openocd/Readme.md](openocd/Readme.md) for a list of packages to install, then return here to continue.
 
-For example, on Linux add the following to `~/.profile` (and on macOS, to `~/.zprofile`), adjusting for the actual `PATH` to the compilers and the system’s architecture (`TARGET_ARCH`):
+5. Add the location of the toolchain binaries to the system path.
 
-```shell
-# Arm GCC
-ARMGCC_DIR=/usr/local/gcc-arm-none-eabi-10.3-2021.10  # Change me!
-echo $PATH | grep -q -s "$ARMGCC_DIR/bin"
-if [ $? -eq 1 ] ; then
-    PATH=$PATH:"$ARMGCC_DIR/bin"
-    export PATH
-    export ARMGCC_DIR
-fi
+    On Linux and macOS, copy the following contents into `~/.profile`...
+    On macOS, _also_ copy the following contents into `~/.zprofile`...
+    ...adjusting for the actual `PATH` to the compilers and the system’s architecture (`TARGET_ARCH`):
 
-# RISC-V GCC
-RISCVGCC_DIR=/usr/local/xpack-riscv-none-embed-gcc-10.2.0-1.2  # Change me!
-echo $PATH | grep -q -s "$RISCVGCC_DIR/bin"
-if [ $? -eq 1 ] ; then
-    PATH=$PATH:"$RISCVGCC_DIR/bin"
-    export PATH
-    export RISCVGCC_DIR
-fi
+    ```shell
+    # Arm GCC
+    ARMGCC_DIR=/usr/local/gcc-arm-none-eabi-10.3-2021.10  # Change me!
+    echo $PATH | grep -q -s "$ARMGCC_DIR/bin"
+    if [ $? -eq 1 ] ; then
+        PATH=$PATH:"$ARMGCC_DIR/bin"
+        export PATH
+        export ARMGCC_DIR
+    fi
+    
+    # RISC-V GCC
+    RISCVGCC_DIR=/usr/local/xpack-riscv-none-embed-gcc-10.2.0-1.2  # Change me!
+    echo $PATH | grep -q -s "$RISCVGCC_DIR/bin"
+    if [ $? -eq 1 ] ; then
+        PATH=$PATH:"$RISCVGCC_DIR/bin"
+        export PATH
+        export RISCVGCC_DIR
+    fi
+    
+    # OpenOCD
+    OPENOCD_DIR=$HOME/Documents/Source/ai8x-synthesis/openocd/bin/TARGET_ARCH  # Change me!
+    echo $PATH | grep -q -s "$OPENOCD_DIR"
+    if [ $? -eq 1 ] ; then
+        PATH=$PATH:$OPENOCD_DIR
+        export PATH
+        export OPENOCD_DIR
+    fi
+    ```
 
-# OpenOCD
-OPENOCD_DIR=$HOME/Documents/Source/ai8x-synthesis/openocd/bin/TARGET_ARCH  # Change me!
-echo $PATH | grep -q -s "$OPENOCD_DIR"
-if [ $? -eq 1 ] ; then
-    PATH=$PATH:$OPENOCD_DIR
-    export PATH
-    export OPENOCD_DIR
-fi
-```
+    On Windows, add the toolchain paths to the system `PATH` variable (search for  “edit the system environment variables” in the Windows search bar).
 
 Once the tools above have been installed, continue to the [Final Check](#Final-Check) step below.
-
-#### Method 2: SDK Installer
-
-The MAX78000/MAX78002 SDK is also available via the installer links below. These installers require a GUI on your system.
-
-* [Windows](https://www.maximintegrated.com/content/maximintegrated/en/design/software-description.html/swpart=SFW0010820A)
-* [Linux](https://www.maximintegrated.com/content/maximintegrated/en/design/software-description.html/swpart=SFW0018720A)
-* [macOS](https://www.maximintegrated.com/content/maximintegrated/en/design/software-description.html/swpart=SFW0018610A)
-
-At minimum, the following components should be selected during the installation:
-
-* GNU RISC-V Embedded GCC
-* GNU Tools for ARM Embedded Processors
-* Open On-Chip Debugger
-* MAXIM Microcontrollers
-  * MAX78000 Resources
-  * MAX78002 Resources
-* Product Libs
-  * CMSIS Core Libraries
-  * Miscellaneous Drivers
-  * Peripheral Drivers
-
-##### System Path
-
-Next, add the location of the toolchain binaries to the system path.
-
-For example, on Linux add the following to `~/.profile` (and on macOS, to `~/.zprofile`), adjusting the `PATH` to the compilers based on the installation location of the SDK:
-
-```shell
-# MaximSDK location
-MAXIM_PATH=$HOME/MaximSDK  # Change me!
-export MAXIM_PATH
-
-# Arm GCC
-ARMGCC_DIR=$MAXIM_PATH/Tools/GNUTools
-echo $PATH | grep -q -s "$ARMGCC_DIR/bin"
-if [ $? -eq 1 ] ; then
-    PATH=$PATH:"$ARMGCC_DIR/bin"
-    export PATH
-    export ARMGCC_DIR
-fi
-
-# RISC-V GCC
-RISCVGCC_DIR=$MAXIM_PATH/Tools/xPack/riscv-none-embed-gcc
-echo $PATH | grep -q -s "$RISCVGCC_DIR/bin"
-if [ $? -eq 1 ] ; then
-    PATH=$PATH:"$RISCVGCC_DIR/bin"
-    export PATH
-    export RISCVGCC_DIR
-fi
-
-# OpenOCD
-OPENOCD_DIR=$MAXIM_PATH/Tools/OpenOCD
-echo $PATH | grep -q -s "$OPENOCD_DIR"
-if [ $? -eq 1 ] ; then
-    PATH=$PATH:$OPENOCD_DIR
-    export PATH
-    export OPENOCD_DIR
-fi
-```
-
-Once the tools above have been installed, continue with [Final Check](#Final-Check).
 
 #### Final Check
 
@@ -750,7 +781,7 @@ The following illustration shows the basic principle: In order to produce the fi
 
 <img src="docs/Streaming.png"/>
 
-In the accelerator implementation, data is shifted into the Tornado memory in a sequential fashion, so prior  rows will be available as well. In order to produce the _blue_ output pixel, input data up to the blue input pixel must be available.
+In the accelerator implementation, data is shifted into the Tornado memory in a sequential fashion, so prior rows will be available as well. In order to produce the _blue_ output pixel, input data up to the blue input pixel must be available.
 
 ![Streaming-Rows](docs/Streaming-Rows.png)
 
@@ -766,7 +797,7 @@ For concrete examples on how to implement streaming mode with a camera, please s
 
 #### FIFOs
 
-Since the data memory instances are single-port memories, software would have to temporarily disable the accelerator in order to feed it new data. Using  FIFOs, software can input available data while the accelerator is running. The accelerator will autonomously fetch data from the FIFOs when needed, and stall (pause) when no enough data is available.
+Since the data memory instances are single-port memories, software would have to temporarily disable the accelerator in order to feed it new data. Using FIFOs, software can input available data while the accelerator is running. The accelerator will autonomously fetch data from the FIFOs when needed, and stall (pause) when no enough data is available.
 
 The MAX78000/MAX78002 accelerator has two types of FIFO:
 
@@ -1023,7 +1054,7 @@ All output values are [clipped (saturated)](#Saturation-and-Clipping) to $[0, +1
 
 #### Abs
 
-`Abs` returns the absolute value for all inputs, and then [clamps](#Saturation-and-Clipping) the outputs to  to $[0, +127]$, similar to PyTorch `abs()` followed by `nn.Hardtanh(min_value=0, max_value=127[/128])`.
+`Abs` returns the absolute value for all inputs, and then [clamps](#Saturation-and-Clipping) the outputs to $[0, +127]$, similar to PyTorch `abs()` followed by `nn.Hardtanh(min_value=0, max_value=127[/128])`.
 
 <img src="docs/abs.png" alt="abs" style="zoom:33%;" />
 
@@ -1446,7 +1477,7 @@ The following table describes the most important command line arguments for `tra
 
 #### ONNX Model Export
 
-The ONNX model export (via `--summary onnx` or `--summary onnx_simplified`) is primarily intended for visualization of the model. ONNX does not support all of the operators that `ai8x.py` uses, and these operators are therefore removed from the export (see function `onnx_export_prep()` in `ai8x.py`). The ONNX file does contain the trained weights and *may* therefore be usable for inference under certain circumstances. However, it is important to note that the ONNX file **will not** be usable for training (for example, the ONNX `floor` operator has a  gradient of zero, which is incompatible with quantization-aware training as implemented in `ai8x.py`).
+The ONNX model export (via `--summary onnx` or `--summary onnx_simplified`) is primarily intended for visualization of the model. ONNX does not support all of the operators that `ai8x.py` uses, and these operators are therefore removed from the export (see function `onnx_export_prep()` in `ai8x.py`). The ONNX file does contain the trained weights and *may* therefore be usable for inference under certain circumstances. However, it is important to note that the ONNX file **will not** be usable for training (for example, the ONNX `floor` operator has a gradient of zero, which is incompatible with quantization-aware training as implemented in `ai8x.py`).
 
 ### Observing GPU Resources
 
@@ -1567,7 +1598,7 @@ The hardware always uses signed integers for data and weights. While data is alw
 
 ##### Data
 
-When using the `-8` command line switch, all module outputs are quantized to 8-bit in the range  [-128...+127] to simulate hardware behavior. The `-8` command line switch is designed for *evaluating quantized weights* against a test set, in order to understand the impact of quantization. *Note that model training always uses floating point values, and therefore `-8` is not compatible with training.*
+When using the `-8` command line switch, all module outputs are quantized to 8-bit in the range [-128...+127] to simulate hardware behavior. The `-8` command line switch is designed for *evaluating quantized weights* against a test set, in order to understand the impact of quantization. *Note that model training always uses floating point values, and therefore `-8` is not compatible with training.*
 
 The last layer can optionally use 32-bit output for increased precision. This is simulated by adding the parameter `wide=True` to the module function call.
 
@@ -1653,7 +1684,7 @@ When using PuTTY, port forwarding is achieved as follows:
 
 #### SHAP — SHapely Additive exPlanations
 
-The training software integrates code to generate SHAP plots (see <https://github.com/slundberg/shap>). This  can help with feature attribution for input images.
+The training software integrates code to generate SHAP plots (see <https://github.com/slundberg/shap>). This can help with feature attribution for input images.
 
 The `train.py` program can create plots using the `--shap` command line argument in combination with `--evaluate`:
 
@@ -1861,7 +1892,7 @@ def newmodel(pretrained=False, **kwargs):
     return NewModel(**kwargs)
 ```
 
-Note the  `__init(...)__` function signature, the extra arguments to `ai8x.FusedConv2dReLU(...)` and the `NewModel(**kwargs)` instantiation.
+Note the `__init(...)__` function signature, the extra arguments to `ai8x.FusedConv2dReLU(...)` and the `NewModel(**kwargs)` instantiation.
 
 ##### `models` Data Structure
 
@@ -2533,7 +2564,7 @@ def forward(self, x):
     y = torch.cat((y, x), dim=1)
 ```
 
-In this case, `in_sequences` would be  `[1, 0]` since `y` (the output of layer 1) precedes `x` (the output of layer 0) in the `torch.cat()` statement.
+In this case, `in_sequences` would be `[1, 0]` since `y` (the output of layer 1) precedes `x` (the output of layer 0) in the `torch.cat()` statement.
 
 Examples:
         `in_sequences: [2, 3]`
@@ -2883,7 +2914,7 @@ Run `ai8xize.py` with the new network and the new sample data to generate embedd
 
 #### Starting an Inference, Waiting for Completion, Multiple Inferences in Sequence
 
-An inference is started by configuring registers and weights, loading the input, and enabling processing.  This code is automatically generated — see the `cnn_init()`, `cnn_load_weights()`, `cnn_load_bias()`, `cnn_configure()`, and `load_input()` functions. The sample data can be used as a self-checking feature on device power-up since the output for the sample data is known.
+An inference is started by configuring registers and weights, loading the input, and enabling processing. This code is automatically generated — see the `cnn_init()`, `cnn_load_weights()`, `cnn_load_bias()`, `cnn_configure()`, and `load_input()` functions. The sample data can be used as a self-checking feature on device power-up since the output for the sample data is known.
 To start the accelerator, use `cnn_start()`. The `load_input()` function is called either before `cnn_start()`, or after `cnn_start()`, depending on whether FIFOs are used. To run a second inference with new data, call `cnn_start()` again (after or before loading the new data input using load_input()`).
 
 The MAX78000/MAX78002 accelerator can generate an interrupt on completion, and it will set a status bit (see `cnn.c`). The resulting data can now be unloaded from the accelerator (code for this is also auto-generated in `cnn_unload()`).
