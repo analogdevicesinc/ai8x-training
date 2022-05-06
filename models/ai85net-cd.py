@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2022 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -9,7 +9,7 @@
 """
 Cats and Dogs classification network for AI85
 """
-from torch import nn
+import torch.nn as nn
 
 import ai8x
 
@@ -18,8 +18,8 @@ class AI85CatsDogsNet(nn.Module):
     """
     Define CNN model for image classification.
     """
-    def __init__(self, num_classes=2, num_channels=3, dimensions=(64, 64),
-                 fc_inputs=30, bias=False, **kwargs):
+    def __init__(self, num_classes=2, num_channels=3, dimensions=(128, 128),
+                 fc_inputs=16, bias=False, **kwargs):
         super().__init__()
 
         # AI85 Limits
@@ -28,30 +28,30 @@ class AI85CatsDogsNet(nn.Module):
         # Keep track of image dimensions so one constructor works for all image sizes
         dim = dimensions[0]
 
-        self.conv1 = ai8x.FusedConv2dReLU(num_channels, 15, 3,
+        self.conv1 = ai8x.FusedConv2dReLU(num_channels, 16, 3,
                                           padding=1, bias=bias, **kwargs)
-        # padding 1 -> no change in dimensions -> 15x64x64
+        # padding 1 -> no change in dimensions -> 16x128x128
 
         pad = 2 if dim == 28 else 1
-        self.conv2 = ai8x.FusedMaxPoolConv2dReLU(15, 30, 3, pool_size=2, pool_stride=2,
+        self.conv2 = ai8x.FusedMaxPoolConv2dReLU(16, 32, 3, pool_size=2, pool_stride=2,
                                                  padding=pad, bias=bias, **kwargs)
-        dim //= 2  # pooling, padding 0 -> 30x32x32
+        dim //= 2  # pooling, padding 0 -> 32x64x64
         if pad == 2:
-            dim += 2  # padding 2 -> 30x16x16
+            dim += 2  # padding 2 -> 32x32x32
 
-        self.conv3 = ai8x.FusedMaxPoolConv2dReLU(30, 60, 3, pool_size=2, pool_stride=2, padding=1,
+        self.conv3 = ai8x.FusedMaxPoolConv2dReLU(32, 64, 3, pool_size=2, pool_stride=2, padding=1,
                                                  bias=bias, **kwargs)
-        dim //= 2  # pooling, padding 0 -> 60x16x16
+        dim //= 2  # pooling, padding 0 -> 64x32x32
 
-        self.conv4 = ai8x.FusedMaxPoolConv2dReLU(60, 30, 3, pool_size=2, pool_stride=2, padding=1,
+        self.conv4 = ai8x.FusedMaxPoolConv2dReLU(64, 32, 3, pool_size=2, pool_stride=2, padding=1,
                                                  bias=bias, **kwargs)
-        dim //= 2  # pooling, padding 0 -> 30x8x8
+        dim //= 2  # pooling, padding 0 -> 32x16x16
 
-        self.conv5 = ai8x.FusedMaxPoolConv2dReLU(30, 30, 3, pool_size=2, pool_stride=2, padding=1,
+        self.conv5 = ai8x.FusedMaxPoolConv2dReLU(32, 32, 3, pool_size=2, pool_stride=2, padding=1,
                                                  bias=bias, **kwargs)
-        dim //= 2  # pooling, padding 0 -> 30x4x4
+        dim //= 2  # pooling, padding 0 -> 32x8x8
 
-        self.conv6 = ai8x.FusedConv2dReLU(30, fc_inputs, 3, padding=1, bias=bias, **kwargs)
+        self.conv6 = ai8x.FusedConv2dReLU(32, fc_inputs, 3, padding=1, bias=bias, **kwargs)
 
         self.fc = ai8x.Linear(fc_inputs*dim*dim, num_classes, bias=True, **kwargs)
 

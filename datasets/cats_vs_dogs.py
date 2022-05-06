@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2022 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -9,19 +9,46 @@
 """
 Cats and Dogs Datasets
 """
+import errno
 import os
 import shutil
 import sys
-from os import listdir, makedirs
-from random import random
 
+import torch
 import torchvision
 from torchvision import transforms
 
+from PIL import Image
+from tqdm import tqdm
+
 import ai8x
 
+torch.manual_seed(0)
 
-def catsdogs_get_datasets(data, load_train=True, load_test=True):
+
+def augment_affine_jitter_blur(orig_img):
+    train_transform = transforms.Compose([
+        transforms.Resize((256, 256)),
+        transforms.RandomAffine(degrees=10, translate=(0.05, 0.05), shear=5),
+        transforms.RandomPerspective(distortion_scale=0.3, p=0.2),
+        transforms.CenterCrop((180, 180)),
+        transforms.ColorJitter(brightness=.7),
+        transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.1, 5)),
+        transforms.RandomHorizontalFlip(),
+        ])
+    return train_transform(orig_img)
+
+
+def augment_blur(orig_img):
+    train_transform = transforms.Compose([
+        transforms.Resize((256, 256)),
+        transforms.CenterCrop((220, 220)),
+        transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.1, 5))
+        ])
+    return train_transform(orig_img)
+
+
+def catsdogs_get_datasets(data, load_train=True, load_test=True, aug=2):
     """
     Load Cats & Dogs dataset
     """
@@ -30,72 +57,111 @@ def catsdogs_get_datasets(data, load_train=True, load_test=True):
     dataset_path = os.path.join(path, "cats_vs_dogs")
     is_dir = os.path.isdir(dataset_path)
     if not is_dir:
-        path = os.getcwd()
-        dataset_path = os.path.join(path, "dogs-vs-cats")
-        is_dir = os.path.isdir(dataset_path)
+        print("******************************************")
+        print("Please follow instructions below:")
+        print("Download the dataset in the current working directory by visiting this link"
+              "\'https://www.kaggle.com/c/dogs-vs-cats/data\'")
+        print("and click the \'Download all\' button")
+        print("If you do not have a Kaggle account, sign-up first.")
+        print("Unzip \'dogs-vs-cats.zip\' and you will see train.zip, test1.zip and .csv "
+              " file. Unzip the train.zip and test.zip, copy into datasets/cats_vs_dogs "
+              " and re-run the script. The script will create an /augmented folder and "
+              " with all original and augmented images. Remove this folder if you want "
+              " to change the augmentation and recreate the dataset.")
+        print("******************************************")
+        sys.exit("Dataset not found..")
 
-        if not is_dir:
-            print("******************************************")
-            print("Download the dataset to the data/ directory by visiting the "
-                  "following link: https://www.kaggle.com/c/dogs-vs-cats/data")
-            print("and click the \'Download all\' button. "
-                  "If you do not have a Kaggle account, sign up first.")
-            print("Unzip \'dogs-vs-cats.zip\' and you will see train.zip, test1.zip and .csv "
-                  "files. Unzip train.zip to data/cats_vs_dogs/ and re-run the script.")
-            print("******************************************")
-            sys.exit("Dataset not found..")
-        else:
-            # check if train set exists
-            path = os.getcwd()
-            dataset_path = os.path.join(path, "dogs-vs-cats", "train")
-            is_dir = os.path.isdir(dataset_path)
-            if not is_dir:
-                sys.exit("Unzip \'train.zip\' file from dogs-vs-cats directory")
+    else:
 
-            # create directories
-            dataset_home = os.path.join(data_dir, "cats_vs_dogs")
-            newdir = os.path.join(dataset_home, "train", "dogs")
-            makedirs(newdir, exist_ok=True)
-            newdir = os.path.join(dataset_home, "train", "cats")
-            makedirs(newdir, exist_ok=True)
-            newdir = os.path.join(dataset_home, "test", "dogs")
-            makedirs(newdir, exist_ok=True)
-            newdir = os.path.join(dataset_home, "test", "cats")
-            makedirs(newdir, exist_ok=True)
+        processed_dataset_path = os.path.join(dataset_path, "augmented")
 
-            # define ratio of pictures to use for test set
-            test_ratio = 0.2
-            # copy training dataset images into subdirectories
-            src_directory = os.path.join(path, "dogs-vs-cats", "train")
-            for file in listdir(src_directory):
-                src = os.path.join(src_directory, file)
-                dst_dir = os.path.join(dataset_home, "train")
-                if random() < test_ratio:
-                    dst_dir = os.path.join(dataset_home, "test")
-                if file.startswith("cat"):
-                    dst = os.path.join(dst_dir, "cats", file)
-                    shutil.copyfile(src, dst)
-                elif file.startswith("dog"):
-                    dst = os.path.join(dst_dir, "dogs", file)
-                    shutil.copyfile(src, dst)
-            shutil.rmtree("dogs-vs-cats")
+        if os.path.isdir(processed_dataset_path):
+            print("augmented folder exits. Remove if you want to regenerate")
 
-    training_data_path = os.path.join(data_dir, "cats_vs_dogs")
-    training_data_path = os.path.join(training_data_path, "train")
+        train_path = os.path.join(dataset_path, "train")
+        test_path = os.path.join(dataset_path, "test")
+        processed_train_path = os.path.join(processed_dataset_path, "train")
+        processed_test_path = os.path.join(processed_dataset_path, "test")
+        if not os.path.isdir(processed_dataset_path):
+            os.makedirs(processed_dataset_path, exist_ok=True)
+            os.makedirs(processed_test_path, exist_ok=True)
+            os.makedirs(processed_train_path, exist_ok=True)
 
-    test_data_path = os.path.join(data_dir, "cats_vs_dogs")
-    test_data_path = os.path.join(test_data_path, "test")
+            # create label folders
+            for d in os.listdir(test_path):
+                mk = os.path.join(processed_test_path, d)
+                try:
+                    os.mkdir(mk)
+                except OSError as e:
+                    if e.errno == errno.EEXIST:
+                        print(f'{mk} already exists!')
+                        pass
+                    else:
+                        raise
+            for d in os.listdir(train_path):
+                mk = os.path.join(processed_train_path, d)
+                try:
+                    os.mkdir(mk)
+                except OSError as e:
+                    if e.errno == errno.EEXIST:
+                        print(f'{mk} already exists!')
+                        pass
+                    else:
+                        raise
+
+            # copy test folder files
+            test_cnt = 0
+            for (dirpath, dirnames, filenames) in os.walk(test_path):
+                print(f'copying {dirpath} -> {processed_test_path}')
+                for filename in tqdm(filenames):
+                    if filename.endswith('.jpg'):
+                        relsourcepath = os.path.relpath(dirpath, test_path)
+                        destpath = os.path.join(processed_test_path, relsourcepath)
+
+                        destfile = os.path.join(destpath, filename)
+                        shutil.copyfile(os.path.join(dirpath, filename), destfile)
+                        test_cnt += 1
+
+            # copy and augment train folder files
+            train_cnt = 0
+            for (dirpath, dirnames, filenames) in os.walk(train_path):
+                print(f'copying and augmenting {dirpath} -> {processed_train_path}')
+                for filename in tqdm(filenames):
+                    if filename.endswith('.jpg'):
+                        relsourcepath = os.path.relpath(dirpath, train_path)
+                        destpath = os.path.join(processed_train_path, relsourcepath)
+                        srcfile = os.path.join(dirpath, filename)
+                        destfile = os.path.join(destpath, filename)
+
+                        # original file
+                        shutil.copyfile(srcfile, destfile)
+                        train_cnt += 1
+
+                        orig_img = Image.open(srcfile)
+
+                        # crop center & blur only
+                        aug_img = augment_blur(orig_img)
+                        augfile = destfile[:-4] + '_ab' + str(0) + '.jpg'
+                        aug_img.save(augfile)
+                        train_cnt += 1
+
+                        # random jitter, affine, brightness & blur
+                        for i in range(aug):
+                            aug_img = augment_affine_jitter_blur(orig_img)
+                            augfile = destfile[:-4] + '_aj' + str(i) + '.jpg'
+                            aug_img.save(augfile)
+                            train_cnt += 1
+            print(f'Augmented dataset: {test_cnt} test, {train_cnt} train samples')
 
     # Loading and normalizing train dataset
     if load_train:
         train_transform = transforms.Compose([
-            transforms.Resize((64, 64)),
-            transforms.RandomAffine(degrees=20, translate=(0.1, 0.1), shear=5),
+            transforms.Resize((128, 128)),
             transforms.ToTensor(),
             ai8x.normalize(args=args)
         ])
 
-        train_dataset = torchvision.datasets.ImageFolder(root=training_data_path,
+        train_dataset = torchvision.datasets.ImageFolder(root=processed_train_path,
                                                          transform=train_transform)
     else:
         train_dataset = None
@@ -103,12 +169,12 @@ def catsdogs_get_datasets(data, load_train=True, load_test=True):
     # Loading and normalizing test dataset
     if load_test:
         test_transform = transforms.Compose([
-            transforms.Resize((64, 64)),
+            transforms.Resize((128, 128)),
             transforms.ToTensor(),
             ai8x.normalize(args=args)
         ])
 
-        test_dataset = torchvision.datasets.ImageFolder(root=test_data_path,
+        test_dataset = torchvision.datasets.ImageFolder(root=processed_test_path,
                                                         transform=test_transform)
 
         if args.truncate_testset:
@@ -122,7 +188,7 @@ def catsdogs_get_datasets(data, load_train=True, load_test=True):
 datasets = [
     {
         'name': 'cats_vs_dogs',
-        'input': (3, 64, 64),
+        'input': (3, 128, 128),
         'output': ('cat', 'dog'),
         'loader': catsdogs_get_datasets,
     },
