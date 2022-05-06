@@ -27,6 +27,9 @@ torch.manual_seed(0)
 
 
 def augment_affine_jitter_blur(orig_img):
+    """
+    Augment with multiple transformations
+    """
     train_transform = transforms.Compose([
         transforms.Resize((256, 256)),
         transforms.RandomAffine(degrees=10, translate=(0.05, 0.05), shear=5),
@@ -40,6 +43,9 @@ def augment_affine_jitter_blur(orig_img):
 
 
 def augment_blur(orig_img):
+    """
+    Augment with center crop and bluring
+    """
     train_transform = transforms.Compose([
         transforms.Resize((256, 256)),
         transforms.CenterCrop((220, 220)),
@@ -95,7 +101,6 @@ def catsdogs_get_datasets(data, load_train=True, load_test=True, aug=2):
                 except OSError as e:
                     if e.errno == errno.EEXIST:
                         print(f'{mk} already exists!')
-                        pass
                     else:
                         raise
             for d in os.listdir(train_path):
@@ -105,13 +110,12 @@ def catsdogs_get_datasets(data, load_train=True, load_test=True, aug=2):
                 except OSError as e:
                     if e.errno == errno.EEXIST:
                         print(f'{mk} already exists!')
-                        pass
                     else:
                         raise
 
             # copy test folder files
             test_cnt = 0
-            for (dirpath, dirnames, filenames) in os.walk(test_path):
+            for (dirpath, _, filenames) in os.walk(test_path):
                 print(f'copying {dirpath} -> {processed_test_path}')
                 for filename in tqdm(filenames):
                     if filename.endswith('.jpg'):
@@ -124,7 +128,7 @@ def catsdogs_get_datasets(data, load_train=True, load_test=True, aug=2):
 
             # copy and augment train folder files
             train_cnt = 0
-            for (dirpath, dirnames, filenames) in os.walk(train_path):
+            for (dirpath, _, filenames) in os.walk(train_path):
                 print(f'copying and augmenting {dirpath} -> {processed_train_path}')
                 for filename in tqdm(filenames):
                     if filename.endswith('.jpg'):
