@@ -19,7 +19,6 @@ import torchvision
 from torchvision import transforms
 
 from PIL import Image
-from tqdm import tqdm
 
 import ai8x
 
@@ -65,15 +64,19 @@ def catsdogs_get_datasets(data, load_train=True, load_test=True, aug=2):
     if not is_dir:
         print("******************************************")
         print("Please follow instructions below:")
-        print("Download the dataset in the current working directory by visiting this link"
-              "\'https://www.kaggle.com/c/dogs-vs-cats/data\'")
-        print("and click the \'Download all\' button")
+        print("Download the dataset in the \'data\' folder by visiting this link"
+              "\'https://www.kaggle.com/datasets/salader/dogs-vs-cats\'")
         print("If you do not have a Kaggle account, sign-up first.")
-        print("Unzip \'dogs-vs-cats.zip\' and you will see train.zip, test1.zip and .csv "
-              " file. Unzip the train.zip and test.zip, copy into datasets/cats_vs_dogs "
-              " and re-run the script. The script will create an /augmented folder and "
-              " with all original and augmented images. Remove this folder if you want "
-              " to change the augmentation and recreate the dataset.")
+        print("Unzip the downloaded file and find \'test\' and \'train\' folders"
+              " and copy them into \'data/cats_vs_dogs\'.  ")
+        print("Make sure that images are in the following directory structure:")
+        print("  \'data/cats_vs_dogs/train/cats\' ")
+        print("  \'data/cats_vs_dogs/train/dogs\' ")
+        print("  \'data/cats_vs_dogs/test/cats\' ")
+        print("  \'data/cats_vs_dogs/test/dogs\' ")
+        print("Re-run the script. The script will create an \'augmented\' folder ")
+        print(" with all original and augmented images. Remove this folder if you want "
+              " to change the augmentation and to recreate the dataset.")
         print("******************************************")
         sys.exit("Dataset not found..")
 
@@ -117,7 +120,7 @@ def catsdogs_get_datasets(data, load_train=True, load_test=True, aug=2):
             test_cnt = 0
             for (dirpath, _, filenames) in os.walk(test_path):
                 print(f'copying {dirpath} -> {processed_test_path}')
-                for filename in tqdm(filenames):
+                for filename in filenames:
                     if filename.endswith('.jpg'):
                         relsourcepath = os.path.relpath(dirpath, test_path)
                         destpath = os.path.join(processed_test_path, relsourcepath)
@@ -130,7 +133,7 @@ def catsdogs_get_datasets(data, load_train=True, load_test=True, aug=2):
             train_cnt = 0
             for (dirpath, _, filenames) in os.walk(train_path):
                 print(f'copying and augmenting {dirpath} -> {processed_train_path}')
-                for filename in tqdm(filenames):
+                for filename in filenames:
                     if filename.endswith('.jpg'):
                         relsourcepath = os.path.relpath(dirpath, train_path)
                         destpath = os.path.join(processed_train_path, relsourcepath)
