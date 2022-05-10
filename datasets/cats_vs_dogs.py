@@ -63,25 +63,23 @@ def catsdogs_get_datasets(data, load_train=True, load_test=True, aug=2):
     is_dir = os.path.isdir(dataset_path)
     if not is_dir:
         print("******************************************")
-        print("Please follow instructions below:")
-        print("Download the dataset in the \'data\' folder by visiting this link"
+        print("Please follow the instructions below:")
+        print("Download the dataset to the \'data\' folder by visiting this link: "
               "\'https://www.kaggle.com/datasets/salader/dogs-vs-cats\'")
-        print("If you do not have a Kaggle account, sign-up first.")
-        print("Unzip the downloaded file and find \'test\' and \'train\' folders"
-              " and copy them into \'data/cats_vs_dogs\'.  ")
+        print("If you do not have a Kaggle account, sign up first.")
+        print("Unzip the downloaded file and find \'test\' and \'train\' folders "
+              "and copy them into \'data/cats_vs_dogs\'. ")
         print("Make sure that images are in the following directory structure:")
-        print("  \'data/cats_vs_dogs/train/cats\' ")
-        print("  \'data/cats_vs_dogs/train/dogs\' ")
-        print("  \'data/cats_vs_dogs/test/cats\' ")
-        print("  \'data/cats_vs_dogs/test/dogs\' ")
+        print("  \'data/cats_vs_dogs/train/cats\'")
+        print("  \'data/cats_vs_dogs/train/dogs\'")
+        print("  \'data/cats_vs_dogs/test/cats\'")
+        print("  \'data/cats_vs_dogs/test/dogs\'")
         print("Re-run the script. The script will create an \'augmented\' folder ")
-        print(" with all original and augmented images. Remove this folder if you want "
-              " to change the augmentation and to recreate the dataset.")
+        print("with all the original and augmented images. Remove this folder if you want "
+              "to change the augmentation and to recreate the dataset.")
         print("******************************************")
-        sys.exit("Dataset not found..")
-
+        sys.exit("Dataset not found!")
     else:
-
         processed_dataset_path = os.path.join(dataset_path, "augmented")
 
         if os.path.isdir(processed_dataset_path):
