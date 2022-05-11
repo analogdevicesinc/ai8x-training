@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 ###################################################################################################
 #
-# Copyright (C) 2019-2021 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2019-2022 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -627,7 +627,8 @@ def create_optimizer(model, args):
         optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum,
                                     weight_decay=args.weight_decay)
     elif args.optimizer.lower() == 'adam':
-        optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.lr,
+                                     weight_decay=args.weight_decay)
     else:
         msglogger.info('Unknown optimizer type: %s. SGD is set as optimizer!!!', args.optimizer)
         optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum,
