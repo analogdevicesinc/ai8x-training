@@ -363,6 +363,12 @@ def main():
 
     # Define loss function (criterion)
     if args.obj_detection:
+
+        # .module is added to model for access in multi GPU environments
+        # as https://github.com/pytorch/pytorch/issues/16885 has not been merged yet
+        if isinstance(model, nn.DataParallel):
+            model = model.module
+
         criterion = MultiBoxLoss(priors_cxcy=model.priors_cxcy,
                                  alpha=obj_detection_params['multi_box_loss']['alpha'],
                                  neg_pos_ratio=obj_detection_params['multi_box_loss']
@@ -1070,6 +1076,11 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                             output_boxes /= 256.
 
                 output = (output_boxes, output_conf)
+
+                # .module is added to model for access in multi GPU environments
+                # as https://github.com/pytorch/pytorch/issues/16885 has not been merged yet
+                if isinstance(model, nn.DataParallel):
+                    model = model.module
 
                 det_boxes_batch, det_labels_batch, det_scores_batch = \
                     model.detect_objects(output_boxes, output_conf,

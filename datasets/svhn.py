@@ -103,7 +103,7 @@ class SVHN(Dataset):
                                          'digitStruct.mat')
 
             if not os.path.exists(mat_file_path):
-                print('\nDownload the mat file from: '
+                print('\nDownload the archieve file from: '
                       'http://ufldl.stanford.edu/housenumbers/[train or test].tar.gz')
                 print('Extract the downloaded archive to path [data_dir]/SVHN.')
                 sys.exit()

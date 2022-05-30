@@ -446,18 +446,17 @@ class TinierSSD(nn.Module):
         return all_images_boxes, all_images_labels, all_images_scores  # lists of length batch_size
 
 
-def tinierssd(pretrained=False, **kwargs):
+def ai85tinierssd(pretrained=False, **kwargs):
     """
     Constructs a Tinier SSD model
     """
     assert not pretrained
-    # Can specify and provide different aspect ratios if required here
     return TinierSSD(aspect_ratios=TinierSSD.default_aspect_ratios, **kwargs)
 
 
 models = [
     {
-        'name': 'tinierssd',
+        'name': 'ai85tinierssd',
         'min_input': 1,
         'dim': 2,
     }
