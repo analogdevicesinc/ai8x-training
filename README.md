@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-April 13, 2022
+June 1, 2022
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -1578,7 +1578,7 @@ Dropout modules such as `torch.nn.Dropout()` and `torch.nn.Dropout2d()` are auto
 
 *Note: Using [batch normalization](#Batch-Normalization) in conjunction with dropout can sometimes degrade training results.*
 
-#### view() and reshape()
+#### view(), reshape() and Flatten
 
 There are two supported cases for `view()` or `reshape()`.
 
@@ -1591,6 +1591,7 @@ There are two supported cases for `view()` or `reshape()`.
 2. Conversion from 1D and 2D to Fully Connected (“flattening”): The batch dimension (first dimension) must stay the same, and the other dimensions are combined (i.e., M = C×H×W or M = C×L).
    Example:
        `x = x.view(x.size(0), -1)  # Flatten`
+   An alternate way to express the flatten operation is `torch.nn.Flatten()`.
 
 #### Support for Quantization
 
