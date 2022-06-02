@@ -30,7 +30,7 @@ class MultiBoxLoss(nn.Module):
         bounding boxes. SSD paper uses smooth L1 loss for this purpose and so as the below
         implementation.
 
-        Confidence Loss measures the perfroamnce of the  object classification per box.Categorical
+        Confidence Loss measures the performance of the  object classification per box.Categorical
         cross-entropy is used to compute this loss.
 
         SSD paper (Liu, W. et al. (2016). SSD: Single Shot MultiBox Detector,

@@ -103,9 +103,13 @@ class SVHN(Dataset):
                                          'digitStruct.mat')
 
             if not os.path.exists(mat_file_path):
-                print('\nDownload the archieve file from: '
-                      'http://ufldl.stanford.edu/housenumbers/[train or test].tar.gz')
-                print('Extract the downloaded archive to path [data_dir]/SVHN.')
+                print('\nDownload the archive file from: '
+                      'http://ufldl.stanford.edu/housenumbers/[train or test].tar.gz\n'
+                      'Review the terms and conditions on '
+                      'http://ufldl.stanford.edu/housenumbers/ and then download...\n'
+                      'Extract the downloaded archive to path /data/SVHN\n'
+                      'E.g. The training image files and digitStruct.mat file containing all '
+                      'annotations will reside under folder: /data/SVHN/training\n')
                 sys.exit()
 
             digit_struct_data = SVHN.read_digit_mat(os.path.join(mat_file_path))
