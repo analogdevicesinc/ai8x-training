@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-June 1, 2022
+June 2, 2022
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -106,7 +106,7 @@ When going beyond simple models, model training does not work well without CUDA 
 
 * There is a PyTorch pre-release with ROCm acceleration for certain AMD GPUs on Linux ([see blog entry](https://pytorch.org/blog/pytorch-for-amd-rocm-platform-now-available-as-python-package/)), but this is not currently covered by the installation instructions in this document, and it is not supported.
 
-* There is neither CUDA nor ROCm nor Neural Engine support on macOS, and therefore no hardware acceleration.
+* At this time, there is neither CUDA nor ROCm nor Neural Engine support on macOS, and therefore no hardware acceleration (there is a pre-release version of PyTorch with M1 acceleration, and M1 acceleration will be supported in a future release of these tools).
 
 * PyTorch does not include CUDA support for aarch64/arm64 systems. *Rebuilding PyTorch from source is not covered by this document.*
 
@@ -199,21 +199,29 @@ $ sudo dnf install openssl-devel zlib-devel \
 
 *The software in this project uses Python 3.8.11 or a later 3.8.x version.*
 
-First, check the default Python version:
+First, check whether there is a default Python interpreter and whether it is version 3.8.x:
 
 ```shell
+$ python
+Command 'python' not found, did you mean:
+  command 'python3' from deb python3
+  command 'python' from deb python-is-python3
+# no default python, install pyenv
+
 $ python --version
 Python 2.7.18
 # wrong version, pyenv required
 ```
 
-This particular version will not function correctly with the MAX78000/MAX78002 tools. If the result is Python **3.8**.x, skip ahead to [git Environment](#git-Environment). For any other version (for example, 2.7, 3.7, 3.9, 3.10), continue here.
+Python 2 **will not function correctly** with the MAX78000/MAX78002 tools. If the result is Python **3.8**.x, skip ahead to [git Environment](#git-Environment). For *any* other version (for example, 2.7, 3.7, 3.9, 3.10), or no version, continue here.
 
 *Note: For the purposes of the MAX78000/MAX78002 tools, “python3” is not a substitute for “python”. Please install pyenv when `python --version` does not return version 3.8.x, <u>even if</u> “python3” is available.*
 
+*Note for advanced users: `sudo apt-get install python-is-python3` on Ubuntu 20.04 will install Python 3 as the default Python version; however, it may not be version 3.8.x.*
+
 ##### pyenv
 
-It is not necessary to install Python 3.8 system-wide, or to rely on the system-provided Python. To manage Python versions, instead use `pyenv` (<https://github.com/pyenv/pyenv>).
+It is not necessary to install Python 3.8 system-wide, or to rely on the system-provided Python. To manage Python versions, instead use `pyenv` (<https://github.com/pyenv/pyenv>). This allows multiple Python versions to co-exist on the same system without interfering with the system or with one another.
 
 On macOS (no CUDA support available):
 
