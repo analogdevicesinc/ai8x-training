@@ -235,6 +235,18 @@ def get_parser(model_names, dataset_names):
     parser.add_argument('--sparsity-perf', action='store_true', default=False,
                         help='when determining best epoch, use sparsity as primary key')
 
+    obj_detection_args = parser.add_argument_group('Object Detection Arguments')
+    obj_detection_args.add_argument('--enable-obj-detection', '--obj-detection',
+                                    dest='obj_detection', default=False,
+                                    action='store_true',
+                                    help='Enable when training an Object Detection Model')
+
+    obj_detection_args.add_argument('--obj-detection-params',
+                                    default=os.path.join('parameters',
+                                                         'object_detection_params.yaml'),
+                                    help='path to YAML file that defines the '
+                                    'parameters for Objetc Detection Loss and NMS')
+
     distiller.knowledge_distillation.add_distillation_args(parser, model_names, True)
     distiller.quantization.add_post_train_quant_args(parser)
     distiller.pruning.greedy_filter_pruning.add_greedy_pruner_args(parser)
