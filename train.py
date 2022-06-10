@@ -322,7 +322,7 @@ def main():
 
     # Get object detection params
     obj_detection_params = parse_obj_detection_yaml.parse(args.obj_detection_params) \
-        if args.obj_detection_params.lower() != "none" else None
+        if args.obj_detection_params else None
 
     # We can optionally resume from a checkpoint
     optimizer = None
@@ -635,25 +635,23 @@ def create_model(supported_models, dimensions, args):
         bias_bits = None
         quantize_activation = False
 
+    model_args = {}
+    model_args["pretrained"] = False
+    model_args["num_classes"] = args.num_classes
+    model_args["num_channels"] = dimensions[0]
+    model_args["dimensions"] = (dimensions[1], dimensions[2])
+    model_args["bias"] = args.use_bias
+    model_args["weight_bits"] = weight_bits
+    model_args["bias_bits"] = bias_bits
+    model_args["quantize_activation"] = quantize_activation
+
+    if args.obj_detection:
+        model_args["device"] = args.device
+
     if module['dim'] > 1 and module['min_input'] > dimensions[2]:
-        model = Model(pretrained=False, num_classes=args.num_classes,
-                      num_channels=dimensions[0],
-                      dimensions=(dimensions[1], dimensions[2]),
-                      padding=(module['min_input'] - dimensions[2] + 1) // 2,
-                      bias=args.use_bias,
-                      weight_bits=weight_bits,
-                      bias_bits=bias_bits,
-                      quantize_activation=quantize_activation,
-                      device=args.device).to(args.device)
-    else:
-        model = Model(pretrained=False, num_classes=args.num_classes,
-                      num_channels=dimensions[0],
-                      dimensions=(dimensions[1], dimensions[2]),
-                      bias=args.use_bias,
-                      weight_bits=weight_bits,
-                      bias_bits=bias_bits,
-                      quantize_activation=quantize_activation,
-                      device=args.device).to(args.device)
+        model_args["padding"] = (module['min_input'] - dimensions[2] + 1) // 2
+
+    model = Model(**model_args).to(args.device)
 
     return model
 
@@ -1039,7 +1037,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
 
     # Get object detection params
     obj_detection_params = parse_obj_detection_yaml.parse(args.obj_detection_params) \
-        if args.obj_detection_params.lower() != "none" else None
+        if args.obj_detection_params else None
 
     for validation_step, (inputs, target) in enumerate(data_loader):
 
