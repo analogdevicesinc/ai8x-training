@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-June 2, 2022
+June 14, 2022
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -106,7 +106,7 @@ When going beyond simple models, model training does not work well without CUDA 
 
 * There is a PyTorch pre-release with ROCm acceleration for certain AMD GPUs on Linux ([see blog entry](https://pytorch.org/blog/pytorch-for-amd-rocm-platform-now-available-as-python-package/)), but this is not currently covered by the installation instructions in this document, and it is not supported.
 
-* At this time, there is neither CUDA nor ROCm nor Neural Engine support on macOS, and therefore no hardware acceleration (there is a pre-release version of PyTorch with M1 acceleration, and M1 acceleration will be supported in a future release of these tools).
+* At this time, there is neither CUDA nor ROCm nor Neural Engine support on macOS, and therefore no hardware acceleration (there is a pre-release version of PyTorch with M1 acceleration on macOS 12.3 or later, and M1 acceleration will be supported in a future release of these tools).
 
 * PyTorch does not include CUDA support for aarch64/arm64 systems. *Rebuilding PyTorch from source is not covered by this document.*
 
@@ -2147,15 +2147,18 @@ The following table describes the most important command line arguments for `ai8
 | `--board-name`           | Set the target board (default: `EvKit_V1`)                   | `--board-name FTHR_RevA`        |
 | *Code generation*        |                                                              |                                 |
 | `--overwrite`            | Produce output even when the target directory exists (default: abort) |                        |
-| `--compact-data`         | Use *memcpy* to load input data in order to save code space  |                                 |
 | `--compact-weights`      | Use *memcpy* to load weights in order to save code space     |                                 |
-| `--mexpress`             | Use faster kernel loading                                    |                                 |
+| `--mexpress`             | Use faster kernel loading (default)                          |                                 |
+| `--no-mexpress` | Use alternate kernel loading (slower) | |
 | `--mlator`               | Use hardware to swap output bytes (useful for large multi-channel outputs) |                   |
 | `--softmax`              | Add software Softmax functions to generated code             |                                 |
 | `--boost`                | Turn on a port pin to boost the CNN supply                   | `--boost 2.5`                   |
 | `--timer`                | Insert code to time the inference using a timer              | `--timer 0`                     |
 | `--no-wfi`               | Do not use WFI (wait for interrupt) instructions when waiting for CNN completion |                                 |
 | `--define` | Additional preprocessor defines | `--define "FAST GOOD"` |
+| *MAX78002* |  |  |
+| `--no-pipeline` | **MAX78002 only**: Disable the pipeline and run the CNN on the slower APB clock. This reduces power consumption, but increases inference time and in most cases overall energy usage. |  |
+| `--max-speed` | **MAX78002 only:** In pipeline mode, load weights and input data on the PLL clock divided by 1 instead of divided by 4. This is approximately 50% faster, but uses 200% of the energy compared to the default settings. |  |
 | *File names*             |                                                              |                                 |
 | `--c-filename`           | Main C file name base (default: main.c)                      | `--c-filename main.c`           |
 | `--api-filename`         | API C file name (default: cnn.c)                             | `--api-filename cnn.c`          |
@@ -2266,7 +2269,7 @@ layers:
 To generate an embedded MAX78000 demo in the `demos/ai85-mnist/` folder, use the following command line:
 
 ```shell
-(ai8x-synthesize) $ python ai8xize.py --verbose --test-dir demos --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000 --compact-data --mexpress --softmax
+(ai8x-synthesize) $ python ai8xize.py --verbose --test-dir demos --prefix ai85-mnist --checkpoint-file trained/ai85-mnist.pth.tar --config-file networks/mnist-chw-ai85.yaml --device MAX78000 --compact-data --softmax
 ```
 
 *Note: For MAX78002, substitute MAX78002 as the `--device`.*
@@ -2725,7 +2728,7 @@ In order to achieve this, a layer must be inserted that does nothing else but re
 ...
 layers:
   ...
-  # Layer 1
+  # Layer I
   - out_offset: 0x0000
     processors: 0x0ffff00000000000
     operation: conv2d
@@ -2733,14 +2736,15 @@ layers:
     pad: 1
     activate: ReLU
   
-  # Layer 2 - re-format data with gap
+  # Layer II - re-format data with gap
   - out_offset: 0x2000
     processors: 0x00000000000fffff
     output_processors: 0x00000000000fffff
     operation: passthrough
     write_gap: 1
+    name: layerII
   
-  # Layer 3
+  # Layer III
   - in_offset: 0x0000
     out_offset: 0x2004
     processors: 0x00000000000fffff
@@ -2749,9 +2753,10 @@ layers:
     pad: 1
     activate: ReLU
     write_gap: 1
+    name: layerIII
   
-  # Layer 4 - Residual
-  - in_sequences: [2, 3]
+  # Layer IV - Residual
+  - in_sequences: [layerII, layerIII]
     in_offset: 0x2000
     out_offset: 0x0000
     processors: 0x00000000000fffff
@@ -2964,7 +2969,7 @@ Perform minimum accelerator initialization so it can be configured or restarted.
 Configure the accelerator for the given network.
 
 `int cnn_load_weights(void);`
-Load the accelerator weights. `cnn_init()` must be called before loading weights after reset or wake from sleep. *Note that the physical weight memories are 72-bit wide. When `--mexpress` mode is enabled, the weight data is written in a sequence of 32-bit writes, containing the “packed” weight values. When `--mexpress` is disabled, each weight memory is written in four 32-bit memory writes, with zero-padded data.*
+Load the accelerator weights. `cnn_init()` must be called before loading weights after reset or wake from sleep. *Note that the physical weight memories are 72-bit wide. When `--mexpress` mode is enabled (default), the weight data is written in a sequence of 32-bit writes, containing the “packed” weight values. When using `--no-mexpress`, each weight memory is written in four 32-bit memory writes, with zero-padded data.*
 
 `int cnn_verify_weights(void);`
 Verify the accelerator weights (used for debug only).
