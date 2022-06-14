@@ -242,8 +242,7 @@ def get_parser(model_names, dataset_names):
                                     help='Enable when training an Object Detection Model')
 
     obj_detection_args.add_argument('--obj-detection-params',
-                                    default=os.path.join('parameters',
-                                                         'object_detection_params.yaml'),
+                                    default=None,
                                     help='path to YAML file that defines the '
                                     'parameters for Objetc Detection Loss and NMS')
 
