@@ -112,6 +112,7 @@ class Conv1D(keras.layers.Layer):  # pylint: disable=too-many-instance-attribute
         if self.conv1d is not None:
             x = self.zeropadding(x)
             x = self.conv1d(x)
+            x = self.quantize(x)
             x = self.clamp(x)
             # print('Conv&PaddingOutput:%s' % (x.shape))
 
@@ -382,6 +383,7 @@ class Conv2D(keras.layers.Layer):  # pylint: disable=too-many-instance-attribute
         if self.conv2d is not None:
             x = self.zeropadding(x)
             x = self.conv2d(x)
+            x = self.quantize(x)
             x = self.clamp(x)
             # print('Conv&PaddingOutput:%s'%(x.shape))
 
@@ -630,6 +632,7 @@ class Dense(keras.layers.Layer):
         call function
         """
         x = self.Dense(x)
+        x = self.quantize(x)
         x = self.clamp(x)
         # print(x.shape)
         # print(tf.math.reduce_max(x, axis=0))
@@ -676,15 +679,41 @@ class Clamp(keras.layers.Layer):
             "max_val": self.max_val
             }
 
+class Quantize(keras.layers.Layer):
+    """
+    Post-Activation Quantize Module
+    Shift the output left or right before clamping
+    """
 
-def quantize_clamp(wide, output_shift):  # pylint: disable=unused-argument
+    def __init__(self, output_shift=0):
+        super().__init__()
+        self.output_shift = output_shift
+        self.scale = 2**output_shift
+
+    def call(self, x, training=None):  # pylint: disable=unused-argument, arguments-differ
+        """
+        call function
+        """
+        return tf.math.multiply(x, self.scale)
+
+    def get_config(self):
+        """
+        get configuration
+        """
+        return {
+            "name": self.__class__.__name__,
+            "scale": self.scale,
+            "output_shift": self.output_shift,
+            }
+
+def quantize_clamp(wide, output_shift):
     """
     Return new Quantization and Clamp objects.
     """
     if dev.simulate:  # pylint: disable=no-else-raise
         raise ValueError('TODO: SUPPORT')
     else:
-        quantize = Empty()
+        quantize = Quantize(output_shift)
         if not wide:
             clamp = Clamp(  # Do not combine with ReLU
                 min_val=-1.,
