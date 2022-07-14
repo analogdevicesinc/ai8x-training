@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-August 9, 2022
+August 15, 2022
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -62,7 +62,7 @@ Full support and documentation are provided for the following platform:
 
 * CPU: 64-bit amd64/x86_64 “PC” with [Ubuntu Linux 20.04 LTS](https://ubuntu.com/download/server)
 * GPU for hardware acceleration (optional but highly recommended): Nvidia with [CUDA 11](https://developer.nvidia.com/cuda-toolkit-archive)
-* [PyTorch 1.8.1 (LTS)](https://pytorch.org/get-started/locally/) on Python 3.8.x
+* [PyTorch 1.12.1](https://pytorch.org/get-started/locally/) on Python 3.8.x
 
 Limited support and advice for using other hardware and software combinations is available as follows.
 
@@ -96,7 +96,7 @@ This software also works inside Docker containers. However, CUDA support inside 
 
 #### PyTorch and Python
 
-The officially supported version of [PyTorch is 1.8.1 (LTS)](https://pytorch.org/get-started/locally/) running on Python 3.8.x. Newer versions will typically work, but are not covered by support, documentation, and installation scripts.
+The officially supported version of [PyTorch is 1.12.1](https://pytorch.org/get-started/locally/) running on Python 3.8.x. Newer versions will typically work, but are not covered by support, documentation, and installation scripts.
 
 #### Hardware Acceleration
 
@@ -402,7 +402,7 @@ After a small delay of typically a day, a “Release” tag is created on GitHub
 
 In addition to code updated in the repository itself, submodules and Python libraries may have been updated as well.
 
-Major upgrades (such as updating from PyTorch 1.7 to PyTorch 1.8) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#upstream-code). Starting from scratch is also recommended when upgrading the Python version.
+Major upgrades (such as updating from PyTorch 1.8 to PyTorch 1.12) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#upstream-code). Starting from scratch is also recommended when upgrading the Python version.
 
 For minor updates, pull the latest code and install the updated wheels:
 
@@ -1300,7 +1300,7 @@ If hardware acceleration is not available, skip the following two steps and cont
    (ai8x-training) $ python check_cuda.py
    System:            linux
    Python version:    3.8.11 (default, Jul 14 2021, 12:46:05) [GCC 9.3.0]
-   PyTorch version:   1.8.1+cu111
+   PyTorch version:   1.12.1+cu116
    CUDA acceleration: available in PyTorch
    ```
 
