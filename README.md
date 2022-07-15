@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-June 14, 2022
+July 15, 2022
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -52,7 +52,7 @@ where “....” is the project root, for example `~/Documents/Source/AI`.
 
 ### Prerequisites
 
-This software requires PyTorch. *For TensorFlow / Keras, please use the `develop-tf` branch.*
+This software requires PyTorch. *TensorFlow / Keras support is deprecated.*
 
 PyTorch operating system and hardware support are constantly evolving. This document does not cover all possible combinations of operating system and hardware. Instead, this document describes how to install PyTorch on one officially supported platform.
 
