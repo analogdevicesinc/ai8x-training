@@ -1513,7 +1513,7 @@ def summarize_model(model, dataset, which_summary, filename='model'):
             opset_version=13,
         )
     else:
-        distiller.model_summary(model, which_summary, dataset)
+        distiller.model_summary(model, which_summary, dataset, log_1d=True)
 
 
 def sensitivity_analysis(model, criterion, data_loader, loggers, args, sparsities):
