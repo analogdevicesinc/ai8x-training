@@ -1272,7 +1272,7 @@ def update_training_scores_history(perf_scores_history, model, top1, top5, mAP, 
                                    args):
     """ Update the list of top training scores achieved so far, and log the best scores so far"""
 
-    model_sparsity, _, params_nnz_cnt = distiller.model_params_stats(model)
+    model_sparsity, _, params_nnz_cnt = distiller.model_params_stats(model, param_dims=[2, 3, 4])
 
     perf_scores_history.append(
         distiller.MutableNamedTuple({'params_nnz_cnt': -params_nnz_cnt, 'sparsity': model_sparsity,
@@ -1513,7 +1513,7 @@ def summarize_model(model, dataset, which_summary, filename='model'):
             opset_version=13,
         )
     else:
-        distiller.model_summary(model, which_summary, dataset)
+        distiller.model_summary(model, which_summary, dataset, log_1d=True)
 
 
 def sensitivity_analysis(model, criterion, data_loader, loggers, args, sparsities):
