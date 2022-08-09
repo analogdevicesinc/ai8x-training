@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2019-2021 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2019-2022 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -171,7 +171,7 @@ class SpeechCom(torch.utils.data.Dataset):
                 os.path.exists(os.path.join(self.processed_folder, self.test_file)) |
                 os.path.exists(os.path.join(self.processed_folder, self.validation_file)))
 
-    def __makedir_exist_ok(self, dirpath):  # pylint: disable=no-self-use
+    def __makedir_exist_ok(self, dirpath):
         try:
             os.makedirs(dirpath)
         except OSError as e:
@@ -180,7 +180,7 @@ class SpeechCom(torch.utils.data.Dataset):
             else:
                 raise
 
-    def __gen_bar_updater(self):  # pylint: disable=no-self-use
+    def __gen_bar_updater(self):
         pbar = tqdm(total=None)
 
         def bar_update(count, block_size, total_size):
@@ -215,7 +215,7 @@ class SpeechCom(torch.utils.data.Dataset):
                 else:
                     raise e
 
-    def __calculate_md5(self, fpath, chunk_size=1024 * 1024):  # pylint: disable=no-self-use
+    def __calculate_md5(self, fpath, chunk_size=1024 * 1024):
         md5 = hashlib.md5()
         with open(fpath, 'rb') as f:
             for chunk in iter(lambda: f.read(chunk_size), b''):
@@ -232,7 +232,7 @@ class SpeechCom(torch.utils.data.Dataset):
             return True
         return self.__check_md5(fpath, md5)
 
-    def __extract_archive(self, from_path,  # pylint: disable=no-self-use
+    def __extract_archive(self, from_path,
                           to_path=None, remove_finished=False):
         if to_path is None:
             to_path = os.path.dirname(from_path)

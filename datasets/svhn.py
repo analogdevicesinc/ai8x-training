@@ -295,8 +295,7 @@ class SVHN(Dataset):
         return len(self.img_list)
 
     def __getitem__(self, index):
-
-        if index >= self.__len__():
+        if index >= len(self):
             raise IndexError
 
         if self.is_truncated:
@@ -443,7 +442,7 @@ def SVHN_get_datasets(data, load_train=True, load_test=True, resize_size=(96, 96
                              transform=train_transform, resize_size=resize_size,
                              fold_ratio=fold_ratio, simplified=simplified)
 
-        print(f'Train dataset length: {train_dataset.__len__()}\n')
+        print(f'Train dataset length: {len(train_dataset)}\n')
     else:
         train_dataset = None
 
@@ -455,7 +454,7 @@ def SVHN_get_datasets(data, load_train=True, load_test=True, resize_size=(96, 96
                             transform=test_transform, resize_size=resize_size,
                             fold_ratio=fold_ratio, simplified=simplified)
 
-        print(f'Test dataset length: {test_dataset.__len__()}\n')
+        print(f'Test dataset length: {len(test_dataset)}\n')
     else:
         test_dataset = None
 

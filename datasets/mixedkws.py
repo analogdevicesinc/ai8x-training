@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2021 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2021-2022 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -103,7 +103,7 @@ class MixedKWS:
     def __check_exists(self):
         return os.path.exists(os.path.join(self.processed_folder, self.data_file))
 
-    def __makedir_exist_ok(self, dirpath):  # pylint: disable=no-self-use
+    def __makedir_exist_ok(self, dirpath):
         try:
             os.makedirs(dirpath)
         except OSError as e:

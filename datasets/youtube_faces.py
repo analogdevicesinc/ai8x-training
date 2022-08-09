@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2019-2021 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2019-2022 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -70,7 +70,7 @@ class YouTubeFacesDataset(data.Dataset):
         t_end = time.time()
         print(f'{n_elems} of data samples loaded in {t_end-t_start:.4f} seconds.')
 
-    def __normalize_data(self, data_item):  # pylint: disable=no-self-use
+    def __normalize_data(self, data_item):
         data_item = data_item.astype(np.float32)
         data_item /= 256
         return data_item

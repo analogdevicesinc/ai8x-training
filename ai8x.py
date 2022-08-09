@@ -121,7 +121,7 @@ class Floor(nn.Module):
     Post-pooling integer quantization module
     Apply the custom autograd function
     """
-    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+    def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
         return FloorFunction.apply(x)
 
@@ -131,7 +131,7 @@ class AvgPoolFloor(nn.Module):
     Post-pooling integer quantization module
     Apply the custom autograd function
     """
-    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+    def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
         return AvgPoolFloorFunction.apply(x)
 
@@ -141,7 +141,7 @@ class FloorONNX(nn.Module):
     Post-pooling integer quantization module
     Apply the custom autograd function
     """
-    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+    def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
         return x.floor()
 
@@ -170,7 +170,7 @@ class Round(nn.Module):
     Post-pooling integer quantization module
     Apply the custom autograd function
     """
-    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+    def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
         return RoundFunction.apply(x)
 
@@ -195,7 +195,7 @@ class Scaler(nn.Module):
     Scaler module that considers integer quantization
     Apply the custom autograd function
     """
-    def forward(self, x, s):  # pylint: disable=arguments-differ, no-self-use
+    def forward(self, x, s):  # pylint: disable=arguments-differ
         """Forward prop"""
         if dev.simulate:
             return FloorFunction.apply(x*s)
@@ -207,7 +207,7 @@ class ScalerONNX(nn.Module):
     Scaler module that considers integer quantization
     Apply the custom autograd function
     """
-    def forward(self, x, s):  # pylint: disable=arguments-differ, no-self-use
+    def forward(self, x, s):  # pylint: disable=arguments-differ
         """Forward prop"""
         if dev.simulate:
             return x.mul(s).floor()
@@ -218,7 +218,7 @@ class RoundQat(nn.Module):
     """
     Round function for AvgPool in QAT mode
     """
-    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+    def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
         factor = 2**(dev.ACTIVATION_BITS - 1)
         return RoundFunction.apply(x.mul(factor)).div(factor)
@@ -228,7 +228,7 @@ class RoundQatONNX(nn.Module):
     """
     Round function for AvgPool in QAT mode
     """
-    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+    def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
         factor = 2**(dev.ACTIVATION_BITS - 1)
         return x.mul(factor).round().div(factor)
@@ -238,7 +238,7 @@ class FloorQat(nn.Module):
     """
     Floor function for AvgPool in QAT mode
     """
-    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+    def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
         factor = 2**(dev.ACTIVATION_BITS - 1)
         return AvgPoolFloorFunction.apply(x.mul(factor)).div(factor)
@@ -248,7 +248,7 @@ class FloorQatONNX(nn.Module):
     """
     Floor function for AvgPool in QAT mode
     """
-    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+    def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
         factor = 2**(dev.ACTIVATION_BITS - 1)
         return x.mul(factor).floor().div(factor)
@@ -348,7 +348,7 @@ class OutputShiftSqueeze(nn.Module):
     """
     Return output_shift when not using quantization-aware training.
     """
-    def forward(self, _, x):  # pylint: disable=arguments-differ, no-self-use
+    def forward(self, _, x):  # pylint: disable=arguments-differ
         """Forward prop"""
         return x.squeeze(0)
 
@@ -361,7 +361,7 @@ class OutputShift(nn.Module):
         super().__init__()
         self.shift_quantile = shift_quantile
 
-    def forward(self, x, _):  # pylint: disable=arguments-differ, no-self-use
+    def forward(self, x, _):  # pylint: disable=arguments-differ
         """Forward prop"""
         limit = torch.quantile(x.abs(), self.shift_quantile)
         return -(1./limit).log2().floor().clamp(min=-15., max=15.)
@@ -371,7 +371,7 @@ class OutputShiftONNX(nn.Module):
     """
     Calculate the clamped output shift when adjusting during quantization-aware training.
     """
-    def forward(self, x, _):  # pylint: disable=arguments-differ, no-self-use
+    def forward(self, x, _):  # pylint: disable=arguments-differ
         """Forward prop"""
         return -(1./x.abs().max()).log2().floor().clamp(min=-15., max=15.)
 
@@ -380,7 +380,7 @@ class One(nn.Module):
     """
     Return 1.
     """
-    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+    def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
         return torch.ones(1).to(x.device)
 
@@ -389,7 +389,7 @@ class WeightScale(nn.Module):
     """
     Calculate the weight scale (reciprocal of 2 to the power of the output shift)
     """
-    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+    def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
         return 2.**(-x)
 
@@ -398,7 +398,7 @@ class OutputScale(nn.Module):
     """
     Calculate the output scale (2 to the power of the output shift)
     """
-    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+    def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
         return 2.**x
 
@@ -407,7 +407,7 @@ class Abs(nn.Module):
     """
     Return abs(x)
     """
-    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+    def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
         return torch.abs_(x)  # abs_() is the in-place version
 
@@ -416,7 +416,7 @@ class Empty(nn.Module):
     """
     Do nothing
     """
-    def forward(self, x):  # pylint: disable=arguments-differ, no-self-use
+    def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
         return x
 

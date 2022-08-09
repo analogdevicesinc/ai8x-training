@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2021 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2021-2022 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -64,7 +64,7 @@ class OnceForAllSequentialUnit(nn.Module):
         """Returns max depth level to be used OFA elastic depth search"""
         return len(self.layers) - 1
 
-    def get_max_elastic_width_level(self):  # pylint: disable=no-self-use
+    def get_max_elastic_width_level(self):
         """Returns max width level to be used OFA elastic width search"""
         return 0
 

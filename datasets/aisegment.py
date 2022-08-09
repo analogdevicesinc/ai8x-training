@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2021 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2021-2022 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -360,8 +360,7 @@ class AISegment(Dataset):
         return self.img_files_info.shape[0]
 
     def __getitem__(self, index):
-
-        if index >= self.__len__():
+        if index >= len(self):
             raise IndexError
 
         if self.is_truncated:
@@ -409,7 +408,7 @@ def AISegment_get_datasets(data, load_train=True, load_test=True, im_size=(80, 8
         train_dataset = AISegment(root_dir=data_dir, d_type='train',
                                   transform=train_transform,
                                   im_size=im_size, fold_ratio=fold_ratio, use_memory=use_memory)
-        print(f'Train dataset length: {train_dataset.__len__()}\n')
+        print(f'Train dataset length: {len(train_dataset)}\n')
     else:
         train_dataset = None
 
@@ -423,7 +422,7 @@ def AISegment_get_datasets(data, load_train=True, load_test=True, im_size=(80, 8
                                  transform=test_transform,
                                  im_size=im_size, fold_ratio=fold_ratio, use_memory=use_memory)
 
-        print(f'Test dataset length: {test_dataset.__len__()}\n')
+        print(f'Test dataset length: {len(test_dataset)}\n')
     else:
         test_dataset = None
 

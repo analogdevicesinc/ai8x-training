@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-July 15, 2022
+August 9, 2022
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -213,7 +213,7 @@ Python 2.7.18
 # wrong version, pyenv required
 ```
 
-Python 2 **will not function correctly** with the MAX78000/MAX78002 tools. If the result is Python **3.8**.x, skip ahead to [git Environment](#git-Environment). For *any* other version (for example, 2.7, 3.7, 3.9, 3.10), or no version, continue here.
+Python 2 **will not function correctly** with the MAX78000/MAX78002 tools. If the result is Python **3.8**.x, skip ahead to [git Environment](#git-environment). For *any* other version (for example, 2.7, 3.7, 3.9, 3.10), or no version, continue here.
 
 *Note: For the purposes of the MAX78000/MAX78002 tools, “python3” is not a substitute for “python”. Please install pyenv when `python --version` does not return version 3.8.x, <u>even if</u> “python3” is available.*
 
@@ -336,7 +336,7 @@ $ python --version
 Python 3.8.11
 ```
 
-If this does <u>*not*</u> return version 3.8.x, please install and initialize [pyenv](#Python-3.8).
+If this does <u>*not*</u> return version 3.8.x, please install and initialize [pyenv](#python-38).
 
 Then continue with the following:
 
@@ -344,7 +344,7 @@ Then continue with the following:
 $ python -m venv venv --prompt ai8x-training
 ```
 
-If this command returns an error message similar to *“The virtual environment was not created successfully because ensurepip is not available,”* please install and initialize [pyenv](#Python-3.8).
+If this command returns an error message similar to *“The virtual environment was not created successfully because ensurepip is not available,”* please install and initialize [pyenv](#python-38).
 
 On macOS and Linux, including WSL2, activate the environment using
 
@@ -402,7 +402,7 @@ After a small delay of typically a day, a “Release” tag is created on GitHub
 
 In addition to code updated in the repository itself, submodules and Python libraries may have been updated as well.
 
-Major upgrades (such as updating from PyTorch 1.7 to PyTorch 1.8) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#Upstream-Code). Starting from scratch is also recommended when upgrading the Python version.
+Major upgrades (such as updating from PyTorch 1.7 to PyTorch 1.8) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#upstream-code). Starting from scratch is also recommended when upgrading the Python version.
 
 For minor updates, pull the latest code and install the updated wheels:
 
@@ -488,7 +488,7 @@ $ python --version
 Python 3.8.11
 ```
 
-If this does <u>*not*</u> return version 3.8.x, please install and initialize [pyenv](#Python-3.8).
+If this does <u>*not*</u> return version 3.8.x, please install and initialize [pyenv](#python-38).
 
 Then continue:
 
@@ -517,7 +517,7 @@ For all systems, continue with:
 
 ##### Repository Branches and Updates
 
-Branches and updates for `ai8x-synthesis` are handled similarly to the [`ai8x-training`](#Repository-Branches) project.
+Branches and updates for `ai8x-synthesis` are handled similarly to the [`ai8x-training`](#repository-branches) project.
 
 #### Installation is now Complete
 
@@ -623,7 +623,7 @@ The Microcontroller SDK for MAX78000/MAX7802 (“MaximSDK”) is available via t
 
     On Windows, this step is not necessary. However, “MaximSDK/Tools/MSYS2/msys.bat” file _must_ be used to launch the MSYS2 terminal for command-line development.
 
-Once the tools above have been installed, continue with [Final Check](#Final-Check).
+Once the tools above have been installed, continue with [Final Check](#final-check).
 
 #### Method 2: Manual Installation
 
@@ -687,7 +687,7 @@ The MAX78000/MAX78002 SDK is available as a git submodule of ai8x-synthesis. It 
 
     On Windows, add the toolchain paths to the system `PATH` variable (search for  “edit the system environment variables” in the Windows search bar).
 
-Once the tools above have been installed, continue to the [Final Check](#Final-Check) step below.
+Once the tools above have been installed, continue to the [Final Check](#final-check) step below.
 
 #### Final Check
 
@@ -722,7 +722,7 @@ Each processor includes a pooling unit and a convolutional engine with dedicated
 
 ![Overview](docs/Overview.png)
 
-Data is read from [data memory](#Data-Memory) associated with the processor, and written out to any data memory located within the accelerator. To run a deep convolutional neural network, multiple layers are chained together, where each layer’s operation is individually configurable. The output data from one layer is used as the input data for the next layer, for up to 32 layers (where *in-flight* pooling and *in-flight* element-wise operations do not count as layers).
+Data is read from [data memory](#data-memory) associated with the processor, and written out to any data memory located within the accelerator. To run a deep convolutional neural network, multiple layers are chained together, where each layer’s operation is individually configurable. The output data from one layer is used as the input data for the next layer, for up to 32 layers (where *in-flight* pooling and *in-flight* element-wise operations do not count as layers).
 
 The following picture shows an example view of a 2D convolution with pooling:
 ![Example](docs/CNNOverview.png)
@@ -757,7 +757,7 @@ For each of the four 16-processor quadrants, weight memory and processors can be
 
 Data memory in MAX78000/MAX78002 is needed for:
 
-* Input data (unless [FIFOs](#FIFOs) are used),
+* Input data (unless [FIFOs](#fifos) are used),
 * All layer’s activation data, and
 * Inference outputs.
 
@@ -767,7 +767,7 @@ Data memory connections can be visualized as follows:
 
 All input data must be located in the data memory instance the processor can access. Conversely, output data can be written to any data memory instance inside the accelerator (but not to general purpose SRAM on the Arm microcontroller bus).
 
-The data memory instances inside the accelerator are single-port memories. This means that only one access operation can happen per clock cycle. When using the HWC data format (see [Channel Data Formats](#Channel-Data-Formats)), this means that each of the four processors sharing the data memory instance will receive one byte of data per clock cycle (since each 32-bit data word consists of four packed channels).
+The data memory instances inside the accelerator are single-port memories. This means that only one access operation can happen per clock cycle. When using the HWC data format (see [Channel Data Formats](#channel-data-formats)), this means that each of the four processors sharing the data memory instance will receive one byte of data per clock cycle (since each 32-bit data word consists of four packed channels).
 
 ##### Multi-Pass
 
@@ -783,7 +783,7 @@ For example, if 192-channel data is read using 64 active processors, Data Memory
 
 ### Streaming Mode
 
-The machine also implements a streaming mode. Streaming allows input data dimensions that exceed the available per-channel data memory in the accelerator. *Note: Depending on the model and application, [Data Folding](#Data-Folding) may have performance benefits over Streaming Mode.*
+The machine also implements a streaming mode. Streaming allows input data dimensions that exceed the available per-channel data memory in the accelerator. *Note: Depending on the model and application, [Data Folding](#data-folding) may have performance benefits over Streaming Mode.*
 
 The following illustration shows the basic principle: In order to produce the first output pixel of the second layer, not all data needs to be present at the input. In the example, a 5×5 input needs to be available.
 
@@ -799,7 +799,7 @@ When the _yellow_ output pixel is produced, the first (_black_) pixel of the inp
 
 The number of discarded pixels is network specific and dependent on pooling strides and the types of convolution. In general, streaming mode is only useful for networks where the output data dimensions decrease from layer to layer (for example, by using a pooling stride).
 
-*Note: Streaming mode requires the use of [FIFOs](#FIFOs).*
+*Note: Streaming mode requires the use of [FIFOs](#fifos).*
 
 For concrete examples on how to implement streaming mode with a camera, please see the [Camera Streaming Guide](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/Guides/Camera_Streaming_Guide.md).
 
@@ -859,7 +859,7 @@ On MAX78000/MAX78002, _weights_ can be 1, 2, 4, or 8 bits wide (configurable per
 
 Note that for –1/0 1-bit weights (and, to a lesser degree, –1/+1 1-bit weights and 2-bit weights) require the use of bias to produce useful results. Without bias, all sums of products of activated data from a prior layer would be negative, and activation of that data would always be zero.
 
-In other cases, using bias in convolutional layers does not improve inference performance. In particular, [Quantization](#Quantization)-Aware Training (QAT) optimizes the weight distribution, possibly deteriorating the distribution of the bias values.
+In other cases, using bias in convolutional layers does not improve inference performance. In particular, [Quantization](#quantization)-Aware Training (QAT) optimizes the weight distribution, possibly deteriorating the distribution of the bias values.
 
 #### Rounding
 
@@ -1028,7 +1028,7 @@ The following example shows the weight memory layout for two layers. The first l
 
 #### Bias Memories
 
-Bias values are stored in separate bias memories. There are four bias memory instances available, and a layer can access any bias memory instance where at least one processor is enabled. By default, bias memories are automatically allocated using a modified Fit-First Descending (FFD) algorithm. Before considering the required resource sizes in descending order, and placing values in the bias memory with the most available resources, the algorithm places those bias values that require a single specified bias memory. The bias memory allocation can optionally be controlled using the [`bias_group`](#`bias_group`-(Optional)) configuration option.
+Bias values are stored in separate bias memories. There are four bias memory instances available, and a layer can access any bias memory instance where at least one processor is enabled. By default, bias memories are automatically allocated using a modified Fit-First Descending (FFD) algorithm. Before considering the required resource sizes in descending order, and placing values in the bias memory with the most available resources, the algorithm places those bias values that require a single specified bias memory. The bias memory allocation can optionally be controlled using the [`bias_group`](#bias_group-optional) configuration option.
 
 ### Weight Storage Example
 
@@ -1050,19 +1050,19 @@ MAX78000/MAX78002 hardware provides several activation functions.
 
 #### None
 
-There is always an implicit non-linearity when outputting 8-bit data since outputs are [clamped](#Saturation-and-Clipping) to $[–128, +127]$ (or $[–128/128, +127/128]$ during training). Due to the clamping, “no activation” behaves similar to PyTorch’s `nn.Hardtanh(min_value=-128[/128], max_value=127[/128])`.
+There is always an implicit non-linearity when outputting 8-bit data since outputs are [clamped](#saturation-and-clipping) to $[–128, +127]$ (or $[–128/128, +127/128]$ during training). Due to the clamping, “no activation” behaves similar to PyTorch’s `nn.Hardtanh(min_value=-128[/128], max_value=127[/128])`.
 
 <img src="docs/noactivation.png" alt="no activation" style="zoom:33%;" />
 
 #### ReLU
 
-All output values are [clipped (saturated)](#Saturation-and-Clipping) to $[0, +127]$. Because of this, `ReLU` behaves more similar to PyTorch’s `nn.Hardtanh(min_value=0, max_value=127[/128])` than to PyTorch’s `nn.ReLU()`.
+All output values are [clipped (saturated)](#saturation-and-clipping) to $[0, +127]$. Because of this, `ReLU` behaves more similar to PyTorch’s `nn.Hardtanh(min_value=0, max_value=127[/128])` than to PyTorch’s `nn.ReLU()`.
 
 <img src="docs/relu.png" alt="relu" style="zoom:33%;" />
 
 #### Abs
 
-`Abs` returns the absolute value for all inputs, and then [clamps](#Saturation-and-Clipping) the outputs to $[0, +127]$, similar to PyTorch `abs()` followed by `nn.Hardtanh(min_value=0, max_value=127[/128])`.
+`Abs` returns the absolute value for all inputs, and then [clamps](#saturation-and-clipping) the outputs to $[0, +127]$, similar to PyTorch `abs()` followed by `nn.Hardtanh(min_value=0, max_value=127[/128])`.
 
 <img src="docs/abs.png" alt="abs" style="zoom:33%;" />
 
@@ -1091,9 +1091,9 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   * Padding can be 0, 1, or 2.
   * Stride is fixed to [2, 2]. Output padding is fixed to 1.
 
-* A programmable layer-specific shift operator is available at the output of a convolution, see [`output_shift` (Optional)](#output_shift-\(Optional\)).
+* A programmable layer-specific shift operator is available at the output of a convolution, see [`output_shift` (Optional)](#output_shift-optional).
 
-* The supported [activation functions](#Activation-Functions) are `ReLU` and `Abs`, and a limited subset of `Linear`. *Note that due to [clipping](#Saturation-and-Clipping), non-linearities are introduced even when not explicitly specifying an activation function.*
+* The supported [activation functions](#activation-functions) are `ReLU` and `Abs`, and a limited subset of `Linear`. *Note that due to [clipping](#saturation-and-clipping), non-linearities are introduced even when not explicitly specifying an activation function.*
 
 * Pooling:
   * Both max pooling and average pooling are available, with or without convolution.
@@ -1125,25 +1125,25 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   
 * Streaming mode:
   
-  * When using data greater than 90×91 (8,192 pixels per channel in HWC mode), or 181×181 (32,768 pixels in CHW mode), and [Data Folding](#Data-Folding) techniques are not used, then `streaming` mode must be used.
+  * When using data greater than 90×91 (8,192 pixels per channel in HWC mode), or 181×181 (32,768 pixels in CHW mode), and [Data Folding](#data-folding) techniques are not used, then `streaming` mode must be used.
   * When using `streaming` mode, the product of any layer’s input width, input height, and input channels divided by 64 rounded up must not exceed 2^21: $width * height * ⌈\frac{channels}{64}⌉ < 2^{21}$; _width_ and _height_ must not exceed 1023.
-  * Streaming is limited to 8 consecutive layers or fewer, and is limited to four FIFOs (up to 4 input channels in CHW and up to 16 channels in HWC format), see [FIFOs](#FIFOs).
+  * Streaming is limited to 8 consecutive layers or fewer, and is limited to four FIFOs (up to 4 input channels in CHW and up to 16 channels in HWC format), see [FIFOs](#fifos).
   * For streaming layers, bias values may not be added correctly in all cases.
   * The *final* streaming layer must use padding.
   * Layers that use 1×1 kernels without padding are automatically replaced with equivalent layers that use 3×3 kernels with padding.
   
-* The weight memory supports up to 768 * 64 3×3 Q7 kernels (see [Number Format](#Number-Format)), for a total of [432 KiB of kernel memory](docs/AHBAddresses.md).
+* The weight memory supports up to 768 * 64 3×3 Q7 kernels (see [Number Format](#number-format)), for a total of [432 KiB of kernel memory](docs/AHBAddresses.md).
   When using 1-, 2- or 4-bit weights, the capacity increases accordingly.
   When using more than 64 input or output channels, weight memory is shared, and effective capacity decreases proportionally (for example, 128 input channels require twice as much space as 64 input channels, and a layer with <u>both</u> 128 input and 128 output channels requires <u>four</u> times as much space as a layer with only 64 input channels and 64 output channels).
-  Weights must be arranged according to specific rules detailed in [Layers and Weight Memory](#Layers-and-Weight-Memory).
+  Weights must be arranged according to specific rules detailed in [Layers and Weight Memory](#layers-and-weight-memory).
 
 * There are 16 instances of 32 KiB data memory ([for a total of 512 KiB](docs/AHBAddresses.md)). When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 181×181 pixels per channel in the CHW format. However, when using more than one input channel, the HWC format may be preferred, and all layer outputs are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance — or 91×90 pixels per channel.
-  Note that the first layer commonly creates a wide expansion (i.e., a large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical. In many cases, [Data Folding](#Data-Folding) (distributing the input data across multiple channels) can effectively increase both the input dimensions as well as improve model performance.
+  Note that the first layer commonly creates a wide expansion (i.e., a large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical. In many cases, [Data Folding](#data-folding) (distributing the input data across multiple channels) can effectively increase both the input dimensions as well as improve model performance.
 
 * The hardware supports 1D and 2D convolution layers, 2D transposed convolution layers (upsampling), element-wise addition, subtraction, binary OR, binary XOR as well as fully connected layers (`Linear`), which are implemented using 1×1 convolutions on 1×1 data:
   * The maximum number of input neurons is 1024, and the maximum number of output neurons is 1024 (16 each per processor used).
   
-  * `Flatten` functionality is available to convert 2D input data for use by fully connected layers, see [Fully Connected Layers](#Fully-Connected-\(Linear\)-Layers).
+  * `Flatten` functionality is available to convert 2D input data for use by fully connected layers, see [Fully Connected Layers](#fully-connected-linear-layers).
   
   * When “flattening” two-dimensional data, the input dimensions (C×H×W) must satisfy C×H×W ≤ 16384. Pooling cannot be used at the same time as flattening.
   
@@ -1157,7 +1157,7 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
 
 * Supported element-wise operations are `add`, `sub`, `xor`, and `or`. Element-wise operations can happen “in-flight” in the same layer as a convolution.
 
-* Groups, and depthwise separable convolutions are not supported. *Note: Batch normalization should be folded into the weights, see [Batch Normalization](#Batch-Normalization).*
+* Groups, and depthwise separable convolutions are not supported. *Note: Batch normalization should be folded into the weights, see [Batch Normalization](#batch-normalization).*
 
 
 
@@ -1187,9 +1187,9 @@ The MAX78002 hardware does not support arbitrary network parameters. Specificall
   * Padding can be 0, 1, or 2.
   * Stride is fixed to [2, 2]. Output padding is fixed to 1.
 
-* A programmable layer-specific shift operator is available at the output of a convolution, see [`output_shift` (Optional)](#output_shift-\(Optional\)).
+* A programmable layer-specific shift operator is available at the output of a convolution, see [`output_shift` (Optional)](#output_shift-optional).
 
-* The supported [activation functions](#Activation-Functions) are `ReLU` and `Abs`, and a limited subset of `Linear`. *Note that due to [clipping](#Saturation-and-Clipping), non-linearities are introduced even when not explicitly specifying an activation function.*
+* The supported [activation functions](#activation-functions) are `ReLU` and `Abs`, and a limited subset of `Linear`. *Note that due to [clipping](#saturation-and-clipping), non-linearities are introduced even when not explicitly specifying an activation function.*
 
 * Pooling:
 
@@ -1218,24 +1218,24 @@ The MAX78002 hardware does not support arbitrary network parameters. Specificall
 
 * Streaming mode:
 
-  * When using data greater than 143×143 (20,480 pixels per channel in HWC mode), or 286×286 (81,920 pixels in CHW mode), and [Data Folding](#Data-Folding) techniques are not used, then `streaming` mode must be used.
+  * When using data greater than 143×143 (20,480 pixels per channel in HWC mode), or 286×286 (81,920 pixels in CHW mode), and [Data Folding](#data-folding) techniques are not used, then `streaming` mode must be used.
   * When using `streaming` mode, the product of any layer’s input width, input height, and input channels divided by 64 rounded up must not exceed 2^21: $width * height * ⌈\frac{channels}{64}⌉ < 2^{21}$; _width_ and _height_ must not exceed 2047.
-  * Streaming is limited to 8 consecutive layers or fewer, and is limited to four FIFOs (up to 4 input channels in CHW and up to 16 channels in HWC format), see [FIFOs](#FIFOs).
+  * Streaming is limited to 8 consecutive layers or fewer, and is limited to four FIFOs (up to 4 input channels in CHW and up to 16 channels in HWC format), see [FIFOs](#fifos).
   * Layers that use 1×1 kernels without padding are automatically replaced with equivalent layers that use 3×3 kernels with padding.
   * Streaming layers must use convolution (i.e., the `Conv1d`, `Conv2d`, or `ConvTranspose2d` [operators](#operation)).
 
-* The weight memory of processors 0, 16, 32, and 48 supports up to 5,120 3×3 Q7 kernels (see [Number Format](#Number-Format)), all other processors support up to 4,096 3×3 Q7 kernels, for a total of [2,340 KiB of kernel memory](docs/AHBAddresses.md).
+* The weight memory of processors 0, 16, 32, and 48 supports up to 5,120 3×3 Q7 kernels (see [Number Format](#number-format)), all other processors support up to 4,096 3×3 Q7 kernels, for a total of [2,340 KiB of kernel memory](docs/AHBAddresses.md).
   When using 1-, 2- or 4-bit weights, the capacity increases accordingly. The hardware supports two different flavors of 1-bit weights, either 0/–1 or +1/–1.
   When using more than 64 input or output channels, weight memory is shared, and effective capacity decreases.
-  Weights must be arranged according to specific rules detailed in [Layers and Weight Memory](#Layers-and-Weight-Memory).
+  Weights must be arranged according to specific rules detailed in [Layers and Weight Memory](#layers-and-weight-memory).
 
 * The total of [1,280 KiB of data memory](docs/AHBAddresses.md) is split into 16 sections of 80 KiB each. When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 286×286 pixels per channel in the CHW format. However, when using more than one input channel, the HWC format may be preferred, and all layer outputs are in HWC format as well. In those cases, it is required that four channels fit into a single memory section — or 143×143 pixels per channel.
-  Note that the first layer commonly creates a wide expansion (i.e., a large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical. In many cases, [Data Folding](#Data-Folding) (distributing the input data across multiple channels) can effectively increase both the input dimensions as well as improve model performance.
+  Note that the first layer commonly creates a wide expansion (i.e., a large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical. In many cases, [Data Folding](#data-folding) (distributing the input data across multiple channels) can effectively increase both the input dimensions as well as improve model performance.
 
 * The hardware supports 1D and 2D convolution layers, 2D transposed convolution layers (upsampling), element-wise addition, subtraction, binary OR, binary XOR as well as fully connected layers (`Linear`), which are implemented using 1×1 convolutions on 1×1 data:
 
   * The maximum number of input neurons is 1024, and the maximum number of output neurons is 1024 (16 each per processor used).
-  * `Flatten` functionality is available to convert 2D input data for use by fully connected layers, see [Fully Connected Layers](#Fully-Connected-\(Linear\)-Layers).
+  * `Flatten` functionality is available to convert 2D input data for use by fully connected layers, see [Fully Connected Layers](#fully-connected-linear-layers).
   * When “flattening” two-dimensional data, the input dimensions (C×H×W) must satisfy C×H×W ≤ 16384. Pooling cannot be used at the same time as flattening.
   * Element-wise operators support from 2 up to 16 inputs.
   * Element-wise operators can be chained in-flight with pooling and 2D convolution (where the order of pooling and element-wise operations can be swapped).
@@ -1251,7 +1251,7 @@ The MAX78002 hardware does not support arbitrary network parameters. Specificall
 
 * Supported element-wise operations are `add`, `sub`, `xor`, and `or`. Element-wise operations can happen “in-flight” in the same layer as a convolution, *except* when the input is multi-pass (i.e., more than 64 channels), *and* a bias addition is also requested.
 
-* *Note: Batch normalization should be folded into the weights, see [Batch Normalization](#Batch-Normalization).*
+* *Note: Batch normalization should be folded into the weights, see [Batch Normalization](#batch-normalization).*
 
 
 
@@ -1277,7 +1277,7 @@ The example shows a fractionally-strided convolution with a stride of 2, a pad o
 
 ### Hardware Acceleration
 
-If hardware acceleration is not available, skip the following two steps and continue with [Training Script](#Training-Script).
+If hardware acceleration is not available, skip the following two steps and continue with [Training Script](#training-script).
 
 1. Before the first training session, check that CUDA hardware acceleration is available using `nvidia-smi -q`:
 
@@ -1436,7 +1436,7 @@ For classification, the “Top-1” score refers to the percentage of samples th
 
 The “Confusion Matrix” shows both the target (expected) label on the vertical (Y) axis, as well as the highest ranked prediction on the horizontal (X) axis. If the network returns 100% expected labels, then only the diagonal (top left to bottom right) will contain values greater than 0.
 
-When enabling TensorBoard (see [TensorBoard](#TensorBoard)), these and other statistics are also available in graphical form:
+When enabling TensorBoard (see [TensorBoard](#tensorboard)), these and other statistics are also available in graphical form:
 
 ![confusionmatrix](docs/confusionmatrix.png)
 
@@ -1584,7 +1584,7 @@ The following modules are predefined:
 
 Dropout modules such as `torch.nn.Dropout()` and `torch.nn.Dropout2d()` are automatically disabled during inference, and can therefore be used for training without affecting inference. [Dropout](https://en.wikipedia.org/wiki/Dilution_(neural_networks)) can improve generalization by reducing overfitting, but should not be used for “analytical” functions.
 
-*Note: Using [batch normalization](#Batch-Normalization) in conjunction with dropout can sometimes degrade training results.*
+*Note: Using [batch normalization](#batch-normalization) in conjunction with dropout can sometimes degrade training results.*
 
 #### view(), reshape() and Flatten
 
@@ -1625,7 +1625,7 @@ Quantization-aware training can be <u>disabled</u> by specifying `--qat-policy N
 
 The proper choice of `start_epoch` is important for achieving good results, and the default policy’s `start_epoch` may be much too small. As a rule of thumb, set `start_epoch` to a very high value (e.g., 1000) to begin, and then observe where in the training process the model stops learning. This epoch can be used as `start_epoch`, and the final network metrics (after an additional number of epochs) should be close to the non-QAT metrics. *Additionally, ensure that the learning rate after the `start_epoch` epoch is relatively small.*
 
-For more information, please also see [Quantization](#Quantization).
+For more information, please also see [Quantization](#quantization).
 
 #### Batch Normalization
 
@@ -1633,24 +1633,24 @@ Batch normalization after `Conv1d` and `Conv2d` layers is supported using “fus
 
 After fusing/folding, the network will no longer contain any batchnorm layers. The effects of batch normalization will instead be expressed by modified weights and biases of the preceding convolutional layer.
 
-* When using [Quantization-Aware Training (QAT)](#Quantization-Aware-Training-\(QAT\)), batchnorm layers <u>are automatically folded</u> during training and no further action is needed.
-* When using [Post-Training Quantization](#Post-Training-Quantization), the `batchnormfuser.py` script (see [BatchNorm Fusing](#BatchNorm-Fusing)) must be called before `quantize.py` to explicitly fuse the batchnorm layers.
+* When using [Quantization-Aware Training (QAT)](#quantization-aware-training-qat), batchnorm layers <u>are automatically folded</u> during training and no further action is needed.
+* When using [Post-Training Quantization](#post-training-quantization), the `batchnormfuser.py` script (see [BatchNorm Fusing](#batchnorm-fusing)) must be called before `quantize.py` to explicitly fuse the batchnorm layers.
 
-*Note: Using batch normalization in conjunction with [dropout](#Dropout) can sometimes degrade training results.*
+*Note: Using batch normalization in conjunction with [dropout](#dropout) can sometimes degrade training results.*
 
 ### Adapting Pre-existing Models
 
 In some cases, it may be possible to use generic models that were designed for non-MAX78000/MAX78002 platforms. To adapt pre-existing models to MAX78000/MAX78002, several steps are needed:
 
-1. Check that all operators are supported in hardware (see [List of Predefined Modules](#List-of-Predefined-Modules), [Dropout](#Dropout), and [Batch Normalization](#Batch-Normalization)).
-2. Check that the model size, parameter count, and parameters to the operators are supported (see [Limitations of MAX78000 Networks](#Limitations-of-MAX78000-Networks) and [Limitations of MAX78002 Networks](#Limitations-of-MAX78002-Networks)). For example, padding must always be zero-padding, and `Conv2d()` supports 1×1 and 3×3 kernels.
+1. Check that all operators are supported in hardware (see [List of Predefined Modules](#list-of-predefined-modules), [Dropout](#dropout), and [Batch Normalization](#batch-normalization)).
+2. Check that the model size, parameter count, and parameters to the operators are supported (see [Limitations of MAX78000 Networks](#limitations-of-max78000-networks) and [Limitations of MAX78002 Networks](#limitations-of-max78002-networks)). For example, padding must always be zero-padding, and `Conv2d()` supports 1×1 and 3×3 kernels.
 3. Change from PyTorch *nn.modules* to the *ai8x* versions of the modules. For example, `nn.Conv2d(…)` ⟶ `ai8x.Conv2d(…)`.
 4. Merge modules where possible (for example, `MaxPool2d()` + `Conv2d()` + `ReLU()` = `FusedMaxPoolConv2dReLU()`).
-5. [Re-train](#Model-Training-and-Quantization) the model. *This is necessary to correctly model clipping and quantization effects of the hardware.*
+5. [Re-train](#model-training-and-quantization) the model. *This is necessary to correctly model clipping and quantization effects of the hardware.*
 
 ### Model Comparison and Feature Attribution
 
-Both TensorBoard and [Manifold](#Manifold) can be used for model comparison and feature attribution.
+Both TensorBoard and [Manifold](#manifold) can be used for model comparison and feature attribution.
 
 #### TensorBoard
 
@@ -1707,10 +1707,10 @@ This will create a plot with a random selection of 3 test images. The plot shows
 
 ### BatchNorm Fusing
 
-Batchnorm fusing (see [Batch Normalization](#Batch-Normalization)) is needed as a separate step <u>only when both</u> the following are true:
+Batchnorm fusing (see [Batch Normalization](#batch-normalization)) is needed as a separate step <u>only when both</u> the following are true:
 
 1. Batch Normalization is used in the network and
-2. [Quantization-Aware Training (QAT)](#Quantization-Aware-Training-\(QAT\)) is <u>not</u> used (i.e., when [post-training quantization](#Post-Training-Quantization) is active).
+2. [Quantization-Aware Training (QAT)](#quantization-aware-training-qat) is <u>not</u> used (i.e., when [post-training quantization](#post-training-quantization) is active).
 
 In order to perform batchnorm fusing, the `batchnormfuser.py` tool must be run *before* the `quantize.py` script.
 
@@ -1746,11 +1746,11 @@ Note that data folding must be applied during model training. During inference, 
 
 There are two main approaches to quantization — quantization-aware training and post-training quantization. The MAX78000/MAX78002 support both approaches.
 
-For both approaches, the `quantize.py` software quantizes an existing PyTorch checkpoint file and writes out a new PyTorch checkpoint file that can then be used to evaluate the quality of the quantized network, using the same PyTorch framework used for training. The same new quantized checkpoint file will also be used to feed the [Network Loader](#Network-Loader).
+For both approaches, the `quantize.py` software quantizes an existing PyTorch checkpoint file and writes out a new PyTorch checkpoint file that can then be used to evaluate the quality of the quantized network, using the same PyTorch framework used for training. The same new quantized checkpoint file will also be used to feed the [Network Loader](#network-loader-ai8xize).
 
 #### Quantization-Aware Training (QAT)
 
-Quantization-aware training is the better performing approach. It is enabled by default. QAT learns additional parameters during training that help with quantization (see [Weights: Quantization-Aware Training (QAT)](#Weights:-Quantization-Aware-Training-\(QAT\)). No additional arguments (other than input, output, and device) are needed for `quantize.py`.
+Quantization-aware training is the better performing approach. It is enabled by default. QAT learns additional parameters during training that help with quantization (see [Weights: Quantization-Aware Training (QAT)](#weights-quantization-aware-training-qat). No additional arguments (other than input, output, and device) are needed for `quantize.py`.
 
 The input checkpoint to `quantize.py` is either `qat_best.pth.tar`, the best QAT epoch’s checkpoint, or `qat_checkpoint.pth.tar`, the final QAT epoch’s checkpoint.
 
@@ -1856,7 +1856,7 @@ Log file for this run: 2021.07.20-123302/2021.07.20-123302.log
 
 #### Troubleshooting
 
-If the model initially trains correctly, but the quantized performance is significantly worse, verify that the data loader calls `ai8x.normalize()`. Data must be normalized to the range expected by hardware, $[–128, +127]$, for both evaluation on simulated hardware and on the actual hardware. See also [Normalizing Input Data](#Normalizing-Input-Data) in the [Data Loader](#Data-Loader) description.
+If the model initially trains correctly, but the quantized performance is significantly worse, verify that the data loader calls `ai8x.normalize()`. Data must be normalized to the range expected by hardware, $[–128, +127]$, for both evaluation on simulated hardware and on the actual hardware. See also [Normalizing Input Data](#normalizing-input-data) in the [Data Loader](#data-loader) description.
 
 #### Alternative Quantization Approaches
 
@@ -1878,7 +1878,7 @@ The following step is needed to add new network models:
 
 Implement a new network model based on the constraints described earlier, see [Custom nn.Modules](#custom-nnmodules) (and `models/ai85net.py` for an example).
 
-***Note:*** *When re-using existing models, please note that some of the example models are designed to be used with [Neural Architecture Search (NAS)](#Neural-Architecture-Search-\(NAS\)). These models will typically not perform well, or not fit into hardware without the NAS steps. These models have “nas” as part of their name.*
+***Note:*** *When re-using existing models, please note that some of the example models are designed to be used with [Neural Architecture Search (NAS)](#neural-architecture-search-nas). These models will typically not perform well, or not fit into hardware without the NAS steps. These models have “nas” as part of their name.*
 
 ##### Model Instantiation and Initialization
 
@@ -1959,11 +1959,11 @@ The `output` field is a tuple of strings or numbers that describe the output cla
 
 ###### `loader`
 
-`loader` points to a loader function for the dataset (see [Data Loader](#Data-Loader)).
+`loader` points to a loader function for the dataset (see [Data Loader](#data-loader)).
 
 ###### `weight` (optional)
 
-The optional `weight` tuple can be set based on the *[a priori probabilities](#https://en.wikipedia.org/wiki/A_priori_probability)* for the classes, i.e., it answers the question *“how likely is it that data submitted for inference belongs to the given class?”.* For instance, if the sample counts for each class in the training dataset are equal, the `weight` tuple indicates the a priori probabilities of the occurrence of the classes. Note that the number of samples in a dataset for a given class does not always reflect the real-world probabilities. When there is a mismatch, a given “weight” value can degrade the performance on the test set, yet improve real-world inference, or vice versa.
+The optional `weight` tuple can be set based on the *[a priori probabilities](https://en.wikipedia.org/wiki/A_priori_probability)* for the classes, i.e., it answers the question *“how likely is it that data submitted for inference belongs to the given class?”.* For instance, if the sample counts for each class in the training dataset are equal, the `weight` tuple indicates the a priori probabilities of the occurrence of the classes. Note that the number of samples in a dataset for a given class does not always reflect the real-world probabilities. When there is a mismatch, a given “weight” value can degrade the performance on the test set, yet improve real-world inference, or vice versa.
 
 Each value in the tuple defines the weight for one output class, in the same order as `output`. When `weight` is <u>not</u> specified, all classes are given the same probability. When specifying a weight for the class “other,” increasing the value may improve results (e.g., multiplying the weight by 4×).
 
@@ -2010,7 +2010,7 @@ The behavior of a training session might change when Quantization Aware Training
 While there can be multiple reasons for this, check two important settings that can influence the training behavior:
 
 * The initial learning rate may be set too high. Reduce LR by a factor of 10 or 100 by specifying a smaller initial `--lr` on the command line, and possibly by reducing the epoch `milestones` for further reduction of the learning rate in the scheduler file specified by `--compress`. Note that the the selected optimizer and the batch size both affect the learning rate.
-* The epoch when QAT is engaged may be set too low. Increase `start_epoch` in the QAT scheduler file specified by `--qat-policy`, and increase the total number of training epochs by increasing the value specified by the `--epochs` command line argument and by editing the `ending_epoch` in the scheduler file specified by `--compress`. *See also the rule of thumb discussed in the section [Weights: Quantization-Aware Training (QAT)](#Weights:-Quantization-Aware-Training \(QAT\)).*
+* The epoch when QAT is engaged may be set too low. Increase `start_epoch` in the QAT scheduler file specified by `--qat-policy`, and increase the total number of training epochs by increasing the value specified by the `--epochs` command line argument and by editing the `ending_epoch` in the scheduler file specified by `--compress`. *See also the rule of thumb discussed in the section [Weights: Quantization-Aware Training (QAT)](#weights:-auantization-aware-training \(qat\)).*
 
 
 
@@ -2061,8 +2061,8 @@ Network Architecture Search (NAS) can be enabled using the `--nas` command line 
 * `start_epoch`: The full model is trained without any elastic search until this epoch is reached.
 * `validation_freq` is set to define the frequency in epochs to calculate the model performance on the validation set after full model training. This parameter is used to save training time, especially when the model includes batch normalization.
 * The `elastic_kernel`, `elastic_depth` and `elastic_width` fields are used to define the properties of each elastic search stage. These fields include the following two sub-fields:
-  * `leveling` enables leveling during elastic search. *See [above](#Stages-and-Levels-in-the-MAX78000/MAX78002-Implementation) for an explanation of stages and levels.*
-  * `num_epochs` defines the number of epochs for each level of the search stage if `leveling` is `False`.
+  * `leveling` enables leveling during elastic search. *See [above](#stages-and-levels-in-the-max78000max78002-implementation) for an explanation of stages and levels.*
+  * `num_epochs` defines the number of epochs for each level of the search stage if `leveling` is `Fal/e`.
 * `kd_params` is set to enable Knowledge Distillation.
   * `teacher_model` defines the model used as teacher model. Teacher is the model before epoch `start_epoch` if it is set to `full_model`. Teacher is updated with the model just before the stage transition if this field is set to `prev_stage_model`.
   * See [here](https://intellabs.github.io/distiller/knowledge_distillation.html#knowledge-distillation) for more information to set `distill_loss`, `student_loss` and `temperature`.
@@ -2091,7 +2091,7 @@ The only model architecture implemented in this repository is the sequential mod
 
 <img src="docs/NAS_Sequential_Model.png" alt="nas_model" style="zoom:50%;"/>
 
-All required elastic search strategies are implemented in this [model file](models/ai85nasnet-sequential.py).
+All required elastic search strategies are implemented in this [model file](https://github.com/MaximIntegratedAI/ai8x-training/blob/develop/models/ai85nasnet-sequential.py).
 
 A new model architecture can be implemented by implementing the `OnceForAllModel` interface. The new model class must implement the following:
 
@@ -2121,9 +2121,9 @@ The network loader creates C code that programs the MAX78000/MAX78002 (for embed
 
 The `ai8xize.py` program needs three inputs:
 
-1. A quantized checkpoint file, generated by the MAX78000/MAX78002 model quantization program `quantize.py`, see [Quantization](#Quantization).
-2. A YAML description of the network, see [YAML Network Description](#YAML-Network-Description).
-3. A NumPy “pickle” `.npy` file with sample input data, see [Generating a Random Sample Input](#Generating-a-Random-Sample-Input).
+1. A quantized checkpoint file, generated by the MAX78000/MAX78002 model quantization program `quantize.py`, see [Quantization](#quantization).
+2. A YAML description of the network, see [YAML Network Description](#yaml-network-description).
+3. A NumPy “pickle” `.npy` file with sample input data, see [Generating a Random Sample Input](#generating-a-random-sample-input).
 
 By default, the C code is split into two files: `main.c` contains the wrapper code, and loads a sample input and verifies the output for the sample input. `cnn.c` contains functions that are generated for a specific network to load, configure, and run the accelerator. During development, this split makes it easier to swap out only the network while keeping customized wrapper code intact.
 
@@ -2380,7 +2380,7 @@ Example for four processors 0, 1, 2, and 3:
 
 ##### `out_offset` (Optional)
 
-`out_offset` specifies the relative offset inside the data memory instance where the output data should be written to. When not specified, `out_offset` defaults to `0`. See also [Data Memory Ping-Pong](#Data-Memory-Ping-Pong).
+`out_offset` specifies the relative offset inside the data memory instance where the output data should be written to. When not specified, `out_offset` defaults to `0`. See also [Data Memory Ping-Pong](#data-memory-ping-pong).
 
 Example:
         `out_offset: 0x2000`
@@ -2401,7 +2401,7 @@ Example:
 
 ##### `data_format` (Optional)
 
-When specified for the first layer only, `data_format` can be either `chw`/`big` or `hwc`/`little`. The default is `hwc`. Note that the data format interacts with `processors`, see [Channel Data Formats](#Channel-Data-Formats).
+When specified for the first layer only, `data_format` can be either `chw`/`big` or `hwc`/`little`. The default is `hwc`. Note that the data format interacts with `processors`, see [Channel Data Formats](#channel-data-formats).
 
 ##### `operation`
 
@@ -2462,7 +2462,7 @@ Example:
 
 ##### `activate` (Optional)
 
-This key describes whether to activate the layer output (the default is to not activate). When specified, this key must be `ReLU`, `Abs` or `None` (the default). *Please note that there is always an implicit non-linearity when outputting 8-bit data since outputs are clamped to $[–1, +127/128]$, see [activation functions](#Activation-Functions).*
+This key describes whether to activate the layer output (the default is to not activate). When specified, this key must be `ReLU`, `Abs` or `None` (the default). *Please note that there is always an implicit non-linearity when outputting 8-bit data since outputs are clamped to $[–1, +127/128]$, see [activation functions](#activation-functions).*
 
 `output_shift` can be used for (limited) “linear” activation.
 
@@ -2593,7 +2593,7 @@ Example:
 
 ##### `streaming` (Optional)
 
-`streaming` specifies that the layer is using [streaming mode](#Streaming-Mode). This is necessary when the input data dimensions exceed the available data memory. When enabling `streaming`, all prior layers have to enable `streaming` as well. `streaming` can be enabled for up to 8 layers.
+`streaming` specifies that the layer is using [streaming mode](#streaming-mode). This is necessary when the input data dimensions exceed the available data memory. When enabling `streaming`, all prior layers have to enable `streaming` as well. `streaming` can be enabled for up to 8 layers.
 
 Example:
         `streaming: true`
@@ -2645,7 +2645,7 @@ Example:
 ##### Dropout and Batch Normalization
 
 * Dropout is only used during training, and corresponding YAML entries are not needed.
-* Batch normalization (“batchnorm”) is fused into the preceding layer’s weights and bias values (see [Batch Normalization](#Batch-Normalization)), and YAML entries are not needed.
+* Batch normalization (“batchnorm”) is fused into the preceding layer’s weights and bias values (see [Batch Normalization](#batch-normalization)), and YAML entries are not needed.
 
 #### Example
 
@@ -2772,14 +2772,14 @@ The same network can also be viewed graphically:
 
 Adding new datasets to the Network Loader is implemented as follows:
 
-1. Provide the [network model](#Model), its YAML description and weights. Place the YAML file (e.g., `new.yaml`) in the `networks` directory, and weights in the `trained` directory.
+1. Provide the [network model](#model), its YAML description and weights. Place the YAML file (e.g., `new.yaml`) in the `networks` directory, and weights in the `trained` directory.
    The non-quantized weights are obtained from a training checkpoint, for example:
    `(ai8x-synthesis) $ cp ../ai8x-training/logs/2020.06.02-154133/best.pth.tar trained/new-unquantized.pth.tar`
 
 2. When using post-training quantization, the quantized weights are the result of the quantization step. Copy and customize an existing quantization shell script, for example:
    `(ai8x-synthesis) $ cp scripts/quantize_mnist.sh scripts/quantize_new.sh`
 
-   Then, *edit this script to point to the new [model](#Model) and [dataset](#Data-Loader)* (`vi scripts/quantize_new.sh`), and call the script to generate the quantized weights. Example:
+   Then, *edit this script to point to the new [model](#model) and [dataset](#data-loader)* (`vi scripts/quantize_new.sh`), and call the script to generate the quantized weights. Example:
 
    ```shell
    (ai8x-synthesis) $ scripts/quantize_new.sh 
@@ -3107,7 +3107,7 @@ There can be many reasons why the known-answer test (KAT) fails for a given netw
 
 * When allocating large amounts of data on the stack, ensure the stack is sized appropriately. The stack size is configured in the linker file (by default, part of the SDK).
   
-* `--stop-after N` where `N` is a layer number may help to find the problematic layer by terminating the network early without having to retrain and without having to change the weight input file. Note that this may also require `--max-verify-length` as [described above](#Handling-Linker-Flash-Section-Overflows) since intermediate outputs tend to be large, and additionally `--no-unload` to suppress generation of the `cnn_unload()` function.
+* `--stop-after N` where `N` is a layer number may help to find the problematic layer by terminating the network early without having to retrain and without having to change the weight input file. Note that this may also require `--max-verify-length` as [described above](#handling-linker-flash-section-overflows) since intermediate outputs tend to be large, and additionally `--no-unload` to suppress generation of the `cnn_unload()` function.
 
 * `--no-bias LIST` where `LIST` is a comma-separated list of layers (e.g., `0,1,2,3`) can rule out problems due to the bias. This option zeros out the bias for the given layers without having to remove bias values from the weight input file.
 
@@ -3122,7 +3122,7 @@ The synthesis step (“izer”) will fail if the yaml description does not match
 
 Unlike PyTorch networks that can be constructed to be completely input dimension independent, MAX78000/MAX78002 networks always require knowledge of the input dimensions, which are set by the sample input. The sample input defaults to `tests/sample_dataset.npy` (where `dataset` is replaced with the dataset used, e.g., `mnist`). The command line option `--sample-input` can point the tool to a different input source.
 
-The dimensions are also important when [flattening](#Fully -Connected-\(Linear\)-Layers), since every pixel results in a channel, impacting the processor setup. The following is an example error message of a network that attempts to flatten a layer. The network was trained with 128×128, but the actual sample input provided was 64×64:
+The dimensions are also important when [flattening](#fully-connected-linear-layers), since every pixel results in a channel, impacting the processor setup. The following is an example error message of a network that attempts to flatten a layer. The network was trained with 128×128, but the actual sample input provided was 64×64:
 
 ```shell
 ERROR: Layer 6: 64 input channels (before flattening) using 1 pass, and 1 operand (64 processors per pass), but the enabled processor map 0x000000000000ffff has 16 bits instead of the expected number of 64.
@@ -3175,7 +3175,7 @@ $ podman run --rm -e RUN_LOCAL=true -e VALIDATE_MARKDOWN=false -e VALIDATE_PYTHO
 
 ### Submitting Changes
 
-Do not try to push any changes into the master branch. Instead, create a fork and submit a pull request against the `develop` branch. The easiest way to do this is using a [graphical client](#Recommended-Software) such as Fork or GitHub Desktop.
+Do not try to push any changes into the master branch. Instead, create a fork and submit a pull request against the `develop` branch. The easiest way to do this is using a [graphical client](#additional-software) such as Fork or GitHub Desktop.
 
 *Note: After creating the fork, you must re-enable actions in the “Actions” tab of the repository on GitHub.*
 
