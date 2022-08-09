@@ -223,10 +223,10 @@ class SVHN(Dataset):
 
             # Apply the increase in all both  directions if you can, else decrease increase amount
             while increase > 1:
-                if(square_bb_x0_selected - increase < 0 or
-                   square_bb_x1_selected + increase > img_width or
-                   square_bb_y0_selected - increase < 0 or
-                   square_bb_y1_selected + increase > img_height):
+                if (square_bb_x0_selected - increase < 0 or
+                    square_bb_x1_selected + increase > img_width or
+                    square_bb_y0_selected - increase < 0 or
+                    square_bb_y1_selected + increase > img_height):
 
                     increase = increase // 2
                 else:
