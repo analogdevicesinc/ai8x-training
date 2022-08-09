@@ -393,31 +393,31 @@ class TinierSSD(nn.Module):
 
                 # Non-Maximum Suppression (NMS)
 
-                # A torch.uint8 (byte) tensor to keep track of which predicted boxes to suppress
-                # 1 implies suppress, 0 implies don't suppress
-                suppress = torch.zeros((n_above_min_score), dtype=torch.uint8).to(self.device)
+                # A torch.bool tensor to keep track of which predicted boxes to suppress
+                # True implies suppress, False implies don't suppress
+                suppress = torch.zeros((n_above_min_score), dtype=torch.bool).to(self.device)
                 # (n_qualified)
 
                 # Consider each box in order of decreasing scores
                 for box in range(class_decoded_locs.size(0)):
                     # If this box is already marked for suppression
-                    if suppress[box] == 1:
+                    if suppress[box]:
                         continue
 
                     # Suppress boxes whose overlaps (with this box) are greater than maximum
                     # overlap
                     # Find such boxes and update suppress indices
-                    suppress = torch.max(suppress, overlap[box] > max_overlap)
+                    suppress = torch.logical_or(suppress, overlap[box] > max_overlap)
                     # The max operation retains previously suppressed boxes, like an 'OR' operation
 
                     # Don't suppress this box, even though it has an overlap of 1 with itself
-                    suppress[box] = 0
+                    suppress[box] = False
 
                 # Store only unsuppressed boxes for this class
-                image_boxes.append(class_decoded_locs[1 - suppress])
+                image_boxes.append(class_decoded_locs[~suppress])
                 image_labels.append(
-                    torch.LongTensor((1 - suppress).sum().item() * [c]).to(self.device))
-                image_scores.append(class_scores[1 - suppress])
+                    torch.LongTensor((~suppress).sum().item() * [c]).to(self.device))
+                image_scores.append(class_scores[~suppress])
 
             # If no object in any class is found, store a placeholder for 'background'
             if len(image_boxes) == 0:
