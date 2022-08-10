@@ -540,10 +540,12 @@ class QuantizationAwareModule(nn.Module):
             self.output_shift.data = out_shift.unsqueeze(0)
 
             weights = self.op.weight.data
-            self.op.weight.data = self.clamp_weight(self.quantize_weight(weight_scale * self.op.weight))
+            self.op.weight.data = \
+                self.clamp_weight(self.quantize_weight(weight_scale * self.op.weight))
             if self.op.bias is not None:
                 biases = self.op.bias.data
-                self.op.bias.data = self.clamp_bias(self.quantize_bias(weight_scale * self.op.bias))
+                self.op.bias.data = \
+                    self.clamp_bias(self.quantize_bias(weight_scale * self.op.bias))
 
             x = self.op(x)
 
