@@ -187,7 +187,8 @@ class Clamp(nn.Module):
 
     def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
-        return x.clamp(min=self.min_val, max=self.max_val)
+        x = x.clamp(min=self.min_val)
+        return x.clamp(max=self.max_val)
 
 
 class Scaler(nn.Module):
@@ -447,7 +448,6 @@ class QuantizationAwareModule(nn.Module):
             quantize_activation=False,
             pool=None,
             op=None,
-            func=None,
             bn=None,
             shift_quantile=1.0,
     ):
@@ -474,7 +474,6 @@ class QuantizationAwareModule(nn.Module):
 
         self.pool = pool
         self.op = op
-        self.func = func
         self.bn = bn
         self.pooling = pooling
 
@@ -540,15 +539,23 @@ class QuantizationAwareModule(nn.Module):
 
             self.output_shift.data = out_shift.unsqueeze(0)
 
-            weight = self.clamp_weight(self.quantize_weight(weight_scale * self.op.weight))
-            bias = self.op.bias
-            if bias is not None:
-                bias = self.clamp_bias(self.quantize_bias(weight_scale * bias))
+            weights = self.op.weight.data
+            self.op.weight.data = self.clamp_weight(self.quantize_weight(weight_scale * self.op.weight))
+            if self.op.bias is not None:
+                biases = self.op.bias.data
+                self.op.bias.data = self.clamp_bias(self.quantize_bias(weight_scale * self.op.bias))
 
-            x = self.func(x, weight, bias, self.op.stride, self.op.padding,
-                          self.op.dilation, self.op.groups)
+            x = self.op(x)
+
+            self.op.weight.data = weights
+            if self.op.bias is not None:
+                self.op.bias.data = biases
+
             if self.bn is not None:
-                x = self.bn(x) / 4
+                if len(x) > 1:
+                    x = self.bn(x) / 4.
+                else:
+                    x /= 4.
             if not self.wide:
                 # The device does not apply output shift in wide mode
                 x = self.scale(x, out_scale)
@@ -582,7 +589,7 @@ class Conv2d(QuantizationAwareModule):
             quantize_activation=False,
             groups=1,
             eps=1e-05,
-            momentum=0.05
+            momentum=0.05,
     ):
         assert not wide or activation is None
 
@@ -671,11 +678,6 @@ class Conv2d(QuantizationAwareModule):
         else:
             opn = None
 
-        if op == 'ConvTranspose2d':
-            func = nn.functional.conv_transpose2d
-        else:
-            func = nn.functional.conv2d
-
         super().__init__(
             pooling,
             activation,
@@ -685,7 +687,6 @@ class Conv2d(QuantizationAwareModule):
             quantize_activation,
             pool,
             opn,
-            func,
             bn,
         )
 
@@ -1027,13 +1028,6 @@ class SoftwareLinear(FusedSoftwareLinearReLU):
         super().__init__(in_features, out_features, relu=False, **kwargs)
 
 
-def func_linear(x, weight, bias, _stride, _padding, _dilation, _groups):
-    """
-    Wrapper for `nn.functional.linear` that takes the same number of arguments as Conv1d/Conv2d.
-    """
-    return nn.functional.linear(x, weight, bias)
-
-
 class Linear(QuantizationAwareModule):
     """
     Fused Linear and activation ('ReLU', 'Abs', None)
@@ -1068,7 +1062,6 @@ class Linear(QuantizationAwareModule):
             quantize_activation,
             None,
             nn.Linear(in_features, out_features, bias),
-            func_linear,
             None,
         )
 
@@ -1175,7 +1168,6 @@ class Conv1d(QuantizationAwareModule):
             quantize_activation,
             pool,
             opn,
-            nn.functional.conv1d,
             bn,
         )
 
