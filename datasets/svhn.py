@@ -223,10 +223,12 @@ class SVHN(Dataset):
 
             # Apply the increase in all both  directions if you can, else decrease increase amount
             while increase > 1:
-                if(square_bb_x0_selected - increase < 0 or
-                   square_bb_x1_selected + increase > img_width or
-                   square_bb_y0_selected - increase < 0 or
-                   square_bb_y1_selected + increase > img_height):
+                if (
+                    square_bb_x0_selected - increase < 0 or
+                    square_bb_x1_selected + increase > img_width or
+                    square_bb_y0_selected - increase < 0 or
+                    square_bb_y1_selected + increase > img_height
+                   ):
 
                     increase = increase // 2
                 else:
@@ -295,8 +297,7 @@ class SVHN(Dataset):
         return len(self.img_list)
 
     def __getitem__(self, index):
-
-        if index >= self.__len__():
+        if index >= len(self):
             raise IndexError
 
         if self.is_truncated:
@@ -443,7 +444,7 @@ def SVHN_get_datasets(data, load_train=True, load_test=True, resize_size=(96, 96
                              transform=train_transform, resize_size=resize_size,
                              fold_ratio=fold_ratio, simplified=simplified)
 
-        print(f'Train dataset length: {train_dataset.__len__()}\n')
+        print(f'Train dataset length: {len(train_dataset)}\n')
     else:
         train_dataset = None
 
@@ -455,7 +456,7 @@ def SVHN_get_datasets(data, load_train=True, load_test=True, resize_size=(96, 96
                             transform=test_transform, resize_size=resize_size,
                             fold_ratio=fold_ratio, simplified=simplified)
 
-        print(f'Test dataset length: {test_dataset.__len__()}\n')
+        print(f'Test dataset length: {len(test_dataset)}\n')
     else:
         test_dataset = None
 

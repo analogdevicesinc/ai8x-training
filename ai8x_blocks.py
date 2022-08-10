@@ -104,7 +104,7 @@ class ResidualBottleneck(nn.Module):
         """
         Does nothing.
         """
-        def forward(self, *x):  # pylint: disable=arguments-differ, no-self-use
+        def forward(self, *x):  # pylint: disable=arguments-differ
             """Forward prop"""
             return x[0]
 
