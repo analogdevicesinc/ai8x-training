@@ -556,8 +556,8 @@ def main():
                     checkpoint_name = f'nas_stg{stage}_lev{level}'
 
             with collectors_context(activations_collectors["valid"]) as collectors:
-                top1, top5, vloss, _, mAP = validate(val_loader, model, criterion, [pylogger],
-                                                     args, epoch, tflogger)
+                top1, top5, vloss, mAP = validate(val_loader, model, criterion, [pylogger],
+                                                  args, epoch, tflogger)
                 distiller.log_activation_statistics(epoch, "valid", loggers=all_tbloggers,
                                                     collector=collectors["sparsity"])
                 save_collectors_data(collectors, msglogger.logdir)
@@ -919,7 +919,7 @@ def test(test_loader, model, criterion, loggers, activations_collectors, args):
     if activations_collectors is None:
         activations_collectors = create_activation_stats_collectors(model, None)
     with collectors_context(activations_collectors["test"]) as collectors:
-        top1, top5, vloss, APs, mAP = _validate(test_loader, model, criterion, loggers, args)
+        top1, top5, vloss, mAP = _validate(test_loader, model, criterion, loggers, args)
         distiller.log_activation_statistics(-1, "test", loggers, collector=collectors['sparsity'])
 
         if args.kernel_stats:
@@ -972,12 +972,14 @@ def test(test_loader, model, criterion, loggers, activations_collectors, args):
                       f"max: {weight_max}, stddev: {weight_stddev}")
 
         save_collectors_data(collectors, msglogger.logdir)
-    return top1, top5, vloss, APs, mAP
+    return top1, top5, vloss, mAP
 
 
 def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=None):
     """Execute the validation/test loop."""
     losses = {'objective_loss': tnt.AverageValueMeter()}
+    if args.obj_detection:
+        detection_metrics = {'mAP': tnt.AverageValueMeter()}
     if not args.regression:
         classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, min(args.num_classes, 5)))
     else:
@@ -1041,9 +1043,6 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
 
     for validation_step, (inputs, target) in enumerate(data_loader):
 
-        APs = 0
-        mAP = 0
-
         with torch.no_grad():
 
             if args.obj_detection:
@@ -1087,10 +1086,11 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                                          top_k=obj_detection_params['nms']['top_k'])
                 # Calculate mAP per batch
                 if boxes_list:
-                    APs, mAP = object_detection_utils.calculate_mAP(det_boxes_batch,
-                                                                    det_labels_batch,
-                                                                    det_scores_batch, boxes_list,
-                                                                    labels_list, difficulties)
+                    _, mAP = object_detection_utils.calculate_mAP(det_boxes_batch,
+                                                                  det_labels_batch,
+                                                                  det_scores_batch, boxes_list,
+                                                                  labels_list, difficulties)
+                    detection_metrics['mAP'].add(mAP)
 
             else:
                 inputs, target = inputs.to(args.device), target.to(args.device)
@@ -1107,7 +1107,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
 
             if args.generate_sample is not None:
                 sample.generate(args.generate_sample, inputs, target, output, args.dataset, False)
-                return .0, .0, .0, .0, .0
+                return .0, .0, .0, .0
 
             if args.csv_prefix is not None:
                 save_tensor(inputs, f_x)
@@ -1150,7 +1150,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                         stats = (
                             '',
                             OrderedDict([('Loss', losses['objective_loss'].mean),
-                                         ('mAP', mAP)])
+                                         ('mAP', detection_metrics['mAP'].mean)])
                         )
                     else:
                         if not args.regression:
@@ -1235,9 +1235,10 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
         if args.obj_detection:
 
             msglogger.info('==> mAP: %.5f    Loss: %.3f\n',
-                           mAP, losses['objective_loss'].mean)
+                           detection_metrics['mAP'].mean,
+                           losses['objective_loss'].mean)
 
-            return 0, 0, losses['objective_loss'].mean, APs, mAP
+            return 0, 0, losses['objective_loss'].mean, detection_metrics['mAP'].mean
 
         if not args.regression:
             if args.num_classes > 5:
@@ -1259,13 +1260,12 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                                                    dataformats='HWC')
         if not args.regression:
             return classerr.value(1), classerr.value(min(args.num_classes, 5)), \
-                losses['objective_loss'].mean, 0, 0
+                losses['objective_loss'].mean, 0
         # else:
-        return classerr.value(), .0, \
-            losses['objective_loss'].mean, 0, 0
+        return classerr.value(), .0, losses['objective_loss'].mean, 0
     # else:
     total_top1, total_top5, losses_exits_stats = earlyexit_validate_stats(args)
-    return total_top1, total_top5, losses_exits_stats[args.num_exits-1], APs, mAP
+    return total_top1, total_top5, losses_exits_stats[args.num_exits-1], 0
 
 
 def update_training_scores_history(perf_scores_history, model, top1, top5, mAP, vloss, epoch,
@@ -1456,8 +1456,8 @@ def evaluate_model(model, criterion, test_loader, loggers, activations_collector
         quantizer.prepare_model()
         model.to(args.device)
 
-    top1, _, _, _, mAP = test(test_loader, model, criterion, loggers, activations_collectors,
-                              args=args)
+    top1, _, _, mAP = test(test_loader, model, criterion, loggers, activations_collectors,
+                           args=args)
 
     if args.shap > 0:
         matplotlib.use('TkAgg')
