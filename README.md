@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-August 15, 2022
+August 29, 2022
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -1155,7 +1155,7 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   
 * Since the internal network format is HWC in groups of four channels, output concatenation only works properly when all components of the concatenation other than the last have multiples of four channels.
 
-* Supported element-wise operations are `add`, `sub`, `xor`, and `or`. Element-wise operations can happen “in-flight” in the same layer as a convolution.
+* Supported element-wise operations are `add`, `sub`, `bitwise xor`, and `bitwise or`. Element-wise operations can happen “in-flight” in the same layer as a convolution.
 
 * Groups, and depthwise separable convolutions are not supported. *Note: Batch normalization should be folded into the weights, see [Batch Normalization](#batch-normalization).*
 
@@ -1576,8 +1576,8 @@ The following modules are predefined:
 | FusedAvgPoolConv1dAbs | AvgPool1d, followed by Conv1d, and Abs |
 | Add | Element-wise Add |
 | Sub | Element-wise Sub |
-| Or | Element-wise bitwise Or |
-| Xor | Element-wise bitwise Xor |
+| BitwiseOr | Element-wise bitwise Or |
+| BitwiseXor | Element-wise bitwise Xor |
 
 
 #### Dropout
@@ -2417,8 +2417,8 @@ When this key is not specified, a warning is displayed, and `Conv2d` is selected
 | `Linear` or `FC` or `MLP` | Linear transformation to the incoming data (fully connected layer) |
 | `Add`                     | Element-wise addition                                        |
 | `Sub`                     | Element-wise subtraction                                     |
-| `Xor`                     | Element-wise binary XOR                                      |
-| `Or`                      | Element-wise binary OR                                       |
+| `BitwiseXor` or `Xor`     | Element-wise binary XOR                                      |
+| `BitwiseOr` or `Or`       | Element-wise binary OR                                       |
 
 Element-wise operations default to two operands. This can be changed using the `operands` key.
 
@@ -3140,7 +3140,7 @@ When running C code generated with `--energy`, the power display on the EVKit wi
 
 *Note: MAX78000 uses LED1 and LED2 to trigger power measurement via MAX32625 and MAX34417.*
 
-See the [benchmarking guide](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/MAX78000_Evaluation_Kit/MAX78000%20Power%20Monitor%20and%20Energy%20Benchmarking%20Guide.pdf) for more information about benchmarking.
+See the [benchmarking guide](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/Guides/MAX7800x%20Power%20Monitor%20and%20Energy%20Benchmarking%20Guide.pdf) for more information about benchmarking.
 
 
 
