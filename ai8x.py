@@ -1472,10 +1472,24 @@ class DevAI85(Device):
         return self.__class__.__name__
 
 
-class DevAI87(DevAI85):
+class DevAI87(Device):
     """
-    Implementation limits for MAX78002. For now, the same as MAX78000.
+    Implementation limits for MAX78002.
     """
+    def __init__(self, simulate, round_avg):
+        super().__init__(87, simulate, round_avg)
+
+        self.WEIGHT_BITS = 8
+        self.DATA_BITS = 8
+        self.ACTIVATION_BITS = 8
+        self.FULL_ACC_BITS = 30
+        self.FC_ACTIVATION_BITS = 16
+
+        self.WEIGHT_INPUTS = 256
+        self.WEIGHT_DEPTH = 5120
+
+        self.MAX_AVG_POOL = 16
+
     def __str__(self):
         return self.__class__.__name__
 
