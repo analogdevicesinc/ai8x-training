@@ -666,6 +666,8 @@ class Conv2d(QuantizationAwareModule):
 
             assert kernel_size == 3 or dev.device != 84 and kernel_size == 1
 
+            assert groups == 1 or dev.device == 87, 'Set device to MAX78002 for depthwise support'
+
             if op == 'Conv2d':
                 opn = nn.Conv2d(in_channels, out_channels,
                                 kernel_size=kernel_size, stride=stride,
