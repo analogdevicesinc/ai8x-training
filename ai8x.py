@@ -625,6 +625,7 @@ class Conv2d(QuantizationAwareModule):
                     and (dev.device != 84 or pool_stride[0] <= 4 or pooling == 'Max')
                 assert 0 < pool_stride[1] <= 16 \
                     and (dev.device != 84 or pool_stride[1] <= 4 or pooling == 'Max')
+                assert pool_stride[0] == pool_stride[1]
             else:
                 raise ValueError('pool_stride must be int or tuple')
 

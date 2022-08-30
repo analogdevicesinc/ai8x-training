@@ -996,7 +996,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
             if regression:
                 np.savetxt(f, t.cpu().numpy(), delimiter=",")
             else:
-                for _, i in enumerate(t):
+                for i in t:
                     f.write(f'{args.labels[i.int()]}\n')
 
     if args.csv_prefix is not None:
@@ -1719,7 +1719,7 @@ def update_old_model_params(model_path, model_new):
                            map_location=lambda storage, loc: storage)
     # Fix up any instances of DataParallel
     old_dict = model_old['state_dict'].copy()
-    for _, k in enumerate(old_dict):
+    for k in old_dict:
         if k.startswith('module.'):
             model_old['state_dict'][k[7:]] = old_dict[k]
     for new_key, new_val in model_new.state_dict().items():
