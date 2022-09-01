@@ -625,6 +625,7 @@ class Conv2d(QuantizationAwareModule):
                     and (dev.device != 84 or pool_stride[0] <= 4 or pooling == 'Max')
                 assert 0 < pool_stride[1] <= 16 \
                     and (dev.device != 84 or pool_stride[1] <= 4 or pooling == 'Max')
+                assert pool_stride[0] == pool_stride[1]
             else:
                 raise ValueError('pool_stride must be int or tuple')
 
@@ -664,6 +665,8 @@ class Conv2d(QuantizationAwareModule):
                 kernel_size = kernel_size[0]
 
             assert kernel_size == 3 or dev.device != 84 and kernel_size == 1
+
+            assert groups == 1 or dev.device == 87, 'Set device to MAX78002 for depthwise support'
 
             if op == 'Conv2d':
                 opn = nn.Conv2d(in_channels, out_channels,
@@ -1471,10 +1474,24 @@ class DevAI85(Device):
         return self.__class__.__name__
 
 
-class DevAI87(DevAI85):
+class DevAI87(Device):
     """
-    Implementation limits for MAX78002. For now, the same as MAX78000.
+    Implementation limits for MAX78002.
     """
+    def __init__(self, simulate, round_avg):
+        super().__init__(87, simulate, round_avg)
+
+        self.WEIGHT_BITS = 8
+        self.DATA_BITS = 8
+        self.ACTIVATION_BITS = 8
+        self.FULL_ACC_BITS = 30
+        self.FC_ACTIVATION_BITS = 16
+
+        self.WEIGHT_INPUTS = 256
+        self.WEIGHT_DEPTH = 5120
+
+        self.MAX_AVG_POOL = 16
+
     def __str__(self):
         return self.__class__.__name__
 

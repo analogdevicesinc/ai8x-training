@@ -6,6 +6,7 @@ Pillow>=7
 shap>=0.34.0
 tk>=0.1.0
 https://download.pytorch.org/whl/cu111/torch-1.8.1%2Bcu111-cp38-cp38-win_amd64.whl
+torchaudio==0.8.1
 https://download.pytorch.org/whl/cu111/torchvision-0.9.1%2Bcu111-cp38-cp38-win_amd64.whl
 tensorboard>=2.9.0,<2.10.0
 protobuf>=3.20.1,<4.0

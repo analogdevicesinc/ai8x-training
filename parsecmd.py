@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2019-2021 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2019-2022 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -30,11 +30,8 @@ Command line parser for the Training/Quantization software.
 import argparse
 import os
 
-# pylint: disable=wrong-import-order
 import distiller
-import distiller.quantization
 from distiller.utils import float_range_argparse_checker as float_range
-from examples.auto_compression.amc import amc_args as adc
 
 from devices import device
 
@@ -247,7 +244,4 @@ def get_parser(model_names, dataset_names):
                                     'parameters for Objetc Detection Loss and NMS')
 
     distiller.knowledge_distillation.add_distillation_args(parser, model_names, True)
-    distiller.quantization.add_post_train_quant_args(parser)
-    distiller.pruning.greedy_filter_pruning.add_greedy_pruner_args(parser)
-    adc.add_automl_args(parser)
     return parser
