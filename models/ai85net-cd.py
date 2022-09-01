@@ -53,7 +53,7 @@ class AI85CatsDogsNet(nn.Module):
 
         self.conv6 = ai8x.FusedConv2dReLU(32, fc_inputs, 3, padding=1, bias=bias, **kwargs)
 
-        self.fc = ai8x.Linear(fc_inputs*dim*dim, num_classes, bias=True, **kwargs)
+        self.fc = ai8x.Linear(fc_inputs*dim*dim, num_classes, bias=True, wide=True, **kwargs)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):

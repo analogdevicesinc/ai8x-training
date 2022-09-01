@@ -94,7 +94,6 @@ from torch.backends import cudnn
 
 # pylint: disable=wrong-import-order
 import distiller
-import examples.auto_compression.amc as adc
 import shap
 import torchnet.meter as tnt
 from distiller import apputils, model_summaries
@@ -389,27 +388,12 @@ def main():
         msglogger.info('Optimizer Type: %s', type(optimizer))
         msglogger.info('Optimizer Args: %s', optimizer.defaults)
 
-    if args.amc_cfg_file:
-        return automated_deep_compression(model, criterion, optimizer, pylogger, args)
-    if args.greedy:
-        return greedy(model, criterion, optimizer, pylogger, args)
-
     # This sample application can be invoked to produce various summary reports.
     if args.summary:
         return summarize_model(model, args.dataset, which_summary=args.summary,
                                filename=args.summary_filename)
 
     activations_collectors = create_activation_stats_collectors(model, *args.activation_stats)
-
-    if args.qe_calibration:
-        msglogger.info('Quantization calibration stats collection enabled:')
-        msglogger.info('\tStats will be collected for %.1f%% of test dataset', args.qe_calibration)
-        msglogger.info('\tSetting constant seeds and converting model to serialized execution')
-        distiller.set_deterministic()
-        model = distiller.make_non_parallel_copy(model)
-        activations_collectors.update(create_quantization_stats_collector(model))
-        args.evaluate = True
-        args.effective_test_size = args.qe_calibration
 
     # Load the datasets
     train_loader, val_loader, test_loader, _ = apputils.get_data_loaders(
@@ -996,7 +980,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
             if regression:
                 np.savetxt(f, t.cpu().numpy(), delimiter=",")
             else:
-                for _, i in enumerate(t):
+                for i in t:
                     f.write(f'{args.labels[i.int()]}\n')
 
     if args.csv_prefix is not None:
@@ -1537,44 +1521,6 @@ def sensitivity_analysis(model, criterion, data_loader, loggers, args, sparsitie
     distiller.sensitivities_to_csv(sensitivity, 'sensitivity.csv')
 
 
-def automated_deep_compression(model, criterion, _optimizer, loggers, args):
-    """automated_deep_compression"""
-    train_loader, _val_loader, test_loader, _ = apputils.get_data_loaders(
-        args.datasets_fn, (os.path.expanduser(args.data), args), args.batch_size,
-        args.workers, args.validation_split, args.deterministic,
-        args.effective_train_size, args.effective_valid_size, args.effective_test_size,
-        collate_fn=args.collate_fn)
-
-    args.display_confusion = True
-    validate_fn = partial(test, test_loader=test_loader, criterion=criterion,
-                          loggers=loggers, args=args, activations_collectors=None)
-    train_fn = partial(train, train_loader=train_loader, criterion=criterion,
-                       loggers=loggers, args=args)
-
-    save_checkpoint_fn = partial(apputils.save_checkpoint, arch=args.cnn, dir=msglogger.logdir)
-    optimizer_data = {'lr': args.lr, 'momentum': args.momentum, 'weight_decay': args.weight_decay}
-    adc.amc.train_auto_compressor(model, args, optimizer_data,
-                                  validate_fn, save_checkpoint_fn, train_fn)
-
-
-def greedy(model, criterion, _optimizer, loggers, args):
-    """greedy"""
-    train_loader, _val_loader, test_loader, _ = apputils.get_data_loaders(
-        args.datasets_fn, (os.path.expanduser(args.data), args), args.batch_size,
-        args.workers, args.validation_split, args.deterministic,
-        args.effective_train_size, args.effective_valid_size, args.effective_test_size,
-        collate_fn=args.collate_fn)
-
-    test_fn = partial(test, test_loader=test_loader, criterion=criterion,
-                      loggers=loggers, args=args, activations_collectors=None)
-    train_fn = partial(train, train_loader=train_loader, criterion=criterion, args=args)
-    assert args.greedy_target_density is not None
-    distiller.pruning.greedy_filter_pruning.greedy_pruner(model, args,
-                                                          args.greedy_target_density,
-                                                          args.greedy_pruning_step,
-                                                          test_fn, train_fn)
-
-
 def create_nas_training_stage_list(model, nas_policy):
     """Create list to define NAS stage transition epochs"""
     stage_transition_list = []
@@ -1719,7 +1665,7 @@ def update_old_model_params(model_path, model_new):
                            map_location=lambda storage, loc: storage)
     # Fix up any instances of DataParallel
     old_dict = model_old['state_dict'].copy()
-    for _, k in enumerate(old_dict):
+    for k in old_dict:
         if k.startswith('module.'):
             model_old['state_dict'][k[7:]] = old_dict[k]
     for new_key, new_val in model_new.state_dict().items():

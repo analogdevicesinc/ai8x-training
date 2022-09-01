@@ -44,7 +44,7 @@ class AI85FaceIDNet(nn.Module):
         self.conv7 = ai8x.FusedConv2dReLU(64, 64, 3, padding=1, bias=bias, **kwargs)
         self.conv8 = ai8x.FusedMaxPoolConv2d(64, 512, 1, pool_size=2, pool_stride=2,
                                              padding=0, bias=False, **kwargs)
-        self.avgpool = ai8x.AvgPool2d((5, 3))
+        self.avgpool = ai8x.AvgPool2d((5, 3), stride=1)
 
     def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
