@@ -1376,7 +1376,7 @@ class Sub(Eltwise):
         super().__init__(self.sub)
 
 
-class Xor(Eltwise):
+class BitwiseXor(Eltwise):
     """
     Elementwise Bitwise Xor Operation
     """
@@ -1390,13 +1390,13 @@ class Xor(Eltwise):
         a = a.add(.5).mul(256.).round().int()
         b = b.add(.5).mul(256.).round().int()
         # Bitwise XOR on integers, convert back to float
-        return torch.bitwise_or(a, b).div(256.).sub(.5)
+        return torch.bitwise_xor(a, b).div(256.).sub(.5)
 
     def __init__(self):
         super().__init__(self.bitwise_xor)
 
 
-class Or(Eltwise):
+class BitwiseOr(Eltwise):
     """
     Elementwise Bitwise Or Operation
     """
@@ -1409,7 +1409,7 @@ class Or(Eltwise):
         a = a.add(.5).mul(256.).round().int()
         b = b.add(.5).mul(256.).round().int()
         # Bitwise OR on integers, convert back to float
-        return torch.bitwise_xor(a, b).div(256.).sub(.5)
+        return torch.bitwise_or(a, b).div(256.).sub(.5)
 
     def __init__(self):
         super().__init__(self.bitwise_or)

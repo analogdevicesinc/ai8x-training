@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-August 29, 2022
+September 1, 2022
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -29,8 +29,8 @@ This document covers several of ADI’s ultra-low power machine learning acceler
 | Die Type | Part Number(s)                 |
 | -------- | ------------------------------ |
 | *AI84*   | *Unreleased test chip*         |
-| **AI85** | **MAX78000** (full production) |
-| AI87     | MAX78002 (engineering samples) |
+| AI85     | **MAX78000** (full production) |
+| AI87     | **MAX78002** (full production) |
 
 ## Overview
 
@@ -297,11 +297,11 @@ $ git config --global user.name "First Last"
 
 #### Nervana Distiller
 
-Nirvana Distiller is package for neural network compression and quantization. Network compression can reduce the memory footprint of a neural network, increase its inference speed and save energy. Distiller is automatically installed as a git sub-module with the other packages.
+[Nervana Distiller](https://github.com/MaximIntegratedAI/distiller) is automatically installed as a git sub-module with the other packages. Distiller is used for its scheduling and model export functionality.
 
 #### Manifold
 
-Manifold is a model-agnostic visual debugging tool for machine learning. The [Manifold guide](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/Guides/Manifold.md) shows how to integrate this optional package into the training software.
+[Manifold](https://github.com/uber/manifold) is a model-agnostic visual debugging tool for machine learning. The [Manifold guide](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/Guides/Manifold.md) shows how to integrate this optional package into the training software.
 
 ### Upstream Code
 
@@ -400,7 +400,7 @@ After a small delay of typically a day, a “Release” tag is created on GitHub
 
 *Note: Each “Release” automatically creates a code archive. It is recommended to use a git client to access (pull from) the main branch of the repository using a git client instead of downloading the archives.*
 
-In addition to code updated in the repository itself, submodules and Python libraries may have been updated as well.
+In addition to code updated in the repository itself, **submodules and Python libraries may have been updated as well**.
 
 Major upgrades (such as updating from PyTorch 1.8 to PyTorch 1.12) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#upstream-code). Starting from scratch is also recommended when upgrading the Python version.
 
@@ -1072,7 +1072,9 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
 
 * `Conv2d`:
   
-  * Kernel sizes must be 1×1 or 3×3. *Note: Stacked 3×3 kernels can achieve the effect of larger kernels. For example, two consecutive layers with 3×3 kernels have the same receptive field as a 5×5 kernel. To achieve the same activation as a 5×5 kernel, additional layers are necessary.*
+  * Kernel sizes must be 1×1 or 3×3.
+    *Note: Stacked 3×3 kernels can achieve the effect of larger kernels. For example, two consecutive layers with 3×3 kernels have the same receptive field as a 5×5 kernel. To achieve the same activation as a 5×5 kernel, additional layers are necessary.*
+    *Note: 2×2 kernels can be emulated by setting one row and one column of 3×3 kernels to zero.*
   * Padding can be 0, 1, or 2. Padding always uses zeros.
   * Stride is fixed to [1, 1].
   * Dilation is fixed to 1.
@@ -1167,7 +1169,9 @@ The MAX78002 hardware does not support arbitrary network parameters. Specificall
 
 * `Conv2d`:
 
-  * Kernel sizes must be 1×1 or 3×3. *Note: Stacked 3×3 kernels can achieve the effect of larger kernels. For example, two consecutive layers with 3×3 kernels have the same receptive field as a 5×5 kernel. To achieve the same activation as a 5×5 kernel, additional layers are necessary.*
+  * Kernel sizes must be 1×1 or 3×3.
+    *Note: Stacked 3×3 kernels can achieve the effect of larger kernels. For example, two consecutive layers with 3×3 kernels have the same receptive field as a 5×5 kernel. To achieve the same activation as a 5×5 kernel, additional layers are necessary.*
+    *Note: 2×2 kernels can be emulated by setting one row and one column of 3×3 kernels to zero.*
   * Padding can be 0, 1, or 2. Padding always uses zeros.
   * Stride is fixed to [1, 1].
   * Dilation can be 1 to 16.
@@ -1578,7 +1582,6 @@ The following modules are predefined:
 | Sub | Element-wise Sub |
 | BitwiseOr | Element-wise bitwise Or |
 | BitwiseXor | Element-wise bitwise Xor |
-
 
 #### Dropout
 
@@ -1996,7 +1999,7 @@ Train the new network/new dataset. See `scripts/train_mnist.sh` for a command li
 
 #### Netron — Network Visualization
 
-The [Netron tool](https://github.com/lutzroeder/Netron) can visualize networks, similar to what is available within Tensorboard. To use Netron, use `train.py` to export the trained network to ONNX, and upload the ONNX file.
+The [Netron tool](https://github.com/lutzroeder/Netron) can visualize networks, similar to what is available within Tensorboard. To use Netron, use `train.py` to export the trained network to ONNX, and upload the ONNX file. *Please note that not all networks can be exported to ONNX due to limitations in the PyTorch ONNX export library.*
 
 ```shell
 (ai8x-training) $ python train.py --model ai85net5 --dataset MNIST --evaluate --exp-load-weights-from checkpoint.pth.tar --device MAX78000 --summary onnx
@@ -2135,7 +2138,7 @@ The following table describes the most important command line arguments for `ai8
 | ------------------------ | ------------------------------------------------------------ | ------------------------------- |
 | `--help`                 | Complete list of arguments                                   |                                 |
 | *Device selection*       |                                                              |                                 |
-| `--device`               | Set device (default: AI84)                                   | `--device MAX78002`             |
+| `--device`               | Set device (MAX78000, or MAX78002)               | `--device MAX78002`             |
 | *Hardware features*      |                                                              |                                 |
 | `--avg-pool-rounding`    | Round average pooling results                                |                                 |
 | `--simple1b`             | Use simple XOR instead of 1-bit multiplication               |                                 |
@@ -3009,21 +3012,22 @@ The software Softmax function is optimized for processing time, and it quantizes
 
 The generated C code comprises the following files. Some of the files are customized based on the project name, and some are custom for a combination of project name and weight/sample data inputs:
 
-| File name      | Source                                | Project specific? | Model/weights change? |
-| -------------- | ------------------------------------- | ----------------- | --------------------- |
-| Makefile*      | template(s) in assets/embedded-*      | Yes               | No                    |
-| cnn.c          | generated                             | Yes               | **Yes**               |
-| cnn.h          | template in assets/device-all         | Yes               | **Yes**               |
-| weights.h      | generated                             | Yes               | **Yes**               |
-| log.txt        | generated                             | Yes               | **Yes**               |
-| main.c         | generated                             | Yes               | No                    |
-| sampledata.h   | generated                             | Yes               | No                    |
-| sampleoutput.h | generated                             | Yes               | **Yes**               |
-| softmax.c      | assets/device-all                     | No                | No                    |
-| model.launch   | template in assets/eclipse            | Yes               | No                    |
-| .cproject      | template in assets/eclipse            | Yes               | No                    |
-| .project       | template in assets/eclipse            | Yes               | No                    |
-| .settings/*    | templates in assets/eclipse/.settings | Yes               | No                    |
+| File name      | Source                                   | Project specific? | Model/weights change? |
+| -------------- | ---------------------------------------- | ----------------- | --------------------- |
+| Makefile*      | template(s) in assets/embedded-*         | Yes               | No                    |
+| cnn.c          | generated                                | Yes               | **Yes**               |
+| cnn.h          | template in assets/device-all            | Yes               | **Yes**               |
+| weights.h      | generated                                | Yes               | **Yes**               |
+| log.txt        | generated                                | Yes               | **Yes**               |
+| main.c         | generated                                | Yes               | No                    |
+| sampledata.h   | generated                                | Yes               | No                    |
+| sampleoutput.h | generated                                | Yes               | **Yes**               |
+| softmax.c      | assets/device-all                        | No                | No                    |
+| model.launch   | template in assets/eclipse               | Yes               | No                    |
+| .cproject      | template in assets/eclipse               | Yes               | No                    |
+| .project       | template in assets/eclipse               | Yes               | No                    |
+| .settings/*    | templates in assets/eclipse/.settings    | Yes               | No                    |
+| .vscode/*      | generated and templates in assets/vscode | Yes               | No                    |
 
 In order to upgrade an embedded project after retraining the model, point the network generator to a new empty directory and regenerate. Then, copy the four files that will have changed to your original project — `cnn.c`, `cnn.h`, `weights.h`, and `log.txt`. This allows for persistent customization of the I/O code and project (for example, in `main.c` and additional files) while allowing easy model upgrades.
 
@@ -3040,10 +3044,18 @@ The generator also adds all files from the `assets/eclipse`, `assets/device-all`
 | `##__TARGET_LC__##` | Lower case device name (e.g., `max78000`), from `--device` |
 | `##__ADDITIONAL_INCLUDES__##` | Additional include files, from `--eclipse-includes`  (default: empty) |
 | `##__GCC_PREFIX__##` | `arm-non-eabi-` or `riscv-none-embed-` |
-| `##__DEFINE__##`<br />*or* `##__GCC_SUFFIX__##` | Additional #defines (e.g., `-D SUPERSPEED`), from `--define` (default: empty) |
-| `##__DEFINE_ARM__##`<br />*or* `##__ARM_DEFINES__##` | Replace default ARM #defines, from `--define-default-arm` (default: `"MXC_ASSERT_ENABLE ARM_MATH_CM4"`) |
-| `##__DEFINE_RISCV__##`<br />*or* `##__RISC_DEFINES__##` | Replace default RISC-V #defines, from `--define-default-riscv` (default: `"MXC_ASSERT_ENABLE RV32"`) |
+| `##__DEFINES__##`<br />*or* `##__GCC_SUFFIX__##` | Additional #defines (e.g., `-D SUPERSPEED`), from `--define` (default: empty) |
+| `##__DEFINES_ARM__##`<br />*or* `##__ARM_DEFINES__##` | Replace default ARM #defines, from `--define-default-arm` (default: `"MXC_ASSERT_ENABLE ARM_MATH_CM4"`) |
+| `##__DEFINES_RISCV__##`<br />*or* `##__RISC_DEFINES__##` | Replace default RISC-V #defines, from `--define-default-riscv` (default: `"MXC_ASSERT_ENABLE RV32"`) |
+| `##__PROCESSOR_DEFINES__##` | Selects the #defines for the active processor (Arm or RISC-V) |
 | `##__ADDITIONAL_VARS__##` | Additional variables, from `--eclipse-variables` (default: empty) |
+| `##__PMON_GPIO_PINS__##` | Power Monitor GPIO pins |
+| `##__CNN_START__##` | Port pin action when CNN starts |
+| `##__CNN_COMPLETE__##` | Port pin action when CNN finishes |
+| `##__SYS_START__##` | Port pin action when system starts |
+| `##__SYS_COMPLETE__##` | Port pin action when system finishes |
+
+*Note: The vscode templates are treated differently and not designed to be modified by the user.*
 
 ##### Contents of the device-all Folder
 
@@ -3134,7 +3146,7 @@ ERROR: Layer 6: 64 input channels (before flattening) using 1 pass, and 1 operan
 
 #### Energy Measurement
 
-The MAX78000 Evaluation Kit (EVKit) revision C and later includes a MAX32625 microcontroller connected to a MAX34417 power accumulator. Since the sample rate of the MAX34417 is slow compared to typical inference times, `ai8xize.py` supports the command line parameter `--energy` that will run 100 iterations of the inference, separating out the input data load time. This allows enough sample time to get meaningful results (recommended minimum: 1 second).
+The MAX78000 Evaluation Kit (EVKit) revision C and later, and the MAX78002 Evaluation Kit both include a MAX32625 microcontroller connected to a MAX34417 power accumulator. Since the sample rate of the MAX34417 is slow compared to typical inference times, `ai8xize.py` supports the command line parameter `--energy` that will run 100 iterations of the inference, separating out the input data load time. This allows enough sample time to get meaningful results (recommended minimum: 1 second).
 
 When running C code generated with `--energy`, the power display on the EVKit will display the inference energy.
 
