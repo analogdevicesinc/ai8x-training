@@ -31,6 +31,7 @@ import argparse
 import os
 
 import distiller
+import distiller.quantization
 from distiller.utils import float_range_argparse_checker as float_range
 
 from devices import device
@@ -244,4 +245,5 @@ def get_parser(model_names, dataset_names):
                                     'parameters for Objetc Detection Loss and NMS')
 
     distiller.knowledge_distillation.add_distillation_args(parser, model_names, True)
+    distiller.quantization.add_post_train_quant_args(parser)
     return parser
