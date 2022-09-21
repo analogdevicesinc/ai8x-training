@@ -579,6 +579,7 @@ class Conv2d(QuantizationAwareModule):
             pooling=None,
             pool_size=2,
             pool_stride=2,
+            pool_dilation=1,
             stride=1,
             padding=0,
             dilation=1,
@@ -629,6 +630,21 @@ class Conv2d(QuantizationAwareModule):
             else:
                 raise ValueError('pool_stride must be int or tuple')
 
+            if isinstance(pool_dilation, int):
+                assert pool_dilation > 0
+                assert pool_dilation <= 1 \
+                    or dev.device == 87 and pool_dilation <= 16 and pooling == 'Max'
+            elif isinstance(pool_dilation, tuple):
+                assert len(pool_dilation) == 2
+                assert pool_dilation[0] > 0
+                assert pool_dilation[0] <= 1 \
+                    or dev.device == 87 and pool_dilation[0] <= 16 and pooling == 'Max'
+                assert pool_dilation[1] > 0
+                assert pool_dilation[1] <= 1 \
+                    or dev.device == 87 and pool_dilation[1] <= 16 and pooling == 'Max'
+            else:
+                raise ValueError('pool_dilation must be int or tuple')
+
             if op == 'ConvTranspose2d':
                 assert stride == 2
             else:
@@ -644,7 +660,8 @@ class Conv2d(QuantizationAwareModule):
         assert dilation == 1
 
         if pooling == 'Max':
-            pool = nn.MaxPool2d(kernel_size=pool_size, stride=pool_stride, padding=0)
+            pool = nn.MaxPool2d(kernel_size=pool_size, stride=pool_stride,
+                                dilation=pool_dilation, padding=0)
         elif pooling == 'Avg':
             pool = nn.AvgPool2d(kernel_size=pool_size, stride=pool_stride, padding=0)
         else:
@@ -754,9 +771,9 @@ class MaxPool2d(FusedMaxPoolConv2d):
     """
     2D Max Pool
     """
-    def __init__(self, kernel_size, stride=None, **kwargs):
+    def __init__(self, kernel_size, stride=None, dilation=1, **kwargs):
         super().__init__(0, 0, None, pool_size=kernel_size, pool_stride=stride,
-                         activation=None, **kwargs)
+                         pool_dilation=dilation, activation=None, **kwargs)
 
 
 class FusedAvgPoolConv2d(Conv2d):
@@ -1106,6 +1123,7 @@ class Conv1d(QuantizationAwareModule):
             pooling=None,
             pool_size=2,
             pool_stride=2,
+            pool_dilation=1,
             stride=3,
             padding=0,
             dilation=1,
@@ -1130,13 +1148,18 @@ class Conv1d(QuantizationAwareModule):
             assert 0 < pool_stride <= 16 \
                 and (dev.device != 84 or pool_stride <= 4 or pooling == 'Max')
 
+            assert pool_dilation > 0
+            assert pool_dilation <= 1 \
+                or dev.device == 87 and pool_dilation <= 16 and pooling == 'Max'
+
             assert stride == 1
         else:
             assert dev.device != 84 or stride == 3
             assert dev.device == 84 or stride == 1
 
         if pooling == 'Max':
-            pool = nn.MaxPool1d(kernel_size=pool_size, stride=pool_stride, padding=0)
+            pool = nn.MaxPool1d(kernel_size=pool_size, stride=pool_stride,
+                                dilation=pool_dilation, padding=0)
         elif pooling == 'Avg':
             pool = nn.AvgPool1d(kernel_size=pool_size, stride=pool_stride, padding=0)
         else:
@@ -1235,9 +1258,9 @@ class MaxPool1d(FusedMaxPoolConv1d):
     """
     1D Max Pool
     """
-    def __init__(self, kernel_size, stride=None, **kwargs):
+    def __init__(self, kernel_size, stride=None, dilation=1, **kwargs):
         super().__init__(0, 0, None, pool_size=kernel_size, pool_stride=stride,
-                         activation=None, **kwargs)
+                         pool_dilation=dilation, activation=None, **kwargs)
 
 
 class FusedAvgPoolConv1d(Conv1d):
