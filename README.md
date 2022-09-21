@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-September 1, 2022
+September 21, 2022
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -1108,6 +1108,8 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   
   * For 2D pooling, supported pooling kernel sizes are 1×1 through 16×16, including non-square kernels. 1D pooling supports kernel sizes from 1 through 16. *Note: Pooling kernel size values do not have to be the same as the pooling stride.*
   
+  * Dilation must be 1.
+  
   * Average pooling is implemented both using `floor()`and using rounding (half towards positive infinity). Use the `--avg-pool-rounding` switch to turn on rounding in the training software and the Network Generator.
   
     Example:
@@ -1204,6 +1206,8 @@ The MAX78002 hardware does not support arbitrary network parameters. Specificall
   * Pooling strides can be 1 through 16. For 2D pooling, the stride is the same for both dimensions.
 
   * For 2D pooling, supported pooling kernel sizes are 1×1 through 16×16, including non-square kernels. 1D pooling supports kernel sizes from 1 through 16. *Note: Pooling kernel size values do not have to be the same as the pooling stride.*
+
+  * Dilation is supported from 1 to 16, independently for both dimensions.
 
   * Average pooling is implemented both using `floor()`and using rounding (half towards positive infinity). Use the `--avg-pool-rounding` switch to turn on rounding in the training software and the Network Generator.
 
@@ -2533,6 +2537,13 @@ When specified, performs an `AvgPool` before the convolution. The pooling size c
 
 Example:
         `avg_pool: 2`
+
+##### `pool_dilation` (Optional)
+
+When performing a pooling operation *on MAX78002*, this key describes the pool dilation. The pooling dilation can be specified as an integer (when the value is identical for both dimensions, or for 1D convolutions), or as two values in order `[H, W]`. The default is `1` or `[1, 1]`.
+
+Example:
+        `pool_dilation: [2, 1]`
 
 ##### `pool_stride` (Optional)
 
