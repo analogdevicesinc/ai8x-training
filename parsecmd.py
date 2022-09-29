@@ -74,6 +74,7 @@ def get_parser(model_names, dataset_names):
     parser.add_argument('--avg-pool-rounding', action='store_true', default=False,
                         help='when simulating, use "round()" in AvgPool operations '
                              '(default: use "floor()")')
+    parser.add_argument('--dummy_checkpoint', dest='dummy_checkpoint', action='store_true', default=False, help='Not train but save a dummy checkpoint file')
 
     qat_args = parser.add_argument_group('Quantization Arguments')
     qat_args.add_argument('--qat-policy', dest='qat_policy',

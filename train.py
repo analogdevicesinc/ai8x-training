@@ -423,6 +423,13 @@ def main():
     elif compression_scheduler is None:
         compression_scheduler = distiller.CompressionScheduler(model)
 
+    if args.dummy_checkpoint:
+        apputils.save_checkpoint(0, args.cnn, model, optimizer=None,
+                                    scheduler=compression_scheduler,
+                                    is_best=False, name="dummy",
+                                    dir=msglogger.logdir)
+        return None
+
     # Model is re-transferred to GPU in case parameters were added (e.g. PACTQuantizer)
     model.to(args.device)
 
