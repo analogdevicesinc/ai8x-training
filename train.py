@@ -1084,6 +1084,8 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                 # correct output for accurate loss calculation
                 if args.act_mode_8bit:
                     output /= 128.
+                    if args.regression:
+                      target /= 128.
                     for key in model.__dict__['_modules'].keys():
                         if (hasattr(model.__dict__['_modules'][key], 'wide')
                                 and model.__dict__['_modules'][key].wide):
@@ -1105,7 +1107,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                 losses['objective_loss'].add(loss.item())
 
                 if not args.obj_detection:
-                    if len(output.data.shape) <= 2:
+                    if len(output.data.shape) <= 2 or args.regression:
                         classerr.add(output.data, target)
                     else:
                         classerr.add(output.data.permute(0, 2, 3, 1).flatten(start_dim=0,
