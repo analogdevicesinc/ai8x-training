@@ -400,7 +400,7 @@ def main():
         args.datasets_fn, (os.path.expanduser(args.data), args), args.batch_size,
         args.workers, args.validation_split, args.deterministic,
         args.effective_train_size, args.effective_valid_size, args.effective_test_size,
-        collate_fn=args.collate_fn)
+        collate_fn=args.collate_fn, cpu=args.device == 'cpu')
     msglogger.info('Dataset sizes:\n\ttraining=%d\n\tvalidation=%d\n\ttest=%d',
                    len(train_loader.sampler), len(val_loader.sampler), len(test_loader.sampler))
 
