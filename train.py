@@ -556,7 +556,7 @@ def main():
                         stats[1]['Top5'] = top5
                 else:
                     stats = ('Performance/Validation/', OrderedDict([('Loss', vloss),
-                                                                     ('MSE', 1 - top1)]))
+                                                                     ('MSE', top1)]))
 
             distiller.log_training_progress(stats, None, epoch, steps_completed=0, total_steps=1,
                                             log_freq=1, loggers=all_tbloggers)
@@ -1237,6 +1237,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
         else:
             msglogger.info('==> MSE: %.5f    Loss: %.3f\n',
                            classerr.value(), losses['objective_loss'].mean)
+            return classerr.value(), .0, losses['objective_loss'].mean, 0
 
         if args.display_confusion:
             msglogger.info('==> Confusion:\n%s\n', str(confusion.value()))
@@ -1247,8 +1248,6 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
         if not args.regression:
             return classerr.value(1), classerr.value(min(args.num_classes, 5)), \
                 losses['objective_loss'].mean, 0
-        # else:
-        return 1 - classerr.value(), .0, losses['objective_loss'].mean, 0
     # else:
     total_top1, total_top5, losses_exits_stats = earlyexit_validate_stats(args)
     return total_top1, total_top5, losses_exits_stats[args.num_exits-1], 0
@@ -1309,16 +1308,18 @@ def update_training_scores_history(perf_scores_history, model, top1, top5, mAP, 
                                    score.epoch)
         else:
 
-            # Keep perf_scores_history sorted from best to worst
-            if not args.sparsity_perf:
-                # Sort by mse (1 - mse) as main sort key, then sort by epoch
-                perf_scores_history.sort(key=operator.attrgetter('top1', 'epoch'), reverse=True)
-            else:
-                # Sort by sparsity as main sort key, then sort by mse (1- mse), and epoch
-                perf_scores_history.sort(key=operator.attrgetter('params_nnz_cnt', 'top1',
-                                         'epoch'), reverse=True)
+            # Sort by MSE as main sort key, then sort by epoch
+            perf_scores_history.sort(key=operator.attrgetter('epoch'), reverse=True)
+            perf_scores_history.sort(key=operator.attrgetter('top1'), reverse=False)
+
+            if args.sparsity_perf:
+                # Sort by sparsity as main sort key
+                perf_scores_history.sort(perf_scores_history,
+                                         key=operator.attrgetter('params_nnz_cnt'),
+                                         reverse=True)
+
             for score in perf_scores_history[:args.num_best_scores]:
-                msglogger.info('==> Best [Top 1 (1 - MSE): %.5f   Sparsity:%.2f   '
+                msglogger.info('==> Best [Top 1 (MSE): %.5f   Sparsity:%.2f   '
                                'Params: %d on epoch: %d]',
                                score.top1, score.sparsity, -score.params_nnz_cnt,
                                score.epoch)
