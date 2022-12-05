@@ -1124,7 +1124,7 @@ class Conv1d(QuantizationAwareModule):
             pool_size=2,
             pool_stride=2,
             pool_dilation=1,
-            stride=3,
+            stride=1,
             padding=0,
             dilation=1,
             bias=True,
