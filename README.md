@@ -1,13 +1,13 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-September 21, 2022
+November 29, 2022
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
 1. **Start here**:
     **[Top Level Documentation](https://github.com/MaximIntegratedAI/MaximAI_Documentation)**
 2. The software development kit (SDK), which contains drivers and example programs ready to run on the evaluation kits (EVkit and Feather):
-    [MAX78000_SDK](https://github.com/MaximIntegratedAI/MAX78000_SDK) *also includes MAX78002 support*
+    [Analog Devices MSDK](https://github.com/Analog-Devices-MSDK/msdk)
 3. The training repository, which is used for deep learning *model development and training*:
     [ai8x-training](https://github.com/MaximIntegratedAI/ai8x-training) **(described in this document)**
 4. The synthesis repository, which is used to *convert a trained model into C code* using the “izer” tool:
@@ -46,7 +46,7 @@ Including the SDK, the expected/resulting file system layout will be:
 
     ..../ai8x-training/
     ..../ai8x-synthesis/
-    ..../ai8x-synthesis/sdk/
+    ..../ai8x-synthesis/sdk/ [or a different path selected by the user]
 
 where “....” is the project root, for example `~/Documents/Source/AI`.
 
@@ -413,9 +413,9 @@ For minor updates, pull the latest code and install the updated wheels:
 (ai8x-training) $ pip3 install -U -r requirements.txt # or requirements-cu11.txt with CUDA 11.x
 ```
 
-##### Updates on Windows
+##### MSDK Updates
 
-On Windows, please *also* use the Maintenance Tool as documented in the [Maxim Micro SDK (MaximSDK) Installation and Maintenance User Guide](https://pdfserv.maximintegrated.com/en/an/ug7219.pdf). The Maintenance Tool updates the SDK.
+Please *also* update the MSDK or use the Maintenance Tool as documented in the [Analog Devices MSDK documentation](https://github.com/Analog-Devices-MSDK/msdk). The Maintenance Tool automatically updates the SDK.
 
 ##### Python Version Updates
 
@@ -543,7 +543,7 @@ There are two ways to install the SDK.
 
 #### Method 1: SDK Installer
 
-The Microcontroller SDK for MAX78000/MAX7802 (“MaximSDK”) is available via the installer links below. These installers require a GUI on your system.
+The [Microcontroller SDK](https://github.com/Analog-Devices-MSDK/msdk) for MAX78000/MAX7802 (“MaximSDK”) is available via the installer links below. These installers require a GUI on your system.
 
 1. Download the MaximSDK installer for your operating system from one of the links below.
     * [Windows](https://www.maximintegrated.com/content/maximintegrated/en/design/software-description.html/swpart=SFW0010820A)
@@ -627,30 +627,37 @@ Once the tools above have been installed, continue with [Final Check](#final-che
 
 #### Method 2: Manual Installation
 
-The MAX78000/MAX78002 SDK is available as a git submodule of ai8x-synthesis. It is checked out automatically to a version compatible with the project into the folder `ai8x-synthesis/sdk`. This submodule contains all of the SDK's components _except_ the Arm GCC, RISC-V GCC, and Make. These must be downloaded and installed manually.
+The MAX78000/MAX78002 SDK is available as a git repository. The repository contains all of the SDK's components _except_ the Arm GCC, RISC-V GCC, and Make. These must be downloaded and installed manually.
 
-1. Download and install the Arm Embedded GNU Toolchain from [https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads).
+1. Clone the MSDK repository (recommendation: change to the *ai8x-synthesis* folder first):
+
+    ```shell
+    $ git clone https://github.com/Analog-Devices-MSDK/msdk.git sdk
+    ```
+
+2. Download and install the Arm Embedded GNU Toolchain from [https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads).
 
     * Recommended version: 10.3-2021.10 *(newer versions may or may not work correctly)*
     * Recommended installation location: `/usr/local/gcc-arm-none-eabi-10.3-2021.10/`
 
-2. Download and install the RISC-V Embedded GNU Toolchain from [https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/](https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/)
+3. Download and install the RISC-V Embedded GNU Toolchain from [https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/](https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/)
 
     * Recommended version: 10.2.0-1.2 *(newer versions may or may not work correctly)*
     * Recommended installation location: `/usr/local/riscv-none-embed-gcc/10.2.0-1.2/`
 
-3. Install GNU Make
+4. Install GNU Make
 
     * (Linux/macOS) “make” is available on most systems by default. If not, it can be installed via the system package manager.
+
     * (Windows) Install [MSYS2](https://www.msys2.org/) first, then install “make” using the MSYS2 package manager:
 
       ```shell
       $ pacman -S --needed base filesystem msys2-runtime make
       ```
 
-4. Install packages for OpenOCD. OpenOCD binaries are available in the “openocd” sub-folder of the ai8x-synthesis repository. However, some additional dependencies are required on most systems. See [openocd/Readme.md](openocd/Readme.md) for a list of packages to install, then return here to continue.
+5. Install packages for OpenOCD. OpenOCD binaries are available in the “openocd” sub-folder of the ai8x-synthesis repository. However, some additional dependencies are required on most systems. See [openocd/Readme.md](openocd/Readme.md) for a list of packages to install, then return here to continue.
 
-5. Add the location of the toolchain binaries to the system path.
+6. Add the location of the toolchain binaries to the system path.
 
     On Linux and macOS, copy the following contents into `~/.profile`...
     On macOS, _also_ copy the following contents into `~/.zprofile`...
@@ -2221,6 +2228,7 @@ The following table describes the most important command line arguments for `ai8
 | `--max-verify-length` | Instead of checking all of the expected output data, verify only the first N words | `--max-verify-length 1024` |
 | `--no-unload`            | Do not create the `cnn_unload()` function                    |                                 |
 | `--no-kat` | Do not generate the `check_output()` function (disable known-answer test) | |
+| `--no-deduplicate-weights` | Do not deduplicate weights and and bias values | |
 
 ### YAML Network Description
 
@@ -2655,6 +2663,13 @@ When specifying `output: true`, any layer (or a combination of layers) can be us
 
 Example:
         `output: true`
+
+##### `weight_source` (Optional)
+
+Certain networks share weights between layers. The tools automatically deduplicate weights and bias values (unless `--no-deduplicate-weights` is specified). When the checkpoint file does *not* contain duplicated weights, `weight_source: layer` is needed in the YAML configuration for the layer(s) that reuse(s) weights. `layer` can be specified as layer number or name.
+
+Example:
+        `weight_source: conv1p3`
 
 ##### Dropout and Batch Normalization
 
