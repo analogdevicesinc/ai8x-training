@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-November 29, 2022
+December 8, 2022
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -546,9 +546,9 @@ There are two ways to install the SDK.
 The [Microcontroller SDK](https://github.com/Analog-Devices-MSDK/msdk) for MAX78000/MAX7802 (“MaximSDK”) is available via the installer links below. These installers require a GUI on your system.
 
 1. Download the MaximSDK installer for your operating system from one of the links below.
-    * [Windows](https://www.maximintegrated.com/content/maximintegrated/en/design/software-description.html/swpart=SFW0010820A)
-    * [Ubuntu Linux](https://www.maximintegrated.com/content/maximintegrated/en/design/software-description.html/swpart=SFW0018720A)
-    * [macOS](https://www.maximintegrated.com/content/maximintegrated/en/design/software-description.html/swpart=SFW0018610A)
+    * [Windows](https://www.analog.com/en/design-center/evaluation-hardware-and-software/software/software-download?swpart=SFW0010820A)
+    * [Ubuntu Linux](https://www.analog.com/en/design-center/evaluation-hardware-and-software/software/software-download?swpart=SFW0018720A)
+    * [macOS](https://www.analog.com/en/design-center/evaluation-hardware-and-software/software/software-download?swpart=SFW0018610A)
 
 2. Run the installer executable. Note: On Linux, this may require making the file executable with the following command:
 
@@ -1933,7 +1933,7 @@ Place the new model file (with its unique model name as specified by `name` in t
 
 #### Data Loader
 
-The application note [Data Loader Design for MAX78000 Model Training](https://www.maximintegrated.com/en/design/technical-documents/app-notes/7/7600.html) provides an in-depth tutorial about developing data loaders.
+The application note [Data Loader Design for MAX78000 Model Training](https://www.analog.com/en/app-notes/data-loader-design-for-max78000-model-training.html) provides an in-depth tutorial about developing data loaders.
 
 In brief, the following steps are needed for new data formats and datasets:
 
