@@ -31,6 +31,7 @@ import tarfile
 import time
 import urllib
 import warnings
+from zipfile import ZipFile
 
 import numpy as np
 import torch
@@ -39,6 +40,7 @@ from torchvision import transforms
 
 import librosa
 import pytsmod as tsm
+import soundfile as sf
 
 import ai8x
 
@@ -64,15 +66,17 @@ class KWS:
 
     """
 
-    url = 'http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz'
+    url_speechcommand = 'http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz'
+    url_librispeech = 'http://us.openslr.org/resources/12/dev-clean.tar.gz'
     fs = 16000
 
     class_dict = {'backward': 0, 'bed': 1, 'bird': 2, 'cat': 3, 'dog': 4, 'down': 5,
                   'eight': 6, 'five': 7, 'follow': 8, 'forward': 9, 'four': 10, 'go': 11,
-                  'happy': 12, 'house': 13, 'learn': 14, 'left': 15, 'marvin': 16, 'nine': 17,
-                  'no': 18, 'off': 19, 'on': 20, 'one': 21, 'right': 22, 'seven': 23,
-                  'sheila': 24, 'six': 25, 'stop': 26, 'three': 27, 'tree': 28, 'two': 29,
-                  'up': 30, 'visual': 31, 'wow': 32, 'yes': 33, 'zero': 34}
+                  'happy': 12, 'house': 13, 'learn': 14, 'left': 15, 'librispeech': 16,
+                  'marvin': 17, 'nine': 18, 'no': 19, 'off': 20, 'on': 21, 'one': 22,
+                  'right': 23, 'seven': 24, 'sheila': 25, 'six': 26, 'stop': 27,
+                  'three': 28, 'tree': 29, 'two': 30, 'up': 31, 'visual': 32, 'wow': 33,
+                  'yes': 34, 'zero': 35}
 
     def __init__(self, root, classes, d_type, t_type, transform=None, quantization_scheme=None,
                  augmentation=None, download=False, save_unquantized=False):
@@ -83,6 +87,7 @@ class KWS:
         self.t_type = t_type
         self.transform = transform
         self.save_unquantized = save_unquantized
+        self.noise = np.empty(shape=[0, 0])
 
         self.__parse_quantization(quantization_scheme)
         self.__parse_augmentation(augmentation)
@@ -107,6 +112,18 @@ class KWS:
         """Folder for the raw data.
         """
         return os.path.join(self.root, self.__class__.__name__, 'raw')
+
+    @property
+    def librispeech_folder(self):
+        """Folder for the librispeech data.
+        """
+        return os.path.join(self.root, self.__class__.__name__, 'librispeech')
+
+    @property
+    def noise_folder(self):
+        """Folder for the different noise data.
+        """
+        return os.path.join(self.root, self.__class__.__name__, 'noise')
 
     @property
     def processed_folder(self):
@@ -159,9 +176,21 @@ class KWS:
         self.__makedir_exist_ok(self.raw_folder)
         self.__makedir_exist_ok(self.processed_folder)
 
-        filename = self.url.rpartition('/')[2]
-        self.__download_and_extract_archive(self.url, download_root=self.raw_folder,
+        # download Speech Command
+        filename = self.url_speechcommand.rpartition('/')[2]
+        self.__download_and_extract_archive(self.url_speechcommand,
+                                            download_root=self.raw_folder,
                                             filename=filename)
+
+        # download LibriSpeech
+        filename = self.url_librispeech.rpartition('/')[2]
+        self.__download_and_extract_archive(self.url_librispeech,
+                                            download_root=self.librispeech_folder,
+                                            filename=filename)
+
+        # convert the LibriSpeech audio files to 1-sec 16KHz .wav, stored under raw/librispeech
+        self.__resample_convert_wav(folder_in=self.librispeech_folder,
+                                    folder_out=os.path.join(self.raw_folder, 'librispeech'))
 
         self.__gen_datasets()
 
@@ -237,6 +266,9 @@ class KWS:
         if from_path.endswith('.tar.gz'):
             with tarfile.open(from_path, 'r:gz') as tar:
                 tar.extractall(path=to_path)
+        elif from_path.endswith('.zip'):
+            with ZipFile(from_path) as archive:
+                archive.extractall(to_path)
         else:
             raise ValueError(f"Extraction of {from_path} not supported")
 
@@ -256,6 +288,73 @@ class KWS:
         archive = os.path.join(download_root, filename)
         print(f"Extracting {archive} to {extract_root}")
         self.__extract_archive(archive, extract_root, remove_finished)
+
+    def __resample_convert_wav(self, folder_in, folder_out, sr=16000, ext='.flac'):
+        # create output folder
+        self.__makedir_exist_ok(folder_out)
+
+        # find total number of files to convert
+        total_count = 0
+        for (dirpath, _, filenames) in os.walk(folder_in):
+            for filename in sorted(filenames):
+                if filename.endswith(ext):
+                    total_count += 1
+        print(f"Total number of speech files to convert to 1-sec .wav: {total_count}")
+        converted_count = 0
+        # segment each audio file to 1-sec frames and save
+        for (dirpath, _, filenames) in os.walk(folder_in):
+            for filename in sorted(filenames):
+
+                i = 0
+                if filename.endswith(ext):
+                    fname = os.path.join(dirpath, filename)
+                    data, _ = librosa.load(fname, sr=sr)
+
+                    # normalize data
+                    mx = np.amax(abs(data))
+                    data = data / mx
+
+                    chunk_start = 0
+                    frame_count = 0
+
+                    # The beginning of an utterance is detected when the average
+                    # of absolute values of 128-sample chunks is above a threshold.
+                    # Then, a segment is formed from 30*128 samples before the beginning
+                    # of the utterance to 98*128 samples after that.
+                    # This 1 second (16384 samples) audio segment is converted to .wav
+                    # and saved in librispeech folder together with other keywords to
+                    # be used as the unknown class.
+
+                    precursor_len = 30 * 128
+                    postcursor_len = 98 * 128
+                    utternace_threshold = 30
+
+                    while True:
+                        if chunk_start + postcursor_len > len(data):
+                            break
+
+                        chunk = data[chunk_start: chunk_start + 128]
+                        # scaled average over 128 samples
+                        avg = 1000 * np.average(abs(chunk))
+                        i += 128
+
+                        if avg > utternace_threshold and chunk_start >= precursor_len:
+                            print(f"\r Converting {converted_count + 1}/{total_count} "
+                                  f"to {frame_count + 1} segments", end=" ")
+                            frame = data[chunk_start - precursor_len:chunk_start + postcursor_len]
+
+                            outfile = os.path.join(folder_out, filename[:-5] + '_' +
+                                                   str(f"{frame_count}") + '.wav')
+                            sf.write(outfile, frame, sr)
+
+                            chunk_start += postcursor_len
+                            frame_count += 1
+                        else:
+                            chunk_start += 128
+                    converted_count += 1
+                else:
+                    pass
+        print(f'\rFile conversion completed: {converted_count} files ')
 
     def __filter_dtype(self):
         if self.d_type == 'train':
@@ -339,6 +438,7 @@ class KWS:
         aug_audio = tsm.wsola(audio, random_strech_coeff)
         aug_audio = self.shift(aug_audio, random_shift_time, fs)
         aug_audio = self.add_white_noise(aug_audio, random_noise_var_coeff)
+
         if verbose:
             print(f'random_noise_var_coeff: {random_noise_var_coeff:.2f}\nrandom_shift_time: \
                     {random_shift_time:.2f}\nrandom_strech_coeff: {random_strech_coeff:.2f}')
@@ -355,7 +455,7 @@ class KWS:
     @staticmethod
     def compand(data, mu=255):
         """Compand the signal level to warp from Laplacian distribution to uniform distribution"""
-        data = np.sign(data) * np.log(1 + mu*np.abs(data)) / np.log(1 + mu)
+        data = np.sign(data) * np.log(1 + mu * np.abs(data)) / np.log(1 + mu)
         return data
 
     @staticmethod
@@ -371,13 +471,13 @@ class KWS:
         if compand:
             data = KWS.compand(data, mu)
 
-        step_size = 2.0 / 2**(num_bits)
-        max_val = 2**(num_bits) - 1
+        step_size = 2.0 / 2 ** (num_bits)
+        max_val = 2 ** (num_bits) - 1
         q_data = np.round((data - (-1.0)) / step_size)
         q_data = np.clip(q_data, 0, max_val)
 
         if compand:
-            data_ex = (q_data - 2**(num_bits - 1)) / 2**(num_bits - 1)
+            data_ex = (q_data - 2 ** (num_bits - 1)) / 2 ** (num_bits - 1)
             data_ex = KWS.expand(data_ex)
             q_data = np.round((data_ex - (-1.0)) / step_size)
             q_data = np.clip(q_data, 0, max_val)
@@ -396,7 +496,7 @@ class KWS:
             # PARAMETERS
             overlap = int(np.ceil(row_len * overlap_ratio))
             num_rows = int(np.ceil(exp_len / (row_len - overlap)))
-            data_len = int((num_rows*row_len - (num_rows-1)*overlap))
+            data_len = int((num_rows * row_len - (num_rows - 1) * overlap))
             print(f'data_len: {data_len}')
 
             # show the size of dataset for each keyword
@@ -447,11 +547,11 @@ class KWS:
 
                         # Write audio 128x128=16384 samples without overlap
                         for n_r in range(num_rows):
-                            start_idx = n_r*(row_len - overlap)
+                            start_idx = n_r * (row_len - overlap)
                             end_idx = start_idx + row_len
                             audio_chunk = audio_seq[start_idx:end_idx]
                             # pad zero if the length of the chunk is smaller than row_len
-                            audio_chunk = np.pad(audio_chunk, [0, row_len-audio_chunk.size])
+                            audio_chunk = np.pad(audio_chunk, [0, row_len - audio_chunk.size])
                             # store input data after quantization
                             data_idx = (self.augmentation['aug_num'] + 1) * r + n_a
                             if not self.save_unquantized:
@@ -507,7 +607,9 @@ def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6):
 
     The dataset originally includes 30 keywords. A dataset is formed with 7 or 21 classes which
     includes 6 or 20 of the original keywords and the rest of the
-    dataset is used to form the last class, i.e class of the others.
+    dataset is used to form the last class, i.e class of the unknowns.
+    To further improve the detection of unknown words, the librispeech dataset is also downloaded
+    and converted to 1 second segments to be used as unknowns as well.
     The dataset is split into training+validation and test sets. 90:10 training+validation:test
     split is used by default.
 
@@ -527,7 +629,8 @@ def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6):
     else:
         raise ValueError(f'Unsupported num_classes {num_classes}')
 
-    augmentation = {'aug_num': 2}
+    augmentation = {'aug_num': 2, 'shift': {'min': -0.15, 'max': 0.15},
+                    'noise_var': {'min': 0, 'max': 1.0}}
     quantization_scheme = {'compand': False, 'mu': 10}
 
     if load_train:
@@ -559,8 +662,10 @@ def KWS_20_get_datasets(data, load_train=True, load_test=True):
     The dataset is loaded from the archive file, so the file is required for this version.
 
     The dataset originally includes 35 keywords. A dataset is formed with 21 classes which includes
-    20 of the original keywords and the rest of the dataset is used to form the last class, i.e.,
-    class of the others.
+    20 of the original keywords and the rest of the dataset is used to form the last class,
+    i.e class of the unknowns.
+    To further improve the detection of unknown words, the librispeech dataset is also downloaded
+    and converted to 1 second segments to be used as unknowns as well.
     The dataset is split into training+validation and test sets. 90:10 training+validation:test
     split is used by default.
 
@@ -634,7 +739,7 @@ datasets = [
         'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
                    'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
                    'UNKNOWN'),
-        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.14),
+        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
         'loader': KWS_20_get_datasets,
     },
     {
