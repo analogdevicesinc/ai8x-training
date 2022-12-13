@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-December 9, 2022
+December 13, 2022
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -2168,7 +2168,7 @@ The following table describes the most important command line arguments for `ai8
 | `--softmax`              | Add software Softmax functions to generated code             |                                 |
 | `--boost`                | Turn on a port pin to boost the CNN supply                   | `--boost 2.5`                   |
 | `--timer`                | Insert code to time the inference using a timer              | `--timer 0`                     |
-| `--no-wfi`               | Do not use WFI (wait for interrupt) instructions when waiting for CNN completion |                                 |
+| `--no-wfi`               | Do not use WFI (wait for interrupt) instructions and do not enter sleep mode when waiting for CNN completion. This is required for very fast, small networks. |                                 |
 | `--define` | Additional preprocessor defines | `--define "FAST GOOD"` |
 | *MAX78002* |  |  |
 | `--no-pipeline` | **MAX78002 only**: Disable the pipeline and run the CNN on the slower APB clock. This reduces power consumption, but increases inference time and in most cases overall energy usage. |  |
@@ -3127,30 +3127,51 @@ To deal with this issue, there are several options:
 * Change the compiler optimization level in `Makefile`. To change the default optimization levels, modify `MXC_OPTIMIZE_CFLAGS` in `assets/embedded-ai85/templateMakefile` for Arm code and `assets/embedded-riscv-ai85/templateMakefile.RISCV` for RISC-V code. Both `-O1` and `-Os` may result in smaller code compared to `-O2`.
 * If the last layer has large-dimension, large-channel output, the `cnn_unload()` code in `cnn.c` may cause memory segment overflows not only in Flash, but also in the target buffer in SRAM (`ml_data32[]` or `ml_data[]` in `main.c`). In this case, manual code edits are required to perform multiple partial unloads in sequence.
 
+##### Known-Answer-Test (KAT): Console Does Not Print PASS/FAIL
+
+In some cases, the serial console does not print PASS or FAIL for the known-answer test, for example:
+
+```text
+Waiting...
+
+*** CNN Inference Test ***
+
+[nothing]
+```
+
+A connected debugger will disconnect, similar to:
+
+```text
+Program stopped.
+0x0000fff4 in ?? ()
+```
+
+This can be caused by very small, fast networks, where the inference finishes before the main code has entered sleep mode:
+
+```c
+ while (cnn_time == 0)
+    // CNN has already finished or is about to finish
+    MXC_LP_EnterSleepMode(); // Wait for CNN
+    // Device will not wake up since the CNN complete interrupt has already happened
+```
+
+Solution: Please use the command line switch `--no-wfi` to disable sleep mode.
+
 ##### Known-Answer-Test (KAT) Failures – Debugging Techniques
 
 There can be many reasons why the known-answer test (KAT) fails for a given network with an error message, or where the KAT does not complete. The following techniques may help in narrowing down where in the network or the YAML description of the network the error occurs:
 
 * For very short and small networks, disable the use of WFI (wait for interrupt) instructions while waiting for completion of the CNN computations by using the command line option `--no-wfi`. *Explanation: In these cases, the network terminates more quickly than the time it takes between testing for completion and executing the WFI instruction, so the WFI instruction is never interrupted and the code may appear to hang.*
-  
 * The `--no-wfi` option can also be useful when trying to debug code, since the debugger loses connection when the device enters sleep mode using `__WFI()`.
-  
-* By default, there is a two-second delay at the beginning of the code. This time allows the debugger to take control before the device enters any kind of sleep mode. `--no-wfi` disables sleep mode. The time delay can be modified using the `--debugwait` option.
+* By default, there is a two-second delay at the beginning of the code. This time allows the debugger to take control before the device enters any kind of sleep mode. `--no-wfi` disables sleep mode (see also the related information [above](#known-answer-test-kat-console-does-not-print-passfail)). The time delay can be modified using the `--debugwait` option.
   If the delay is too short or skipped altogether, and the device does not wake at the end of execution, the device may appear to hang and the [recovery procedure](https://github.com/MaximIntegratedAI/MaximAI_Documentation/tree/master/MAX78000_Feather#how-to-unlock-a-max78000-that-can-no-longer-be-programmed) may have to be used in order to load new code or to debug code.
-  
 * For very large and deep networks, enable the boost power supply using the `--boost` command line option. On the EVkit, the boost supply is connected to port pin P2.5, so the command line option is `--boost 2.5`.
-  
 * The default compiler optimization level is `-O2`, and incorrect code may be generated under rare circumstances. Lower the optimization level in the generated `Makefile` to `-O1`, clean (`make distclean && make clean`), and rebuild the project (`make`). If this solves the problem, one of the possible reasons is that code is missing the `volatile` keyword for certain variables.
   To permanently adjust the default compiler optimization level, modify `MXC_OPTIMIZE_CFLAGS` in `assets/embedded-ai85/templateMakefile` for Arm code and `assets/embedded-riscv-ai85/templateMakefile.RISCV` for RISC-V code.
-
 * When allocating large amounts of data on the stack, ensure the stack is sized appropriately. The stack size is configured in the linker file (by default, part of the MSDK).
-  
 * `--stop-after N` where `N` is a layer number may help to find the problematic layer by terminating the network early without having to retrain and without having to change the weight input file. Note that this may also require `--max-verify-length` as [described above](#handling-linker-flash-section-overflows) since intermediate outputs tend to be large, and additionally `--no-unload` to suppress generation of the `cnn_unload()` function.
-
 * `--no-bias LIST` where `LIST` is a comma-separated list of layers (e.g., `0,1,2,3`) can rule out problems due to the bias. This option zeros out the bias for the given layers without having to remove bias values from the weight input file.
-
 * `--ignore-streaming` ignores all `streaming` statements in the YAML file. Note that this typically only works when the sample input is replaced with a different, lower-dimension sample input (for example, use 3×32×32 instead of 3×128×128), and does not support fully connected layers without retraining (use `--stop-after` to remove final layers). Ensure that the network (or partial network when using `--stop-after`) does not produce all-zero intermediate data or final outputs when using reduced-dimension inputs. The log file (`log.txt` by default) will contain the necessary information.
-
 * Certain C library functions (such as `memcpy` or `printf`) use byte-wide or 16-bit wide accesses and may not work correctly when accessing CNN memory *directly* (i.e., pointing inside the accelerator memory). They *will* function as expected when operating on data memory that is *not* located inside the CNN accelerator, for example data returned by `cnn_unload()`.
 
 
