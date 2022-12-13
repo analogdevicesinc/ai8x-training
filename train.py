@@ -1020,6 +1020,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
     end = time.time()
     class_probs = []
     class_preds = []
+    sample_saved = False  # Track if --save-sample has been done for this validation step
 
     # Get object detection params
     obj_detection_params = parse_obj_detection_yaml.parse(args.obj_detection_params) \
@@ -1091,9 +1092,9 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                                 and model.__dict__['_modules'][key].wide):
                             output /= 256.
 
-            if args.generate_sample is not None:
+            if args.generate_sample is not None and not sample_saved:
                 sample.generate(args.generate_sample, inputs, target, output, args.dataset, False)
-                return .0, .0, .0, .0
+                sample_saved = True
 
             if args.csv_prefix is not None:
                 save_tensor(inputs, f_x)
