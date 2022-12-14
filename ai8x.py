@@ -554,10 +554,7 @@ class QuantizationAwareModule(nn.Module):
                 self.op.bias.data = biases
 
             if self.bn is not None:
-                if len(x) > 1:
-                    x = self.bn(x) / 4.
-                else:
-                    x /= 4.
+                x = self.bn(x) / 4.
             if not self.wide:
                 # The device does not apply output shift in wide mode
                 x = self.scale(x, out_scale)
