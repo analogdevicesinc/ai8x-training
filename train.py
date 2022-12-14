@@ -194,6 +194,9 @@ def main():
             print('WARNING: Initial learning rate (--lr) not set, selecting 0.1.')
         args.lr = 0.1
 
+    if args.generate_sample is not None and not args.act_mode_8bit:
+        print('WARNING: Cannot save sample in training mode, ignoring --save-sample option.')
+
     msglogger = apputils.config_pylogger(os.path.join(script_dir, 'logging.conf'), args.name,
                                          args.output_dir)
 
@@ -1092,7 +1095,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                                 and model.__dict__['_modules'][key].wide):
                             output /= 256.
 
-            if args.generate_sample is not None and not sample_saved:
+            if args.generate_sample is not None and args.act_mode_8bit and not sample_saved:
                 sample.generate(args.generate_sample, inputs, target, output, args.dataset, False)
                 sample_saved = True
 
