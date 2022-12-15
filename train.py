@@ -195,7 +195,8 @@ def main():
         args.lr = 0.1
 
     if args.generate_sample is not None and not args.act_mode_8bit:
-        print('WARNING: Cannot save sample in training mode, ignoring --save-sample option.')
+        print('WARNING: Cannot save sample in training mode, ignoring --save-sample option. '
+              'Use with --evaluate instead.')
 
     msglogger = apputils.config_pylogger(os.path.join(script_dir, 'logging.conf'), args.name,
                                          args.output_dir)
