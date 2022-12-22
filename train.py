@@ -380,7 +380,7 @@ def main():
         if not args.regression:
             if 'weight' in selected_source:
                 criterion = nn.CrossEntropyLoss(
-                    torch.Tensor(selected_source['weight'])
+                    torch.tensor(selected_source['weight'])
                 ).to(args.device)
             else:
                 criterion = nn.CrossEntropyLoss().to(args.device)
@@ -915,11 +915,11 @@ def test(test_loader, model, criterion, loggers, activations_collectors, args):
             with torch.no_grad():
                 global weight_min, weight_max, weight_count  # pylint: disable=global-statement
                 global weight_sum, weight_stddev, weight_mean  # pylint: disable=global-statement
-                weight_min = torch.Tensor(float('inf'))
-                weight_max = torch.Tensor(float('-inf'))
-                weight_count = torch.Tensor(0, dtype=torch.int)
-                weight_sum = torch.Tensor(0.0)
-                weight_stddev = torch.Tensor(0.0)
+                weight_min = torch.tensor(float('inf'))
+                weight_max = torch.tensor(float('-inf'))
+                weight_count = torch.tensor(0, dtype=torch.int)
+                weight_sum = torch.tensor(0.0)
+                weight_stddev = torch.tensor(0.0)
 
                 def traverse_pass1(m):
                     """
@@ -1369,7 +1369,7 @@ def earlyexit_validate_loss(output, target, _criterion, args):
             if args.loss_exits[exitnum][batch_index] < args.earlyexit_thresholds[exitnum]:
                 # take the results from early exit since lower than threshold
                 args.exiterrors[exitnum].add(
-                    torch.Tensor(
+                    torch.tensor(
                         np.array(output[exitnum].data[batch_index].cpu(), ndmin=2)
                     ),
                     torch.full([1], target[batch_index], dtype=torch.long))
@@ -1380,7 +1380,7 @@ def earlyexit_validate_loss(output, target, _criterion, args):
         if not earlyexit_taken:
             exitnum = args.num_exits - 1
             args.exiterrors[exitnum].add(
-                torch.Tensor(
+                torch.tensor(
                     np.array(output[exitnum].data[batch_index].cpu(), ndmin=2)
                 ),
                 torch.full([1], target[batch_index], dtype=torch.long))

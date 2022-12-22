@@ -84,7 +84,7 @@ class AFSK(Dataset):
             sampl /= _max - _min
 
         # 1d array -> 2d tensor
-        data = torch.Tensor(sampl).unsqueeze(0)
+        data = torch.tensor(sampl).unsqueeze(0)
 
         # apply transform, if any
         if self.transform:
