@@ -1614,7 +1614,7 @@ def create_activation_stats_collectors(model, *phases):
     """
     distiller.utils.assign_layer_fq_names(model)
 
-    def genCollectors(): return missingdict({  # noqa E731 pylint: disable=unnecessary-lambda-assignment
+    genCollectors = lambda: missingdict({ # noqa E731 pylint: disable=unnecessary-lambda-assignment
         "sparsity":      SummaryActivationStatsCollector(model, "sparsity",
                                                          lambda t:
                                                          100 * distiller.utils.sparsity(t)),
