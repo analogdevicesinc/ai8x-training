@@ -380,7 +380,7 @@ def main():
         if not args.regression:
             if 'weight' in selected_source:
                 criterion = nn.CrossEntropyLoss(
-                    torch.tensor(selected_source['weight'])
+                    torch.tensor(selected_source['weight'], dtype=torch.float)
                 ).to(args.device)
             else:
                 criterion = nn.CrossEntropyLoss().to(args.device)
@@ -1370,7 +1370,7 @@ def earlyexit_validate_loss(output, target, _criterion, args):
                 # take the results from early exit since lower than threshold
                 args.exiterrors[exitnum].add(
                     torch.tensor(
-                        np.array(output[exitnum].data[batch_index].cpu(), ndmin=2)
+                        np.array(output[exitnum].data[batch_index].cpu(), ndmin=2), dtype=torch.float
                     ),
                     torch.full([1], target[batch_index], dtype=torch.long))
                 args.exit_taken[exitnum] += 1
@@ -1381,7 +1381,7 @@ def earlyexit_validate_loss(output, target, _criterion, args):
             exitnum = args.num_exits - 1
             args.exiterrors[exitnum].add(
                 torch.tensor(
-                    np.array(output[exitnum].data[batch_index].cpu(), ndmin=2)
+                    np.array(output[exitnum].data[batch_index].cpu(), ndmin=2), dtype=torch.float
                 ),
                 torch.full([1], target[batch_index], dtype=torch.long))
             args.exit_taken[exitnum] += 1
