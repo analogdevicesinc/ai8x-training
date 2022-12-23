@@ -470,7 +470,7 @@ def main():
 
     if args.nas:
         assert isinstance(model, ai8x_nas.OnceForAllModel), 'Model should implement ' \
-                                        'OnceForAllModel interface for NAS training!'
+            'OnceForAllModel interface for NAS training!'
         if nas_policy:
             args.nas_stage_transition_list = create_nas_training_stage_list(model, nas_policy)
             # pylint: disable=unsubscriptable-object
@@ -775,7 +775,7 @@ def train(train_loader, model, criterion, optimizer, epoch,
                 # calculation last two batches are used as the last batch might include just a few
                 # samples.
                 if args.show_train_accuracy == 'full' or \
-                       (args.show_train_accuracy == 'last_batch'
+                    (args.show_train_accuracy == 'last_batch'
                         and train_step >= len(train_loader)-2):
                     if len(output.data.shape) <= 2 or args.regression:
                         classerr.add(output.data, target)
@@ -1370,8 +1370,8 @@ def earlyexit_validate_loss(output, target, _criterion, args):
                 # take the results from early exit since lower than threshold
                 args.exiterrors[exitnum].add(
                     torch.tensor(
-                        np.array(output[exitnum].data[batch_index].cpu(), ndmin=2), dtype=torch.float
-                    ),
+                        np.array(output[exitnum].data[batch_index].cpu(), ndmin=2),
+                        dtype=torch.float),
                     torch.full([1], target[batch_index], dtype=torch.long))
                 args.exit_taken[exitnum] += 1
                 earlyexit_taken = True
@@ -1594,6 +1594,7 @@ def get_next_stage_start_epoch(epoch, stage_transition_list, num_epochs):
 
 class missingdict(dict):
     """This is a little trick to prevent KeyError"""
+
     def __missing__(self, key):
         return None  # note, does *not* set self[key] - we don't want defaultdict's behavior
 
@@ -1613,7 +1614,7 @@ def create_activation_stats_collectors(model, *phases):
     """
     distiller.utils.assign_layer_fq_names(model)
 
-    genCollectors = lambda: missingdict({  # noqa E731 pylint: disable=unnecessary-lambda-assignment
+    def genCollectors(): return missingdict({  # noqa E731 pylint: disable=unnecessary-lambda-assignment
         "sparsity":      SummaryActivationStatsCollector(model, "sparsity",
                                                          lambda t:
                                                          100 * distiller.utils.sparsity(t)),
