@@ -1371,7 +1371,8 @@ def earlyexit_validate_loss(output, target, _criterion, args):
                 args.exiterrors[exitnum].add(
                     torch.tensor(
                         np.array(output[exitnum].data[batch_index].cpu(), ndmin=2),
-                        dtype=torch.float),
+                            dtype=torch.float
+                        ),
                     torch.full([1], target[batch_index], dtype=torch.long))
                 args.exit_taken[exitnum] += 1
                 earlyexit_taken = True
@@ -1381,7 +1382,8 @@ def earlyexit_validate_loss(output, target, _criterion, args):
             exitnum = args.num_exits - 1
             args.exiterrors[exitnum].add(
                 torch.tensor(
-                    np.array(output[exitnum].data[batch_index].cpu(), ndmin=2), dtype=torch.float
+                    np.array(output[exitnum].data[batch_index].cpu(), ndmin=2),
+                        dtype=torch.float
                 ),
                 torch.full([1], target[batch_index], dtype=torch.long))
             args.exit_taken[exitnum] += 1
@@ -1614,7 +1616,7 @@ def create_activation_stats_collectors(model, *phases):
     """
     distiller.utils.assign_layer_fq_names(model)
 
-    genCollectors = lambda: missingdict({ # noqa E731 pylint: disable=unnecessary-lambda-assignment
+    genCollectors = lambda: missingdict({  # noqa E731 pylint: disable=unnecessary-lambda-assignment
         "sparsity":      SummaryActivationStatsCollector(model, "sparsity",
                                                          lambda t:
                                                          100 * distiller.utils.sparsity(t)),
