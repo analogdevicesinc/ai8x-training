@@ -915,11 +915,11 @@ def test(test_loader, model, criterion, loggers, activations_collectors, args):
             with torch.no_grad():
                 global weight_min, weight_max, weight_count  # pylint: disable=global-statement
                 global weight_sum, weight_stddev, weight_mean  # pylint: disable=global-statement
-                weight_min = torch.tensor(float('inf'))
-                weight_max = torch.tensor(float('-inf'))
-                weight_count = torch.tensor(0, dtype=torch.int)
-                weight_sum = torch.tensor(0.0)
-                weight_stddev = torch.tensor(0.0)
+                weight_min = torch.tensor(float('inf')).to(args.device)
+                weight_max = torch.tensor(float('-inf')).to(args.device)
+                weight_count = torch.tensor(0, dtype=torch.int).to(args.device)
+                weight_sum = torch.tensor(0.0).to(args.device)
+                weight_stddev = torch.tensor(0.0).to(args.device)
 
                 def traverse_pass1(m):
                     """
