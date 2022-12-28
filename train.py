@@ -1371,7 +1371,7 @@ def earlyexit_validate_loss(output, target, _criterion, args):
                 args.exiterrors[exitnum].add(
                     torch.tensor(
                         np.array(output[exitnum].data[batch_index].cpu(), ndmin=2),
-                            dtype=torch.float
+                        dtype=torch.float
                         ),
                     torch.full([1], target[batch_index], dtype=torch.long))
                 args.exit_taken[exitnum] += 1
@@ -1383,7 +1383,7 @@ def earlyexit_validate_loss(output, target, _criterion, args):
             args.exiterrors[exitnum].add(
                 torch.tensor(
                     np.array(output[exitnum].data[batch_index].cpu(), ndmin=2),
-                        dtype=torch.float
+                    dtype=torch.float
                 ),
                 torch.full([1], target[batch_index], dtype=torch.long))
             args.exit_taken[exitnum] += 1
