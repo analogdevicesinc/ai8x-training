@@ -54,6 +54,8 @@ def get_parser(model_names, dataset_names):
                         type=lambda s: s.lower(), dest='cnn',
                         choices=model_names,
                         help='model architecture: ' + ' | '.join(model_names))
+    parser.add_argument('--out-fold-ratio', '-f', default=1, type=int, metavar='N',
+                        help='fold ratio of the model output (default: 1)')
     parser.add_argument('--dataset', metavar='S', required=True,
                         choices=dataset_names,
                         help="dataset(s) (" + ', '.join(dataset_names) + ")")

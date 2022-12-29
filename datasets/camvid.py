@@ -42,7 +42,7 @@ class CamVidDataset(Dataset):
                   'Wall': 32}
 
     def __init__(self, root_dir, d_type, classes=None, download=True, transform=None, im_scale=1,
-                 im_size=(80, 80), im_overlap=(20, 20), fold_ratio=1):
+                 im_size=(80, 80), im_overlap=(20, 20)):#, fold_ratio=1):
         self.transform = transform
         self.classes = classes
 
@@ -90,21 +90,21 @@ class CamVidDataset(Dataset):
                         break
                     img_crop = copy.deepcopy(img[y_start:y_end, x_start:x_end, :])
                     lbl_crop = copy.deepcopy(lbl[y_start:y_end, x_start:x_end])
-                    if fold_ratio == 1:
-                        self.img_list.append(img_crop)
-                        self.lbl_list.append(lbl_crop)
-                    else:
-                        img_crop_folded = None
-                        for i in range(fold_ratio):
-                            for j in range(fold_ratio):
-                                img_crop_subsample = img_crop[i::fold_ratio, j::fold_ratio, :]
-                                if img_crop_folded is not None:
-                                    img_crop_folded = np.concatenate((img_crop_folded,
-                                                                      img_crop_subsample), axis=2)
-                                else:
-                                    img_crop_folded = img_crop_subsample
-                        self.img_list.append(img_crop_folded)
-                        self.lbl_list.append(lbl_crop)
+                    # if fold_ratio == 1:
+                    self.img_list.append(img_crop)
+                    self.lbl_list.append(lbl_crop)
+                    # else:
+                    #     img_crop_folded = None
+                    #     for i in range(fold_ratio):
+                    #         for j in range(fold_ratio):
+                    #             img_crop_subsample = img_crop[i::fold_ratio, j::fold_ratio, :]
+                    #             if img_crop_folded is not None:
+                    #                 img_crop_folded = np.concatenate((img_crop_folded,
+                    #                                                   img_crop_subsample), axis=2)
+                    #             else:
+                    #                 img_crop_folded = img_crop_subsample
+                    #     self.img_list.append(img_crop_folded)
+                    #     self.lbl_list.append(lbl_crop)
 
                     x_start = x_end - im_overlap[1]
                 y_start = y_end - im_overlap[0]
@@ -239,27 +239,21 @@ def camvid_get_datasets_s352(data, load_train=True, load_test=True, num_classes=
     else:
         raise ValueError(f'Unsupported num_classes {num_classes}')
 
+    transform = transforms.Compose([transforms.ToTensor(),
+                                    ai8x.normalize(args=args),
+                                    ai8x.fold(fold_ratio=4)])
+    
     if load_train:
-        train_transform = transforms.Compose([
-            transforms.ToTensor(),
-            ai8x.normalize(args=args)
-        ])
-
         train_dataset = CamVidDataset(root_dir=os.path.join(data_dir, 'CamVid'), d_type='train',
-                                      im_size=[352, 352], im_overlap=[168, 150], fold_ratio=4,
-                                      classes=classes, download=True, transform=train_transform)
+                                      im_size=[352, 352], im_overlap=[168, 150], #fold_ratio=4,
+                                      classes=classes, download=True, transform=transform)
     else:
         train_dataset = None
 
     if load_test:
-        test_transform = transforms.Compose([
-            transforms.ToTensor(),
-            ai8x.normalize(args=args)
-        ])
-
         test_dataset = CamVidDataset(root_dir=os.path.join(data_dir, 'CamVid'), d_type='test',
-                                     im_size=[352, 352], im_overlap=[0, 54], fold_ratio=4,
-                                     classes=classes, download=True, transform=test_transform)
+                                     im_size=[352, 352], im_overlap=[0, 54], #fold_ratio=4,
+                                     classes=classes, download=True, transform=transform)
 
         if args.truncate_testset:
             test_dataset.img_list = test_dataset.img_list[:1]
@@ -326,6 +320,7 @@ datasets = [
                    'Sky', 'SUVPickupTruck', 'TrafficCone', 'TrafficLight', 'Train', 'Tree',
                    'Truck_Bus', 'Tunnel', 'VegetationMisc', 'Void', 'Wall'),
         'loader': camvid_get_datasets_s352_c33,
+        'fold_ratio': 4,
     },
     {
         'name': 'CamVid_s352_c3',  # 3 classes
@@ -333,5 +328,6 @@ datasets = [
         'output': (0, 1, 2, 3),
         'weight': (1, 1, 1, 1),
         'loader': camvid_get_datasets_s352_c3,
+        'fold_ratio': 4,
     }
 ]

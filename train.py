@@ -766,6 +766,9 @@ def train(train_loader, model, criterion, optimizer, epoch,
                 output = args.nas_kd_policy.forward(inputs)
         else:
             output = args.kd_policy.forward(inputs)
+        
+        if args.out_fold_ratio != 1:
+            output = ai8x.unfold_batch(output, args.out_fold_ratio)
 
         loss = criterion(output, target)
         # TODO Early exit mechanism for Object Detection case is NOT implemented yet
@@ -1087,6 +1090,8 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                 inputs, target = inputs.to(args.device), target.to(args.device)
                 # compute output from model
                 output = model(inputs)
+                if args.out_fold_ratio != 1:
+                    output = ai8x.unfold_batch(output, args.out_fold_ratio)
 
                 # correct output for accurate loss calculation
                 if args.act_mode_8bit:

@@ -33,6 +33,52 @@ class normalize:
         return img.sub(0.5).mul(256.).round().clamp(min=-128, max=127).div(128.)
 
 
+class fold:
+    """
+    Fold data to increase the number of channels. An interlaced approach used in this folding as explained in [1].
+
+    [1] https://arxiv.org/pdf/2203.16528.pdf
+    """
+    def __init__(self, fold_ratio):
+        self.fold_ratio = fold_ratio
+
+    def __call__(self, img):
+        img_folded = None
+        for i in range(self.fold_ratio):
+            for j in range(self.fold_ratio):
+                img_subsample = img[:, i::self.fold_ratio, j::self.fold_ratio]
+                if img_folded is not None:
+                    img_folded = torch.cat((img_folded, img_subsample), axis=0)
+                else:
+                    img_folded = img_subsample
+
+        return img_folded
+
+
+def unfold_batch(img_batch, fold_ratio):
+    if fold_ratio == 1:
+        return img_batch
+
+    t_device = img_batch.get_device()
+    if t_device < 0:
+        t_device = None
+
+    num_out_channels = img_batch.shape[1] // (fold_ratio*fold_ratio)
+
+    img_batch_uf = torch.zeros((img_batch.shape[0], num_out_channels,
+                                img_batch.shape[2]*fold_ratio, img_batch.shape[3]*fold_ratio),
+                                dtype=img_batch.dtype, device=t_device, requires_grad=False)
+
+    for i in range(fold_ratio):
+        for j in range(fold_ratio):
+            ch_index_start = num_out_channels*(i*fold_ratio + j)
+            ch_index_end = num_out_channels * (i*fold_ratio + j + 1)
+            img_batch_uf[:, :, i::fold_ratio, j::fold_ratio] = \
+                img_batch[:, ch_index_start:ch_index_end, :, :]
+
+    return img_batch_uf
+
+
 class QuantizationFunction(Function):
     """
     Custom autograd function
