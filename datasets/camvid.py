@@ -230,18 +230,18 @@ def camvid_get_datasets_s352(data, load_train=True, load_test=True, num_classes=
     transform = transforms.Compose([transforms.ToTensor(),
                                     ai8x.normalize(args=args),
                                     ai8x.fold(fold_ratio=4)])
-    
+
     if load_train:
         train_dataset = CamVidDataset(root_dir=os.path.join(data_dir, 'CamVid'), d_type='train',
-                                      im_size=[352, 352], im_overlap=[168, 150], #fold_ratio=4,
-                                      classes=classes, download=True, transform=transform)
+                                      im_size=[352, 352], im_overlap=[168, 150], classes=classes,
+                                      download=True, transform=transform)
     else:
         train_dataset = None
 
     if load_test:
         test_dataset = CamVidDataset(root_dir=os.path.join(data_dir, 'CamVid'), d_type='test',
-                                     im_size=[352, 352], im_overlap=[0, 54], #fold_ratio=4,
-                                     classes=classes, download=True, transform=transform)
+                                     im_size=[352, 352], im_overlap=[0, 54], classes=classes,
+                                     download=True, transform=transform)
 
         if args.truncate_testset:
             test_dataset.img_list = test_dataset.img_list[:1]

@@ -766,7 +766,7 @@ def train(train_loader, model, criterion, optimizer, epoch,
                 output = args.nas_kd_policy.forward(inputs)
         else:
             output = args.kd_policy.forward(inputs)
-        
+
         if args.out_fold_ratio != 1:
             output = ai8x.unfold_batch(output, args.out_fold_ratio)
 

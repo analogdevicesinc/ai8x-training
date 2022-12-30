@@ -62,7 +62,7 @@ class AISegment(Dataset):
 
     num_of_imgs_to_use_hr = 20000
 
-    def __init__(self, root_dir, d_type, transform=None, im_size=(80, 80), use_memory=False, 
+    def __init__(self, root_dir, d_type, transform=None, im_size=(80, 80), use_memory=False,
                  truncate_testset=False):
 
         if im_size not in ((80, 80), (352, 352)):

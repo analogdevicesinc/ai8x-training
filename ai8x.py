@@ -35,7 +35,8 @@ class normalize:
 
 class fold:
     """
-    Fold data to increase the number of channels. An interlaced approach used in this folding as explained in [1].
+    Fold data to increase the number of channels. An interlaced approach used in this folding
+    as explained in [1].
 
     [1] https://arxiv.org/pdf/2203.16528.pdf
     """
@@ -67,7 +68,7 @@ def unfold_batch(img_batch, fold_ratio):
 
     img_batch_uf = torch.zeros((img_batch.shape[0], num_out_channels,
                                 img_batch.shape[2]*fold_ratio, img_batch.shape[3]*fold_ratio),
-                                dtype=img_batch.dtype, device=t_device, requires_grad=False)
+                               dtype=img_batch.dtype, device=t_device, requires_grad=False)
 
     for i in range(fold_ratio):
         for j in range(fold_ratio):
