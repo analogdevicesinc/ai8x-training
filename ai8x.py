@@ -57,6 +57,13 @@ class fold:
 
 
 def unfold_batch(img_batch, fold_ratio):
+    """
+    Unfold data to reduce the number of channels. An interlaced approach used in this folding
+    as explained in [1]. This operation is the reverse of the transformation implemented
+    at ai8x.fold class.
+
+    [1] https://arxiv.org/pdf/2203.16528.pdf
+    """
     if fold_ratio == 1:
         return img_batch
 
