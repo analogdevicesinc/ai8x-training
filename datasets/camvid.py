@@ -42,7 +42,7 @@ class CamVidDataset(Dataset):
                   'Wall': 32}
 
     def __init__(self, root_dir, d_type, classes=None, download=True, transform=None, im_scale=1,
-                 im_size=(80, 80), im_overlap=(20, 20)):#, fold_ratio=1):
+                 im_size=(80, 80), im_overlap=(20, 20)):
         self.transform = transform
         self.classes = classes
 
@@ -88,23 +88,11 @@ class CamVidDataset(Dataset):
                     x_end = x_start + im_size[1]
                     if x_end > img.shape[1]:
                         break
+
                     img_crop = copy.deepcopy(img[y_start:y_end, x_start:x_end, :])
                     lbl_crop = copy.deepcopy(lbl[y_start:y_end, x_start:x_end])
-                    # if fold_ratio == 1:
                     self.img_list.append(img_crop)
                     self.lbl_list.append(lbl_crop)
-                    # else:
-                    #     img_crop_folded = None
-                    #     for i in range(fold_ratio):
-                    #         for j in range(fold_ratio):
-                    #             img_crop_subsample = img_crop[i::fold_ratio, j::fold_ratio, :]
-                    #             if img_crop_folded is not None:
-                    #                 img_crop_folded = np.concatenate((img_crop_folded,
-                    #                                                   img_crop_subsample), axis=2)
-                    #             else:
-                    #                 img_crop_folded = img_crop_subsample
-                    #     self.img_list.append(img_crop_folded)
-                    #     self.lbl_list.append(lbl_crop)
 
                     x_start = x_end - im_overlap[1]
                 y_start = y_end - im_overlap[0]

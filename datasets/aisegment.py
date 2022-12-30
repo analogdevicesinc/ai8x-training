@@ -62,8 +62,8 @@ class AISegment(Dataset):
 
     num_of_imgs_to_use_hr = 20000
 
-    def __init__(self, root_dir, d_type, transform=None, im_size=(80, 80), fold_ratio=1,
-                 use_memory=False, truncate_testset=False):
+    def __init__(self, root_dir, d_type, transform=None, im_size=(80, 80), use_memory=False, 
+                 truncate_testset=False):
 
         if im_size not in ((80, 80), (352, 352)):
             raise ValueError('im_size can only be set to (80, 80) or (352, 352)')
@@ -98,7 +98,6 @@ class AISegment(Dataset):
 
         self.transform = transform
         self.img_ds_dim = im_size
-        self.fold_ratio = fold_ratio
         self.is_memory_based_approach_in_use = use_memory
         self.is_high_res_in_use = self.img_ds_dim == (352, 352)
 
@@ -273,24 +272,6 @@ class AISegment(Dataset):
 
         return (img_crp, img_crp_lbl)
 
-    @staticmethod
-    def fold_image(img, fold_ratio):
-        """Folds high resolution H-W-3 image h-w-c such that H * W * 3 = h * w * c.
-           These correspond to c/3 downsampled images of the original high resoluiton image."""
-        if fold_ratio == 1:
-            img_folded = img
-        else:
-            img_folded = None
-            for i in range(fold_ratio):
-                for j in range(fold_ratio):
-                    if img_folded is not None:
-                        img_folded = \
-                            np.concatenate((img_folded, img[i::fold_ratio,
-                                                            j::fold_ratio, :]), axis=2)
-                    else:
-                        img_folded = img[i::fold_ratio, j::fold_ratio, :]
-        return img_folded
-
     def __gen_datasets(self):
         print('\nGenerating dataset pickle file(s) from the raw data files...\n')
 
@@ -319,13 +300,10 @@ class AISegment(Dataset):
             img_crp_lbl = img_crp_lbl.resize(self.img_ds_dim)
             img_crp_lbl = (np.asarray(img_crp_lbl)[:, :, 3] == 0).astype(np.uint8)
 
-            # Fold the data (ex: 352 x 352 x 3 folded into 88 x 88 x 48) if required:
-            img_crp_folded = self.fold_image(img_crp, self.fold_ratio)
-
             if self.is_memory_based_approach_in_use:
 
                 if not self.is_high_res_in_use:
-                    self.img_list.append(img_crp_folded)
+                    self.img_list.append(img_crp)
                     self.lbl_list.append(img_crp_lbl)
                 else:
                     # For the memory based approach and for high resolution images, not all cropped
@@ -336,7 +314,7 @@ class AISegment(Dataset):
                         idx_to_add = np.random.choice(AISegment.num_of_cropped_imgs, 1)
 
                     if img_crp_idx == idx_to_add:
-                        self.img_list.append(img_crp_folded)
+                        self.img_list.append(img_crp)
                         self.lbl_list.append(img_crp_lbl)
 
                         # For the memory based approach, and for high resolution images, not all
@@ -345,7 +323,7 @@ class AISegment(Dataset):
                             break
             else:
                 # Save each image and label to disk in disk based approach:
-                pickle.dump((img_crp_folded, img_crp_lbl), open(pickle_file, 'wb'))
+                pickle.dump((img_crp, img_crp_lbl), open(pickle_file, 'wb'))
 
             total_num_of_processed_files = total_num_of_processed_files + 1
 
@@ -405,12 +383,13 @@ def AISegment_get_datasets(data, load_train=True, load_test=True, im_size=(80, 8
     if load_train:
         train_transform = transforms.Compose([
             transforms.ToTensor(),
-            ai8x.normalize(args=args)
+            ai8x.normalize(args=args),
+            ai8x.fold(fold_ratio=fold_ratio)
         ])
 
         train_dataset = AISegment(root_dir=data_dir, d_type='train',
                                   transform=train_transform,
-                                  im_size=im_size, fold_ratio=fold_ratio, use_memory=use_memory,
+                                  im_size=im_size, use_memory=use_memory,
                                   truncate_testset=False)
         print(f'Train dataset length: {len(train_dataset)}\n')
     else:
@@ -419,12 +398,13 @@ def AISegment_get_datasets(data, load_train=True, load_test=True, im_size=(80, 8
     if load_test:
         test_transform = transforms.Compose([
             transforms.ToTensor(),
-            ai8x.normalize(args=args)
+            ai8x.normalize(args=args),
+            ai8x.fold(fold_ratio=fold_ratio)
         ])
 
         test_dataset = AISegment(root_dir=data_dir, d_type='test',
                                  transform=test_transform,
-                                 im_size=im_size, fold_ratio=fold_ratio, use_memory=use_memory,
+                                 im_size=im_size, use_memory=use_memory,
                                  truncate_testset=args.truncate_testset)
 
         print(f'Test dataset length: {len(test_dataset)}\n')
@@ -464,11 +444,13 @@ datasets = [
         'input': (48, 88, 88),
         'output': (0, 1),
         'loader': AISegment352_get_datasets_use_disk,
+        'fold_ratio': 4,
     },
     {
         'name': 'AISegment_352_memory',
         'input': (48, 88, 88),
         'output': (0, 1),
         'loader': AISegment352_get_datasets_use_memory,
+        'fold_ratio': 4,
     }
 ]
