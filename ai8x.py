@@ -44,6 +44,9 @@ class fold:
         self.fold_ratio = fold_ratio
 
     def __call__(self, img):
+        if self.fold_ratio == 1:
+            return img
+
         img_folded = None
         for i in range(self.fold_ratio):
             for j in range(self.fold_ratio):
