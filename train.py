@@ -96,7 +96,7 @@ from torch.backends import cudnn
 import distiller
 import shap
 import torchnet.meter as tnt
-from distiller import apputils, model_summaries
+from distiller import apputils, model_summaries  # type: ignore[attr-defined]
 from distiller.data_loggers import PythonLogger, TensorBoardLogger
 # pylint: disable=no-name-in-module
 from distiller.data_loggers.collector import (QuantCalibrationStatsCollector,
