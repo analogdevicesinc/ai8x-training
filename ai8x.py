@@ -70,15 +70,11 @@ def unfold_batch(img_batch, fold_ratio):
     if fold_ratio == 1:
         return img_batch
 
-    t_device = img_batch.get_device()
-    if t_device < 0:
-        t_device = None
-
     num_out_channels = img_batch.shape[1] // (fold_ratio*fold_ratio)
 
     img_batch_uf = torch.zeros((img_batch.shape[0], num_out_channels,
                                 img_batch.shape[2]*fold_ratio, img_batch.shape[3]*fold_ratio),
-                               dtype=img_batch.dtype, device=t_device, requires_grad=False)
+                               dtype=img_batch.dtype, device=img_batch.device, requires_grad=False)
 
     for i in range(fold_ratio):
         for j in range(fold_ratio):
