@@ -228,22 +228,6 @@ class AI85UNetLarge(nn.Module):
         dec0 = self.conv_p3(dec0)
         dec0 = self.conv(dec0)                 # num_final_channelsx(dim1)x(dim2)
 
-        if self.fold_ratio > 1:
-            t_device = dec0.get_device()
-            if t_device < 0:
-                t_device = None
-            dec0_u = torch.zeros((dec0.shape[0], self.num_classes, dec0.shape[2]*self.fold_ratio,
-                                  dec0.shape[3]*self.fold_ratio), dtype=dec0.dtype,
-                                 device=t_device, requires_grad=False)
-            for i in range(self.fold_ratio):
-                for j in range(self.fold_ratio):
-                    ch_index_start = self.num_classes*(i*self.fold_ratio + j)
-                    ch_index_end = self.num_classes*(i*self.fold_ratio + j + 1)
-                    dec0_u[:, :, i::self.fold_ratio, j::self.fold_ratio] = \
-                        dec0[:, ch_index_start:ch_index_end, :, :]
-
-            return dec0_u
-
         return dec0
 
 
