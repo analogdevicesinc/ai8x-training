@@ -84,8 +84,8 @@ class YouTubeFacesDataset(data.Dataset):
         embedding = np.expand_dims(embedding, 2)
         embedding *= 6.0
 
-        inp = torch.Tensor(self.__normalize_data(self.img_list[idx]))
+        inp = torch.tensor(self.__normalize_data(self.img_list[idx]), dtype=torch.float)
         if self.transform is not None:
             inp = self.transform(inp)
 
-        return inp, torch.Tensor(embedding)
+        return inp, torch.tensor(embedding, dtype=torch.float)

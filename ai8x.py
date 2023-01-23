@@ -530,28 +530,28 @@ class QuantizationAwareModule(nn.Module):
         self.bn = bn
         self.pooling = pooling
 
-        self.output_shift = nn.Parameter(torch.Tensor([0.]), requires_grad=False)
+        self.output_shift = nn.Parameter(torch.tensor([0.]), requires_grad=False)
         self.init_module(weight_bits, bias_bits, quantize_activation, shift_quantile)
 
     def init_module(self, weight_bits, bias_bits, quantize_activation, shift_quantile):
         """Initialize model parameters"""
         if weight_bits is None and bias_bits is None and not quantize_activation:
-            self.weight_bits = nn.Parameter(torch.Tensor([0]), requires_grad=False)
-            self.bias_bits = nn.Parameter(torch.Tensor([0]), requires_grad=False)
-            self.quantize_activation = nn.Parameter(torch.Tensor([False]), requires_grad=False)
-            self.adjust_output_shift = nn.Parameter(torch.Tensor([False]), requires_grad=False)
+            self.weight_bits = nn.Parameter(torch.tensor([0]), requires_grad=False)
+            self.bias_bits = nn.Parameter(torch.tensor([0]), requires_grad=False)
+            self.quantize_activation = nn.Parameter(torch.tensor([False]), requires_grad=False)
+            self.adjust_output_shift = nn.Parameter(torch.tensor([False]), requires_grad=False)
         elif weight_bits in [1, 2, 4, 8] and bias_bits in [1, 2, 4, 8] and quantize_activation:
-            self.weight_bits = nn.Parameter(torch.Tensor([weight_bits]), requires_grad=False)
-            self.bias_bits = nn.Parameter(torch.Tensor([bias_bits]), requires_grad=False)
-            self.quantize_activation = nn.Parameter(torch.Tensor([True]), requires_grad=False)
-            self.adjust_output_shift = nn.Parameter(torch.Tensor([not dev.simulate]),
+            self.weight_bits = nn.Parameter(torch.tensor([weight_bits]), requires_grad=False)
+            self.bias_bits = nn.Parameter(torch.tensor([bias_bits]), requires_grad=False)
+            self.quantize_activation = nn.Parameter(torch.tensor([True]), requires_grad=False)
+            self.adjust_output_shift = nn.Parameter(torch.tensor([not dev.simulate]),
                                                     requires_grad=False)
         else:
             assert False, f'Undefined mode with weight_bits: {weight_bits}, ' \
                           f'bias_bits: {bias_bits}, ' \
                           f'quantize_activation: {quantize_activation}'
 
-        self.shift_quantile = nn.Parameter(torch.Tensor([shift_quantile]), requires_grad=False)
+        self.shift_quantile = nn.Parameter(torch.tensor([shift_quantile]), requires_grad=False)
         self.set_functions()
 
     def set_functions(self):
