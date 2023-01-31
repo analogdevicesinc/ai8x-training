@@ -240,8 +240,7 @@ class Clamp(nn.Module):
 
     def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
-        x = x.clamp(min=self.min_val)
-        return x.clamp(max=self.max_val)
+        return x.clamp(min=self.min_val, max=self.max_val)
 
 
 class Scaler(nn.Module):
@@ -252,8 +251,8 @@ class Scaler(nn.Module):
     def forward(self, x, s):  # pylint: disable=arguments-differ
         """Forward prop"""
         if dev.simulate:
-            return FloorFunction.apply(x*s)
-        return x*s
+            return FloorFunction.apply(x.mul(s))
+        return x.mul(s)
 
 
 class ScalerONNX(nn.Module):
@@ -265,7 +264,7 @@ class ScalerONNX(nn.Module):
         """Forward prop"""
         if dev.simulate:
             return x.mul(s).floor()
-        return x*s
+        return x.mul(s)
 
 
 class RoundQat(nn.Module):
@@ -445,7 +444,7 @@ class WeightScale(nn.Module):
     """
     def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
-        return 2.**(-x)
+        return torch.exp2(-x)
 
 
 class OutputScale(nn.Module):
@@ -454,7 +453,7 @@ class OutputScale(nn.Module):
     """
     def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
-        return 2.**x
+        return torch.exp2(x)
 
 
 class Abs(nn.Module):
@@ -594,11 +593,11 @@ class QuantizationAwareModule(nn.Module):
 
             weights = self.op.weight.data
             self.op.weight.data = \
-                self.clamp_weight(self.quantize_weight(weight_scale * self.op.weight))
+                self.clamp_weight(self.quantize_weight(self.op.weight.mul(weight_scale)))
             if self.op.bias is not None:
                 biases = self.op.bias.data
                 self.op.bias.data = \
-                    self.clamp_bias(self.quantize_bias(weight_scale * self.op.bias))
+                    self.clamp_bias(self.quantize_bias(self.op.bias.mul(weight_scale)))
 
             x = self.op(x)
 
@@ -607,7 +606,7 @@ class QuantizationAwareModule(nn.Module):
                 self.op.bias.data = biases
 
             if self.bn is not None:
-                x = self.bn(x) / 4.
+                x = self.bn(x).div(4.)
             if not self.wide:
                 # The device does not apply output shift in wide mode
                 x = self.scale(x, out_scale)
