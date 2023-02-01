@@ -240,7 +240,8 @@ class Clamp(nn.Module):
 
     def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
-        return x.clamp(min=self.min_val, max=self.max_val)
+        x = x.clamp(min=self.min_val)
+        return x.clamp(max=self.max_val)
 
 
 class Scaler(nn.Module):
