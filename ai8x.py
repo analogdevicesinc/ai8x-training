@@ -1239,6 +1239,9 @@ class Conv1d(QuantizationAwareModule):
 
             assert groups == 1 or dev.device == 87, 'Set device to MAX78002 for depthwise support'
 
+            assert padding == 0 or in_channels <= 64 or dev.device != 87, \
+                'This device requires pad==0 when using more than 64 input channels in Conv1d'
+
             opn = nn.Conv1d(in_channels, out_channels, kernel_size, stride=stride,
                             padding=padding, dilation=dilation, bias=bias, groups=groups)
         else:
