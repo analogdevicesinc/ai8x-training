@@ -1,13 +1,15 @@
 ###################################################################################################
 #
-# Copyright (C) 2020-2022 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2020-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
 #
 ###################################################################################################
+# pyright: reportOptionalMemberAccess=false, reportPrivateImportUsage=false
+# pyright: reportOptionalCall=false, reportOptionalOperand=false
 """
-Contains the limits of the MAX78000 implementations and custom PyTorch modules that take
+Contains the limits of the MAX78000/MAX78002 implementations and custom PyTorch modules that take
 the limits into account.
 """
 
@@ -52,7 +54,7 @@ class fold:
             for j in range(self.fold_ratio):
                 img_subsample = img[:, i::self.fold_ratio, j::self.fold_ratio]
                 if img_folded is not None:
-                    img_folded = torch.cat((img_folded, img_subsample), axis=0)
+                    img_folded = torch.cat((img_folded, img_subsample), dim=0)
                 else:
                     img_folded = img_subsample
 
@@ -94,7 +96,7 @@ class QuantizationFunction(Function):
     The backward pass is straight through.
     """
     @staticmethod
-    def forward(_, x, bits=None, extra_bit_shift=None):  # pylint: disable=arguments-differ
+    def forward(_, x, bits=8, extra_bit_shift=0):  # pylint: disable=arguments-differ
         """Forward prop"""
         if dev.simulate:
             if bits > 1:
@@ -132,7 +134,7 @@ class Quantize(nn.Module):
 
 class FloorFunction(Function):
     """
-    Custom MAX78000 autograd function
+    Custom MAX78000/MAX78002 autograd function
     The forward pass returns the integer floor.
     The backward pass is straight through.
     """
@@ -151,7 +153,7 @@ class FloorFunction(Function):
 
 class AvgPoolFloorFunction(Function):
     """
-    Custom MAX78000 autograd function
+    Custom MAX78000/MAX78002 autograd function
     The forward pass returns the integer floor for positive numbers and integer
     ceil for negative numbers.
     The backward pass is straight through.
@@ -201,7 +203,7 @@ class FloorONNX(nn.Module):
 
 class RoundFunction(Function):
     """
-    Custom MAX78000 autograd function
+    Custom MAX78000/MAX78002 autograd function
     The forward pass returns the integer rounded.
     The backward pass is straight through.
     """
@@ -570,10 +572,10 @@ class QuantizationAwareModule(nn.Module):
             quantize_clamp_parameters(self.weight_bits.detach().item(),
                                       self.bias_bits.detach().item())
         self.quantize, self.clamp = \
-            quantize_clamp(self.wide, self.quantize_activation.detach().item(),
-                           self.weight_bits.detach().item())
+            quantize_clamp(self.wide, bool(self.quantize_activation.detach().item()),
+                           int(self.weight_bits.detach().item()))
         self.quantize_pool, self.clamp_pool = \
-            quantize_clamp_pool(self.pooling, self.quantize_activation.detach().item())
+            quantize_clamp_pool(self.pooling, bool(self.quantize_activation.detach().item()))
 
     def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
@@ -1070,7 +1072,7 @@ class FusedSoftwareLinearReLU(nn.Module):
         if dev.device != 84:
             print('WARNING: SoftwareLinear should be used on AI84 only')
 
-        self.op = nn.Linear(in_features, out_features, bias)
+        self.op = nn.Linear(in_features, out_features, bias is True)  # False or None -> False
 
         if dev.simulate:
             self.quantize = Quantize(num_bits=dev.DATA_BITS)
@@ -1133,7 +1135,7 @@ class Linear(QuantizationAwareModule):
             bias_bits,
             quantize_activation,
             None,
-            nn.Linear(in_features, out_features, bias),
+            nn.Linear(in_features, out_features, bias is True),
             None,
         )
 
@@ -1165,7 +1167,7 @@ class Conv1d(QuantizationAwareModule):
     Fused 1D Pool ('Avg', 'Max' or None) followed by
     1D Convolution and activation ('ReLU', 'Abs', None)
     """
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
             self,
             in_channels,
             out_channels,
@@ -1184,6 +1186,9 @@ class Conv1d(QuantizationAwareModule):
             weight_bits=None,
             bias_bits=None,
             quantize_activation=False,
+            groups=1,
+            eps=1e-05,
+            momentum=0.05,
     ):
         assert not wide or activation is None
 
@@ -1216,10 +1221,10 @@ class Conv1d(QuantizationAwareModule):
             pool = None
 
         if batchnorm == 'Affine':
-            bn = nn.BatchNorm1d(out_channels, eps=1e-05, momentum=0.05, affine=True)
+            bn = nn.BatchNorm1d(out_channels, eps=eps, momentum=momentum, affine=True)
             assert bias, '`bias` must be set (enable --use-bias for models where bias is optional)'
         elif batchnorm == 'NoAffine':
-            bn = nn.BatchNorm1d(out_channels, eps=1e-05, momentum=0.05, affine=False)
+            bn = nn.BatchNorm1d(out_channels, eps=eps, momentum=momentum, affine=False)
             assert bias, '`bias` must be set (enable --use-bias for models where bias is optional)'
         else:
             bn = None
@@ -1232,8 +1237,13 @@ class Conv1d(QuantizationAwareModule):
 
             assert (kernel_size - 1) * dilation < 9 or padding == 0 and kernel_size <= 3
 
+            assert groups == 1 or dev.device == 87, 'Set device to MAX78002 for depthwise support'
+
+            assert padding == 0 or in_channels <= 64 or dev.device != 87, \
+                'This device requires pad==0 when using more than 64 input channels in Conv1d'
+
             opn = nn.Conv1d(in_channels, out_channels, kernel_size, stride=stride,
-                            padding=padding, dilation=dilation, bias=bias)
+                            padding=padding, dilation=dilation, bias=bias, groups=groups)
         else:
             opn = None
 
@@ -1515,6 +1525,7 @@ class DevAI84(Device):
         self.ACTIVATION_BITS = 8
         self.FULL_ACC_BITS = 8
         self.FC_ACTIVATION_BITS = 16
+        self.WIDE_LAYER_RESOLUTION_BITS = 8
 
         self.WEIGHT_INPUTS = 64
         self.WEIGHT_DEPTH = 128
