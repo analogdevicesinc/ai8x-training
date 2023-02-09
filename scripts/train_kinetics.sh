@@ -1,0 +1,2 @@
+#!/bin/sh
+python train.py --data /data_ssd/processed/ --deterministic --epochs 50 --compress policies/schedule_actionbackbone.yaml --optimizer Adam --lr 0.001 --wd 0.001 --model ai85actionbackbone --use-bias --dataset Kinetics400 --device MAX78000 --batch-size 32 --qat-policy None --validation-split 0 --gpus 0 "$@"
