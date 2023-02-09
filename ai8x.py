@@ -450,6 +450,15 @@ class WeightScale(nn.Module):
         return torch.exp2(-x)
 
 
+class WeightScaleONNX(nn.Module):
+    """
+    Calculate the weight scale (reciprocal of 2 to the power of the output shift)
+    """
+    def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
+        return 2.**(-x)
+
+
 class OutputScale(nn.Module):
     """
     Calculate the output scale (2 to the power of the output shift)
@@ -457,6 +466,15 @@ class OutputScale(nn.Module):
     def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
         return torch.exp2(x)
+
+
+class OutputScaleONNX(nn.Module):
+    """
+    Calculate the output scale (2 to the power of the output shift)
+    """
+    def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
+        return 2.**x
 
 
 class Abs(nn.Module):
@@ -1713,7 +1731,11 @@ def onnx_export_prep(m, simplify=False):
     def _onnx_export_prep(m):
         for attr_str in dir(m):
             target_attr = getattr(m, attr_str)
-            if not simplify:
+            if isinstance(target_attr, WeightScale):
+                setattr(m, attr_str, WeightScaleONNX())
+            elif isinstance(target_attr, OutputScale):
+                setattr(m, attr_str, OutputScaleONNX())
+            elif not simplify:
                 if isinstance(target_attr, Quantize):
                     setattr(m, attr_str, QuantizeONNX(target_attr.num_bits))
                 elif isinstance(target_attr, FloorQat):
