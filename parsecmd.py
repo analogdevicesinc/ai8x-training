@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2019-2022 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2019-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -244,7 +244,7 @@ def get_parser(model_names, dataset_names):
     obj_detection_args.add_argument('--obj-detection-params',
                                     default=None,
                                     help='path to YAML file that defines the '
-                                    'parameters for Objetc Detection Loss and NMS')
+                                    'parameters for Object Detection Loss and NMS')
 
     distiller.knowledge_distillation.add_distillation_args(parser, model_names, True)
     distiller.quantization.add_post_train_quant_args(parser)

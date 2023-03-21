@@ -214,7 +214,7 @@ def main():
         args.deterministic = True
     if args.deterministic:
         # torch.set_deterministic(True)
-        distiller.set_deterministic(args.seed)  # For experiment reproducability
+        distiller.set_deterministic(args.seed)  # For experiment reproducibility
         if args.seed is not None:
             distiller.set_seed(args.seed)
     else:
@@ -613,7 +613,7 @@ def create_model(supported_models, dimensions, args):
     if not Model:
         raise RuntimeError("Model " + args.cnn + " not found\n")
 
-    # Set model paramaters
+    # Set model parameters
     if args.act_mode_8bit:
         weight_bits = 8
         bias_bits = 8
@@ -1518,7 +1518,7 @@ def summarize_model(model, dataset, which_summary, filename='model'):
 def sensitivity_analysis(model, criterion, data_loader, loggers, args, sparsities):
     """
     This sample application can be invoked to execute Sensitivity Analysis on your
-    model.  The ouptut is saved to CSV and PNG.
+    model. The output is saved to CSV and PNG.
     """
     msglogger.info("Running sensitivity tests")
     if not isinstance(loggers, list):
