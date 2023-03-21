@@ -33,3 +33,9 @@ jobs:
           VALIDATE_CLANG_FORMAT: false
           VALIDATE_GITHUB_ACTIONS: false
           FILTER_REGEX_EXCLUDE: (attic/.*|datasets/face_id/.*\.md|\.github/workflows/.*\.yml)
+
+      - name: Install dependencies
+        run: sudo apt update -y && sudo apt install -y codespell
+
+      - name: Run codespell
+        run: codespell

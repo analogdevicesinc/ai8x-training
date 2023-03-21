@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2021 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2021-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -70,7 +70,7 @@ class EvolutionSearch:
         return new_sample
 
     def check_constraint(self, sample, constraint):
-        """Checks if the sub network meets the constarints"""
+        """Checks if the sub network meets the constraints"""
         if 'max_num_weights' in constraint:
             if self.model.__class__.get_num_weights(sample) > constraint['max_num_weights']:
                 return False
@@ -116,7 +116,7 @@ class EvolutionSearch:
         print(f'\tDuration: {(t2-t1):.2f}secs.\n')
 
         for n in range(self.num_iter):
-            # Total popoulation size is equal to (population_size + num_parents)
+            # Total population size is equal to (population_size + num_parents)
             # after first iteration.
             t1_iter = time.time()
             print(f'Iteration: {n}')

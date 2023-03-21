@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2021-2022 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2021-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -45,7 +45,7 @@ class AISegment(Dataset):
     `im_size` determines the image resolution for dowsampled square images
     and can be specified as (80, 80) or (352, 352).
 
-    The code seperates available dataset items into test and train sets using `train_ratio`.
+    The code separates available dataset items into test and train sets using `train_ratio`.
 
     For the low resolution (80, 80) version, the data loader uses a memory based approach, whereas
     for the high resolution (352, 352) version, a memory or disk based approach is employed

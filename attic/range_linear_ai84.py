@@ -908,7 +908,7 @@ class PostTrainLinearQuantizerAI84(Quantizer):
             calculations.
             If None, scale factors will be kept in their original FP32 values.
     Note:
-        If int8 is set to True, all the layers (except those overriden in `overrides`) will be converted
+        If int8 is set to True, all the layers (except those overridden in `overrides`) will be converted
         to int8 precision, regardless of bits_activations/parameters/accum.
     """
     def __init__(self, model, bits_activations=8, bits_parameters=8, bits_accum=32,
