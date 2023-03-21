@@ -38,4 +38,4 @@ jobs:
         run: pip install codespell tomli
 
       - name: Run codespell
-        run: codespell --toml /github/workspace/pyproject.toml
+        run: codespell
