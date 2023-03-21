@@ -38,4 +38,4 @@ jobs:
         run: sudo apt update -y && sudo apt install -y codespell
 
       - name: Run codespell
-        run: codespell
+        run: codespell --toml ./pyproject.toml

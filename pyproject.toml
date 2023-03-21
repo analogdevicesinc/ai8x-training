@@ -6,5 +6,5 @@ target-version = ['py36']
 count = ''
 ignore-words-list = 'nervana,cconfiguration'
 quiet-level = 3
-skip = '*.dasm,*.map,./.mypy_cache,./venv,./.git,./distiller,./data,./datasets/face_id/facenet_pytorch/dependencies'
+skip = '*.dasm,*.map,./.mypy_cache,./venv,./.git,./distiller,./data,./datasets/face_id/facenet_pytorch/dependencies,./super-linter.log'
 ignore-regex = '^\s+"image/png".*$'
