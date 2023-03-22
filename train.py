@@ -275,12 +275,15 @@ def main():
     args.visualize_fn = selected_source['visualize'] \
         if 'visualize' in selected_source else datasets.visualize_data
 
-    if args.regression and args.display_confusion:
-        raise ValueError('ERROR: Argument --confusion cannot be used with regression')
-    if args.regression and args.display_prcurves:
-        raise ValueError('ERROR: Argument --pr-curves cannot be used with regression')
-    if args.regression and args.display_embedding:
-        raise ValueError('ERROR: Argument --embedding cannot be used with regression')
+    if (args.regression or args.obj_detection) and args.display_confusion:
+        raise ValueError('ERROR: Argument --confusion cannot be used with regression '
+                         'or object detection')
+    if (args.regression or args.obj_detection) and args.display_prcurves:
+        raise ValueError('ERROR: Argument --pr-curves cannot be used with regression '
+                         'or object detection')
+    if (args.regression or args.obj_detection) and args.display_embedding:
+        raise ValueError('ERROR: Argument --embedding cannot be used with regression '
+                         'or object detection')
 
     model = create_model(supported_models, dimensions, args)
 
@@ -1135,6 +1138,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
             steps_completed = (validation_step+1)
             if steps_completed % args.print_freq == 0 or steps_completed == total_steps:
                 if args.display_prcurves and tflogger is not None:
+                    # TODO PR Curve generation for Object Detection case is NOT implemented yet
                     class_probs_batch = [torch.nn.functional.softmax(el, dim=0) for el in output]
                     _, class_preds_batch = torch.max(output, 1)
                     class_probs.append(class_probs_batch)
