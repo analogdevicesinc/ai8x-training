@@ -51,13 +51,6 @@ train():
         compression_scheduler.before_parameter_optimization(epoch)
         optimizer.step()
         compression_scheduler.on_minibatch_end(epoch)
-
-
-This example application can be used with torchvision's ImageNet image classification
-models, or with the provided sample models:
-
-- ResNet for CIFAR: https://github.com/junyuseu/pytorch-cifar-models
-- MobileNet for ImageNet: https://github.com/marvis/pytorch-mobilenet
 """
 
 import copy
