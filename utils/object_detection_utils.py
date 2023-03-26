@@ -17,6 +17,7 @@
 import numpy as np
 import torch
 
+
 def check_target_exists(target_list):
     """
     Checks whether any object exists in given target list
@@ -29,7 +30,6 @@ def check_target_exists(target_list):
     for target in target_list:
         if target[0].numel() > 0:
             return True
-        
     return False
 
 

@@ -161,27 +161,27 @@ class MultiBoxLoss(nn.Module):
             conf_loss_pos = conf_loss_all[positive_priors]  # (sum(n_positives))
 
             # Next, find which priors are hard-negative
-            # To do this, sort ONLY negative priors in each image in order of decreasing loss and take
-            # top n_hard_negatives
+            # To do this, sort ONLY negative priors in each image in order of decreasing loss and
+            # take top n_hard_negatives
             conf_loss_neg = conf_loss_all.clone()  # (N, number_of_priors)
-            conf_loss_neg[positive_priors] = 0.  # (N, number_of_priors), positive priors are ignored
+            # (N, number_of_priors), positive priors are ignored
+            conf_loss_neg[positive_priors] = 0.
             # (never in top n_hard_negatives)
             conf_loss_neg, _ = conf_loss_neg.sort(dim=1, descending=True)  # (N, number_of_priors),
             # sorted by decreasing hardness
-            hardness_ranks = \
-                torch.LongTensor(range(n_priors)).unsqueeze(0).expand_as(conf_loss_neg).to(self.device)
+            hardness_ranks = torch.LongTensor( \
+                range(n_priors)).unsqueeze(0).expand_as(conf_loss_neg).to(self.device)
             # (N, number_of_priors)
             hard_negatives = hardness_ranks < n_hard_negatives.unsqueeze(1)
             # (N, number_of_priors)
             conf_loss_hard_neg = conf_loss_neg[hard_negatives]  # (sum(n_hard_negatives))
 
-            # As in the paper, averaged over positive priors only, although computed over both positive
-            # and hard-negative priors
+            # As in the paper, averaged over positive priors only, although computed over both
+            # positive and hard-negative priors
             conf_loss = (conf_loss_hard_neg.sum() + conf_loss_pos.sum()) / n_positives.sum().float()
             # (), scalar
 
             # TOTAL LOSS
             return conf_loss + self.alpha * loc_loss
 
-        else:
-            return torch.mean(conf_loss_all)
+        return torch.mean(conf_loss_all)
