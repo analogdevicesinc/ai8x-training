@@ -169,7 +169,7 @@ class MultiBoxLoss(nn.Module):
             # (never in top n_hard_negatives)
             conf_loss_neg, _ = conf_loss_neg.sort(dim=1, descending=True)  # (N, number_of_priors),
             # sorted by decreasing hardness
-            hardness_ranks = torch.LongTensor( \
+            hardness_ranks = torch.LongTensor(
                 range(n_priors)).unsqueeze(0).expand_as(conf_loss_neg).to(self.device)
             # (N, number_of_priors)
             hard_negatives = hardness_ranks < n_hard_negatives.unsqueeze(1)
@@ -178,7 +178,8 @@ class MultiBoxLoss(nn.Module):
 
             # As in the paper, averaged over positive priors only, although computed over both
             # positive and hard-negative priors
-            conf_loss = (conf_loss_hard_neg.sum() + conf_loss_pos.sum()) / n_positives.sum().float()
+            conf_loss = (conf_loss_hard_neg.sum() + conf_loss_pos.sum()) / \
+                        n_positives.sum().float()
             # (), scalar
 
             # TOTAL LOSS
