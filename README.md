@@ -546,8 +546,11 @@ There are two ways to install the MSDK.
 The [Analog Devices MSDK](https://github.com/Analog-Devices-MSDK/msdk) for MAX78000/MAX7802 is available via the installer links below. These installers require a GUI on your system.
 
 1. Download the MSDK installer for your operating system from one of the links below.
+    <!-- markdown-link-check-disable-next-line -->
     * [Windows](https://www.analog.com/en/design-center/evaluation-hardware-and-software/software/software-download?swpart=SFW0010820A)
+    <!-- markdown-link-check-disable-next-line -->
     * [Ubuntu Linux](https://www.analog.com/en/design-center/evaluation-hardware-and-software/software/software-download?swpart=SFW0018720A)
+    <!-- markdown-link-check-disable-next-line -->
     * [macOS](https://www.analog.com/en/design-center/evaluation-hardware-and-software/software/software-download?swpart=SFW0018610A)
 
 2. Run the installer executable. Note: On Linux, this may require making the file executable with the following command:
