@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-March 22, 2023
+April 5, 2023
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -60,7 +60,7 @@ PyTorch operating system and hardware support are constantly evolving. This docu
 
 Full support and documentation are provided for the following platform:
 
-* CPU: 64-bit amd64/x86_64 “PC” with [Ubuntu Linux 20.04 LTS](https://ubuntu.com/download/server)
+* CPU: 64-bit amd64/x86_64 “PC” with [Ubuntu Linux 20.04 LTS/22.04 LTS](https://ubuntu.com/download/server)
 * GPU for hardware acceleration (optional but highly recommended): Nvidia with [CUDA 11](https://developer.nvidia.com/cuda-toolkit-archive)
 * [PyTorch 1.8.1 (LTS)](https://pytorch.org/get-started/locally/) on Python 3.8.x
 
@@ -70,15 +70,15 @@ Limited support and advice for using other hardware and software combinations is
 
 ##### Linux
 
-**The only officially supported platform for model training** is Ubuntu Linux 20.04 LTS on amd64/x86_64, either the desktop or the [server version](https://ubuntu.com/download/server).
+**The only officially supported platforms for model training** are Ubuntu Linux 20.04 LTS and 22.04 LTS on amd64/x86_64, either the desktop or the [server version](https://ubuntu.com/download/server).
 
-*Note that hardware acceleration/CUDA is <u>not available</u> in PyTorch for Raspberry Pi 4 and other <u>aarch64/arm64</u> devices, even those running Ubuntu Linux 20.04. See also [Development on Raspberry Pi 4 and 400](https://github.com/MaximIntegratedAI/ai8x-synthesis/blob/develop/docs/RaspberryPi.md) (unsupported).*
+*Note that hardware acceleration using CUDA is <u>not available</u> in PyTorch for Raspberry Pi 4 and other <u>aarch64/arm64</u> devices, even those running Ubuntu Linux 20.04/22.04. See also [Development on Raspberry Pi 4 and 400](https://github.com/MaximIntegratedAI/ai8x-synthesis/blob/develop/docs/RaspberryPi.md) (unsupported).*
 
 This document also provides instructions for installing on RedHat Enterprise Linux / CentOS 8 with limited support.
 
 ##### Windows
 
-On Windows 10 version 21H2 or newer, and Windows 11, after installing the Windows Subsystem for Linux (WSL2), Ubuntu Linux 20.04 can be used inside Windows with full CUDA acceleration, please see *[Windows Subsystem for Linux](https://github.com/MaximIntegratedAI/ai8x-synthesis/blob/develop/docs/WSL2.md).* For the remainder of this document, follow the steps for Ubuntu Linux.
+On Windows 10 version 21H2 or newer, and Windows 11, after installing the Windows Subsystem for Linux (WSL2), Ubuntu Linux 20.04 or 22.04 can be used inside Windows with full CUDA acceleration, please see *[Windows Subsystem for Linux](https://github.com/MaximIntegratedAI/ai8x-synthesis/blob/develop/docs/WSL2.md).* For the remainder of this document, follow the steps for Ubuntu Linux.
 
 If WSL2 is not available, it is also possible (but not recommended due to inherent compatibility issues and slightly degraded performance) to run this software natively on Windows. Please see *[Native Windows Installation](https://github.com/MaximIntegratedAI/ai8x-synthesis/blob/develop/docs/Windows.md)*.
 
@@ -88,7 +88,7 @@ The software works on macOS, but model training suffers from the lack of hardwar
 
 ##### Virtual Machines (Unsupported)
 
-This software works inside a virtual machine running Ubuntu Linux 20.04. However, GPU passthrough is potentially difficult to set up and <u>not always available</u> for Linux VMs, so there may be no CUDA hardware acceleration. Certain Nvidia cards support [vGPU software](https://www.nvidia.com/en-us/data-center/graphics-cards-for-virtualization/); see also [vGPUs and CUDA](https://docs.nvidia.com/cuda/vGPU/), but vGPU features may come at substantial additional cost and vGPU software is not covered by this document.
+This software works inside a virtual machine running Ubuntu Linux 20.04 or 22.04. However, GPU passthrough is potentially difficult to set up and <u>not always available</u> for Linux VMs, so there may be no CUDA hardware acceleration. Certain Nvidia cards support [vGPU software](https://www.nvidia.com/en-us/data-center/graphics-cards-for-virtualization/); see also [vGPUs and CUDA](https://docs.nvidia.com/cuda/vGPU/), but vGPU features may come at substantial additional cost and vGPU software is not covered by this document.
 
 ##### Docker Containers (Unsupported)
 
@@ -153,6 +153,17 @@ The following software is optional, and can be replaced with other similar softw
 
 ### Project Installation
 
+#### Free Disk Space
+
+A minimum of 64 GB of free disk space is recommended, and datasets can be many times this size and should be stored separately. Check the available space on the target file system before continuing using
+
+```shell
+$ df -kh
+Filesystem      Size  Used Avail Use% Mounted on
+...
+/dev/sda2       457G  176G  259G  41% /
+```
+
 #### System Packages
 
 Some additional system packages are required, and installation of these additional packages requires administrator privileges. Note that this is the only time administrator privileges are required.
@@ -176,7 +187,7 @@ $ sudo apt-get install -y make build-essential libssl-dev zlib1g-dev \
 
 ###### RedHat Enterprise Linux / CentOS 8
 
-While Ubuntu 20.04 LTS is the supported distribution, the MAX78000/MAX78002 software packages run fine on all modern Linux distributions that also support CUDA. The *apt-get install* commands above must be replaced with distribution specific commands and package names. Unfortunately, there is no obvious 1:1 mapping between package names from one distribution to the next. The following example shows the commands needed for RHEL/CentOS 8.
+While Ubuntu 20.04 LTS and 22.04 LTS are the supported distributions, the MAX78000/MAX78002 software packages run fine on all modern Linux distributions that also support CUDA. The *apt-get install* commands above must be replaced with distribution specific commands and package names. Unfortunately, there is no obvious 1:1 mapping between package names from one distribution to the next. The following example shows the commands needed for RHEL/CentOS 8.
 
 *Two of the required packages are not in the base repositories. Enable the EPEL and PowerTools repositories:*
 
@@ -202,7 +213,7 @@ $ sudo dnf install openssl-devel zlib-devel \
 First, check whether there is a default Python interpreter and whether it is version 3.8.x:
 
 ```shell
-$ python
+$ python --version
 Command 'python' not found, did you mean:
   command 'python3' from deb python3
   command 'python' from deb python-is-python3
@@ -298,10 +309,6 @@ $ git config --global user.name "First Last"
 #### Nervana Distiller
 
 [Nervana Distiller](https://github.com/MaximIntegratedAI/distiller) is automatically installed as a git sub-module with the other packages. Distiller is used for its scheduling and model export functionality.
-
-#### Manifold
-
-[Manifold](https://github.com/uber/manifold) is a model-agnostic visual debugging tool for machine learning. The [Manifold guide](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/Guides/Manifold.md) shows how to integrate this optional package into the training software.
 
 ### Upstream Code
 
@@ -410,7 +417,7 @@ For minor updates, pull the latest code and install the updated wheels:
 (ai8x-training) $ git pull
 (ai8x-training) $ git submodule update --init
 (ai8x-training) $ pip3 install -U pip setuptools
-(ai8x-training) $ pip3 install -U -r requirements.txt # or requirements-cu11.txt with CUDA 11.x
+(ai8x-training) $ pip3 install -U -r requirements.txt  # or requirements-xxx.txt, as shown above
 ```
 
 ##### MSDK Updates
@@ -1665,7 +1672,7 @@ In some cases, it may be possible to use generic models that were designed for n
 
 ### Model Comparison and Feature Attribution
 
-Both TensorBoard and [Manifold](#manifold) can be used for model comparison and feature attribution.
+TensorBoard can be used for model comparison and feature attribution.
 
 #### TensorBoard
 
@@ -2010,7 +2017,7 @@ Train the new network/new dataset. See `scripts/train_mnist.sh` for a command li
 
 #### Netron — Network Visualization
 
-The [Netron tool](https://github.com/lutzroeder/Netron) can visualize networks, similar to what is available within Tensorboard. To use Netron, use `train.py` to export the trained network to ONNX, and upload the ONNX file. *Please note that not all networks can be exported to ONNX due to limitations in the PyTorch ONNX export library.*
+The [Netron tool](https://github.com/lutzroeder/Netron) can visualize networks, similar to what is available within TensorBoard. To use Netron, use `train.py` to export the trained network to ONNX, and upload the ONNX file. *Please note that not all networks can be exported to ONNX due to limitations in the PyTorch ONNX export library.*
 
 ```shell
 (ai8x-training) $ python train.py --model ai85net5 --dataset MNIST --evaluate --exp-load-weights-from checkpoint.pth.tar --device MAX78000 --summary onnx
@@ -2409,7 +2416,7 @@ Example:
 
 ##### `output_width` (Optional)
 
-When **not** using an `activation`, the **last** layer can output `32` bits of unclipped data in Q17.14 format. The default is `8` bits. *Note that the corresponding model’s last layer must be trained with* `wide=True` *when* `output_width` *is 32*.
+When **not** using an `activation` and when `operation` is **not** `None`/`Passthrough`, a layer can output `32` bits of unclipped data in Q17.14 format. Typically, this is used for the **last** layer. The default is `8` bits. *Note that the corresponding model’s layer must be trained with* `wide=True` *when* `output_width` *is 32*.
 
 Example:
         `output_width: 32`
