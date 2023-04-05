@@ -1672,7 +1672,7 @@ In some cases, it may be possible to use generic models that were designed for n
 
 ### Model Comparison and Feature Attribution
 
-Both TensorBoard and [Manifold](#manifold) can be used for model comparison and feature attribution.
+TensorBoard can be used for model comparison and feature attribution.
 
 #### TensorBoard
 
@@ -2017,7 +2017,7 @@ Train the new network/new dataset. See `scripts/train_mnist.sh` for a command li
 
 #### Netron — Network Visualization
 
-The [Netron tool](https://github.com/lutzroeder/Netron) can visualize networks, similar to what is available within Tensorboard. To use Netron, use `train.py` to export the trained network to ONNX, and upload the ONNX file. *Please note that not all networks can be exported to ONNX due to limitations in the PyTorch ONNX export library.*
+The [Netron tool](https://github.com/lutzroeder/Netron) can visualize networks, similar to what is available within TensorBoard. To use Netron, use `train.py` to export the trained network to ONNX, and upload the ONNX file. *Please note that not all networks can be exported to ONNX due to limitations in the PyTorch ONNX export library.*
 
 ```shell
 (ai8x-training) $ python train.py --model ai85net5 --dataset MNIST --evaluate --exp-load-weights-from checkpoint.pth.tar --device MAX78000 --summary onnx
