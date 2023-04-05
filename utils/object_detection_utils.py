@@ -18,6 +18,21 @@ import numpy as np
 import torch
 
 
+def check_target_exists(target_list):
+    """
+    Checks whether any object exists in given target list
+    Object detection data laoders return target as
+        target[0]: boxes list
+        target[1]: labels list
+    For images without any objects, these lists are both empty
+    target_list is list of targets e.g. targets in given batch
+    """
+    for target in target_list:
+        if target[0].numel() > 0:
+            return True
+    return False
+
+
 def calculate_mAP(det_boxes, det_labels, det_scores, true_boxes, true_labels, true_difficulties):
     """
     Calculate the Mean Average Precision (mAP) of detected objects.
@@ -222,13 +237,13 @@ def cxcy_to_gcxgcy(cxcy, priors_cxcy):
     of size (n_priors, 4)
     :return: encoded bounding boxes, a tensor of size (n_priors, 4)
     """
-
+    eps = 1e-7
     # The 10 and 5 below are referred to as 'variances' in the original Caffe repo,
     # completely empirical
     # They are for some sort of numerical conditioning, for 'scaling the localization gradient'
     # See https://github.com/weiliu89/caffe/issues/155
     return torch.cat([(cxcy[:, :2] - priors_cxcy[:, :2]) / (priors_cxcy[:, 2:] / 10),
-                      torch.log(cxcy[:, 2:] / priors_cxcy[:, 2:]) * 5], 1)
+                      torch.log((cxcy[:, 2:] / priors_cxcy[:, 2:]) + eps) * 5], 1)
 
 
 def gcxgcy_to_cxcy(gcxgcy, priors_cxcy):

@@ -1035,6 +1035,10 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
 
             if args.obj_detection:
 
+                if not object_detection_utils.check_target_exists(target):
+                    print(f'No target in batch. Ep: {epoch}, validation_step: {validation_step}')
+                    continue
+
                 boxes_list = [elem[0] for elem in target]
                 labels_list = [elem[1] for elem in target]
 
