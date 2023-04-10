@@ -32,8 +32,8 @@ class VGGFace2_FaceDetectionDataset(Dataset):
     """
     VGGFace2 Dataset for face detection
 
-    VGGFace2: A Dataset for Recognising Faces across Pose and Age
-    https://ieeexplore.ieee.org/abstract/document/8373813
+    MTCNN is used to extract the ground truth from the dataset as it provides
+    the ground truth for multiple faces in an image.
 
     GT Format: 0-3:Box Coordinates
 
