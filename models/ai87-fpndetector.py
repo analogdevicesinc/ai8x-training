@@ -6,13 +6,14 @@
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
 #
 ###################################################################################################
-import math
+"""
+FPN (Feature Pyramid Network) Object Detection Model
+"""
 from math import sqrt
 
-import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
 import ai8x
 import utils.object_detection_utils as obj_detect_utils
@@ -20,6 +21,9 @@ import utils.object_detection_utils as obj_detect_utils
 
 # TODO: May move to ai8x_blocks
 class Residual(nn.Module):
+    """
+    Residual connection module
+    """
     def __init__(self, in_channels, out_channels, res_layer_count=2, preprocess_kernel_size=3,
                  batchnorm='NoAffine', pooling=False, bias=True,
                  remove_residual=False, **kwargs):
@@ -64,6 +68,9 @@ class Residual(nn.Module):
         self.remove_residual = remove_residual
 
     def forward(self, input_data):
+        """
+        Forward propagation for the residual block
+        """
         x = self.preprocess_layer(input_data)
         x1 = x
         for res_layer in self.res_layers:
@@ -74,6 +81,9 @@ class Residual(nn.Module):
 
 
 class ResNetBackbone(nn.Module):
+    """
+    ResNet Backbone module
+    """
     def __init__(self, in_channels):
         super().__init__()
         self.residual_256_320 = Residual(in_channels, 64, pooling=True, remove_residual=True)
@@ -87,6 +97,9 @@ class ResNetBackbone(nn.Module):
         self.residual_8_10 = Residual(128, 128, res_layer_count=2, pooling=True)
 
     def forward(self, input_data):
+        """
+        Forward propagation for the ResNet Backbone
+        """
         prep0 = self.residual_256_320(input_data)
 
         enc_64_80 = self.residual_128_160(prep0)
@@ -101,6 +114,9 @@ class ResNetBackbone(nn.Module):
 
 
 class FPN(nn.Module):
+    """
+    FPN: Feature Pyramid Network
+    """
     def __init__(self, channels_32_40, channels_16_20, channels_8_10, channels_4_5,
                  batchnorm='NoAffine', bias=True,  **kwargs):
         super().__init__()
@@ -168,6 +184,9 @@ class FPN(nn.Module):
         self.add = ai8x.Add()
 
     def forward(self, input_32_40, input_16_20, input_8_10, input_4_5):
+        """
+        Forward propagation for the FPN: Feature Pyramid Network
+        """
         skip_32_40 = self.skip_32_40(input_32_40)
         skip_16_20 = self.skip_16_20(input_16_20)
         skip_8_10 = self.skip_8_10(input_8_10)
@@ -185,6 +204,9 @@ class FPN(nn.Module):
 
 
 class ClassificationModel(nn.Module):
+    """
+    Classification module for class scores
+    """
     def __init__(self, num_anchors=6, num_classes=21, feature_size=64,
                  bias=True,  **kwargs):
         super().__init__()
@@ -210,6 +232,9 @@ class ClassificationModel(nn.Module):
         self.num_classes = num_classes
 
     def forward(self, input_data):
+        """
+        Forward propagation for the Classification Module
+        """
         out = self.res_conv1(input_data)
         out = self.res_conv2(out)
 
@@ -222,6 +247,9 @@ class ClassificationModel(nn.Module):
 
 
 class RegressionModel(nn.Module):
+    """
+    Classification module for box regression outputs
+    """
     def __init__(self, num_anchors=6, feature_size=64,
                  bias=True, **kwargs):
 
@@ -242,6 +270,9 @@ class RegressionModel(nn.Module):
                                  bias=bias, **kwargs)
 
     def forward(self, input_data):
+        """
+        Forward propagation for the Regression Module
+        """
         out = self.res_conv1(input_data)
         out = self.res_conv2(out)
 
@@ -253,7 +284,7 @@ class RegressionModel(nn.Module):
 
 class FeaturePyramidNetworkDetector(nn.Module):
     """
-    The FeaturePyramidNetworkDetectorSmall network consisting
+    The FeaturePyramidNetworkDetector network consisting
         * ResNet Backbone Network
         * Feature Pyramid Network
         * Classificaiton Network
@@ -295,6 +326,13 @@ class FeaturePyramidNetworkDetector(nn.Module):
         self.priors_cxcy = self.__class__.create_prior_boxes(self.device)
 
     def forward(self, input_data):
+        """
+        The FeaturePyramidNetworkDetector forward propagation
+            * Runs preprocessing layers and ResNet Backbone Network
+            * Runs Feature Pyramid Network
+            * Runs Classificaiton Network for all features
+            * Runs Regression Network for all features
+        """
 
         x = self.preprocess_layer_1(input_data)
         x = self.preprocess_layer_2(x)
@@ -303,10 +341,12 @@ class FeaturePyramidNetworkDetector(nn.Module):
 
         pyramide_features = self.fpn(*backbone_features)
 
-        regression = torch.cat([self.regression_net(feature) for feature in pyramide_features],
-                               dim=1)
-        classification = torch.cat([self.classication_net(feature) for feature in pyramide_features],
-                                   dim=1)
+        regression = \
+            torch.cat([self.regression_net(feature) for feature in pyramide_features],
+                      dim=1)
+        classification = \
+            torch.cat([self.classication_net(feature) for feature in pyramide_features],
+                      dim=1)
 
         return regression, classification
 
@@ -349,7 +389,8 @@ class FeaturePyramidNetworkDetector(nn.Module):
                     for ratio in aspect_ratios.values():
                         for obj_scale in obj_scales.values():
 
-                            prior_boxes.append([cx, cy, (obj_scale*fmap_dim_scales[fmap]) * sqrt(ratio),
+                            prior_boxes.append([cx, cy,
+                                                (obj_scale*fmap_dim_scales[fmap]) * sqrt(ratio),
                                                 (obj_scale*fmap_dim_scales[fmap]) / sqrt(ratio)])
 
         prior_boxes = torch.FloatTensor(prior_boxes).to(device)  # (num_priors, 4)

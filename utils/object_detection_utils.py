@@ -34,6 +34,7 @@ def collate_fn(batch):
     images = torch.stack(images, dim=0)
     return images, boxes_and_labels
 
+
 def check_target_exists(target_list):
     """
     Checks whether any object exists in given target list

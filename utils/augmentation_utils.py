@@ -15,6 +15,7 @@
 # Some augmentation functions below have been adapted from
 # From https://github.com/amdegroot/ssd.pytorch/blob/master/utils/augmentations.py
 
+""" Some utility functions for Augmentation Tasks """
 import random
 
 import torch
@@ -42,10 +43,12 @@ def photometric_distort(image):
     for d in distortions:
         if random.random() < 0.5:
             if d.__name__ == 'adjust_hue':
-                # Caffe repo uses a 'hue_delta' of 18 - we divide by 255 because PyTorch needs a normalized value
+                # Caffe repo uses a 'hue_delta' of 18
+                # #we divide by 255 because PyTorch needs a normalized value
                 adjust_factor = random.uniform(-18 / 255., 18 / 255.)
             else:
-                # Caffe repo uses 'lower' and 'upper' values of 0.5 and 1.5 for brightness, contrast, and saturation
+                # Caffe repo uses 'lower' and 'upper' values of 0.5 and 1.5
+                # for brightness, contrast, and saturation
                 adjust_factor = random.uniform(0.5, 1.5)
 
             # Apply this distortion
@@ -78,10 +81,14 @@ def expand(image, boxes, filler):
     filler = torch.FloatTensor(filler)  # (3)
     new_image = torch.ones((3, new_h, new_w), dtype=torch.float) * \
         filler.unsqueeze(1).unsqueeze(1)  # (3, new_h, new_w)
-    # Note - do not use expand() like new_image = filler.unsqueeze(1).unsqueeze(1).expand(3, new_h, new_w)
-    # because all expanded values will share the same memory, so changing one pixel will change all
 
-    # Place the original image at random coordinates in this new image (origin at top-left of image)
+    # Note - do not use expand() like
+    # new_image = filler.unsqueeze(1).unsqueeze(1).expand(3, new_h, new_w)
+    # because all expanded values will share the same memory,
+    # so changing one pixel will change all
+
+    # Place the original image at random coordinates in this new image
+    # (origin at top-left of image)
     left = random.randint(0, new_w - original_w)
     right = left + original_w
     top = random.randint(0, new_h - original_h)
@@ -89,8 +96,9 @@ def expand(image, boxes, filler):
     new_image[:, top:bottom, left:right] = image
 
     # Adjust bounding boxes' coordinates accordingly
-    new_boxes = boxes + torch.FloatTensor([left, top, left, top]).unsqueeze(
-        0)  # (n_objects, 4), n_objects is the no. of objects in this image
+    # (n_objects, 4), n_objects is the no. of objects in this image
+    new_boxes = \
+        boxes + torch.FloatTensor([left, top, left, top]).unsqueeze(0)
 
     return new_image, new_boxes
 
@@ -119,35 +127,43 @@ def flip(image, boxes):
 
 def random_crop(image, boxes, labels, difficulties):
     """
-    Performs a random crop in the manner stated in the paper. Helps to learn to detect larger and partial objects.
+    Performs a random crop in the manner stated in the paper.
+    Helps to learn to detect larger and partial objects.
 
     Note that some objects may be cut out entirely.
 
-    Adapted from https://github.com/amdegroot/ssd.pytorch/blob/master/utils/augmentations.py
+    Adapted from
+    https://github.com/amdegroot/ssd.pytorch/blob/master/utils/augmentations.py
 
     :param image: image, a tensor of dimensions (3, original_h, original_w)
-    :param boxes: bounding boxes in boundary coordinates, a tensor of dimensions (n_objects, 4)
+    :param boxes: bounding boxes in boundary coordinates,
+    a tensor of dimensions (n_objects, 4)
     :param labels: labels of objects, a tensor of dimensions (n_objects)
-    :param difficulties: difficulties of detection of these objects, a tensor of dimensions (n_objects)
-    :return: cropped image, updated bounding box coordinates, updated labels, updated difficulties
+    :param difficulties: difficulties of detection of these objects,
+    a tensor of dimensions (n_objects)
+    :return: cropped image, updated bounding box coordinates, updated labels,
+    updated difficulties
     """
     original_h = image.size(1)
     original_w = image.size(2)
     # Keep choosing a minimum overlap until a successful crop is made
     while True:
         # Randomly draw the value for minimum overlap
-        min_overlap = random.choice([0., .1, .3, .5, .7, .9, None])  # 'None' refers to no cropping
+        # 'None' refers to no cropping
+        min_overlap = random.choice([0., .1, .3, .5, .7, .9, None])
 
         # If not cropping
         if min_overlap is None:
             return image, boxes, labels, difficulties
 
         # Try up to 50 times for this choice of minimum overlap
-        # This isn't mentioned in the paper, of course, but 50 is chosen in paper authors' original Caffe repo
+        # This isn't mentioned in the paper, of course, but 50 is
+        # chosen in paper authors' original Caffe repo
         max_trials = 50
         for _ in range(max_trials):
             # Crop dimensions must be in [0.3, 1] of original dimensions
-            # Note - it's [0.1, 1] in the paper, but actually [0.3, 1] in the authors' repo
+            # Note - it's [0.1, 1] in the paper, but actually [0.3, 1] in
+            # the authors' repo
             min_scale = 0.3
             scale_h = random.uniform(min_scale, 1)
             scale_w = random.uniform(min_scale, 1)
@@ -173,7 +189,8 @@ def random_crop(image, boxes, labels, difficulties):
                                                             boxes)
             overlap = overlap.squeeze(0)  # (n_objects)
 
-            # If not a single bounding box has a Jaccard overlap of greater than the minimum, try again
+            # If not a single bounding box has a Jaccard overlap of greater than
+            # the minimum, try again
             if overlap.max().item() < min_overlap:
                 continue
 
@@ -184,8 +201,9 @@ def random_crop(image, boxes, labels, difficulties):
             bb_centers = (boxes[:, :2] + boxes[:, 2:]) / 2.  # (n_objects, 2)
 
             # Find bounding boxes whose centers are in the crop
-            centers_in_crop = (bb_centers[:, 0] > left) * (bb_centers[:, 0] < right) * (bb_centers[:, 1] > top) * (
-                bb_centers[:, 1] < bottom)  # (n_objects), a Torch uInt8/Byte tensor, can be used as a boolean index
+            # (n_objects), a Torch uInt8/Byte tensor, can be used as a boolean index
+            centers_in_crop = (bb_centers[:, 0] > left) * (bb_centers[:, 0] < right) * \
+                              (bb_centers[:, 1] > top) * (bb_centers[:, 1] < bottom)
 
             # If not a single bounding box has its center in the crop, try again
             if not centers_in_crop.any():
@@ -197,9 +215,11 @@ def random_crop(image, boxes, labels, difficulties):
             new_difficulties = difficulties[centers_in_crop]
 
             # Calculate bounding boxes' new coordinates in the crop
-            new_boxes[:, :2] = torch.max(new_boxes[:, :2], crop[:2])  # crop[:2] is [left, top]
+            # crop[:2] is [left, top]
+            new_boxes[:, :2] = torch.max(new_boxes[:, :2], crop[:2])
             new_boxes[:, :2] -= crop[:2]
-            new_boxes[:, 2:] = torch.min(new_boxes[:, 2:], crop[2:])  # crop[2:] is [right, bottom]
+            # crop[2:] is [right, bottom]
+            new_boxes[:, 2:] = torch.min(new_boxes[:, 2:], crop[2:])
             new_boxes[:, 2:] -= crop[:2]
 
             return new_image, new_boxes, new_labels, new_difficulties
@@ -208,17 +228,21 @@ def random_crop(image, boxes, labels, difficulties):
 def resize(image, boxes, dims=(300, 300), return_percent_coords=True):
     """
     Resize image. For the SSD300, resize to (300, 300).
-    Since percent/fractional coordinates are calculated for the bounding boxes (w.r.t image dimensions) in this process,
+    Since percent/fractional coordinates are calculated for the bounding boxes
+    (w.r.t image dimensions) in this process,
     you may choose to retain them.
     :param image: image, a PIL Image
-    :param boxes: bounding boxes in boundary coordinates, a tensor of dimensions (n_objects, 4)
-    :return: resized image, updated bounding box coordinates (or fractional coordinates, in which case they remain the same)
+    :param boxes: bounding boxes in boundary coordinates, a tensor of dimensions
+    (n_objects, 4)
+    :return: resized image, updated bounding box coordinates (or fractional coordinates,
+    in which case they remain the same)
     """
     # Resize image
     new_image = FT.resize(image, dims)
 
     # Resize bounding boxes
-    # old_dims = torch.FloatTensor([image.width, image.height, image.width, image.height]).unsqueeze(0)
+    # old_dims =
+    # torch.FloatTensor([image.width, image.height, image.width, image.height]).unsqueeze(0)
     old_dims = torch.FloatTensor(
         [image.shape[2], image.shape[1], image.shape[2], image.shape[1]]).unsqueeze(0)
     new_boxes = boxes / old_dims  # percent coordinates

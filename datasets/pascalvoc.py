@@ -24,6 +24,13 @@ from utils import augmentation_utils, object_detection_utils
 
 
 class PascalVOC(torch.utils.data.Dataset):
+    """
+    The PASCAL Visual Object Classes (http://host.robots.ox.ac.uk/pascal/VOC/)
+    Object detection challenge dataset is used.
+    Torch metrics implementation is encapsulated.
+    (https://pytorch.org/vision/main/generated/torchvision.datasets.VOCDetection.html)
+    """
+
     year_options = {'min': 2007, 'max': 2012}
 
     # For years 2008 and above, supported classes are common for all:
@@ -121,7 +128,6 @@ class PascalVOC(torch.utils.data.Dataset):
         new_image = image
         new_boxes = boxes
         new_labels = labels
-        new_difficulties = difficulties
 
         # Convert PIL image to Torch tensor
         new_image = FT.to_tensor(new_image)
@@ -141,8 +147,8 @@ class PascalVOC(torch.utils.data.Dataset):
                 new_image, new_boxes = \
                     augmentation_utils.expand(new_image, new_boxes, filler=mean)
 
-             # Randomly crop image (zoom in)
-            new_image, new_boxes, new_labels, new_difficulties =\
+            # Randomly crop image (zoom in)
+            new_image, new_boxes, new_labels, _ =\
                 augmentation_utils.random_crop(new_image, new_boxes, new_labels,
                                                difficulties)
 
@@ -186,7 +192,7 @@ def pascal_voc_get_datasets(data, load_train=True, load_test=True, img_size=(300
                                   transform=transform,
                                   download=True)
 
-        print(f'Train dataset length: {train_dataset.__len__()}\n')
+        print(f'Train dataset length: {len(train_dataset)}\n')
     else:
         train_dataset = None
 
@@ -200,10 +206,11 @@ def pascal_voc_get_datasets(data, load_train=True, load_test=True, img_size=(300
                                  augment_data=False,
                                  transform=transform, download=True)
 
-        print(f'Test dataset length: {test_dataset.__len__()}\n')
+        print(f'Test dataset length: {len(test_dataset)}\n')
 
         if args.truncate_testset:
-            test_dataset.data = test_dataset.data[:1]
+            test_dataset.data = \
+                test_dataset.data[:1]  # pylint: disable=attribute-defined-outside-init
     else:
         test_dataset = None
 
