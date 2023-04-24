@@ -18,6 +18,22 @@ import numpy as np
 import torch
 
 
+def collate_fn(batch):
+    """
+    Since each image may have a different number of objects, we need a collate function
+    (to be passed to the DataLoader).
+    This describes how to combine these tensors of different sizes. We use lists.
+    :param batch: an iterable of N sets from __getitem__()
+    :return: a tensor of images, lists of varying-size tensors of bounding boxes and labels
+    """
+    images = []
+    boxes_and_labels = []
+    for b in batch:
+        images.append(b[0])
+        boxes_and_labels.append(b[1])
+    images = torch.stack(images, dim=0)
+    return images, boxes_and_labels
+
 def check_target_exists(target_list):
     """
     Checks whether any object exists in given target list
