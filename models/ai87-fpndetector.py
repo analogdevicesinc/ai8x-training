@@ -208,7 +208,7 @@ class ClassificationModel(nn.Module):
     Classification module for class scores
     """
     def __init__(self, num_anchors=6, num_classes=21, feature_size=64,
-                 bias=True,  **kwargs):
+                 bias=True,  wide=False, **kwargs):
         super().__init__()
 
         self.res_conv1 = Residual(in_channels=feature_size,
@@ -224,7 +224,7 @@ class ClassificationModel(nn.Module):
                                  kernel_size=3,
                                  padding=1,
                                  bias=bias,
-                                 wide=True,
+                                 wide=wide,
                                  **kwargs)
 
         self.sigmoid = nn.Sigmoid()
@@ -251,7 +251,7 @@ class RegressionModel(nn.Module):
     Classification module for box regression outputs
     """
     def __init__(self, num_anchors=6, feature_size=64,
-                 bias=True, **kwargs):
+                 bias=True, wide=False, **kwargs):
 
         super().__init__()
 
@@ -267,7 +267,7 @@ class RegressionModel(nn.Module):
                                  out_channels=num_anchors*4,
                                  kernel_size=3,
                                  padding=1,
-                                 bias=bias, **kwargs)
+                                 bias=bias, wide=False, **kwargs)
 
     def forward(self, input_data):
         """
@@ -300,6 +300,7 @@ class FeaturePyramidNetworkDetector(nn.Module):
                  channels_16_20=64, channels_8_10=128,
                  channels_4_5=128,
                  device='cpu',
+                 wide=False,
                  **kwargs):
         super().__init__()
         self.device = device
@@ -320,8 +321,8 @@ class FeaturePyramidNetworkDetector(nn.Module):
         self.backbone = ResNetBackbone(preprocess_channels)
         self.fpn = FPN(channels_32_40, channels_16_20, channels_8_10, channels_4_5, **kwargs)
         self.classication_net = ClassificationModel(
-            num_classes=self.num_classes, feature_size=64, **kwargs)
-        self.regression_net = RegressionModel(feature_size=64, **kwargs)
+            num_classes=self.num_classes, feature_size=64, wide=wide, **kwargs)
+        self.regression_net = RegressionModel(feature_size=64, wide=wide, **kwargs)
 
         self.priors_cxcy = self.__class__.create_prior_boxes(self.device)
 
@@ -514,13 +515,24 @@ class FeaturePyramidNetworkDetector(nn.Module):
 
         return all_images_boxes, all_images_labels, all_images_scores  # lists of length batch_size
 
+    def are_locations_wide(self):
+        """
+        Returns whether model uses wide outputs for the regression part (box locations)
+        """
+        return self.regression_net.conv5.wide
+
+    def are_scores_wide(self):
+        """
+        Returns whether model uses wide outputs for the classification part (box predictions)
+        """
+        return self.classication_net.conv5.wide
 
 def ai87fpndetector(pretrained=False, **kwargs):
     """
     Constructs a Feature Pyramid Network Detector model
     """
     assert not pretrained
-    return FeaturePyramidNetworkDetector(**kwargs)
+    return FeaturePyramidNetworkDetector(wide=True, **kwargs)
 
 
 models = [

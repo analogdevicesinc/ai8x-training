@@ -1059,12 +1059,13 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                 # correct output for accurate loss calculation
                 if args.act_mode_8bit:
                     output_boxes /= 128.
-                    for key in model.__dict__['_modules'].keys():
-                        if (hasattr(model.__dict__['_modules'][key], 'wide')
-                                and model.__dict__['_modules'][key].wide):
-                            output_boxes /= 256.
-                if args.regression:
-                    target /= 128.
+                    output_conf  /= 128.
+
+                    if (hasattr(model, 'are_locations_wide') and model.are_locations_wide):
+                        output_boxes /= 128.
+
+                    if (hasattr(model, 'are_scores_wide') and model.are_scores_wide):
+                        output_conf /= 128.
 
                 output = (output_boxes, output_conf)
 
@@ -1100,6 +1101,8 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                         if (hasattr(model.__dict__['_modules'][key], 'wide')
                                 and model.__dict__['_modules'][key].wide):
                             output /= 256.
+                    if args.regression:
+                        target /= 128.
 
             if args.generate_sample is not None and args.act_mode_8bit and not sample_saved:
                 sample.generate(args.generate_sample, inputs, target, output, args.dataset, False)
