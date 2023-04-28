@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-April 27, 2023
+April 28, 2023
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -1345,6 +1345,9 @@ Since training can take a significant amount of time, the training script does n
    ```shell
    $ scripts/train_mnist.sh --workers=1
    ```
+
+3. On resource constrained systems, training may abort with an error message such as `RuntimeError: unable to open shared memory object </torch_..._...> in read-write mode`. Add `--workers=0` when running the training script.
+
 
 ### Example Training Session
 
