@@ -96,6 +96,7 @@ from distiller.data_loggers.collector import (QuantCalibrationStatsCollector,
                                               RecordsActivationStatsCollector,
                                               SummaryActivationStatsCollector, collectors_context)
 from distiller.quantization.range_linear import PostTrainLinearQuantizer
+from torchmetrics.detection.mean_ap import MeanAveragePrecision
 
 # pylint: enable=no-name-in-module
 import ai8x
@@ -966,7 +967,9 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
     """Execute the validation/test loop."""
     losses = {'objective_loss': tnt.AverageValueMeter()}
     if args.obj_detection:
-        detection_metrics = {'mAP': tnt.AverageValueMeter()}
+        map_calculator = MeanAveragePrecision(box_format='xyxy', iou_type='bbox',
+                                              class_metrics=False, iou_thresholds=[0.5])
+        mAP = 0.00
     if not args.regression:
         classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, min(args.num_classes, 5)))
     else:
@@ -1042,6 +1045,9 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                 boxes_list = [elem[0] for elem in target]
                 labels_list = [elem[1] for elem in target]
 
+                # Adjust ground truth index as mAP calculator uses 0-indexed class labels
+                labels_list_for_map = [elem[1] - 1 for elem in target]
+
                 difficulties = []
                 for label_objects in labels_list:
                     difficulties.append(torch.zeros_like(label_objects))
@@ -1049,6 +1055,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                 inputs = inputs.to(args.device)
                 boxes_list = [boxes.to(args.device) for boxes in boxes_list]
                 labels_list = [labels.to(args.device) for labels in labels_list]
+                labels_list_for_map = [labels.to(args.device) for labels in labels_list_for_map]
                 difficulties = [d.to(args.device) for d in difficulties]
 
                 target = (boxes_list, labels_list)
@@ -1059,7 +1066,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                 # correct output for accurate loss calculation
                 if args.act_mode_8bit:
                     output_boxes /= 128.
-                    output_conf  /= 128.
+                    output_conf /= 128.
 
                     if (hasattr(model, 'are_locations_wide') and model.are_locations_wide):
                         output_boxes /= 128.
@@ -1079,13 +1086,43 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                                          min_score=obj_detection_params['nms']['min_score'],
                                          max_overlap=obj_detection_params['nms']['max_overlap'],
                                          top_k=obj_detection_params['nms']['top_k'])
-                # Calculate mAP per batch
-                if boxes_list:
-                    _, mAP = object_detection_utils.calculate_mAP(det_boxes_batch,
-                                                                  det_labels_batch,
-                                                                  det_scores_batch, boxes_list,
-                                                                  labels_list, difficulties)
-                    detection_metrics['mAP'].add(mAP)
+
+                # Filter images with only background box
+                filtered_images_boxes_labels_scores = \
+                    list(filter(lambda elem: not (len(elem[1]) == 1 and elem[1][0] == 0),
+                                zip(det_boxes_batch, det_labels_batch, det_scores_batch)))
+
+                filtered_all_images_boxes = [elem[0]
+                                             for elem in filtered_images_boxes_labels_scores]
+
+                # Adjust detected label index as mAP calculator uses 0-indexed class labels
+                filtered_all_images_labels = [
+                    elem[1] - 1 for elem in filtered_images_boxes_labels_scores]
+                filtered_all_images_scores = [elem[2]
+                                              for elem in filtered_images_boxes_labels_scores]
+
+                # Update mAP Calculator
+                if boxes_list and filtered_all_images_boxes:
+
+                    # Prepare truths
+                    boxes = torch.cat(boxes_list)
+                    labels = torch.cat(labels_list_for_map)
+
+                    gt = [dict(boxes=boxes, labels=labels)]
+
+                    # Prepare predictions
+                    pred_boxes = torch.cat(filtered_all_images_boxes)
+                    pred_scores = torch.cat(filtered_all_images_scores)
+                    pred_labels = torch.cat(filtered_all_images_labels)
+
+                    preds = [dict(boxes=pred_boxes, scores=pred_scores, labels=pred_labels)]
+
+                    # Update mAP calculator
+                    map_calculator.update(preds=preds, target=gt)
+
+                    # Keep latest value
+                    mAPs = {"val_" + k: v for k, v in map_calculator.compute().items()}
+                    mAP = mAPs["val_map_50"]
 
             else:
                 inputs, target = inputs.to(args.device), target.to(args.device)
@@ -1150,7 +1187,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                         stats = (
                             '',
                             OrderedDict([('Loss', losses['objective_loss'].mean),
-                                         ('mAP', detection_metrics['mAP'].mean)])
+                                         ('mAP', mAP)])
                         )
                     else:
                         if not args.regression:
@@ -1235,10 +1272,10 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
         if args.obj_detection:
 
             msglogger.info('==> mAP: %.5f    Loss: %.3f\n',
-                           detection_metrics['mAP'].mean,
+                           mAP,
                            losses['objective_loss'].mean)
 
-            return 0, 0, losses['objective_loss'].mean, detection_metrics['mAP'].mean
+            return 0, 0, losses['objective_loss'].mean, mAP
 
         if not args.regression:
             if args.num_classes > 5:

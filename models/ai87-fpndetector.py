@@ -267,7 +267,7 @@ class RegressionModel(nn.Module):
                                  out_channels=num_anchors*4,
                                  kernel_size=3,
                                  padding=1,
-                                 bias=bias, wide=False, **kwargs)
+                                 bias=bias, wide=wide, **kwargs)
 
     def forward(self, input_data):
         """
@@ -526,6 +526,7 @@ class FeaturePyramidNetworkDetector(nn.Module):
         Returns whether model uses wide outputs for the classification part (box predictions)
         """
         return self.classication_net.conv5.wide
+
 
 def ai87fpndetector(pretrained=False, **kwargs):
     """

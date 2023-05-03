@@ -14,4 +14,5 @@ numba<0.50.0
 opencv-python>=4.4.0
 pytsmod>=0.3.3
 h5py>=3.7.0
+torchmetrics>=0.11.4
 -e distiller
