@@ -41,7 +41,7 @@ class TinySSDBaseFace(nn.Module):
         self.fire5 = ai8x.FusedConv2dBNReLU(64, 64, 3, padding=1, **kwargs)
         self.fire6 = ai8x.FusedConv2dBNReLU(64, 64, 3, padding=1, **kwargs)
         self.fire7 = ai8x.FusedConv2dBNReLU(64, 128, 3, padding=1, **kwargs)
-        
+
         self.fire8 = ai8x.FusedConv2dBNReLU(128, 32, 3, padding=1, **kwargs)
 
         self.fire9 = ai8x.FusedMaxPoolConv2dBNReLU(32, 32, 3, padding=1,
