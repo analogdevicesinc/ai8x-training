@@ -300,7 +300,8 @@ class FeaturePyramidNetworkDetector(nn.Module):
                  channels_16_20=64, channels_8_10=128,
                  channels_4_5=128,
                  device='cpu',
-                 wide=False,
+                 wide_locations=False,
+                 wide_scores=False,
                  **kwargs):
         super().__init__()
         self.device = device
@@ -321,8 +322,8 @@ class FeaturePyramidNetworkDetector(nn.Module):
         self.backbone = ResNetBackbone(preprocess_channels)
         self.fpn = FPN(channels_32_40, channels_16_20, channels_8_10, channels_4_5, **kwargs)
         self.classication_net = ClassificationModel(
-            num_classes=self.num_classes, feature_size=64, wide=wide, **kwargs)
-        self.regression_net = RegressionModel(feature_size=64, wide=wide, **kwargs)
+            num_classes=self.num_classes, feature_size=64, wide=wide_scores, **kwargs)
+        self.regression_net = RegressionModel(feature_size=64, wide=wide_locations, **kwargs)
 
         self.priors_cxcy = self.__class__.create_prior_boxes(self.device)
 
@@ -533,7 +534,7 @@ def ai87fpndetector(pretrained=False, **kwargs):
     Constructs a Feature Pyramid Network Detector model
     """
     assert not pretrained
-    return FeaturePyramidNetworkDetector(wide=True, **kwargs)
+    return FeaturePyramidNetworkDetector(wide_locations=False, wide_scores=True, **kwargs)
 
 
 models = [
