@@ -34,14 +34,14 @@ class TinySSDBaseFace(nn.Module):
         # Standard convolutional layers
         self.fire1 = ai8x.FusedMaxPoolConv2dReLU(3, 16, 3, padding=1, bias=False)
         self.fire2 = ai8x.FusedMaxPoolConv2dReLU(16, 32, 3, padding=1, bias=False)
-
         self.fire3 = ai8x.FusedConv2dBNReLU(32, 64, 3, padding=1, **kwargs)
+
         self.fire4 = ai8x.FusedConv2dBNReLU(64, 64, 3, padding=1, **kwargs)
 
         self.fire5 = ai8x.FusedConv2dBNReLU(64, 64, 3, padding=1, **kwargs)
-
         self.fire6 = ai8x.FusedConv2dBNReLU(64, 64, 3, padding=1, **kwargs)
         self.fire7 = ai8x.FusedConv2dBNReLU(64, 128, 3, padding=1, **kwargs)
+        
         self.fire8 = ai8x.FusedConv2dBNReLU(128, 32, 3, padding=1, **kwargs)
 
         self.fire9 = ai8x.FusedMaxPoolConv2dBNReLU(32, 32, 3, padding=1,
@@ -58,21 +58,16 @@ class TinySSDBaseFace(nn.Module):
         """
         out = self.fire1(image)  # (N, 32, 112, 84)
         out = self.fire2(out)  # (N, 32, 56, 42)
-
         out = self.fire3(out)  # (N, 64, 56, 42)
 
         fire4_feats = self.fire4(out)  # (N, 64, 56, 42)
 
         out = self.fire5(fire4_feats)  # (N, 64, 56, 42)
-
         out = self.fire6(out)  # (N, 64, 56, 42)
-
         out = self.fire7(out)  # (N, 128, 56, 42)
 
         fire8_feats = self.fire8(out)  # (N, 32, 56, 42)
-
         fire9_feats = self.fire9(fire8_feats)  # (N, 32, 28, 21)
-
         fire10_feats = self.fire10(fire9_feats)  # (N, 32, 14, 10)
 
         return fire4_feats, fire8_feats, fire9_feats, fire10_feats
