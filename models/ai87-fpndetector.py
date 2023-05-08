@@ -237,13 +237,12 @@ class ClassificationModel(nn.Module):
         """
         out = self.res_conv1(input_data)
         out = self.res_conv2(out)
-
         out = self.conv5(out)
+        out = out.permute(0, 2, 3, 1)
 
-        out1 = out.permute(0, 2, 3, 1)
-        batch_size, width, height, _ = out1.shape
-        out2 = out1.view(batch_size, width, height, self.num_anchors, self.num_classes)
-        return out2.contiguous().view(input_data.shape[0], -1, self.num_classes)
+        batch_size, width, height, _ = out.shape
+        out = out.view(batch_size, width, height, self.num_anchors, self.num_classes)
+        return out.contiguous().view(input_data.shape[0], -1, self.num_classes)
 
 
 class RegressionModel(nn.Module):
@@ -275,7 +274,6 @@ class RegressionModel(nn.Module):
         """
         out = self.res_conv1(input_data)
         out = self.res_conv2(out)
-
         out = self.conv5(out)
 
         out = out.permute(0, 2, 3, 1)
