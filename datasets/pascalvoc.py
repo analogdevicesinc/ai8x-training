@@ -94,10 +94,14 @@ class PascalVOC(torch.utils.data.Dataset):
         """
         Torch vision VOCDetection dataset's __get_item__ returns: (image, target)
         where target is a dictionary of the XML tree.
-        This transform function applies transformations on:
-            * images: Normalized, resized, ai8xized
-            * boxes : Normalized, resized wrt resized image
-            * labels: Mapped to label id/s (integer)
+        This transform function parses boxes and labels from the target file.
+        This transform function also applies transformations on images, boxes and
+        labels as follows:
+            * images: are normalized (torchvision.transforms.ToTensor performs
+                      normalization while transforming PIL image into Tensor)
+                      are resized
+            * boxes : are normalized, resized wrt resized image
+            * labels: are mapped to label id/s (integer)
         """
 
         boxes = []
