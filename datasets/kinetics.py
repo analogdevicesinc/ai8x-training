@@ -19,36 +19,315 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 import albumentations as A
 import yaml
+import errno
+import urllib
+import tarfile
+from zipfile import ZipFile
+import pandas as pd
+from pytube import YouTube 
+from tqdm import tqdm
+import cv2
 
 class Kinetics(Dataset):
     """
     Kinetics400 Human Actions Dataset (400 action class)
     (https://deepmind.com/research/open-source/kinetics/).
-    The image files are in RGB format and corresponding portrait matting files are in RGBA
-    format where the alpha channel is 0 or 255 for background and portrait respectively.
     """
-    def __init__(self, root, split, img_size, num_classes, fold_ratio, num_frames_model, num_frames_dataset,
-                 transform, augmentation, blacklist_file=None, download=True, transformVideo=False):
+
+    url_kinetics400 = 'https://storage.googleapis.com/deepmind-media/Datasets/kinetics400.tar.gz'
+
+    def __init__(self, root, split, img_size, classes, fold_ratio, num_frames_model,
+                 num_frames_dataset, max_examples_per_class, transform, augmentation,
+                 blacklist_file=None, download=True):
+        
         self.root = root
         self.split = split
         self.img_size = img_size
-        self.num_classes = num_classes
+        self.classes = classes
         self.fold_ratio = fold_ratio
         self.num_frames_model = num_frames_model
         self.num_frames_dataset = num_frames_dataset
+        self.max_examples_per_class = max_examples_per_class
         self.transform = transform
         self.augmentation = augmentation
-        self.label_distribution = np.zeros(num_classes)
         self.blacklist_file = blacklist_file
-        self.background_pickle_index = 0
-        self.transformVideo = transformVideo
-        self.datacounter = 0
-        # Check split 
+        
+        # Check split
         if split not in ('test', 'train'):
-            raise ValueError("Split name can only be set to 'test' or 'train'")   
-        self.__load_dataset() 
+            raise ValueError("Split name can only be set to 'test' or 'train'")
+        
+        # Download dataset
+        if download:
+            self.__download()
+        
+        self.__load_dataset()
+    
+    @property
+    def raw_folder(self):
+        """Folder for the raw data.
+        """
+        return os.path.join(self.root, self.__class__.__name__, 'raw')
 
-    # Main dataloader function in the beginning
+    @property
+    def processed_folder(self):
+        """Folder for the processed data.
+        """
+        return os.path.join(self.root, self.__class__.__name__, 'processed')
+
+    def __download(self):
+        
+        self.__makedir_exist_ok(self.processed_folder)
+        if self.__check_processed_exists():
+            return # skip download if dataset already exists
+
+        self.__makedir_exist_ok(self.raw_folder)
+        if not self.__check_dataset_exists():
+            # Download the dataset file containing the video links
+            filename = self.url_kinetics400.rpartition('/')[2]
+            self.__download_and_extract_archive(self.url_kinetics400,
+                                                download_root=self.raw_folder,
+                                                filename=filename)
+
+        self.__download_videos()
+        self.__pickle_videos()
+
+    def __check_processed_exists(self):
+        # check if the number of processed & pickled files matches with the number of classes
+        num_processed_files = len([f for f in os.listdir(self.processed_folder)
+                                  if f.endswith('.pkl')])
+        return num_processed_files == len(self.classes)
+
+    def __check_dataset_exists(self):
+        return os.path.exists(os.path.join(self.raw_folder, 'kinetics400/' + self.split + '.csv'))
+
+    def __makedir_exist_ok(self, dirpath):
+        try:
+            os.makedirs(dirpath)
+        except OSError as e:
+            if e.errno == errno.EEXIST:
+                pass
+            else:
+                raise
+
+    def __download_url(self, url, root, filename=None):
+        root = os.path.expanduser(root)
+        if not filename:
+            filename = os.path.basename(url)
+        fpath = os.path.join(root, filename)
+
+        self.__makedir_exist_ok(root)
+        
+        # downloads file
+        try:
+            print('Downloading ' + url + ' to ' + fpath)
+            urllib.request.urlretrieve(url, fpath)
+        except (urllib.error.URLError, IOError) as e:
+            if url[:5] == 'https':
+                url = url.replace('https:', 'http:')
+                print('Failed download. Trying https -> http instead.'
+                        ' Downloading ' + url + ' to ' + fpath)
+                urllib.request.urlretrieve(url, fpath)
+            else:
+                raise e
+
+    def __extract_archive(self, from_path,
+                          to_path=None, remove_finished=False):
+        if to_path is None:
+            to_path = os.path.dirname(from_path)
+
+        if from_path.endswith('.tar.gz'):
+            with tarfile.open(from_path, 'r:gz') as tar:
+                tar.extractall(path=to_path)
+        elif from_path.endswith('.zip'):
+            with ZipFile(from_path) as archive:
+                archive.extractall(to_path)
+        else:
+            raise ValueError(f"Extraction of {from_path} not supported")
+
+        if remove_finished:
+            os.remove(from_path)
+
+    def __download_and_extract_archive(self, url, download_root, extract_root=None, filename=None,
+                                       remove_finished=False):
+        download_root = os.path.expanduser(download_root)
+        if extract_root is None:
+            extract_root = download_root
+        if not filename:
+            filename = os.path.basename(url)
+
+        self.__download_url(url, download_root, filename)
+
+        archive = os.path.join(download_root, filename)
+        print(f"Extracting {archive} to {extract_root}")
+        self.__extract_archive(archive, extract_root, remove_finished)
+
+    def __download_videos(self):
+
+        youtube_download_link_prefix = "https://www.youtube.com/watch?v="
+        csv_file = os.path.join(self.raw_folder, 'kinetics400/' + self.split + '.csv')
+        df_set = pd.read_csv(csv_file)
+        download_folder = os.path.join(self.raw_folder, self.split)
+        downloads_per_class = np.zeros(len(self.classes),  dtype=int)
+        for cls in self.classes:
+            self.__makedir_exist_ok(os.path.join(download_folder, cls))
+
+        df_set = df_set.reset_index()  # make sure indexes pair with number of rows
+
+        vids_to_download = self.max_examples_per_class
+        for class_name in self.classes[:-1]:
+            vids_to_download += min( (df_set.label == class_name).sum(), self.max_examples_per_class)
+            
+        print(vids_to_download)    
+        print('The goal number of {} set videos is {}'.format(self.split, vids_to_download))
+        print('Note: Due to deleted videos in the dataset, the goal number may not be reached')
+
+        with tqdm(total=vids_to_download) as pbar:
+            pbar.set_description('Downloading and Processing {} set'.format(self.split))
+            for index, row in df_set.iterrows():
+                if row.label in self.classes:
+                    class_index = self.classes.index(row.label)
+                else:
+                    class_index = -1
+                # download the video if we the goal is not reached for the class
+                if downloads_per_class[class_index] != self.max_examples_per_class: 
+                    video_base_name = row.split + '_' + '{:05.0f}'.format(row.name)
+                    youtube_download_link = youtube_download_link_prefix + row.youtube_id
+                    is_downloaded = self.__download_and_crop_video(youtube_download_link,
+                                                            os.path.join(download_folder, self.classes[class_index]),
+                                                            video_base_name, row.time_start, row.time_end)
+                    if is_downloaded:
+                        downloads_per_class[class_index] += 1
+                        pbar.update(1)
+                        
+        print('The number of processed {} set videos is {}'.format(self.split, sum(downloads_per_class)))
+
+    def __download_and_crop_video(self, youtube_download_link, save_folder,
+                                  video_base_filename, time_start, time_end):
+        
+        video_filename_proc = video_base_filename + '_proc.mp4'
+        if os.path.exists(os.path.join(save_folder, video_filename_proc)):
+            return True
+        
+        video_filename_orig = video_base_filename + '_orig.mp4'
+
+        try: 
+            yt = YouTube(youtube_download_link, use_oauth=True, allow_oauth_cache=True) 
+        except: 
+            print("Connection Error for {}".format(video_base_filename))
+            #pass
+
+        try: # downloading the video
+            print("Downloading {} at link {} to {}".format(video_base_filename,
+                   youtube_download_link, os.path.join(save_folder, video_filename_orig)))
+            yt.streams.filter(progressive=True, file_extension='mp4', resolution="360p") \
+                .first().download(output_path=save_folder, filename=video_filename_orig)        
+        except: 
+            print("Download Error! URL: {}".format(youtube_download_link))
+            return False
+        
+        ffmpeg_command = f'''ffmpeg -y -v quiet -i " \
+            {os.path.join(save_folder, video_filename_orig)}" -ss {time_start} \
+            -t {time_end - time_start} "{os.path.join(save_folder, video_filename_proc)}"'''
+        os.system(ffmpeg_command)
+        os.remove(os.path.join(save_folder, video_filename_orig))
+        return True
+
+    def __pickle_videos(self):
+
+        download_folder = os.path.join(self.raw_folder, self.split)
+        pickles_folder = os.path.join(self.processed_folder, self.split)
+
+        self.__makedir_exist_ok(pickles_folder)
+
+        # Main block
+        for cls in self.classes:
+            cls_path = os.path.join(download_folder, cls)
+            dataset = []
+            print(f'Pickling {self.split}: {cls} samples')
+            for vid in sorted(os.listdir(cls_path)):
+                if not vid.endswith('.mp4'):
+                    continue
+                # Check correct file type
+                retry = False # Retrial flag if cv2.frame_count is not equal to the actual number of frames
+                first_pass = True # First trial flag of the current video sample
+                while(retry or first_pass):
+                    first_pass = False
+                    vid_path = os.path.join(cls_path, vid)
+                    cap = cv2.VideoCapture(vid_path)                
+                    if cap.isOpened():
+
+                        if retry:
+                            vidF = frame_counter # Actual number of frames
+                            retry = False
+                        else:
+                            vidF = cap.get(cv2.CAP_PROP_FRAME_COUNT) # Number of frames given by cv2
+
+                        vidFrames = []
+                        if vidF < 2*self.num_frames_dataset:
+                            print(f'W - Insufficient frame number ({vidF}<{self.num_frames_dataset}) skipping {vid}')
+                        elif vidF > 12*self.num_frames_dataset:
+                            print(f'W - Too many frames ({vidF}) skipping {vid}')
+                        else:                    
+                            # print(f'I - Reading {vid} with {vidF} frames, duration {vidF/fps} seconds')
+                            frame_idx = np.linspace(1, vidF, self.num_frames_dataset, dtype=np.uint32) # Sample fixed number of frames from whole video
+                            frame_counter = 1
+
+                            # Start sampling frames
+                            is_read, frame = cap.read()
+                            while is_read:
+                                if frame_counter in frame_idx:                        
+                                    is_resized, frame_resized = self.__adjust_img(frame, self.img_size)                      
+                                    if is_resized: vidFrames.append(frame_resized) # Successfully resized
+                                    else: print(f'W - Frame {frame_counter} is not resized correctly with shape {frame_resized.shape}!')
+                                is_read, frame = cap.read()
+                                frame_counter += 1
+
+                            frame_counter -= 1 # Correct number of frames, will be used if retry
+                            if frame_counter < vidF:
+                                print(f'W - Cannot read all the frames of {vid}, retrying.')
+                                retry = True
+                            elif len(vidFrames) == self.num_frames_dataset: # Successfully sampled
+                                dataset_index = int(vid.split('_')[1]) # Video file index
+                                #label_str = ' '.join(vid.split('_')[2:])[:-4] # Video label
+                                dataset.append((vidFrames, cls, dataset_index))
+                            else:
+                                print(f'W - Video {vid} is not sampled correctly with {len(vidFrames)} frames ')
+                    else:
+                        print(f'W - Cannot open and skipping {vid}')
+                        retry = False
+                    cap.release()
+            if len(dataset)>0: self.__write_pickle(cls, dataset, pickles_folder) # Write last pkl for current dir
+                
+        dataset = []
+
+    # Write pkl file with set and class name
+    def __write_pickle(self, class_name, dataset, path):
+        class_name = class_name.replace(' ','_')
+        num_vids = len(dataset)
+        filename = f'{self.split}_{class_name}_{num_vids}samples.pkl'
+        with open(os.path.join(path, filename), "wb") as output_file:
+            print(f'I - Writing pickle {filename}')
+            pickle.dump(dataset, output_file)
+
+    def __adjust_img(self, image, target_img_size):
+        # Center crop the frames & resize, paying attention to the short edge
+        img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        img_size = image.shape
+        rat0 = target_img_size[0] / img_size[0]
+        rat1 = target_img_size[1] / img_size[1]
+        resize_ratio = max(rat0, rat1)
+        img_resized = cv2.resize(img, (0,0), fx=resize_ratio, fy=resize_ratio, interpolation=cv2.INTER_CUBIC)
+        min_x = (img_resized.shape[0] - target_img_size[0]) // 2
+        max_x = min_x + target_img_size[0]
+        min_y = (img_resized.shape[1] - target_img_size[1]) // 2
+        max_y = min_y + target_img_size[1]
+        img_resized = img_resized[min_x:max_x, min_y:max_y, :]
+        if img_resized.shape == (target_img_size[0], target_img_size[1], 3): # Check correct size
+            return True, img_resized
+        else:
+            return False, None
+
+    # Main dataloader function
     def __load_dataset(self):
 
         # Load blacklist entries
@@ -62,21 +341,21 @@ class Kinetics(Dataset):
 
         # Load dataset samples
         self.dataset = []
-        self.folder_name = f'kinetics400/processed_4class_fixed_{self.num_frames_dataset}frames_{self.img_size[0]+16}x{self.img_size[1]+16}'
-        self.folder_path = os.path.join(self.root, self.folder_name, self.split)
-        # todo_alican: bir yerde call os.path.join(self.root, self.__class__.__name__, 'raw') / 'processed'
+        self.folder_path = os.path.join(self.processed_folder, self.split)
 
         dir = sorted(os.listdir(self.folder_path))
         dir = [x for x in dir if x.endswith('.pkl')] # Take only pickle files
-        print("I - ==========", self.split.upper(), " SET ==========")
+        if len(dir) != len(self.classes):
+            raise ValueError(f'Number of classes in processed directory ({len(dir)}) ' \
+                             f'does not match with the number of expected classes ({len(self.classes)})')
+        print("I - ==========", self.split.upper(), "SET ==========")
 
-        for pickle_filename in dir[0:self.num_classes-1]:                
+        for pickle_filename in dir:                
             print(f'I - Loading file: {pickle_filename} in {self.folder_path}')
             pickle_filepath = os.path.join(self.folder_path, pickle_filename)
             with open(pickle_filepath, 'rb') as f:
                 dataset = pickle.load(f)
                 self.add_segment(dataset)
-        self.data_wo_background = len(self.dataset) # Stores non-background sample count
     
     # Size of dataset
     def __len__(self):
@@ -84,23 +363,18 @@ class Kinetics(Dataset):
 
     # Item loader during epochs
     def __getitem__(self, index):
-
-        print(self.datacounter)
-        if self.datacounter%1000 == 0:
-            print(self.datacounter)
-            print('\n')
-
-        self.datacounter += 1
+        # return a video of length num_frames_model, from a random starting frame
+        # 
 
         (imgs, lab, _) = self.dataset[index]
 
-        start_ind = np.random.randint(low=0, high=(len(imgs)-self.num_frames_model+1)) # Randomly pick a frameModelNo long sequence
+        start_ind = np.random.randint(low=0, high=(len(imgs)-self.num_frames_model+1))
         images = imgs[start_ind:start_ind+self.num_frames_model]
 
         transforms_album = []
         if self.augmentation:
-            transforms_album.append(A.RandomResizedCrop(height=images[0].shape[0]-16,
-                                                        width=images[0].shape[0]-16,
+            transforms_album.append(A.RandomResizedCrop(height=images[0].shape[0],
+                                                        width=images[0].shape[0],
                                                         scale=(0.5, 1.0),
                                                         ratio=(0.75, 1.3333333333333333),
                                                         p=1.0))
@@ -147,26 +421,17 @@ class Kinetics(Dataset):
                     images[0] = images_transformed['image']
                 else:
                     images[x] = images_transformed['image' + str(x - 1)]
-        else:
-            for x in range(0, len(images)):
-                images[x] = images[x][8:248, 8:248, :]
 
         images_concat = []
         for x in range(len(images)-1):
-            #diff = cvtColor(images[x], COLOR_RGB2GRAY) - cvtColor(images[x+1], COLOR_RGB2GRAY)
             images_concat.append(np.concatenate((images[x],images[x+1]),axis=2))
-            #images_concat.append(np.concatenate((images[x], np.expand_dims(diff,axis=2)),axis=2))
 
         images = [self.fold_image(self.__normalize_image(img), self.fold_ratio) for img in images_concat] # Normalize and fold images
         
         if self.transform is not None:
-            if self.transformVideo: # Used for other models (SlowFast, X3D)
-                images = np.array(images).transpose((3,0,1,2))  
-                images_final = self.transform(torch.FloatTensor(images))    
-            else: # Apply given transform
-                images_transformed = [self.transform(img) for img in images]
-                images_list = [img.numpy() for img in images_transformed]
-                images_final = torch.Tensor(np.array(images_list))
+            images_transformed = [self.transform(img) for img in images]
+            images_list = [img.numpy() for img in images_transformed]
+            images_final = torch.Tensor(np.array(images_list))
         else: # No transform
             images_list = images
             images_final = torch.Tensor(np.array(images_list).transpose((0,3,1,2)))
@@ -190,56 +455,29 @@ class Kinetics(Dataset):
                     img_folded[:, :, ch_idx:(ch_idx+img.shape[2])] = img[i::fold_ratio, j::fold_ratio, :]
         return img_folded
     
-    # Append dataset with a single segment from each video (random starting point frame sequence)         
     def add_segment(self, dataset, blacklist_flag=True):
         for data in dataset:
 
             (imgs, lab, vidx) = data
+            lab = self.classes.index(lab)
             if vidx in self.blacklist and blacklist_flag:
                 continue # Blacklist sample
 
             if len(imgs) > self.num_frames_dataset: # Check correct frame count
-                print("I - Number of frames greater than dataset description, tossed video with #frames = ", len(imgs))
+                print("I - Number of frames greater than dataset description.")
                 continue
             
             imgs = imgs[1:-1] # Toss first and last frames
             l = len(imgs)
             if l<self.num_frames_model: # Check sufficient frame count
-                print("I - Tossed video with insufficient frame number.")
+                print("I - Tossed video with insufficient number of frames.")
                 continue 
                 
             self.dataset.append((imgs, lab, vidx))
 
-            self.label_distribution[lab] += 1
-            if lab in [1,2] and self.split == 'train': # Doubled classes for train set todo_alican: maybe get rid of double classes 
-                self.dataset.append((imgs, lab, vidx))
-                self.label_distribution[lab] += 1
-
-    
-    # Single pickle mode, background data loader (this is called at the beginning of each epoch)
-    def load_next_background_pickle(self):    
-        
-        if len(self) > self.data_wo_background: # Delete current background data  
-            del self.dataset[self.data_wo_background:]
-            self.label_distribution[-1] = 0 
-
-        folder_path = os.path.join(self.dir_path, self.folder_name, self.split, "new_background")
-        dir = sorted(os.listdir(folder_path))
-        dir = [x for x in dir if x.endswith('.pkl')] # Take only pkl files
-        ind = self.background_pickle_index % len(dir) # Circular shift to next background pkl index
-        self.background_pickle_index += 1
-        pickle_filename = dir[ind]
-        print(f'I - Loading file: {pickle_filename} in {folder_path}')
-        pickle_filepath = os.path.join(folder_path, pickle_filename)
-        with open(pickle_filepath, 'rb') as f:
-            dataset = pickle.load(f)
-            # Add data without blacklisting
-            self.add_segment(dataset, blacklist_flag=False)
-        print("I - New label distribution:", self.label_distribution)
-        print('')
-
-def kinetics_get_datasets(data, load_train=True, load_test=True, num_classes=4, img_size=(240,240),
-        fold_ratio=4, num_frames_model=16, num_frames_dataset=50):
+def kinetics_get_datasets(data, load_train=True, load_test=True, num_classes=4,
+        img_size=(240,240), fold_ratio=4, num_frames_model=16, num_frames_dataset=50,
+        max_train_examples_per_class=20, max_test_examples_per_class=2): # alican: correct this to 2000 & 150
     """
     Load the folded 16 frame version of selected classes from the Kinetics 400 dataset
 
@@ -247,8 +485,7 @@ def kinetics_get_datasets(data, load_train=True, load_test=True, num_classes=4, 
 
     The dataset originally includes 400 action classes. A dataset is formed with 5 classes which
     includes 4 of the action classes and the a fraction of the rest of the dataset is used to
-    form the last class, i.e class of the others. The dataset is split into training+validation and test sets.
-    90:10 training+validation:test split is used by default.
+    form the last class, i.e class of the others.
 
     Data is augmented by random cropping of frames and flipping videos horizontally with 50% chance.
     """
@@ -263,16 +500,16 @@ def kinetics_get_datasets(data, load_train=True, load_test=True, num_classes=4, 
         raise ValueError(f'Unsupported num_classes {num_classes}')
 
     if load_train:
-        train_dataset = Kinetics(root=data_dir, split='train', img_size=img_size, num_classes=len(classes), 
+        train_dataset = Kinetics(root=data_dir, split='train', img_size=img_size, classes=classes, 
                                  fold_ratio=fold_ratio, num_frames_model=num_frames_model, num_frames_dataset=num_frames_dataset,
-                                 transform=transform, augmentation=True, blacklist_file="blacklist100.yaml", download=True)
+                                 max_examples_per_class=max_train_examples_per_class, transform=transform, augmentation=True, download=True) # removed blacklist_file="blacklist100.yaml", 
     else:
         train_dataset = None
 
     if load_test:
-        test_dataset = Kinetics(root=data_dir, split='test', img_size=img_size, num_classes=len(classes), 
+        test_dataset = Kinetics(root=data_dir, split='test', img_size=img_size, classes=classes, 
                                 fold_ratio=fold_ratio, num_frames_model=num_frames_model, num_frames_dataset=num_frames_dataset,
-                                transform=transform, augmentation=False)
+                                max_examples_per_class=max_test_examples_per_class, transform=transform, augmentation=False, download=True)
 
         if args.truncate_testset:
             test_dataset.data = test_dataset.data[:1]
@@ -285,8 +522,8 @@ datasets = [
     {
         'name': 'Kinetics400',
         'input': (6, 240, 240),
-        'output': ('pull up', 'push up', 'situp', 'squat', 'other'),
-        'weight': (0.2, 0.25, 0.2, 0.25, 0.1),
+        'output': ('pull ups', 'push up', 'situp', 'squat', 'other'),
+        'weight': (0.17, 0.325, 0.215, 0.17, 0.12),
         'loader': kinetics_get_datasets,
-    },
+    }, # make sure the class names in "output" match those the kinetics dataset, except 'other'
 ]
