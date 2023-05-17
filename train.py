@@ -729,7 +729,6 @@ def train(train_loader, model, criterion, optimizer, epoch,
     for train_step, (inputs, target) in enumerate(train_loader):
         # Measure data loading time
         data_time.add(time.time() - end)
-        print(inputs.size())
 
         if args.obj_detection:
             boxes_list = [elem[0] for elem in target]
