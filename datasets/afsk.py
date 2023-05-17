@@ -1,13 +1,13 @@
 ###################################################################################################
 #
-# Copyright (C) 2019-2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2019-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
 #
 ###################################################################################################
 """
-AFSK demonstration datatset
+AFSK demonstration dataset
 """
 import os
 
@@ -57,7 +57,7 @@ class AFSK(Dataset):
         trbytes = trbits * BYTES_PER_SAMPLE
         tebytes = tebits * BYTES_PER_SAMPLE
 
-        # Concatenate alloted bytes from each file and set number of available samples
+        # Concatenate allotted bytes from each file and set number of available samples
         if self.train:
             self.data = np.concatenate((zerobits[:trbytes],
                                         onebits[:trbytes]))

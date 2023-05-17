@@ -51,13 +51,6 @@ train():
         compression_scheduler.before_parameter_optimization(epoch)
         optimizer.step()
         compression_scheduler.on_minibatch_end(epoch)
-
-
-This example application can be used with torchvision's ImageNet image classification
-models, or with the provided sample models:
-
-- ResNet for CIFAR: https://github.com/junyuseu/pytorch-cifar-models
-- MobileNet for ImageNet: https://github.com/marvis/pytorch-mobilenet
 """
 
 import copy
@@ -214,7 +207,7 @@ def main():
         args.deterministic = True
     if args.deterministic:
         # torch.set_deterministic(True)
-        distiller.set_deterministic(args.seed)  # For experiment reproducability
+        distiller.set_deterministic(args.seed)  # For experiment reproducibility
         if args.seed is not None:
             distiller.set_seed(args.seed)
     else:
@@ -275,12 +268,15 @@ def main():
     args.visualize_fn = selected_source['visualize'] \
         if 'visualize' in selected_source else datasets.visualize_data
 
-    if args.regression and args.display_confusion:
-        raise ValueError('ERROR: Argument --confusion cannot be used with regression')
-    if args.regression and args.display_prcurves:
-        raise ValueError('ERROR: Argument --pr-curves cannot be used with regression')
-    if args.regression and args.display_embedding:
-        raise ValueError('ERROR: Argument --embedding cannot be used with regression')
+    if (args.regression or args.obj_detection) and args.display_confusion:
+        raise ValueError('ERROR: Argument --confusion cannot be used with regression '
+                         'or object detection')
+    if (args.regression or args.obj_detection) and args.display_prcurves:
+        raise ValueError('ERROR: Argument --pr-curves cannot be used with regression '
+                         'or object detection')
+    if (args.regression or args.obj_detection) and args.display_embedding:
+        raise ValueError('ERROR: Argument --embedding cannot be used with regression '
+                         'or object detection')
 
     model = create_model(supported_models, dimensions, args)
 
@@ -613,7 +609,7 @@ def create_model(supported_models, dimensions, args):
     if not Model:
         raise RuntimeError("Model " + args.cnn + " not found\n")
 
-    # Set model paramaters
+    # Set model parameters
     if args.act_mode_8bit:
         weight_bits = 8
         bias_bits = 8
@@ -1040,6 +1036,10 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
 
             if args.obj_detection:
 
+                if not object_detection_utils.check_target_exists(target):
+                    print(f'No target in batch. Ep: {epoch}, validation_step: {validation_step}')
+                    continue
+
                 boxes_list = [elem[0] for elem in target]
                 labels_list = [elem[1] for elem in target]
 
@@ -1136,6 +1136,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
             steps_completed = (validation_step+1)
             if steps_completed % args.print_freq == 0 or steps_completed == total_steps:
                 if args.display_prcurves and tflogger is not None:
+                    # TODO PR Curve generation for Object Detection case is NOT implemented yet
                     class_probs_batch = [torch.nn.functional.softmax(el, dim=0) for el in output]
                     _, class_preds_batch = torch.max(output, 1)
                     class_probs.append(class_probs_batch)
@@ -1519,7 +1520,7 @@ def summarize_model(model, dataset, which_summary, filename='model'):
 def sensitivity_analysis(model, criterion, data_loader, loggers, args, sparsities):
     """
     This sample application can be invoked to execute Sensitivity Analysis on your
-    model.  The ouptut is saved to CSV and PNG.
+    model. The output is saved to CSV and PNG.
     """
     msglogger.info("Running sensitivity tests")
     if not isinstance(loggers, list):

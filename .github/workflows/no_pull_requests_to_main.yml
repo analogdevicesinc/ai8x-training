@@ -1,5 +1,5 @@
 ---
-# This is a basic workflow to thow an error if a pull request targets the main and historic branches
+# This is a basic workflow to throw an error if a pull request targets the main and historic branches
 
 name: No Pull Requests to Main and Historic Branches
 

@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2021-2022 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2021-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -338,7 +338,7 @@ def MSnoise_get_datasets(data, load_train=True, load_test=True):
     The dataset is loaded from the archive file, so the file is required for this version.
 
     The dataset originally includes 26 different noise types.
-    15 of them are chosen classification, others are labeled as the unkown class.
+    15 of them are chosen classification, others are labeled as the unknown class.
     """
     (data_dir, args) = data
 
@@ -348,7 +348,7 @@ def MSnoise_get_datasets(data, load_train=True, load_test=True):
                'Office', 'Restaurant', 'ShuttingDoor',
                'Traffic', 'Typing', 'VacuumCleaner', 'Washing']
 
-    remove_unkowns = True
+    remove_unknowns = True
     transform = transforms.Compose([
         ai8x.normalize(args=args)
     ])
@@ -356,14 +356,14 @@ def MSnoise_get_datasets(data, load_train=True, load_test=True):
 
     if load_train:
         train_dataset = MSnoise(root=data_dir, classes=classes, d_type='train',
-                                remove_unknowns=remove_unkowns, transform=transform,
+                                remove_unknowns=remove_unknowns, transform=transform,
                                 quantize=quantize, download=True)
     else:
         train_dataset = None
 
     if load_test:
         test_dataset = MSnoise(root=data_dir, classes=classes, d_type='test',
-                               remove_unknowns=remove_unkowns, transform=transform,
+                               remove_unknowns=remove_unknowns, transform=transform,
                                quantize=quantize, download=True)
 
         if args.truncate_testset:
@@ -398,20 +398,20 @@ def MSnoise_get_unquantized_datasets(data, load_train=True, load_test=True):
                'Office', 'Restaurant',
                'Typing', 'VacuumCleaner', 'WasherDryer']
 
-    remove_unkowns = True
+    remove_unknowns = True
     transform = None
     quantize = False
 
     if load_train:
         train_dataset = MSnoise(root=data_dir, classes=classes, d_type='train',
-                                remove_unknowns=remove_unkowns, transform=transform,
+                                remove_unknowns=remove_unknowns, transform=transform,
                                 quantize=quantize, download=True)
     else:
         train_dataset = None
 
     if load_test:
         test_dataset = MSnoise(root=data_dir, classes=classes, d_type='test',
-                               remove_unknowns=remove_unkowns, transform=transform,
+                               remove_unknowns=remove_unknowns, transform=transform,
                                quantize=quantize, download=True)
 
         if args.truncate_testset:

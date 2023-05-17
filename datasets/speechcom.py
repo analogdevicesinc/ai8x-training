@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2019-2022 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2019-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -389,7 +389,7 @@ def augment(audio, fs, verbose=False):
 
 
 def augment_multiple(audio, fs, n_augment, verbose=False):
-    """Calls `augment` funtion for n_augment times for given audio data.
+    """Calls `augment` function for n_augment times for given audio data.
     Finally the original audio is added to have (n_augment+1) audio data.
     """
     aug_audio = [augment(audio, fs, verbose) for i in range(n_augment)]
