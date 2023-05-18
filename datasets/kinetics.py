@@ -9,23 +9,26 @@
 """
 Classes and functions used to utilize the Kinetics dataset.
 """
+import errno
 import os
 import pickle
-import errno
-import urllib
 import tarfile
+import urllib
 from zipfile import ZipFile
+
 import numpy as np
 import torch
-from torchvision import transforms
 from torch.utils.data import Dataset
+from torchvision import transforms
+
 import albumentations as A
-import yaml
+import cv2
 import pandas as pd
+import yaml
 from pytube import YouTube
 from pytube.exceptions import VideoUnavailable
 from tqdm import tqdm
-import cv2
+
 import ai8x
 
 
@@ -256,18 +259,18 @@ class Kinetics(Dataset):
                 if not vid.endswith('.mp4'):
                     continue
                 # Check correct file type
-                retry = False  # Retrial flag for when cv2.frame_count is inconsistent
+                retry_flag = False  # Retrial flag for when cv2.frame_count is inconsistent
                 first_pass = True  # First trial flag of the current video sample
                 frame_counter = 1
-                while(retry or first_pass):
+                while(retry_flag or first_pass):
                     first_pass = False
                     vid_path = os.path.join(cls_path, vid)
                     cap = cv2.VideoCapture(vid_path)
                     if cap.isOpened():
 
-                        if retry:
+                        if retry_flag:
                             vidF = frame_counter  # Actual number of frames
-                            retry = False
+                            retry_flag = False
                         else:
                             vidF = cap.get(cv2.CAP_PROP_FRAME_COUNT)  # No. frames given by cv2
 
@@ -298,7 +301,7 @@ class Kinetics(Dataset):
                             frame_counter -= 1  # Correct number of frames, will be used if retry
                             if frame_counter < vidF:
                                 print(f'W - Cannot read all the frames of {vid}, retrying.')
-                                retry = True
+                                retry_flag = True
                             elif len(vidFrames) == self.num_frames_dataset:  # Successfully sampled
                                 dataset_index = int(vid.split('_')[1])  # Video file index
                                 dataset.append((vidFrames, cls, dataset_index))
@@ -307,7 +310,7 @@ class Kinetics(Dataset):
                                       f' with {len(vidFrames)} frames')
                     else:
                         print(f'W - Cannot open and skipping {vid}')
-                        retry = False
+                        retry_flag = False
                     cap.release()
             if len(dataset) > 0:
                 self.__write_pickle(cls, dataset, pickles_folder)
@@ -473,7 +476,7 @@ class Kinetics(Dataset):
         return img_folded
 
     def add_samples(self, dataset, blacklist_flag=True):
-        # add video samples to dataset
+        """Adds video samples to dataset"""
         for data in dataset:
 
             (imgs, lab, vidx) = data
