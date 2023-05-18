@@ -9,9 +9,10 @@
 """
 Action recognition network for AI85
 """
-from torch import nn
 import torch
+from torch import nn
 import ai8x
+
 
 class AI85ActionTCN(nn.Module):
     """
@@ -20,7 +21,7 @@ class AI85ActionTCN(nn.Module):
     def __init__(
             self,
             num_classes=5,
-            dimensions=(240,240),  # pylint: disable=unused-argument
+            dimensions=(240, 240),  # pylint: disable=unused-argument
             num_channels=6,
             fold_ratio=4,
             bias=True,
@@ -112,12 +113,14 @@ class AI85ActionTCN(nn.Module):
         """Forward prop"""
         batch_size = x.shape[0]
         num_frames = x.shape[1]
-        cnnoutputs = torch.zeros(batch_size, num_frames, self.cnn_out_channel, self.cnn_out_shape[0], self.cnn_out_shape[1]).to(x.get_device())
+        cnnoutputs = torch.zeros(batch_size, num_frames, self.cnn_out_channel,
+                                 self.cnn_out_shape[0], self.cnn_out_shape[1]).to(x.get_device())
         for i in range(num_frames):
             prep_out = self.create_prep(x[:, i])
             cnnoutputs[:, i] = self.create_cnn(prep_out)
 
-        tcn_input = cnnoutputs.permute(0, 1, 3, 4, 2).reshape(batch_size, num_frames, -1).permute(0, 2, 1)
+        tcn_input = cnnoutputs.permute(0, 1, 3, 4, 2).reshape(batch_size, num_frames, -1) \
+                                                     .permute(0, 2, 1)
         tcn_output = self.tcn0(tcn_input)
         tcn_output = self.tcn1(tcn_output)
         tcn_output = self.tcn2(tcn_output)
