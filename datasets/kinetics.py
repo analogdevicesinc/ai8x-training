@@ -262,7 +262,7 @@ class Kinetics(Dataset):
                 retry_flag = False  # Retrial flag for when cv2.frame_count is inconsistent
                 first_pass = True  # First trial flag of the current video sample
                 frame_counter = 1
-                while(retry_flag or first_pass):
+                while (retry_flag or first_pass):
                     first_pass = False
                     vid_path = os.path.join(cls_path, vid)
                     cap = cv2.VideoCapture(vid_path)
