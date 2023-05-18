@@ -11,6 +11,7 @@ Action recognition network for AI85
 """
 import torch
 from torch import nn
+
 import ai8x
 
 

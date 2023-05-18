@@ -52,6 +52,7 @@ class Kinetics(Dataset):
         self.transform = transform
         self.augmentation = augmentation
         self.blacklist_file = blacklist_file
+        self.dataset = []
 
         # Check split
         if split not in ('test', 'train'):
@@ -197,7 +198,7 @@ class Kinetics(Dataset):
                     video_base_name = row.split + '_' + f'{row.name:05.0f}'
                     youtube_download_link = youtube_download_link_prefix + row.youtube_id
                     is_downloaded = self.__download_and_crop_video(
-                        youtube_download_link, 
+                        youtube_download_link,
                         os.path.join(download_folder, self.classes[class_index]),
                         video_base_name, row.time_start, row.time_end)
                     if is_downloaded:
@@ -255,8 +256,9 @@ class Kinetics(Dataset):
                 if not vid.endswith('.mp4'):
                     continue
                 # Check correct file type
-                retry = False  # Retrial flag for when cv2.frame_count is inconsistent with #frames
+                retry = False  # Retrial flag for when cv2.frame_count is inconsistent
                 first_pass = True  # First trial flag of the current video sample
+                frame_counter = 1
                 while(retry or first_pass):
                     first_pass = False
                     vid_path = os.path.join(cls_path, vid)
@@ -277,7 +279,6 @@ class Kinetics(Dataset):
                         else:  # Sample fixed number of frames from whole video
                             frame_idx = np.linspace(1, vidF, self.num_frames_dataset,
                                                     dtype=np.uint32)
-                            frame_counter = 1
 
                             # Start sampling frames
                             vidFrames = []
@@ -294,7 +295,7 @@ class Kinetics(Dataset):
                                 is_read, frame = cap.read()
                                 frame_counter += 1
 
-                            frame_counter -= 1 # Correct number of frames, will be used if retry
+                            frame_counter -= 1  # Correct number of frames, will be used if retry
                             if frame_counter < vidF:
                                 print(f'W - Cannot read all the frames of {vid}, retrying.')
                                 retry = True
@@ -355,13 +356,11 @@ class Kinetics(Dataset):
             self.blacklist = []
 
         # Load dataset samples
-        self.dataset = []
         self.folder_path = os.path.join(self.processed_folder, self.split)
-
         dir_contents = sorted(os.listdir(self.folder_path))
         dir_pickles = [x for x in dir_contents if x.endswith('.pkl')]  # Use only pickle files
-        if len(dir_pkl) != len(self.classes):
-            raise ValueError(f'Number of processed class files ({len(dir_pkl)}) does'
+        if len(dir_pickles) != len(self.classes):
+            raise ValueError(f'Number of processed class files ({len(dir_pickles)}) does'
                              f'not match with number of expected classes ({len(self.classes)})')
         print("I - ==========", self.split.upper(), "SET ==========")
 
@@ -448,7 +447,7 @@ class Kinetics(Dataset):
             images_transformed = [self.transform(img) for img in images]
             images_list = [img.numpy() for img in images_transformed]
             images_final = torch.Tensor(np.array(images_list))
-        else: # No transform
+        else:  # No transform
             images_list = images
             images_final = torch.Tensor(np.array(images_list).transpose((0, 3, 1, 2)))
         return images_final, torch.tensor(lab, dtype=torch.long)
@@ -464,8 +463,8 @@ class Kinetics(Dataset):
         if fold_ratio == 1:
             img_folded = img
         else:
-            img_folded =np.empty((img.shape[0]//fold_ratio, img.shape[1]//fold_ratio,
-                                  img.shape[2]*fold_ratio*fold_ratio), dtype=img.dtype)
+            img_folded = np.empty((img.shape[0]//fold_ratio, img.shape[1]//fold_ratio,
+                                   img.shape[2]*fold_ratio*fold_ratio), dtype=img.dtype)
             for i in range(fold_ratio):
                 for j in range(fold_ratio):
                     ch_idx = (i*fold_ratio + j) * img.shape[2]
@@ -473,8 +472,8 @@ class Kinetics(Dataset):
                         img[i::fold_ratio, j::fold_ratio, :]
         return img_folded
 
-    # add video samples to dataset
     def add_samples(self, dataset, blacklist_flag=True):
+        # add video samples to dataset
         for data in dataset:
 
             (imgs, lab, vidx) = data
@@ -494,7 +493,7 @@ class Kinetics(Dataset):
 
             if self.split == 'train':
                 self.dataset.append((imgs, lab, vidx))
-            else: # get 3 fixed segments from each video for validation and test
+            else:  # get 3 fixed segments from each video for validation and test
                 self.dataset.append((imgs[0:self.num_frames_model], lab, vidx))  # beginning
                 self.dataset.append((imgs[len_imgs//2-self.num_frames_model//2:
                                     len_imgs//2+self.num_frames_model//2], lab, vidx))  # middle
@@ -502,9 +501,9 @@ class Kinetics(Dataset):
 
 
 def kinetics_get_datasets(
-    data, load_train=True, load_test=True, num_classes=4,
-    img_size=(240, 240), fold_ratio=4, num_frames_model=16, num_frames_dataset=50,
-    max_train_examples_per_class=2000, max_test_examples_per_class=150):
+        data, load_train=True, load_test=True, num_classes=4,
+        img_size=(240, 240), fold_ratio=4, num_frames_model=16, num_frames_dataset=50,
+        max_train_examples_per_class=2000, max_test_examples_per_class=150):
     """
     Load the folded 16 frame version of selected classes from the Kinetics 400 dataset
 

@@ -411,9 +411,9 @@ def main():
         msglogger.info('Dataset sizes:\n\ttest=%d', len(test_loader.sampler))
         return evaluate_model(model, criterion, test_loader, pylogger, activations_collectors,
                               args, compression_scheduler)
-    else:
-        msglogger.info('Dataset sizes:\n\ttraining=%d\n\tvalidation=%d\n\ttest=%d',
-            len(train_loader.sampler), len(val_loader.sampler), len(test_loader.sampler))
+    
+    msglogger.info('Dataset sizes:\n\ttraining=%d\n\tvalidation=%d\n\ttest=%d',
+                   len(train_loader.sampler), len(val_loader.sampler), len(test_loader.sampler))
 
     if args.compress:
         # The main use-case for this sample application is CNN compression. Compression
