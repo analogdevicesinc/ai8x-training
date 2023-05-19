@@ -25,10 +25,10 @@ import albumentations as A
 import cv2
 import pandas as pd
 import yaml
+from pyffmpeg import FFmpeg
 from pytube import YouTube
 from pytube.exceptions import VideoUnavailable
 from tqdm import tqdm
-from pyffmpeg import FFmpeg
 
 import ai8x
 
@@ -509,7 +509,7 @@ def kinetics_get_datasets(
 
     The test data uses 3 consecutive fixed segments from each video, with 16 frames each.
 
-    The current implementation of using 2000 training examples per class and 150 test examples
+    The current implementation of using 2000 training and 150 test examples per class
     at 240x240 resolution and 5 frames per second requires around 50 GB of RAM.
     """
     (data_dir, args) = data
