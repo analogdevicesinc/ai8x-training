@@ -40,7 +40,7 @@ class Kinetics(Dataset):
 
     url_kinetics400 = 'https://storage.googleapis.com/deepmind-media/Datasets/kinetics400.tar.gz'
 
-    def __init__(self, root, split, img_size, classes, fold_ratio, num_frames_model,
+    def __init__(self, root, split, img_size, classes, num_frames_model,
                  num_frames_dataset, max_examples_per_class, transform, augmentation,
                  blacklist_file=None, download=True):
 
@@ -48,7 +48,6 @@ class Kinetics(Dataset):
         self.split = split
         self.img_size = img_size
         self.classes = classes
-        self.fold_ratio = fold_ratio
         self.num_frames_model = num_frames_model
         self.num_frames_dataset = num_frames_dataset
         self.max_examples_per_class = max_examples_per_class
@@ -196,7 +195,7 @@ class Kinetics(Dataset):
                     class_index = self.classes.index(row.label)
                 else:
                     class_index = -1
-                # download the video if we the goal is not reached for the class
+                # download the video if the goal is not reached for the class
                 if downloads_per_class[class_index] != self.max_examples_per_class:
                     video_base_name = row.split + '_' + f'{row.name:05.0f}'
                     youtube_download_link = youtube_download_link_prefix + row.youtube_id
@@ -235,11 +234,20 @@ class Kinetics(Dataset):
             print(f"Download Error! URL: {youtube_download_link}")
             return False
 
-        ffpmeg_cmd_bg = f'ffmpeg -y -v quiet -i "{os.path.join(save_folder, video_filename_orig)}"'
+        ffmpeg_cmd_bg = f'ffmpeg -y -v quiet -i "{os.path.join(save_folder, video_filename_orig)}"'
         ffmpeg_cmd_time = f' -ss {time_start} -t {time_end - time_start}'
         ffmpeg_cmd_path = f' "{os.path.join(save_folder, video_filename_proc)}"'
-        ffmpeg_command = ffpmeg_cmd_bg + ffmpeg_cmd_time + ffmpeg_cmd_path
-        os.system(ffmpeg_command)
+        ffmpeg_command = ffmpeg_cmd_bg + ffmpeg_cmd_time + ffmpeg_cmd_path
+        ffmpeg_return_value = os.system(ffmpeg_command)
+        if ffmpeg_return_value != 0:
+            raise RuntimeError(
+                "FFmpeg command did not execute correctly. Most likely cause: it is not "
+                "installed.\nIn order to process videos, required for this dataset. FFmpeg must "
+                "be installed and accessible via the $PATH environment variable.\nThere are a "
+                "variety of ways to install FFmpeg, such as the official site "
+                "(https://ffmpeg.org/download.html), or using your package manager of choice "
+                "(e.g. sudo apt install ffmpeg on Ubuntu, brew install ffmpeg on OS X, etc.)."
+            )
         os.remove(os.path.join(save_folder, video_filename_orig))
         return True
 
@@ -443,8 +451,7 @@ class Kinetics(Dataset):
         for x in range(len(images)-1):
             images_concat.append(np.concatenate((images[x], images[x+1]), axis=2))
 
-        images = [self.fold_image(self.__normalize_image(img), self.fold_ratio)
-                  for img in images_concat]  # Normalize and fold images
+        images = [self.__normalize_image(img) for img in images_concat]  # Normalize images
 
         if self.transform is not None:
             images_transformed = [self.transform(img) for img in images]
@@ -458,22 +465,6 @@ class Kinetics(Dataset):
     @staticmethod
     def __normalize_image(image):
         return image / 255
-
-    @staticmethod
-    def fold_image(img, fold_ratio):
-        """Folds high resolution H-W-3 image h-w-c such that H * W * 3 = h * w * c.
-           These correspond to c/3 downsampled images of the original high resolution image."""
-        if fold_ratio == 1:
-            img_folded = img
-        else:
-            img_folded = np.empty((img.shape[0]//fold_ratio, img.shape[1]//fold_ratio,
-                                   img.shape[2]*fold_ratio*fold_ratio), dtype=img.dtype)
-            for i in range(fold_ratio):
-                for j in range(fold_ratio):
-                    ch_idx = (i*fold_ratio + j) * img.shape[2]
-                    img_folded[:, :, ch_idx:(ch_idx+img.shape[2])] = \
-                        img[i::fold_ratio, j::fold_ratio, :]
-        return img_folded
 
     def add_samples(self, dataset, blacklist_flag=True):
         """Adds video samples to dataset"""
@@ -520,7 +511,11 @@ def kinetics_get_datasets(
     """
     (data_dir, args) = data
 
-    transform = transforms.Compose([transforms.ToTensor(), ai8x.normalize(args=args)])
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        ai8x.normalize(args=args),
+        ai8x.fold(fold_ratio=fold_ratio)
+    ])
 
     if num_classes == 4:
         classes = next((e for _, e in enumerate(datasets)
@@ -530,7 +525,7 @@ def kinetics_get_datasets(
 
     if load_train:
         train_dataset = Kinetics(root=data_dir, split='train', img_size=img_size, classes=classes,
-                                 fold_ratio=fold_ratio, num_frames_model=num_frames_model,
+                                 num_frames_model=num_frames_model,
                                  num_frames_dataset=num_frames_dataset,
                                  max_examples_per_class=max_train_examples_per_class,
                                  transform=transform, augmentation=True, download=True)
@@ -539,7 +534,7 @@ def kinetics_get_datasets(
 
     if load_test:
         test_dataset = Kinetics(root=data_dir, split='test', img_size=img_size, classes=classes,
-                                fold_ratio=fold_ratio, num_frames_model=num_frames_model,
+                                num_frames_model=num_frames_model,
                                 num_frames_dataset=num_frames_dataset,
                                 max_examples_per_class=max_test_examples_per_class,
                                 transform=transform, augmentation=False, download=True)
@@ -555,9 +550,10 @@ def kinetics_get_datasets(
 datasets = [
     {
         'name': 'Kinetics400',
-        'input': (6, 240, 240),
+        'input': (96, 60, 60),
         'output': ('pull ups', 'push up', 'situp', 'squat', 'other'),
         'weight': (0.17, 0.325, 0.215, 0.17, 0.12),
         'loader': kinetics_get_datasets,
+        'fold_ratio': 4,
     },  # make sure the class names in "output" match those the kinetics dataset, except 'other'
 ]

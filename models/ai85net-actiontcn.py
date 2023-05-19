@@ -22,9 +22,8 @@ class AI85ActionTCN(nn.Module):
     def __init__(
             self,
             num_classes=5,
-            dimensions=(240, 240),  # pylint: disable=unused-argument
-            num_channels=6,
-            fold_ratio=4,
+            dimensions=(60, 60),  # pylint: disable=unused-argument
+            num_channels=96,
             bias=True,
             bn='Affine',
             dropout=0.5,
@@ -32,13 +31,12 @@ class AI85ActionTCN(nn.Module):
     ):
         super().__init__()
         self.num_classes = num_classes
-        self.num_final_channels = num_channels*fold_ratio*fold_ratio
         self.cnn_out_shape = (1, 1)
         self.cnn_out_channel = 32
         num_filters = 64
         len_frame_vector = self.cnn_out_shape[0]*self.cnn_out_shape[1]*self.cnn_out_channel
 
-        self.prep0 = ai8x.FusedConv2dBNReLU(self.num_final_channels, num_filters, 1, stride=1,
+        self.prep0 = ai8x.FusedConv2dBNReLU(num_channels, num_filters, 1, stride=1,
                                             padding=0, bias=bias, batchnorm='NoAffine', **kwargs)
 
         self.conv0 = ai8x.FusedConv2dBNReLU(num_filters, num_filters, 3, padding=1,
