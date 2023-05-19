@@ -28,6 +28,7 @@ import yaml
 from pytube import YouTube
 from pytube.exceptions import VideoUnavailable
 from tqdm import tqdm
+from pyffmpeg import FFmpeg
 
 import ai8x
 
@@ -188,6 +189,8 @@ class Kinetics(Dataset):
         print('Logging into a Youtube account for automated downloading may be necessary.',
               'Please follow any instructions to enter codes in browser if prompted')
 
+        ff = FFmpeg()  # initialize ffmpeg object
+
         with tqdm(total=vids_to_download) as pbar:
             pbar.set_description(f'Downloading and Processing {self.split} set')
             for _, row in df_set.iterrows():
@@ -200,7 +203,7 @@ class Kinetics(Dataset):
                     video_base_name = row.split + '_' + f'{row.name:05.0f}'
                     youtube_download_link = youtube_download_link_prefix + row.youtube_id
                     is_downloaded = self.__download_and_crop_video(
-                        youtube_download_link,
+                        ff, youtube_download_link,
                         os.path.join(download_folder, self.classes[class_index]),
                         video_base_name, row.time_start, row.time_end)
                     if is_downloaded:
@@ -209,8 +212,8 @@ class Kinetics(Dataset):
 
         print(f'The number of processed {self.split} set videos is {sum(downloads_per_class)}')
 
-    def __download_and_crop_video(self, youtube_download_link, save_folder,
-                                  video_base_filename, time_start, time_end):
+    def __download_and_crop_video(self, ff, youtube_download_link, save_folder,
+                                  video_base_filename, t_beg, t_end):
 
         video_filename_proc = video_base_filename + '_proc.mp4'
         if os.path.exists(os.path.join(save_folder, video_filename_proc)):
@@ -234,20 +237,13 @@ class Kinetics(Dataset):
             print(f"Download Error! URL: {youtube_download_link}")
             return False
 
-        ffmpeg_cmd_bg = f'ffmpeg -y -v quiet -i "{os.path.join(save_folder, video_filename_orig)}"'
-        ffmpeg_cmd_time = f' -ss {time_start} -t {time_end - time_start}'
-        ffmpeg_cmd_path = f' "{os.path.join(save_folder, video_filename_proc)}"'
-        ffmpeg_command = ffmpeg_cmd_bg + ffmpeg_cmd_time + ffmpeg_cmd_path
-        ffmpeg_return_value = os.system(ffmpeg_command)
-        if ffmpeg_return_value != 0:
-            raise RuntimeError(
-                "FFmpeg command did not execute correctly. Most likely cause: it is not "
-                "installed.\nIn order to process videos, required for this dataset. FFmpeg must "
-                "be installed and accessible via the $PATH environment variable.\nThere are a "
-                "variety of ways to install FFmpeg, such as the official site "
-                "(https://ffmpeg.org/download.html), or using your package manager of choice "
-                "(e.g. sudo apt install ffmpeg on Ubuntu, brew install ffmpeg on OS X, etc.)."
-            )
+        # cropping the videos as with timestamps from the dataset
+        orig_path = os.path.join(save_folder, video_filename_orig)
+        proc_path = os.path.join(save_folder, video_filename_proc)
+
+        ff.options(f"-y -v quiet -i '{orig_path}' -ss {t_beg} -t {t_end - t_beg} '{proc_path}'")
+        if not os.path.exists(proc_path):
+            raise RuntimeError("FFmpeg command did not produce a processed video file")
         os.remove(os.path.join(save_folder, video_filename_orig))
         return True
 
@@ -268,7 +264,7 @@ class Kinetics(Dataset):
                     continue
                 # Check correct file type
                 retry_flag = False  # Retrial flag for when cv2.frame_count is inconsistent
-                first_pass = True  # First trial flag of the current video sample
+                first_pass = True  # First pass flag for the current video sample
                 frame_counter = 1
                 while (retry_flag or first_pass):
                     first_pass = False
@@ -499,15 +495,22 @@ def kinetics_get_datasets(
         img_size=(240, 240), fold_ratio=4, num_frames_model=16, num_frames_dataset=50,
         max_train_examples_per_class=2000, max_test_examples_per_class=150):
     """
-    Load the folded 16 frame version of selected classes from the Kinetics 400 dataset
+    Load the folded 16-frame version of selected classes from the Kinetics 400 dataset
 
-    The dataset is loaded from the archive file, so the file is required for this version.
+    The dataset is loaded from the archive file from DeepMind.
 
-    The dataset originally includes 400 action classes. A dataset is formed with 5 classes which
-    includes 4 of the action classes and the a fraction of the rest of the dataset is used to
-    form the last class, i.e class of the others.
+    The dataset originally includes 400 action classes. This dataset is formed with 5 classes which
+    includes 4 of the action classes. The rest of the dataset is used to form the "other" class.
 
-    Data is augmented by random cropping of videos and flipping them horizontally with 50% chance.
+    The training data is augmented by:
+    - random spatial cropping of videos (with sensible parameters)
+    - flipping them horizontally with 50% chance
+    - randomly selecting segments of 16 frames from the videos that are originally 50 frames long
+
+    The test data uses 3 consecutive fixed segments from each video, with 16 frames each.
+
+    The current implementation of using 2000 training examples per class and 150 test examples
+    at 240x240 resolution and 5 frames per second requires around 50 GB of RAM.
     """
     (data_dir, args) = data
 
