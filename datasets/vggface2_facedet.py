@@ -21,11 +21,11 @@ import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-from facenet_pytorch import MTCNN
 from PIL import Image
 from tqdm import tqdm
 
 import ai8x
+from datasets.face_id.facenet_pytorch import MTCNN
 
 
 class VGGFace2_FaceDetectionDataset(Dataset):
@@ -90,7 +90,7 @@ class VGGFace2_FaceDetectionDataset(Dataset):
         for jpg in tqdm(img_paths):
             img = Image.open(jpg)
             img = img.resize((self.img_size[1], self.img_size[0]))
-
+            # pylint: disable-next=unbalanced-tuple-unpacking
             gt, _ = mtcnn.detect(img, landmarks=False)
 
             if gt is None or None in gt:
