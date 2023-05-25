@@ -400,9 +400,7 @@ def main():
         args.datasets_fn, (os.path.expanduser(args.data), args), args.batch_size,
         args.workers, args.validation_split, args.deterministic,
         args.effective_train_size, args.effective_valid_size, args.effective_test_size,
-        collate_fn=args.collate_fn, cpu=args.device == 'cpu')
-    msglogger.info('Dataset sizes:\n\ttraining=%d\n\tvalidation=%d\n\ttest=%d',
-                   len(train_loader.sampler), len(val_loader.sampler), len(test_loader.sampler))
+        test_only=args.evaluate, collate_fn=args.collate_fn, cpu=args.device == 'cpu')
 
     if args.sensitivity is not None:
         sensitivities = np.arange(args.sensitivity_range[0], args.sensitivity_range[1],
@@ -410,8 +408,12 @@ def main():
         return sensitivity_analysis(model, criterion, test_loader, pylogger, args, sensitivities)
 
     if args.evaluate:
+        msglogger.info('Dataset sizes:\n\ttest=%d', len(test_loader.sampler))
         return evaluate_model(model, criterion, test_loader, pylogger, activations_collectors,
                               args, compression_scheduler)
+
+    msglogger.info('Dataset sizes:\n\ttraining=%d\n\tvalidation=%d\n\ttest=%d',
+                   len(train_loader.sampler), len(val_loader.sampler), len(test_loader.sampler))
 
     if args.compress:
         # The main use-case for this sample application is CNN compression. Compression
