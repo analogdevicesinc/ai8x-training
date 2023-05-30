@@ -6,13 +6,13 @@
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
 ###################################################################################################
 #
-# GitHub repo for the below helper methods:
+# GitHub repo for the following helper methods:
 # https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection:
 # MIT License
 # Copyright (c) 2019 Sagar Vinodababu
 
-# Codes slightly modified
-""" Some utility functions for Object Detection Tasks """
+# Code slightly modified
+""" Utility functions for Object Detection Tasks """
 
 import numpy as np
 import torch
@@ -306,4 +306,3 @@ def find_jaccard_overlap(set_1, set_2):
     union = areas_set_1.unsqueeze(1) + areas_set_2.unsqueeze(0) - intersection  # (n1, n2)
 
     return intersection / union  # (n1, n2)
-
