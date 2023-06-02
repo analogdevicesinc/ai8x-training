@@ -32,9 +32,9 @@ args = parser.parse_args()
 yaml_path = args.testconf
 
 # Open the YAML file
-with open(yaml_path, 'r', encoding='utf-8') as file:
+with open(yaml_path, 'r', encoding='utf-8') as temp:
     # Load the YAML content into a Python dictionary
-    config = yaml.safe_load(file)
+    config = yaml.safe_load(temp)
 
 # Folder containing the files to be concatenated
 script_path = r"/home/asyaturhal/desktop/ai/last_developed/last_dev_source/scripts"
@@ -46,12 +46,12 @@ output_file_path = r"/home/asyaturhal/desktop/ai/last_developed/dev_scripts/last
 log_file_names = []
 
 
-def dev_scripts(script_path, output_file_path):
+def dev_scripts(script_pth, output_file_pth):
     """
     Create training scripts for the last developed code
     """
-    with open(output_file_path, "w", encoding='utf-8') as output_file:
-        for filename in os.listdir(script_path):
+    with open(output_file_pth, "w", encoding='utf-8') as output_file:
+        for filename in os.listdir(script_pth):
             # Check if the file is a text file
             if filename.startswith("train"):
                 # Open the file and read its contents
