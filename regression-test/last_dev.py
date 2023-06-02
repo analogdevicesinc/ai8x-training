@@ -13,6 +13,7 @@ import argparse
 import datetime
 import os
 import subprocess
+
 import git
 import yaml
 
@@ -32,9 +33,9 @@ args = parser.parse_args()
 yaml_path = args.testconf
 
 # Open the YAML file
-with open(yaml_path, 'r', encoding='utf-8') as temp:
+with open(yaml_path, 'r', encoding='utf-8') as yaml_file:
     # Load the YAML content into a Python dictionary
-    config = yaml.safe_load(temp)
+    config = yaml.safe_load(yaml_file)
 
 # Folder containing the files to be concatenated
 script_path = r"/home/asyaturhal/desktop/ai/last_developed/last_dev_source/scripts"
@@ -73,7 +74,7 @@ def dev_scripts(script_pth, output_file_pth):
                     log_model = temp[j+1]
                     log_data = temp[k+1]
 
-                    if log_model == "ai87imageneteffnetv2" :
+                    if log_model == "ai87imageneteffnetv2":
                         num = temp.index("--batch-size")
                         temp[num+1] = "128"
 
