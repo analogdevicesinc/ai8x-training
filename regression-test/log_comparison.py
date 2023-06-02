@@ -38,7 +38,7 @@ def compare_logs(old_log, new_log, output_name, output_pth):
 
     if all(ex_list):
         print("\033[31m Cancelling github actions.")
-        exit(1)    
+        exit(1)
 
     with open(old_log, 'r', encoding='utf-8') as f1, open(new_log, 'r', encoding='utf-8') as f2:
         file1_content = f1.readlines()
@@ -162,7 +162,7 @@ for log in values:
 
 if all(ex_list2):
     print("\033[31m Cancelling github actions.")
-    exit(1)    
+    exit(1)
 
 not_found_model = []
 map_value_list = {}
@@ -187,5 +187,7 @@ for files_new in sorted(os.listdir(new_logs_path)):
             old_path_log = old_path + '/' + old_log_file
             new_path_log = new_path + '/' + new_log_file
 
-            map_value_list[files_new_temp] = compare_logs(old_path_log, new_path_log, files_new, output_path)
+            map_value_list[files_new_temp] = compare_logs(
+                old_path_log, new_path_log, files_new, output_path
+            )
             break
