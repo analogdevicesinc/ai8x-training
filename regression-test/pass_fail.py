@@ -22,9 +22,9 @@ args = parser.parse_args()
 yaml_path = args.testconf
 
 # Open the YAML file
-with open(yaml_path, 'r') as file:
+with open(yaml_path, 'r', encoding='utf-8') as yaml_file:
     # Load the YAML content into a Python dictionary
-    config = yaml.safe_load(file)
+    config = yaml.safe_load(yaml_file)
 
 log_path = r'/home/asyaturhal/desktop/ai/log_diff'
 # log_path = r'C:\Users\aturhal\Desktop\test_logs'
