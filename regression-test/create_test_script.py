@@ -11,6 +11,7 @@ Create training bash scripts for test
 """
 import argparse
 import os
+
 import yaml
 
 
@@ -65,7 +66,7 @@ with open(output_file_path, "w", encoding='utf-8') as output_file:
                 log_model = temp[j+1]
                 log_data = temp[k+1]
 
-                if log_model == "ai87imageneteffnetv2" :
+                if log_model == "ai87imageneteffnetv2":
                     num = temp.index("--batch-size")
                     temp[num+1] = "128"
 
