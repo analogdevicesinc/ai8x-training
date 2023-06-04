@@ -1,4 +1,9 @@
 ---
+# name: auto-testing
+# on:
+#   pull_request:
+#     branches:
+#       - develop
 name: auto-testing
 on:
   push:
@@ -25,7 +30,7 @@ jobs:
         run: pip3 install -U pip wheel setuptools && pip3 install -r
           requirements-cu11.txt
       - name: Last Develop Check
-        run: python last_dev.py --testconf test_config.yaml
+        run: python ./regression-test/last_dev.py --testconf ./regression-test/test_config.yaml
 
   new-code:
       runs-on: self-hosted
@@ -49,7 +54,7 @@ jobs:
         run: pip3 install -U pip wheel setuptools && pip3 install -r
           requirements-cu11.txt
       - name: Create Test Script
-        run: python create_test_script.py --testconf test_config.yaml
+        run: python ./regression-test/create_test_script.py --testconf ./regression-test/test_config.yaml
       - name: Run Training Scripts
         run: bash
          /home/asyaturhal/actions-runner/_work/ai8x-training/ai8x-training/scripts/output_file.sh
@@ -62,7 +67,7 @@ jobs:
           /home/asyaturhal/actions-runner/_work/ai8x-training/ai8x-training/scripts/output_file.sh
           /home/asyaturhal/desktop/ai/test_scripts/
       - name: Create and run ONNX script
-        run: python create_onnx_scripts.py  --testconf test_config.yaml
+        run: python ./regression-test/create_onnx_scripts.py  --testconf ./regression-test/test_config.yaml
 
   test-results:
       runs-on: self-hosted
@@ -91,6 +96,6 @@ jobs:
         run: pip3 install -U pip wheel setuptools && pip3 install -r
           requirements-cu11.txt
       - name: Log Diff
-        run: python log_comparison.py
+        run: python ./regression-test/log_comparison.py
       - name: Test Results
-        run: python pass_fail.py  --testconf test_config.yaml
+        run: python ./regression-test/pass_fail.py  --testconf ./regression-test/test_config.yaml
