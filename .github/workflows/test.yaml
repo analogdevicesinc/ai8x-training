@@ -15,7 +15,7 @@ jobs:
       - name: Checkout last-dev
         uses: actions/checkout@v2
         with:
-          repository: MaximIntegratedAI/ai8x-training
+#           repository: MaximIntegratedAI/ai8x-training
           ref: develop
           submodules: recursive
       - name: Setup Pyenv and Install Dependencies
