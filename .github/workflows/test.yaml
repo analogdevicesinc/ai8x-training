@@ -1,12 +1,9 @@
 ---
-# name: auto-testing
-# on:
-#   pull_request:
-#     branches:
-#       - develop
 name: auto-testing
 on:
-  push:
+  pull_request:
+    branches:
+      - develop
 jobs:
   build:
     runs-on: self-hosted
