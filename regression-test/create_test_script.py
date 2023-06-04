@@ -70,14 +70,13 @@ with open(output_file_path, "w", encoding='utf-8') as output_file:
                     num = temp.index("--batch-size")
                     temp[num+1] = "128"
 
-                if log_model == "VGGFace2_FaceDetection":
-                    num = temp.index("--batch-size")
-                    temp[num+1] = "128"
-
                 log_name = temp[j+1] + '-' + temp[k+1]
                 log_file_names.append(filename[:-3])
 
                 if log_data == "FaceID":
+                    continue
+
+                if log_data == "VGGFace2_FaceDetection":
                     continue
 
                 temp[i+1] = str(config[log_data][log_model]["epoch"])
