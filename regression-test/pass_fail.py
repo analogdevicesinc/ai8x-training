@@ -11,6 +11,7 @@ Check the test results
 """
 import argparse
 import os
+
 import yaml
 
 from log_comparison import not_found_model, map_value_list
