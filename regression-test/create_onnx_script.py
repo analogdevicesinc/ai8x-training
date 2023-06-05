@@ -9,10 +9,11 @@
 """
 Create onnx bash scripts for test
 """
-import datetime
 import argparse
+import datetime
 import os
 import subprocess
+
 import yaml
 
 
@@ -40,7 +41,7 @@ args = parser.parse_args()
 yaml_path = args.testconf
 
 # Open the YAML file
-with open(yaml_path, 'r') as file:
+with open(yaml_path, 'r', encoding='utf-8') as file:
     # Load the YAML content into a Python dictionary
     config = yaml.safe_load(file)
 
