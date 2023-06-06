@@ -91,7 +91,8 @@ for logs in sorted(os.listdir(log_path)):
     else:
         threshold_temp = 0
     logs = log_path + '/' + str(logs)
-    passing.append(check_top_value(logs, threshold_temp, map))
+    map_val = map_value_list[log_name]
+    passing.append(check_top_value(logs, threshold_temp, map_val))
 
 if not all(passing):
     print("\033[31mAll tests did not passed. Cancelling github actions.")
