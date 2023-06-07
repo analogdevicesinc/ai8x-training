@@ -13,6 +13,7 @@ import argparse
 import datetime
 import os
 import subprocess
+import sys
 
 import yaml
 
@@ -46,7 +47,7 @@ with open(yaml_path, 'r', encoding='utf-8') as file:
     config = yaml.safe_load(file)
 
 if not config["Onnx_Status"]:
-    exit(0)
+    sys.exit(1)
 
 #  folder_path = r"./logs"
 folder_path = r"/home/asyaturhal/desktop/ai/test_logs/"
