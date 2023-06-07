@@ -1,8 +1,11 @@
+# name: auto-testing
+# on:
+#   pull_request:
+#     branches:
+#       - develop
 name: auto-testing
 on:
-  pull_request:
-    branches:
-      - develop
+  - push
 
 jobs:
   build:
@@ -12,8 +15,8 @@ jobs:
       - name: Checkout last-dev
         uses: actions/checkout@v2
         with:
-          repository: MaximIntegratedAI/ai8x-training
-          ref: develop
+#           repository: MaximIntegratedAI/ai8x-training
+#           ref: develop
           submodules: recursive
       - name: Setup Pyenv and Install Dependencies
         uses: gabrielfalcao/pyenv-action@v13
@@ -39,8 +42,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          repository: MaximIntegratedAI/ai8x-training
-          ref: develop
+#           repository: MaximIntegratedAI/ai8x-training
+#           ref: develop
           submodules: recursive
       - name: Setup Pyenv and Install Dependencies
         uses: gabrielfalcao/pyenv-action@v13
@@ -79,8 +82,8 @@ jobs:
       - name: Checkout Test Codes
         uses: actions/checkout@v2
         with:
-          repository: MaximIntegratedAI/ai8x-training
-          ref: develop
+#           repository: MaximIntegratedAI/ai8x-training
+#           ref: develop
           submodules: recursive
       - name: Setup Pyenv and Install Dependencies
         uses: gabrielfalcao/pyenv-action@v13
