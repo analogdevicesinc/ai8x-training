@@ -7,40 +7,13 @@ name: auto-testing
 on:
   - push
 
-# jobs:
-#   build:
-#     runs-on: self-hosted
-#     timeout-minutes: 345600
-#     steps:
-#       - name: Checkout last-dev
-#         uses: actions/checkout@v2
-#         with:
-# #           repository: MaximIntegratedAI/ai8x-training
-# #           ref: develop
-#           submodules: recursive
-#       - name: Setup Pyenv and Install Dependencies
-#         uses: gabrielfalcao/pyenv-action@v13
-#         with:
-#           default: 3.8.11
-#       - name: Create Venv
-#         run: |
-#           pyenv local 3.8.11
-#           python3 -m venv venv --prompt ai8x-training
-#       - name: Activate Venv
-#         run: source venv/bin/activate
-#       - name: Install Dependencies
-#         run: |
-#           pip3 install -U pip wheel setuptools
-#           pip3 install -r requirements-cu11.txt
-#       - name: Last Develop Check
-#         run: python ./regression-test/last_dev.py --testconf ./regression-test/test_config.yaml
-
-  new-code:
+jobs:
+  build:
     runs-on: self-hosted
-#     needs: [build]
     timeout-minutes: 345600
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout last-dev
+        uses: actions/checkout@v2
         with:
 #           repository: MaximIntegratedAI/ai8x-training
 #           ref: develop
@@ -59,20 +32,47 @@ on:
         run: |
           pip3 install -U pip wheel setuptools
           pip3 install -r requirements-cu11.txt
-      - name: Create Test Script
-        run: python ./regression-test/create_test_script.py --testconf ./regression-test/test_config.yaml
-      - name: Run Training Scripts
-        run: bash /home/asyaturhal/actions-runner/_work/ai8x-training/ai8x-training/scripts/output_file.sh
-      - name: Save Log Files
-        run: cp -r /home/asyaturhal/actions-runner/_work/ai8x-training/ai8x-training/logs/ /home/asyaturhal/desktop/ai/test_logs/$(date +%Y-%m-%d_%H-%M-%S)
-      - name: Save test scripts
-        run: cp -r /home/asyaturhal/actions-runner/_work/ai8x-training/ai8x-training/scripts/output_file.sh /home/asyaturhal/desktop/ai/test_scripts/
-      - name: Create and run ONNX script
-        run: python ./regression-test/create_onnx_scripts.py --testconf ./regression-test/test_config.yaml
+      - name: Last Develop Check
+        run: python ./regression-test/last_dev.py --testconf ./regression-test/test_config.yaml
+
+#   new-code:
+#     runs-on: self-hosted
+#     needs: [build]
+#     timeout-minutes: 345600
+#     steps:
+#       - uses: actions/checkout@v2
+#         with:
+# #           repository: MaximIntegratedAI/ai8x-training
+# #           ref: develop
+#           submodules: recursive
+#       - name: Setup Pyenv and Install Dependencies
+#         uses: gabrielfalcao/pyenv-action@v13
+#         with:
+#           default: 3.8.11
+#       - name: Create Venv
+#         run: |
+#           pyenv local 3.8.11
+#           python3 -m venv venv --prompt ai8x-training
+#       - name: Activate Venv
+#         run: source venv/bin/activate
+#       - name: Install Dependencies
+#         run: |
+#           pip3 install -U pip wheel setuptools
+#           pip3 install -r requirements-cu11.txt
+#       - name: Create Test Script
+#         run: python ./regression-test/create_test_script.py --testconf ./regression-test/test_config.yaml
+#       - name: Run Training Scripts
+#         run: bash /home/asyaturhal/actions-runner/_work/ai8x-training/ai8x-training/scripts/output_file.sh
+#       - name: Save Log Files
+#         run: cp -r /home/asyaturhal/actions-runner/_work/ai8x-training/ai8x-training/logs/ /home/asyaturhal/desktop/ai/test_logs/$(date +%Y-%m-%d_%H-%M-%S)
+#       - name: Save test scripts
+#         run: cp -r /home/asyaturhal/actions-runner/_work/ai8x-training/ai8x-training/scripts/output_file.sh /home/asyaturhal/desktop/ai/test_scripts/
+#       - name: Create and run ONNX script
+#         run: python ./regression-test/create_onnx_scripts.py --testconf ./regression-test/test_config.yaml
 
   test-results:
     runs-on: self-hosted
-    needs: [new-code]
+#     needs: [new-code]
     timeout-minutes: 345600
     steps:
       - uses: actions/checkout@v2
