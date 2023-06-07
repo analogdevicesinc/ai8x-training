@@ -93,8 +93,8 @@ with open(output_file_path, "w", encoding='utf-8') as onnx_scripts:
         else:
             bias.append("")
 
-    for file in sorted(os.listdir(logs_list)):
-        temp_path = logs_list + "/" + file
+    for file_p in sorted(os.listdir(logs_list)):
+        temp_path = logs_list + "/" + file_p
         for temp_file in sorted(os.listdir(temp_path)):
             if temp_file.endswith("_checkpoint.pth.tar"):
                 temp = f"{temp_path}/{temp_file}"
