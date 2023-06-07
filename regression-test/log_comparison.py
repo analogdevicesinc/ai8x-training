@@ -11,6 +11,7 @@ Compare log files of the pulled code and the last developed
 """
 import datetime
 import os
+import sys
 
 from tabulate import tabulate
 
@@ -38,7 +39,7 @@ def compare_logs(old_log, new_log, output_name, output_pth):
 
     if all(ex_list):
         print("\033[31m Cancelling github actions.")
-        exit(1)
+        sys.exit(1)
 
     with open(old_log, 'r', encoding='utf-8') as f1, open(new_log, 'r', encoding='utf-8') as f2:
         file1_content = f1.readlines()
@@ -162,7 +163,7 @@ for log in values:
 
 if all(ex_list2):
     print("\033[31m Cancelling github actions.")
-    exit(1)
+    sys.exit(1)
 
 not_found_model = []
 map_value_list = {}
