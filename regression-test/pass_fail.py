@@ -56,25 +56,24 @@ def check_top_value(file, threshold, map_value):
         print(f"\033[32m\u2714\033[0m Test passed for {model_name} since"
               f" Top1 value changed {top1_diff} % at {epoch_num}th epoch.")
         return True
-    else:
-        with open(file, 'r', encoding='utf-8') as f:
+    with open(file, 'r', encoding='utf-8') as f:
 
-            model_name = file.split('/')[-1].split('___')[0]
-            # Read all lines in the file
-            lines = f.readlines()
-            # Extract the last line and convert it to a float
-            top1 = lines[-1].split()
-            epoch_num = int(top1[0])
-            top1_diff = float(top1[1])
-            # top5_diff = float(top1[2])
+        model_name = file.split('/')[-1].split('___')[0]
+        # Read all lines in the file
+        lines = f.readlines()
+        # Extract the last line and convert it to a float
+        top1 = lines[-1].split()
+        epoch_num = int(top1[0])
+        top1_diff = float(top1[1])
+        # top5_diff = float(top1[2])
 
-        if top1_diff < threshold:
-            print(f"\033[31m\u2718\033[0m Test failed for {model_name} since"
-                  f" mAP value changed {top1_diff} % at {epoch_num}th epoch.")
-            return False
-        print(f"\033[32m\u2714\033[0m Test passed for {model_name} since"
-              f" mAP value changed {top1_diff} % at {epoch_num}th epoch.")
-        return True
+    if top1_diff < threshold:
+        print(f"\033[31m\u2718\033[0m Test failed for {model_name} since"
+                f" mAP value changed {top1_diff} % at {epoch_num}th epoch.")
+        return False
+    print(f"\033[32m\u2714\033[0m Test passed for {model_name} since"
+            f" mAP value changed {top1_diff} % at {epoch_num}th epoch.")
+    return True
 
 
 passing = []
