@@ -1,6 +1,5 @@
 ---
-
-Onnx_Status: True
+Onnx_Status: true
 AISegment_352:
   datapath: "/data_ssd"
   ai85unetlarge:
