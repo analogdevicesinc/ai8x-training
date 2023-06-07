@@ -14,7 +14,7 @@ import os
 
 import yaml
 
-from log_comparison import not_found_model, map_value_list
+from log_comparison import map_value_list, not_found_model
 
 
 parser = argparse.ArgumentParser()
