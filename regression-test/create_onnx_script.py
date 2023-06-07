@@ -109,7 +109,7 @@ with open(output_file_path, "w", encoding='utf-8') as onnx_scripts:
             modelsearch = element[-4][3:]
             datasearch = element[-3].split('_')[0]
             if datasearch == dataset.split('_')[0] and modelsearch == model:
-                model_paths.remove(tar)
+                # model_paths.remove(tar)
                 tar_path = tar
                 timestamp = time_stamp()
                 temp = (
