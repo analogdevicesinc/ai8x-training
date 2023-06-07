@@ -3210,6 +3210,31 @@ See the [benchmarking guide](https://github.com/MaximIntegratedAI/MaximAI_Docume
 
 
 
+## Regression Test
+Regression test for ai8xtraining repo is tested when there is a pull request for develop branch of MaximIntegratedAI/ai8x-training by trigerring test.yaml github actions.
+
+#### Last developed code training:
+
+last_dev.py code generates the log files of the last developed and tested code. These log files are used for comparing the new pushed code to check if there is any change in the trained values. Tracking is done by checking hex number of the repository.
+
+#### Creating test scripts:
+
+There are training scripts that are developed under the scripts path. In order to create training scripts for regression test, these scripts are rewritten by changing their epoch number by running create_test_script.py code. The aim for changing the epoch number is to keep the duration of the test under control. This epoch number is defined in the test_config.yaml file for each model dataset combination. Since the sizes of the models are different, different epoch numbers can be defined for each of them in order to create a healthy test. If a new training script is added, the epoch number and threshold values must be defined in the test_config.yaml file for the relevant model.
+
+#### Comparing log files:
+
+After running test scripts for new pushed code, it’s log files are saved and compared with last developed code’s log files by running log_comparison.py and results are also saved.
+
+#### Pass fail decision:
+
+In the comparison, the test's success criterion is that the difference does not exceed the threshold value defined in the test_config.yaml file as a percentage. If all the training scripts passed the test, pass_fail.py code completes with success. Otherwise it fails and exits by cancelling pull request.
+
+#### Onnx export:
+
+Scripts for onnx export are created and ran by running create_onnx_scripts.py by configuring ‘Onnx_Status: True’ in test_config.yaml . If it is set as ‘False’ onnx export won't be done.
+
+
+
 ## Further Information
 
 Additional information about the evaluation kits, and the software development kit (MSDK) is available on the web at <https://github.com/MaximIntegratedAI/MaximAI_Documentation>.
