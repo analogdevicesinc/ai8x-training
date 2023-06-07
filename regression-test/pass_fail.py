@@ -14,7 +14,6 @@ import os
 import sys
 
 import yaml
-
 from log_comparison import map_value_list, not_found_model
 
 parser = argparse.ArgumentParser()
