@@ -17,7 +17,6 @@ import yaml
 
 from log_comparison import map_value_list, not_found_model
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--testconf', help='Enter the config file for the test', required=True)
 args = parser.parse_args()
