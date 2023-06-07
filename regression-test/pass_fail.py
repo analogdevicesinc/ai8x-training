@@ -69,10 +69,10 @@ def check_top_value(file, threshold, map_value):
 
     if top1_diff < threshold:
         print(f"\033[31m\u2718\033[0m Test failed for {model_name} since"
-                f" mAP value changed {top1_diff} % at {epoch_num}th epoch.")
+              f" mAP value changed {top1_diff} % at {epoch_num}th epoch.")
         return False
     print(f"\033[32m\u2714\033[0m Test passed for {model_name} since"
-            f" mAP value changed {top1_diff} % at {epoch_num}th epoch.")
+          f" mAP value changed {top1_diff} % at {epoch_num}th epoch.")
     return True
 
 
