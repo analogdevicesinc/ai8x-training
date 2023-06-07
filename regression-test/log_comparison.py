@@ -149,8 +149,8 @@ new_log_list = log_path_list(new_logs_path)
 old_log_list = log_path_list(old_logs_path)
 
 with open(script_path, 'r', encoding='utf-8') as f:
-    scripts = f.read()
-    scripts = scripts.split(' ')
+    scripts_t = f.read()
+    scripts = scripts_t.split(' ')
 name_indices = [i+1 for i, x in enumerate(scripts) if x == "--name"]
 values = [scripts[j] for j in name_indices]
 
