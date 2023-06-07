@@ -52,9 +52,10 @@ def check_top_value(file, threshold, map_value):
             print(f"\033[31m\u2718\033[0m Test failed for {model_name} since"
                   f" Top1 value changed {top1_diff} % at {epoch_num}th epoch.")
             return False
-        print(f"\033[32m\u2714\033[0m Test passed for {model_name} since"
-              f" Top1 value changed {top1_diff} % at {epoch_num}th epoch.")
-        return True
+        else:
+            print(f"\033[32m\u2714\033[0m Test passed for {model_name} since"
+                  f" Top1 value changed {top1_diff} % at {epoch_num}th epoch.")
+            return True
     if map_value:
         with open(file, 'r', encoding='utf-8') as f:
 
@@ -71,9 +72,10 @@ def check_top_value(file, threshold, map_value):
             print(f"\033[31m\u2718\033[0m Test failed for {model_name} since"
                   f" mAP value changed {top1_diff} % at {epoch_num}th epoch.")
             return False
-        print(f"\033[32m\u2714\033[0m Test passed for {model_name} since"
-              f" mAP value changed {top1_diff} % at {epoch_num}th epoch.")
-        return True
+        else:
+            print(f"\033[32m\u2714\033[0m Test passed for {model_name} since"
+                  f" mAP value changed {top1_diff} % at {epoch_num}th epoch.")
+            return True
 
 
 passing = []
