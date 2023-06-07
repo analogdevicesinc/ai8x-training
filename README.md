@@ -3212,7 +3212,7 @@ See the [benchmarking guide](https://github.com/MaximIntegratedAI/MaximAI_Docume
 
 ## Regression Test
 
-Regression test for ai8xtraining repo is tested when there is a pull request for develop branch of MaximIntegratedAI/ai8x-training by trigerring test.yaml github actions.
+Regression test for ai8xtraining repo is tested when there is a pull request for develop branch of MaximIntegratedAI/ai8x-training by triggering test.yaml github actions.
 
 ### Last Developed Code Training
 
