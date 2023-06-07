@@ -1,17 +1,17 @@
 ---
 Onnx_Status: true
 AISegment_352:
-  datapath: "/data_ssd"
+  datapath: /data_ssd
   ai85unetlarge:
     threshold: -5
     epoch: 15
 CamVid_s352_c3:
-  datapath: "/data_ssd"
+  datapath: /data_ssd
   ai85unetlarge:
     threshold: -5
     epoch: 15
 cats_vs_dogs:
-  datapath: "/data_ssd"
+  datapath: /data_ssd
   ai85cdnet:
     threshold: -5
     epoch: 15
