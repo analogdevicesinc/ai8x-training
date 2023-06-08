@@ -27,7 +27,6 @@ with open(yaml_path, 'r', encoding='utf-8') as yaml_file:
     config = yaml.safe_load(yaml_file)
 
 log_path = r'/home/asyaturhal/desktop/ai/log_diff'
-# log_path = r'C:\Users\aturhal\Desktop\test_logs'
 log_path = log_path + '/' + sorted(os.listdir(log_path))[-1]
 
 
@@ -37,7 +36,6 @@ def check_top_value(file, threshold, map_value):
     """
     if not map_value:
         with open(file, 'r', encoding='utf-8') as f:
-
             model_name = file.split('/')[-1].split('___')[0]
             # Read all lines in the file
             lines = f.readlines()
@@ -45,7 +43,6 @@ def check_top_value(file, threshold, map_value):
             top1 = lines[-1].split()
             epoch_num = int(top1[0])
             top1_diff = float(top1[1])
-            # top5_diff = float(top1[2])
 
         if top1_diff < threshold:
             print(f"\033[31m\u2718\033[0m Test failed for {model_name} since"
@@ -54,8 +51,8 @@ def check_top_value(file, threshold, map_value):
         print(f"\033[32m\u2714\033[0m Test passed for {model_name} since"
               f" Top1 value changed {top1_diff} % at {epoch_num}th epoch.")
         return True
-    with open(file, 'r', encoding='utf-8') as f:
 
+    with open(file, 'r', encoding='utf-8') as f:
         model_name = file.split('/')[-1].split('___')[0]
         # Read all lines in the file
         lines = f.readlines()
