@@ -72,7 +72,6 @@ def check_top_value(file, threshold, map_value):
 
 
 passing = []
-
 for item in not_found_model:
     print("\033[93m\u26A0\033[0m " + "Warning: " + item)
 
