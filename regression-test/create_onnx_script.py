@@ -49,7 +49,6 @@ with open(yaml_path, 'r', encoding='utf-8') as file:
 if not config["Onnx_Status"]:
     sys.exit(1)
 
-#  folder_path = r"./logs"
 folder_path = r"/home/asyaturhal/desktop/ai/test_logs/"
 output_file_path = (
     r"./scripts/onnx_scripts.sh"
