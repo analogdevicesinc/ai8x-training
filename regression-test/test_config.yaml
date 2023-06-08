@@ -1,5 +1,6 @@
 ---
 Onnx_Status: true
+Qat_Test: false
 AISegment_352:
   datapath: /data_ssd
   ai85unetlarge:
