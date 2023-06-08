@@ -104,7 +104,6 @@ def compare_logs(old_log, new_log, output_name, output_pth):
             output_file.write(tabulate(top1, headers=header))
 
     if map_value:
-
         i = 0
         for (map1, map2) in zip(mAP_list1, mAP_list2):
             i = i+1
