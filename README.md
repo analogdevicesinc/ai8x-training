@@ -3234,6 +3234,9 @@ In the comparison, the test's success criterion is that the difference does not 
 
 Scripts for onnx export are created and ran by running create_onnx_scripts.py by configuring ‘Onnx_Status: True’ in test_config.yaml . If it is set as ‘False’ onnx export won't be done.
 
+### Test Configuration
+
+In test_config.yaml file Onnx_Status and Qat_Test should be ste to 'true' if you want to create onnx export or make qat test by using policies/qat_policy.yaml. When Qat_Test is set to false qat will be done according to the main training script. All the threshold values and test epoch numbers for each model dataset combination are also configured in this file.
 
 
 ## Further Information
