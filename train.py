@@ -96,7 +96,7 @@ from distiller.data_loggers.collector import (QuantCalibrationStatsCollector,
                                               RecordsActivationStatsCollector,
                                               SummaryActivationStatsCollector, collectors_context)
 from distiller.quantization.range_linear import PostTrainLinearQuantizer
-from torchmetrics.detection import MAP as MeanAveragePrecision
+from torchmetrics.detection.map import MAP as MeanAveragePrecision
 
 # pylint: enable=no-name-in-module
 import ai8x
@@ -1073,43 +1073,49 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
 
                 output = (output_boxes, output_conf)
 
-                # .module is added to model for access in multi GPU environments
-                # as https://github.com/pytorch/pytorch/issues/16885 has not been merged yet
-                m = model.module if isinstance(model, nn.DataParallel) else model
+                if boxes_list:
+                    # .module is added to model for access in multi GPU environments
+                    # as https://github.com/pytorch/pytorch/issues/16885 has not been merged yet
+                    m = model.module if isinstance(model, nn.DataParallel) else model
 
-                det_boxes_batch, det_labels_batch, det_scores_batch = \
-                    m.detect_objects(output_boxes, output_conf,
-                                     min_score=obj_detection_params['nms']['min_score'],
-                                     max_overlap=obj_detection_params['nms']['max_overlap'],
-                                     top_k=obj_detection_params['nms']['top_k'])
+                    det_boxes_batch, det_labels_batch, det_scores_batch = \
+                        m.detect_objects(output_boxes, output_conf,
+                                         min_score=obj_detection_params['nms']['min_score'],
+                                         max_overlap=obj_detection_params['nms']['max_overlap'],
+                                         top_k=obj_detection_params['nms']['top_k'])
 
-                # Filter images with only background box
-                filtered_all_images_boxes, \
-                    filtered_all_images_labels, filtered_all_images_scores = \
-                    zip(*list(filter(lambda elem: not (len(elem[1]) == 1 and elem[1][0] == 0),
-                                     zip(det_boxes_batch, det_labels_batch, det_scores_batch))))
+                    # Filter images with only background box
+                    filtered_list = list(
+                        filter(lambda elem: not (len(elem[1]) == 1 and elem[1][0] == 0),
+                               zip(det_boxes_batch, det_labels_batch, det_scores_batch))
+                    )
 
-                # Update mAP Calculator
-                if boxes_list and filtered_all_images_boxes:
-                    # mAP calculator uses 0-indexed class labels
-                    filtered_all_images_labels = [e - 1 for e in filtered_all_images_labels]
+                    # Update mAP Calculator
+                    if filtered_list:
+                        filtered_all_images_boxes, filtered_all_images_labels, \
+                            filtered_all_images_scores = zip(*filtered_list)
 
-                    # Prepare truths
-                    boxes = torch.cat(boxes_list)
-                    labels = torch.cat(labels_list_for_map)
+                        # mAP calculator uses 0-indexed class labels
+                        filtered_all_images_labels = [e - 1 for e in filtered_all_images_labels]
 
-                    gt = [{'boxes': boxes, 'labels': labels}]
+                        # Prepare truths
+                        boxes = torch.cat(boxes_list)
+                        labels = torch.cat(labels_list_for_map)
 
-                    # Prepare predictions
-                    pred_boxes = torch.cat(filtered_all_images_boxes)
-                    pred_scores = torch.cat(filtered_all_images_scores)
-                    pred_labels = torch.cat(filtered_all_images_labels)
+                        gt = [{'boxes': boxes, 'labels': labels}]
 
-                    preds = [{'boxes': pred_boxes, 'scores': pred_scores, 'labels': pred_labels}]
+                        # Prepare predictions
+                        pred_boxes = torch.cat(filtered_all_images_boxes)
+                        pred_scores = torch.cat(filtered_all_images_scores)
+                        pred_labels = torch.cat(filtered_all_images_labels)
 
-                    # Update mAP calculator
-                    map_calculator.update(preds=preds, target=gt)
-                    have_mAP = True
+                        preds = [
+                            {'boxes': pred_boxes, 'scores': pred_scores, 'labels': pred_labels}
+                        ]
+
+                        # Update mAP calculator
+                        map_calculator.update(preds=preds, target=gt)
+                        have_mAP = True
             else:
                 inputs, target = inputs.to(args.device), target.to(args.device)
                 # compute output from model
