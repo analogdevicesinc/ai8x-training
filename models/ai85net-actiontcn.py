@@ -13,7 +13,8 @@ import torch
 from torch import nn
 
 import ai8x
-    
+
+
 class AI85ActionTCN(nn.Module):
     """
     Conv2D backbone + TCN layers for Action Recognition
@@ -69,9 +70,7 @@ class AI85ActionTCN(nn.Module):
         self.drop3 = nn.Dropout2d(dropout)
         self.drop4 = nn.Dropout2d(dropout)
 
-        self.resid2 = ai8x.Add()
-        self.resid3 = ai8x.Add()
-        self.resid4 = ai8x.Add()
+        self.add = ai8x.Add()
 
         self.tcn0 = ai8x.FusedConv1dBNReLU(len_frame_vector, len_frame_vector, 3, padding=0,
                                            stride=1, dilation=1, bias=bias, batchnorm=bn, **kwargs)
@@ -95,17 +94,17 @@ class AI85ActionTCN(nn.Module):
         c = self.conv2(cx)
         c = self.conv2_1(c)
         cp = self.conv2_p(cx)
-        cx = self.resid2(cp, self.drop2(c))
+        cx = self.add(cp, self.drop2(c))
 
         c = self.conv3(cx)
         c = self.conv3_1(c)
         cp = self.conv3_p(cx)
-        cx = self.resid3(cp, self.drop3(c))
+        cx = self.add(cp, self.drop3(c))
 
         c = self.conv4(cx)
         c = self.conv4_1(c)
         cp = self.conv4_p(cx)
-        cx = self.resid4(cp, self.drop4(c))
+        cx = self.add(cp, self.drop4(c))
 
         c = self.conv5(cx)
 
