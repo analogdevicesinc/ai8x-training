@@ -9,11 +9,24 @@
 """
 Compare log files of the pulled code and the last developed
 """
+import argparse
 import datetime
 import os
 import sys
 
+import yaml
+
 from tabulate import tabulate
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--testpaths', help='Enter the paths for the test', required=True)
+args = parser.parse_args()
+test_path = args.testpaths
+
+with open(test_path, 'r') as file2:
+    # Load the YAML content into a Python dictionary
+    pathconfig = yaml.safe_load(file2)
 
 
 def compare_logs(old_log, new_log, output_name, output_pth):
@@ -89,6 +102,9 @@ def compare_logs(old_log, new_log, output_name, output_pth):
     if not map_value:
         i = 0
         for (list1, list2) in zip(log1_list, log2_list):
+            if float(list1[1]) == 0:
+                  print("Top1 value of " + output_name + " is 0.00.")
+                  list1[1] = 0.000001
             i = i+1
             if '[Top1:' in list2:
                 top1_diff = ((float(list2[1])-float(list1[1]))/float(list1[1]))*100
@@ -106,6 +122,9 @@ def compare_logs(old_log, new_log, output_name, output_pth):
     if map_value:
         i = 0
         for (map1, map2) in zip(mAP_list1, mAP_list2):
+            if float(map1[1]) == 0:
+                  print("Map value of " + output_name + " is 0.00.")
+                  map1[1] = 0.000001
             i = i+1
             if '[mAP:' in map2:
                 map_diff = ((float(map2[1])-float(map1[1]))/float(map1[1]))*100
@@ -128,14 +147,14 @@ def log_path_list(path):
     return lst
 
 
-log_new = r'/home/asyaturhal/desktop/ai/test_logs/'
-log_old = r'/home/asyaturhal/desktop/ai/last_developed/dev_logs/'
-script_path = r"/home/asyaturhal/desktop/ai/test_scripts/output_file.sh"
+log_new = testpaths["log_new"]
+log_old = testpaths["log_old"]
+script_path = testpaths["script_path"]
 
 time = str(datetime.datetime.now())
 time = time.replace(' ', '.')
 time = time.replace(':', '.')
-output_path = r"/home/asyaturhal/desktop/ai/log_diff/" + '/' + str(time)
+output_path = testpaths["output_path"] + '/' + str(time)
 
 os.mkdir(output_path)
 
