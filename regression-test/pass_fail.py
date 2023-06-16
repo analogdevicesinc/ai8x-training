@@ -18,15 +18,26 @@ from log_comparison import map_value_list, not_found_model
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--testconf', help='Enter the config file for the test', required=True)
+parser.add_argument('--testpaths', help='Enter the paths for the test', required=True)
 args = parser.parse_args()
 yaml_path = args.testconf
+test_path = args.testpaths
+
+# Open the YAML file
+with open(yaml_path, 'r', encoding='utf-8') as file:
+    # Load the YAML content into a Python dictionary
+    config = yaml.safe_load(file)
+
+with open(test_path, 'r') as file2:
+    # Load the YAML content into a Python dictionary
+    pathconfig = yaml.safe_load(file2)
 
 # Open the YAML file
 with open(yaml_path, 'r', encoding='utf-8') as yaml_file:
     # Load the YAML content into a Python dictionary
     config = yaml.safe_load(yaml_file)
 
-log_path = r'/home/asyaturhal/desktop/ai/log_diff'
+log_path = pathconfig["log_path"]
 log_path = log_path + '/' + sorted(os.listdir(log_path))[-1]
 
 
