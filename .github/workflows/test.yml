@@ -1,8 +1,10 @@
 name: auto-testing
-on:
-  pull_request:
-    branches:
-      - develop
+# on:
+#   pull_request:
+#     branches:
+#       - develop
+on: 
+  push:
 
 jobs:
   build:
