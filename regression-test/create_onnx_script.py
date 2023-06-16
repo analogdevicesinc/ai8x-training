@@ -38,24 +38,26 @@ def time_stamp():
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--testconf', help='Enter the config file for the test', required=True)
+parser.add_argument('--testpaths', help='Enter the paths for the test', required=True)
 args = parser.parse_args()
 yaml_path = args.testconf
+test_path = args.testpaths
 
 # Open the YAML file
 with open(yaml_path, 'r', encoding='utf-8') as file:
     # Load the YAML content into a Python dictionary
     config = yaml.safe_load(file)
 
+with open(test_path, 'r') as file2:
+    # Load the YAML content into a Python dictionary
+    pathconfig = yaml.safe_load(file2)
+
 if not config["Onnx_Status"]:
     sys.exit(1)
 
-folder_path = r"/home/asyaturhal/desktop/ai/test_logs/"
-output_file_path = (
-    r"./scripts/onnx_scripts.sh"
-)
-train_path = (
-    r"/home/asyaturhal/desktop/ai/test_scripts/output_file.sh"
-)
+folder_path = pathconfig["folder_path"]
+output_file_path = pathconfig["output_file_path_onnx"]
+train_path = pathconfig["train_path"]
 
 logs_list = folder_path + '/' + sorted(os.listdir(folder_path))[-1]
 
