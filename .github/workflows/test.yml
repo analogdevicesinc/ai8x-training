@@ -30,7 +30,7 @@ jobs:
           pip3 install -U pip wheel setuptools
           pip3 install -r requirements-cu11.txt
       - name: Last Develop Check
-        run: python ./regression-test/last_dev.py --testconf ./regression-test/test_config.yaml
+        run: python ./regression-test/last_dev.py --testconf ./regression-test/test_config.yaml --testpaths ./regression-test/paths.yml
 
   new-code:
     runs-on: self-hosted
@@ -57,7 +57,7 @@ jobs:
           pip3 install -U pip wheel setuptools
           pip3 install -r requirements-cu11.txt
       - name: Create Test Script
-        run: python ./regression-test/create_test_script.py --testconf ./regression-test/test_config.yaml
+        run: python ./regression-test/create_test_script.py --testconf ./regression-test/test_config.yaml --testpaths ./regression-test/paths.yml
       - name: Run Training Scripts
         run: bash /home/asyaturhal/actions-runner/_work/ai8x-training/ai8x-training/scripts/output_file.sh
       - name: Save Log Files
@@ -65,7 +65,7 @@ jobs:
       - name: Save test scripts
         run: cp -r /home/asyaturhal/actions-runner/_work/ai8x-training/ai8x-training/scripts/output_file.sh /home/asyaturhal/desktop/ai/test_scripts/
       - name: Create and run ONNX script
-        run: python ./regression-test/create_onnx_scripts.py --testconf ./regression-test/test_config.yaml
+        run: python ./regression-test/create_onnx_scripts.py --testconf ./regression-test/test_config.yaml --testpaths ./regression-test/paths.yml
 
   test-results:
     runs-on: self-hosted
@@ -97,6 +97,6 @@ jobs:
           pip3 install -U pip wheel setuptools
           pip3 install -r requirements-cu11.txt
       - name: Log Diff
-        run: python ./regression-test/log_comparison.py
+        run: python ./regression-test/log_comparison.py --testpaths ./regression-test/paths.yml
       - name: Test Results
-        run: python ./regression-test/pass_fail.py --testconf ./regression-test/test_config.yaml
+        run: python ./regression-test/pass_fail.py --testconf ./regression-test/test_config.yaml --testpaths ./regression-test/paths.yml
