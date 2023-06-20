@@ -96,7 +96,7 @@ from distiller.data_loggers.collector import (QuantCalibrationStatsCollector,
                                               RecordsActivationStatsCollector,
                                               SummaryActivationStatsCollector, collectors_context)
 from distiller.quantization.range_linear import PostTrainLinearQuantizer
-from torchmetrics.detection.mean_ap import MeanAveragePrecision
+from torchmetrics.detection.map import MAP as MeanAveragePrecision
 
 # pylint: enable=no-name-in-module
 import ai8x
@@ -366,10 +366,9 @@ def main():
 
         # .module is added to model for access in multi GPU environments
         # as https://github.com/pytorch/pytorch/issues/16885 has not been merged yet
-        if isinstance(model, nn.DataParallel):
-            model = model.module
+        m = model.module if isinstance(model, nn.DataParallel) else model
 
-        criterion = MultiBoxLoss(priors_cxcy=model.priors_cxcy,
+        criterion = MultiBoxLoss(priors_cxcy=m.priors_cxcy,
                                  alpha=obj_detection_params['multi_box_loss']['alpha'],
                                  neg_pos_ratio=obj_detection_params['multi_box_loss']
                                  ['neg_pos_ratio'], device=args.device).to(args.device)
@@ -835,7 +834,7 @@ def train(train_loader, model, criterion, optimizer, epoch,
 
         # measure elapsed time
         batch_time.add(time.time() - end)
-        steps_completed = (train_step+1)
+        steps_completed = train_step + 1
 
         if steps_completed % args.print_freq == 0 or steps_completed == steps_per_epoch:
             # Log some statistics
@@ -969,8 +968,12 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
     """Execute the validation/test loop."""
     losses = {'objective_loss': tnt.AverageValueMeter()}
     if args.obj_detection:
-        map_calculator = MeanAveragePrecision(box_format='xyxy', iou_type='bbox',
-                                              class_metrics=False, iou_thresholds=[0.5])
+        map_calculator = MeanAveragePrecision(
+            # box_format='xyxy',  # Enable in torchmetrics > 0.6
+            # iou_type='bbox',  # Enable in torchmetrics > 0.6
+            class_metrics=False,
+            # iou_thresholds=[0.5],  # Enable in torchmetrics > 0.6
+        )
         mAP = 0.00
     if not args.regression:
         classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, min(args.num_classes, 5)))
@@ -1034,31 +1037,23 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
     obj_detection_params = parse_obj_detection_yaml.parse(args.obj_detection_params) \
         if args.obj_detection_params else None
 
-    for validation_step, (inputs, target) in enumerate(data_loader):
-
-        with torch.no_grad():
-
+    mAP = 0.0
+    have_mAP = False
+    with torch.no_grad():
+        for validation_step, (inputs, target) in enumerate(data_loader):
             if args.obj_detection:
-
                 if not object_detection_utils.check_target_exists(target):
                     print(f'No target in batch. Ep: {epoch}, validation_step: {validation_step}')
                     continue
 
-                boxes_list = [elem[0] for elem in target]
-                labels_list = [elem[1] for elem in target]
+                boxes_list = [elem[0].to(args.device) for elem in target]
+                labels_list = [elem[1].to(args.device) for elem in target]
+                filtered_all_images_boxes = None
 
                 # Adjust ground truth index as mAP calculator uses 0-indexed class labels
-                labels_list_for_map = [elem[1] - 1 for elem in target]
-
-                difficulties = []
-                for label_objects in labels_list:
-                    difficulties.append(torch.zeros_like(label_objects))
+                labels_list_for_map = [elem[1].to(args.device) - 1 for elem in target]
 
                 inputs = inputs.to(args.device)
-                boxes_list = [boxes.to(args.device) for boxes in boxes_list]
-                labels_list = [labels.to(args.device) for labels in labels_list]
-                labels_list_for_map = [labels.to(args.device) for labels in labels_list_for_map]
-                difficulties = [d.to(args.device) for d in difficulties]
 
                 target = (boxes_list, labels_list)
 
@@ -1078,54 +1073,49 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
 
                 output = (output_boxes, output_conf)
 
-                # .module is added to model for access in multi GPU environments
-                # as https://github.com/pytorch/pytorch/issues/16885 has not been merged yet
-                if isinstance(model, nn.DataParallel):
-                    model = model.module
+                if boxes_list:
+                    # .module is added to model for access in multi GPU environments
+                    # as https://github.com/pytorch/pytorch/issues/16885 has not been merged yet
+                    m = model.module if isinstance(model, nn.DataParallel) else model
 
-                det_boxes_batch, det_labels_batch, det_scores_batch = \
-                    model.detect_objects(output_boxes, output_conf,
+                    det_boxes_batch, det_labels_batch, det_scores_batch = \
+                        m.detect_objects(output_boxes, output_conf,
                                          min_score=obj_detection_params['nms']['min_score'],
                                          max_overlap=obj_detection_params['nms']['max_overlap'],
                                          top_k=obj_detection_params['nms']['top_k'])
 
-                # Filter images with only background box
-                filtered_images_boxes_labels_scores = \
-                    list(filter(lambda elem: not (len(elem[1]) == 1 and elem[1][0] == 0),
-                                zip(det_boxes_batch, det_labels_batch, det_scores_batch)))
+                    # Filter images with only background box
+                    filtered_list = list(
+                        filter(lambda elem: not (len(elem[1]) == 1 and elem[1][0] == 0),
+                               zip(det_boxes_batch, det_labels_batch, det_scores_batch))
+                    )
 
-                filtered_all_images_boxes = [elem[0]
-                                             for elem in filtered_images_boxes_labels_scores]
+                    # Update mAP Calculator
+                    if filtered_list:
+                        filtered_all_images_boxes, filtered_all_images_labels, \
+                            filtered_all_images_scores = zip(*filtered_list)
 
-                # Adjust detected label index as mAP calculator uses 0-indexed class labels
-                filtered_all_images_labels = [
-                    elem[1] - 1 for elem in filtered_images_boxes_labels_scores]
-                filtered_all_images_scores = [elem[2]
-                                              for elem in filtered_images_boxes_labels_scores]
+                        # mAP calculator uses 0-indexed class labels
+                        filtered_all_images_labels = [e - 1 for e in filtered_all_images_labels]
 
-                # Update mAP Calculator
-                if boxes_list and filtered_all_images_boxes:
+                        # Prepare truths
+                        boxes = torch.cat(boxes_list)
+                        labels = torch.cat(labels_list_for_map)
 
-                    # Prepare truths
-                    boxes = torch.cat(boxes_list)
-                    labels = torch.cat(labels_list_for_map)
+                        gt = [{'boxes': boxes, 'labels': labels}]
 
-                    gt = [dict(boxes=boxes, labels=labels)]
+                        # Prepare predictions
+                        pred_boxes = torch.cat(filtered_all_images_boxes)
+                        pred_scores = torch.cat(filtered_all_images_scores)
+                        pred_labels = torch.cat(filtered_all_images_labels)
 
-                    # Prepare predictions
-                    pred_boxes = torch.cat(filtered_all_images_boxes)
-                    pred_scores = torch.cat(filtered_all_images_scores)
-                    pred_labels = torch.cat(filtered_all_images_labels)
+                        preds = [
+                            {'boxes': pred_boxes, 'scores': pred_scores, 'labels': pred_labels}
+                        ]
 
-                    preds = [dict(boxes=pred_boxes, scores=pred_scores, labels=pred_labels)]
-
-                    # Update mAP calculator
-                    map_calculator.update(preds=preds, target=gt)
-
-                    # Keep latest value
-                    mAPs = {"val_" + k: v for k, v in map_calculator.compute().items()}
-                    mAP = mAPs["val_map_50"]
-
+                        # Update mAP calculator
+                        map_calculator.update(preds=preds, target=gt)
+                        have_mAP = True
             else:
                 inputs, target = inputs.to(args.device), target.to(args.device)
                 # compute output from model
@@ -1174,7 +1164,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
             batch_time.add(time.time() - end)
             end = time.time()
 
-            steps_completed = (validation_step+1)
+            steps_completed = validation_step + 1
             if steps_completed % args.print_freq == 0 or steps_completed == total_steps:
                 if args.display_prcurves and tflogger is not None:
                     # TODO PR Curve generation for Object Detection case is NOT implemented yet
@@ -1184,8 +1174,12 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                     class_preds.append(class_preds_batch)
 
                 if not args.earlyexit_thresholds:
-
                     if args.obj_detection:
+                        # Only run compute() if there is at least one new update()
+                        if have_mAP:
+                            # Remove [0] in new torchmetrics
+                            mAP = map_calculator.compute()['map_50'][0]
+                            have_mAP = False
                         stats = (
                             '',
                             OrderedDict([('Loss', losses['objective_loss'].mean),
@@ -1546,7 +1540,7 @@ def summarize_model(model, dataset, which_summary, filename='model'):
         model_summaries.draw_img_classifier_to_file(model, filename + '.png', dataset,
                                                     which_summary == 'png_w_params')
     elif which_summary in ['onnx', 'onnx_simplified']:
-        ai8x.onnx_export_prep(model, simplify=(which_summary == 'onnx_simplified'))
+        ai8x.onnx_export_prep(model, simplify=which_summary == 'onnx_simplified')
         model_summaries.export_img_classifier_to_onnx(
             model,
             filename + '.onnx',
