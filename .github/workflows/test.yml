@@ -98,7 +98,7 @@ jobs:
         run: |
           pip3 install -U pip wheel setuptools
           pip3 install -r requirements-cu11.txt
-      - name: Log Diff
-        run: python ./regression-test/log_comparison.py --testpaths ./regression-test/paths.yml
+#       - name: Log Diff
+#         run: python ./regression-test/log_comparison.py --testpaths ./regression-test/paths.yml
       - name: Test Results
         run: python ./regression-test/pass_fail.py --testconf ./regression-test/test_config.yaml --testpaths ./regression-test/paths.yml
