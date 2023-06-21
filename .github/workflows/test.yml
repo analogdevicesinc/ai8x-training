@@ -74,10 +74,10 @@ jobs:
     needs: [new-code]
     timeout-minutes: 345600
     steps:
-      - uses: actions/checkout@v2
-        name: trial-check
-        with:
-          submodules: recursive
+#       - uses: actions/checkout@v2
+#         name: trial-check
+#         with:
+#           submodules: recursive
       - name: Checkout Test Codes
         uses: actions/checkout@v2
         with:
