@@ -78,8 +78,8 @@ jobs:
 #         name: trial-check
 #         with:
 #           submodules: recursive
-      - name: Checkout Test Codes
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        name: Checkout Test Codes
         with:
 #           repository: MaximIntegratedAI/ai8x-training
           ref: test_pr
