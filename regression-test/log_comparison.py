@@ -149,7 +149,7 @@ def log_path_list(path):
 
 log_new = pathconfig["log_new"]
 log_old = pathconfig["log_old"]
-script_patha = pathconfig["script_path"]
+script_path = pathconfig["script_patha"]
 
 time = str(datetime.datetime.now())
 time = time.replace(' ', '.')
@@ -166,7 +166,7 @@ new_logs_path = log_new + loglist[-1]
 new_log_list = log_path_list(new_logs_path)
 old_log_list = log_path_list(old_logs_path)
 
-with open(script_patha, 'r', encoding='utf-8') as f:
+with open(script_path, 'r', encoding='utf-8') as f:
     scripts_t = f.read()
     scripts = scripts_t.split(' ')
 name_indices = [i+1 for i, x in enumerate(scripts) if x == "--name"]
