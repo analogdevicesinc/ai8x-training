@@ -147,14 +147,14 @@ def log_path_list(path):
     return lst
 
 
-log_new = test_path["log_new"]
-log_old = test_path["log_old"]
-script_path = test__path["script_path"]
+log_new = pathconfig["log_new"]
+log_old = pathconfig["log_old"]
+script_path = pathconfig["script_path"]
 
 time = str(datetime.datetime.now())
 time = time.replace(' ', '.')
 time = time.replace(':', '.')
-output_path = test_path["output_path"] + '/' + str(time)
+output_path = pathconfig["output_path"] + '/' + str(time)
 
 os.mkdir(output_path)
 
