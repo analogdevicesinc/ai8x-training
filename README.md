@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-April 5, 2023
+June 14, 2023
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -60,7 +60,7 @@ PyTorch operating system and hardware support are constantly evolving. This docu
 
 Full support and documentation are provided for the following platform:
 
-* CPU: 64-bit amd64/x86_64 “PC” with [Ubuntu Linux 20.04 LTS/22.04 LTS](https://ubuntu.com/download/server)
+* CPU: 64-bit amd64/x86_64 “PC” with [Ubuntu Linux 20.04 LTS or 22.04 LTS](https://ubuntu.com/download/server)
 * GPU for hardware acceleration (optional but highly recommended): Nvidia with [CUDA 11](https://developer.nvidia.com/cuda-toolkit-archive)
 * [PyTorch 1.8.1 (LTS)](https://pytorch.org/get-started/locally/) on Python 3.8.x
 
@@ -1330,11 +1330,11 @@ If hardware acceleration is not available, skip the following two steps and cont
 
 The main training software is `train.py`. It drives the training aspects, including model creation, checkpointing, model save, and status display (see `--help` for the many supported options, and the `scripts/train_*.sh` scripts for example usage).
 
-The `ai84net.py` and `ai85net.py` files contain models that fit into AI84’s weight memory. These models rely on the MAX78000/MAX78002 hardware operators that are defined in `ai8x.py`.
+The `models/` folder contains models that fit into the MAX78000 or MAX78002’s weight memory. These models rely on the MAX78000/MAX78002 hardware operators that are defined in `ai8x.py`.
 
 To train the FP32 model for MNIST on MAX78000 or MAX78002, run `scripts/train_mnist.sh` from the `ai8x-training` project. This script will place checkpoint files into the log directory. Training makes use of the Distiller framework, but the `train.py` software has been modified slightly to improve it and add some MAX78000/MAX78002 specifics.
 
-Since training can take hours or days, the training script does not overwrite any weights previously produced. Results are placed in sub-directories under `logs/` named with the date and time when training began. The latest results are always soft-linked to by `latest-log_dir` and `latest_log_file`.
+Since training can take a significant amount of time, the training script does not overwrite any weights previously produced. Results are placed in sub-directories under `logs/` named with the date and time when training began. The latest results are always soft-linked to by `latest-log_dir` and `latest_log_file`.
 
 #### Troubleshooting
 
@@ -1345,6 +1345,9 @@ Since training can take hours or days, the training script does not overwrite an
    ```shell
    $ scripts/train_mnist.sh --workers=1
    ```
+
+3. On resource constrained systems, training may abort with an error message such as `RuntimeError: unable to open shared memory object </torch_..._...> in read-write mode`. Add `--workers=0` when running the training script.
+
 
 ### Example Training Session
 
@@ -1591,8 +1594,8 @@ The following modules are predefined:
 | FusedConv1dAbs         | Conv1d, followed by Abs                 |
 | MaxPool1d | MaxPool1d |
 | FusedMaxPoolConv1d | MaxPool1d, followed by Conv1d |
-| FusedMaxPoolConv1dReLU | MaxPool2d, followed by Conv1d, and ReLU |
-| FusedMaxPoolConv1dAbs | MaxPool2d, followed by Conv1d, and Abs |
+| FusedMaxPoolConv1dReLU | MaxPool1d, followed by Conv1d, and ReLU |
+| FusedMaxPoolConv1dAbs | MaxPool1d, followed by Conv1d, and Abs |
 | AvgPool1d | AvgPool1d |
 | FusedAvgPoolConv1d | AvgPool1d, followed by Conv1d |
 | FusedAvgPoolConv1dReLU | AvgPool1d, followed by Conv1d, and ReLU |
