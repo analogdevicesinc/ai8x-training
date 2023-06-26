@@ -25,19 +25,24 @@ def joining(lst):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--testconf', help='Enter the config file for the test', required=True)
+parser.add_argument('--testpaths', help='Enter the paths for the test', required=True)
 args = parser.parse_args()
 yaml_path = args.testconf
+test_path = args.testpaths
 
 # Open the YAML file
 with open(yaml_path, 'r', encoding='utf-8') as file:
     # Load the YAML content into a Python dictionary
     config = yaml.safe_load(file)
 
-# Folder containing the files to be concatenated
-script_path = r"./scripts"
+with open(test_path, 'r') as file2:
+    # Load the YAML content into a Python dictionary
+    pathconfig = yaml.safe_load(file2)
 
+# Folder containing the files to be concatenated
+script_path = pathconfig["script_path"]
 # Output file name and path
-output_file_path = r"./scripts/output_file.sh"
+output_file_path = pathconfig["output_file_path"]
 
 # global log_file_names
 log_file_names = []

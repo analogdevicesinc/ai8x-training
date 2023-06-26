@@ -27,21 +27,25 @@ def joining(lst):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--testconf', help='Enter the config file for the test',
-                    required=True)
+parser.add_argument('--testconf', help='Enter the config file for the test', required=True)
+parser.add_argument('--testpaths', help='Enter the paths for the test', required=True)
 args = parser.parse_args()
 yaml_path = args.testconf
+test_path = args.testpaths
 
 # Open the YAML file
 with open(yaml_path, 'r', encoding='utf-8') as yaml_file:
     # Load the YAML content into a Python dictionary
     config = yaml.safe_load(yaml_file)
 
-# Folder containing the files to be concatenated
-script_path = r"/home/asyaturhal/desktop/ai/last_developed/last_dev_source/scripts"
+with open(test_path, 'r') as file2:
+    # Load the YAML content into a Python dictionary
+    pathconfig = yaml.safe_load(file2)
 
+# Folder containing the files to be concatenated
+script_path = pathconfig["script_path_dev"]
 # Output file name and path
-output_file_path = r"/home/asyaturhal/desktop/ai/last_developed/dev_scripts/last_dev_train.sh"
+output_file_path = pathconfig["output_file_path_dev"]
 
 # global log_file_names
 log_file_names = []
@@ -110,7 +114,7 @@ def dev_checkout():
     Checkout the last developed code
     """
     repo_url = "https://github.com/MaximIntegratedAI/ai8x-training.git"
-    local_path = r'/home/asyaturhal/desktop/ai/last_developed/last_dev_source/'
+    local_path = pathconfig['local_path']
 
     try:
         repo = git.Repo(local_path)
@@ -118,7 +122,7 @@ def dev_checkout():
         repo = git.Repo.clone_from(repo_url, local_path, branch="develop", recursive=True)
 
     commit_hash = repo.heads.develop.object.hexsha
-    commit_num_path = r"/home/asyaturhal/desktop/ai/last_developed/commit_number.txt"
+    commit_num_path = pathconfig['commit_num_path']
 
     try:
         with open(commit_num_path, "r", encoding='utf-8') as file:
@@ -132,20 +136,14 @@ def dev_checkout():
             repo.remotes.origin.pull("develop")
 
             dev_scripts(script_path, output_file_path)
-            cmd_command = (
-                "bash /home/asyaturhal/desktop/ai/"
-                "last_developed/dev_scripts/last_dev_train.sh"
-            )
+            cmd_command = "bash " + output_file_path
             subprocess.run(cmd_command, shell=True, check=True)
 
-            path_command = "cd  /home/asyaturhal/desktop/ai/last_developed/last_dev_source/"
+            path_command = "cd " + local_path
             subprocess.run(path_command, shell=True, check=True)
 
             source_path = "/home/asyaturhal/actions-runner/_work/ai8x-training/ai8x-training/logs/"
-            destination_path = (
-                "/home/asyaturhal/desktop/ai/last_developed/dev_logs/"
-                + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            )
+            destination_path = pathconfig["destination_path"] + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             subprocess.run(['mv', source_path, destination_path], check=True)
 
 

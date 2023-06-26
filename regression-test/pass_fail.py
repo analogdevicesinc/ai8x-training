@@ -18,15 +18,21 @@ from log_comparison import map_value_list, not_found_model
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--testconf', help='Enter the config file for the test', required=True)
+parser.add_argument('--testpaths', help='Enter the paths for the test', required=True)
 args = parser.parse_args()
 yaml_path = args.testconf
+test_path = args.testpaths
 
 # Open the YAML file
-with open(yaml_path, 'r', encoding='utf-8') as yaml_file:
+with open(yaml_path, 'r', encoding='utf-8') as file:
     # Load the YAML content into a Python dictionary
-    config = yaml.safe_load(yaml_file)
+    config = yaml.safe_load(file)
 
-log_path = r'/home/asyaturhal/desktop/ai/log_diff'
+with open(test_path, 'r') as file2:
+    # Load the YAML content into a Python dictionary
+    pathconfig = yaml.safe_load(file2)
+
+log_path = pathconfig["log_path"]
 log_path = log_path + '/' + sorted(os.listdir(log_path))[-1]
 
 
@@ -41,7 +47,10 @@ def check_top_value(file, threshold, map_value):
             lines = f.readlines()
             # Extract the last line and convert it to a float
             top1 = lines[-1].split()
-            epoch_num = int(top1[0])
+            try:
+              epoch_num = int(top1[0])
+            except ValueError:
+              return
             top1_diff = float(top1[1])
 
         if top1_diff < threshold:
@@ -58,7 +67,10 @@ def check_top_value(file, threshold, map_value):
         lines = f.readlines()
         # Extract the last line and convert it to a float
         top1 = lines[-1].split()
-        epoch_num = int(top1[0])
+        try:
+          epoch_num = int(top1[0])
+        except ValueError:
+          return
         top1_diff = float(top1[1])
         # top5_diff = float(top1[2])
 

@@ -3213,34 +3213,33 @@ See the [benchmarking guide](https://github.com/MaximIntegratedAI/MaximAI_Docume
 
 
 
-## Regression Test
+##Regression Test
 
-Regression test for ai8xtraining repo is tested when there is a pull request for develop branch of MaximIntegratedAI/ai8x-training by triggering test.yaml github actions.
+The regression test for the ai8xtraining repo is tested when there is a pull request for develop branch of MaximIntegratedAI/ai8x-training by triggering test.yaml Github actions.
 
-### Last Developed Code Training
+###Last Developed Code Training
 
-last_dev.py code generates the log files of the last developed and tested code. These log files are used for comparing the new pushed code to check if there is any change in the trained values. Tracking is done by checking hex number of the repository.
+last_dev.py code generates the log files of the last developed and tested code. These log files are used for comparing the newly pushed code to check if there is any change in the trained values. Tracking is done by checking the hex number of the repository.
 
-### Creating Test Scripts
+###Creating Test Scripts
 
-There are training scripts that are developed under the scripts path. In order to create training scripts for regression test, these scripts are rewritten by changing their epoch number by running create_test_script.py code. The aim for changing the epoch number is to keep the duration of the test under control. This epoch number is defined in the test_config.yaml file for each model dataset combination. Since the sizes of the models are different, different epoch numbers can be defined for each of them in order to create a healthy test. If a new training script is added, the epoch number and threshold values must be defined in the test_config.yaml file for the relevant model.
+There are training scripts that are developed under the path of the scripts. In order to create training scripts for regression tests, these scripts are rewritten by changing their epoch numbers by running the create_test_script.py code. The aim of changing the epoch number is to keep the duration of the test under control. This epoch number is defined in the test_config.yaml file for each model dataset combination. Since the sizes of the models are different, different epoch numbers can be defined for each of them in order to create a healthy test. If a new training script is added, the epoch number and threshold values must be defined in the test_config.yaml file for the relevant model.
 
-### Comparing Log Files
+###Comparing Log Files
 
-After running test scripts for new pushed code, it’s log files are saved and compared with last developed code’s log files by running log_comparison.py and results are also saved.
+After running test scripts for newly pushed code, its log files are saved and compared with the last developed code’s log files by running log_comparison.py, and results are also saved.
 
-### Pass Fail Decision
+###Pass-Fail Decision
 
-In the comparison, the test's success criterion is that the difference does not exceed the threshold value defined in the test_config.yaml file as a percentage. If all the training scripts passed the test, pass_fail.py code completes with success. Otherwise it fails and exits by cancelling pull request.
+In the comparison, the test’s success criterion is that the difference does not exceed the threshold value defined in the test_config.yaml file as a percentage. If all the training scripts pass the test, the pass_fail.py code completes with success. Otherwise, it fails and exits.
 
-### Onnx Export
+###ONNX Export
 
-Scripts for onnx export are created and ran by running create_onnx_scripts.py by configuring ‘Onnx_Status: True’ in test_config.yaml . If it is set as ‘False’ onnx export won't be done.
+Scripts for ONNX export are created and run by running create_onnx_scripts.py by configuring ‘Onnx_Status: True’ in test_config.yaml. If it is set as ‘False’ ONNX export won’t be done.
 
-### Test Configuration
+###Configuration
 
-In test_config.yaml file Onnx_Status and Qat_Test should be ste to 'true' if you want to create onnx export or make qat test by using policies/qat_policy.yaml. When Qat_Test is set to false qat will be done according to the main training script. All the threshold values and test epoch numbers for each model dataset combination are also configured in this file.
-
+In the test_config.yaml file Onnx_Status and Qat_Test should be set to ‘true’ if you want to create ONNX export or make a qat test by using policies/qat_policy.yaml. When Qat_Test is set to false, qat will be done according to the main training script. All the threshold values and test epoch numbers for each model dataset combination are also configured in this file. In order to set up the test for yourself, paths.yml file needs to be configured accordingly.
 
 ## Further Information
 
