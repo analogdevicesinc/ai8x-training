@@ -443,8 +443,6 @@ def SVHN_get_datasets(data, load_train=True, load_test=True, resize_size=(96, 96
         train_dataset = SVHN(root_dir=data_dir, d_type='train',
                              transform=train_transform, resize_size=resize_size,
                              fold_ratio=fold_ratio, simplified=simplified)
-
-        print(f'Train dataset length: {len(train_dataset)}\n')
     else:
         train_dataset = None
 
@@ -455,8 +453,6 @@ def SVHN_get_datasets(data, load_train=True, load_test=True, resize_size=(96, 96
         test_dataset = SVHN(root_dir=data_dir, d_type='test',
                             transform=test_transform, resize_size=resize_size,
                             fold_ratio=fold_ratio, simplified=simplified)
-
-        print(f'Test dataset length: {len(test_dataset)}\n')
     else:
         test_dataset = None
 
