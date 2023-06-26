@@ -448,12 +448,10 @@ class Kinetics(Dataset):
 
         if self.transform is not None:
             images = [self.transform(img).type(torch.float) for img in images]
-            for x in range(len(images)-1):
-                images_concat.append(torch.cat((images[x], images[x+1]), dim=0))
+            images_concat = [torch.cat((x, y), dim=0) for x, y in zip(images, images[1:])]
             images_final = torch.stack(images_concat)
         else:  # No transform
-            for x in range(len(images)-1):
-                images_concat.append(np.concatenate((images[x], images[x+1]), axis=2))
+            images_concat = [np.concatenate((x, y), axis=2) for x, y in zip(images, images[1:])]
             images_final = \
                 torch.Tensor(np.array(images_concat).transpose((0, 3, 1, 2))).type(torch.float)
 
