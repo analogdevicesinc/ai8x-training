@@ -15,9 +15,7 @@ import os
 import sys
 
 import yaml
-
 from tabulate import tabulate
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--testconf', help='Enter the config file for the test', required=True)
@@ -31,7 +29,7 @@ with open(yaml_path, 'r', encoding='utf-8') as yaml_file:
     # Load the YAML content into a Python dictionary
     config = yaml.safe_load(yaml_file)
 
-with open(test_path, 'r') as file2:
+with open(test_path, 'r', encoding='utf-8') as file2:
     # Load the YAML content into a Python dictionary
     pathconfig = yaml.safe_load(file2)
 
@@ -49,10 +47,10 @@ def compare_logs(old_log, new_log, output_name, output_pth):
     ex_list = [False]
 
     with open(new_log, 'r', encoding='utf-8') as f2:
-        file2 = f2.read()
+        file2r = f2.read()
         log_name = new_log.split('/')[-1].split('___')[0]
 
-        if word2 not in file2 and word3 not in file2:
+        if word2 not in file2r and word3 not in file2r:
             print(f"\033[31m\u2718\033[0m {log_name} does not have any trained results."
                   " There is an error in training.")
             ex_list.append(True)
@@ -110,8 +108,8 @@ def compare_logs(old_log, new_log, output_name, output_pth):
         i = 0
         for (list1, list2) in zip(log1_list, log2_list):
             if float(list1[1]) == 0:
-                  print("Top1 value of " + output_name + " is 0.00.")
-                  list1[1] = 0.000001
+                print("Top1 value of " + output_name + " is 0.00.")
+                list1[1] = 0.000001
             i = i+1
             if '[Top1:' in list2:
                 top1_diff = ((float(list2[1])-float(list1[1]))/float(list1[1]))*100
@@ -130,8 +128,8 @@ def compare_logs(old_log, new_log, output_name, output_pth):
         i = 0
         for (map1, map2) in zip(mAP_list1, mAP_list2):
             if float(map1[1]) == 0:
-                  print("Map value of " + output_name + " is 0.00.")
-                  map1[1] = 0.000001
+                print("Map value of " + output_name + " is 0.00.")
+                map1[1] = 0.000001
             i = i+1
             if '[mAP:' in map2:
                 map_diff = ((float(map2[1])-float(map1[1]))/float(map1[1]))*100

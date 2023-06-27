@@ -48,7 +48,7 @@ with open(yaml_path, 'r', encoding='utf-8') as file:
     # Load the YAML content into a Python dictionary
     config = yaml.safe_load(file)
 
-with open(test_path, 'r') as file2:
+with open(test_path, 'r', encoding='utf-8') as file2:
     # Load the YAML content into a Python dictionary
     pathconfig = yaml.safe_load(file2)
 
