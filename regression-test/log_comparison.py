@@ -129,7 +129,7 @@ def compare_logs(old_log, new_log, output_name, output_pth):
         for (map1, map2) in zip(mAP_list1, mAP_list2):
             if float(map1[1]) == 0:
                 print("Map value of " + output_name + " is 0.00.")
-                 map1[1] = 0.000001
+                map1[1] = 0.000001
             i = i+1
             if '[mAP:' in map2:
                 map_diff = ((float(map2[1])-float(map1[1]))/float(map1[1]))*100
