@@ -28,7 +28,7 @@ with open(yaml_path, 'r', encoding='utf-8') as file:
     # Load the YAML content into a Python dictionary
     config = yaml.safe_load(file)
 
-with open(test_path, 'r') as file2:
+with open(test_path, 'r', encoding='utf-8') as file2:
     # Load the YAML content into a Python dictionary
     pathconfig = yaml.safe_load(file2)
 
@@ -48,9 +48,9 @@ def check_top_value(file, threshold, map_value):
             # Extract the last line and convert it to a float
             top1 = lines[-1].split()
             try:
-              epoch_num = int(top1[0])
+                epoch_num = int(top1[0])
             except ValueError:
-              return
+                return
             top1_diff = float(top1[1])
 
         if top1_diff < threshold:
@@ -68,9 +68,9 @@ def check_top_value(file, threshold, map_value):
         # Extract the last line and convert it to a float
         top1 = lines[-1].split()
         try:
-          epoch_num = int(top1[0])
+            epoch_num = int(top1[0])
         except ValueError:
-          return
+            return
         top1_diff = float(top1[1])
         # top5_diff = float(top1[2])
 

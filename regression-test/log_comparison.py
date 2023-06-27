@@ -15,9 +15,7 @@ import os
 import sys
 
 import yaml
-
 from tabulate import tabulate
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--testconf', help='Enter the config file for the test', required=True)
@@ -31,7 +29,7 @@ with open(yaml_path, 'r', encoding='utf-8') as yaml_file:
     # Load the YAML content into a Python dictionary
     config = yaml.safe_load(yaml_file)
 
-with open(test_path, 'r') as file2:
+with open(test_path, 'r', encoding='utf-8')  as file2:
     # Load the YAML content into a Python dictionary
     pathconfig = yaml.safe_load(file2)
 
@@ -110,8 +108,8 @@ def compare_logs(old_log, new_log, output_name, output_pth):
         i = 0
         for (list1, list2) in zip(log1_list, log2_list):
             if float(list1[1]) == 0:
-                  print("Top1 value of " + output_name + " is 0.00.")
-                  list1[1] = 0.000001
+                print("Top1 value of " + output_name + " is 0.00.")
+                list1[1] = 0.000001
             i = i+1
             if '[Top1:' in list2:
                 top1_diff = ((float(list2[1])-float(list1[1]))/float(list1[1]))*100
@@ -130,8 +128,8 @@ def compare_logs(old_log, new_log, output_name, output_pth):
         i = 0
         for (map1, map2) in zip(mAP_list1, mAP_list2):
             if float(map1[1]) == 0:
-                  print("Map value of " + output_name + " is 0.00.")
-                  map1[1] = 0.000001
+                print("Map value of " + output_name + " is 0.00.")
+                 map1[1] = 0.000001
             i = i+1
             if '[mAP:' in map2:
                 map_diff = ((float(map2[1])-float(map1[1]))/float(map1[1]))*100

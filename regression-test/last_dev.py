@@ -38,7 +38,7 @@ with open(yaml_path, 'r', encoding='utf-8') as yaml_file:
     # Load the YAML content into a Python dictionary
     config = yaml.safe_load(yaml_file)
 
-with open(test_path, 'r') as file2:
+with open(test_path, 'r', encoding='utf-8') as file2:
     # Load the YAML content into a Python dictionary
     pathconfig = yaml.safe_load(file2)
 
@@ -143,7 +143,10 @@ def dev_checkout():
             subprocess.run(path_command, shell=True, check=True)
 
             source_path = "/home/asyaturhal/actions-runner/_work/ai8x-training/ai8x-training/logs/"
-            destination_path = pathconfig["destination_path"] + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            destination_path = (
+                                pathconfig["destination_path"]
+                                + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                                )
             subprocess.run(['mv', source_path, destination_path], check=True)
 
 
