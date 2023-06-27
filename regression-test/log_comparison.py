@@ -47,10 +47,10 @@ def compare_logs(old_log, new_log, output_name, output_pth):
     ex_list = [False]
 
     with open(new_log, 'r', encoding='utf-8') as f2:
-        file2 = f2.read()
+        file2_content = f2.read()
         log_name = new_log.split('/')[-1].split('___')[0]
 
-        if word2 not in file2 and word3 not in file2:
+        if word2 not in file2_content and word3 not in file2_content:
             print(f"\033[31m\u2718\033[0m {log_name} does not have any trained results."
                   " There is an error in training.")
             ex_list.append(True)

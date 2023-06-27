@@ -36,21 +36,21 @@ log_path = pathconfig["log_path"]
 log_path = log_path + '/' + sorted(os.listdir(log_path))[-1]
 
 
-def check_top_value(file, threshold, map_value):
+def check_top_value(diff_file, threshold, map_value):
     """
     Compare Top1 value with threshold
     """
     if not map_value:
-        with open(file, 'r', encoding='utf-8') as f:
-            model_name = file.split('/')[-1].split('___')[0]
-            # Read all lines in the file
+        with open(diff_file, 'r', encoding='utf-8') as f:
+            model_name = diff_file.split('/')[-1].split('___')[0]
+            # Read all lines in the diff_file
             lines = f.readlines()
             # Extract the last line and convert it to a float
             top1 = lines[-1].split()
             try:
                 epoch_num = int(top1[0])
             except ValueError:
-                return
+                return False
             top1_diff = float(top1[1])
 
         if top1_diff < threshold:
@@ -61,16 +61,16 @@ def check_top_value(file, threshold, map_value):
               f" Top1 value changed {top1_diff} % at {epoch_num}th epoch.")
         return True
 
-    with open(file, 'r', encoding='utf-8') as f:
-        model_name = file.split('/')[-1].split('___')[0]
-        # Read all lines in the file
+    with open(diff_file, 'r', encoding='utf-8') as f:
+        model_name = diff_file.split('/')[-1].split('___')[0]
+        # Read all lines in the diff_file
         lines = f.readlines()
         # Extract the last line and convert it to a float
         top1 = lines[-1].split()
         try:
             epoch_num = int(top1[0])
         except ValueError:
-            return
+            return False
         top1_diff = float(top1[1])
         # top5_diff = float(top1[2])
 
