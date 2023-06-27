@@ -70,6 +70,8 @@ class AI85ActionTCN(nn.Module):
         self.drop3 = nn.Dropout2d(dropout)
         self.drop4 = nn.Dropout2d(dropout)
 
+        self.add = ai8x.Add()
+
         self.tcn0 = ai8x.FusedConv1dBNReLU(len_frame_vector, len_frame_vector, 3, padding=0,
                                            stride=1, dilation=1, bias=bias, batchnorm=bn, **kwargs)
         self.tcn1 = ai8x.FusedConv1dBNReLU(len_frame_vector, len_frame_vector, 3, padding=0,
@@ -92,17 +94,17 @@ class AI85ActionTCN(nn.Module):
         c = self.conv2(cx)
         c = self.conv2_1(c)
         cp = self.conv2_p(cx)
-        cx = cp + self.drop2(c)
+        cx = self.add(cp, self.drop2(c))
 
         c = self.conv3(cx)
         c = self.conv3_1(c)
         cp = self.conv3_p(cx)
-        cx = cp + self.drop3(c)
+        cx = self.add(cp, self.drop3(c))
 
         c = self.conv4(cx)
         c = self.conv4_1(c)
         cp = self.conv4_p(cx)
-        cx = cp + self.drop4(c)
+        cx = self.add(cp, self.drop4(c))
 
         c = self.conv5(cx)
 
