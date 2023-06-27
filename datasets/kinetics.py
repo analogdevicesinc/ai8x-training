@@ -443,19 +443,18 @@ class Kinetics(Dataset):
                 else:
                     images[x] = images_transformed['image' + str(x - 1)]
 
+        images = [self.__normalize_image(img) for img in images]  # Normalize images
         images_concat = []
-        for x in range(len(images)-1):
-            images_concat.append(np.concatenate((images[x], images[x+1]), axis=2))
-
-        images = [self.__normalize_image(img) for img in images_concat]  # Normalize images
 
         if self.transform is not None:
-            images_transformed = [self.transform(img) for img in images]
-            images_list = [img.numpy() for img in images_transformed]
-            images_final = torch.Tensor(np.array(images_list))
+            images = [self.transform(img).type(torch.float) for img in images]
+            images_concat = [torch.cat((x, y), dim=0) for x, y in zip(images, images[1:])]
+            images_final = torch.stack(images_concat)
         else:  # No transform
-            images_list = images
-            images_final = torch.Tensor(np.array(images_list).transpose((0, 3, 1, 2)))
+            images_concat = [np.concatenate((x, y), axis=2) for x, y in zip(images, images[1:])]
+            images_final = \
+                torch.Tensor(np.array(images_concat).transpose((0, 3, 1, 2))).type(torch.float)
+
         return images_final, torch.tensor(lab, dtype=torch.long)
 
     @staticmethod
