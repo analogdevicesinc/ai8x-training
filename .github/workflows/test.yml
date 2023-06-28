@@ -1,48 +1,46 @@
 name: auto-testing
-# on:
-#   pull_request:
-#     branches:
-#       - develop
-on: 
-  push:
+on:
+  pull_request:
+    branches:
+      - develop
 
 jobs:
-#   build:
-#     runs-on: self-hosted
-#     timeout-minutes: 345600
-#     steps:
-#       - name: Checkout last-dev
-#         uses: actions/checkout@v2
-#         with:
-# #           repository: MaximIntegratedAI/ai8x-training
-#           ref: test
-#           submodules: recursive
-#       - name: Setup Pyenv and Install Dependencies
-#         uses: gabrielfalcao/pyenv-action@v13
-#         with:
-#           default: 3.8.11
-#       - name: Create Venv
-#         run: |
-#           pyenv local 3.8.11
-#           python3 -m venv venv --prompt ai8x-training
-#       - name: Activate Venv
-#         run: source venv/bin/activate
-#       - name: Install Dependencies
-#         run: |
-#           pip3 install -U pip wheel setuptools
-#           pip3 install -r requirements-cu11.txt
-#       - name: Last Develop Check
-#         run: python ./regression-test/last_dev.py --testconf ./regression-test/test_config.yml --testpaths ./regression-test/paths.yml
+  build:
+    runs-on: self-hosted
+    timeout-minutes: 345600
+    steps:
+      - name: Checkout last-dev
+        uses: actions/checkout@v2
+        with:
+          repository: MaximIntegratedAI/ai8x-training
+          ref: develop
+          submodules: recursive
+      - name: Setup Pyenv and Install Dependencies
+        uses: gabrielfalcao/pyenv-action@v13
+        with:
+          default: 3.8.11
+      - name: Create Venv
+        run: |
+          pyenv local 3.8.11
+          python3 -m venv venv --prompt ai8x-training
+      - name: Activate Venv
+        run: source venv/bin/activate
+      - name: Install Dependencies
+        run: |
+          pip3 install -U pip wheel setuptools
+          pip3 install -r requirements-cu11.txt
+      - name: Last Develop Check
+        run: python ./regression-test/last_dev.py --testconf ./regression-test/test_config.yml --testpaths ./regression-test/paths.yml
 
   new-code:
     runs-on: self-hosted
-#     needs: [build]
+    needs: [build]
     timeout-minutes: 345600
     steps:
       - uses: actions/checkout@v2
         with:
-#           repository: MaximIntegratedAI/ai8x-training
-          ref: test
+          repository: MaximIntegratedAI/ai8x-training
+          ref: develop
           submodules: recursive
       - name: Setup Pyenv and Install Dependencies
         uses: gabrielfalcao/pyenv-action@v13
@@ -71,14 +69,14 @@ jobs:
 
   test-results:
     runs-on: self-hosted
-#     needs: [new-code]
+    needs: [new-code]
     timeout-minutes: 345600
     steps:
       - uses: actions/checkout@v2
         name: Checkout Test Codes
         with:
-#           repository: MaximIntegratedAI/ai8x-training
-          ref: test
+          repository: MaximIntegratedAI/ai8x-training
+          ref: develop
           submodules: recursive
       - name: Setup Pyenv and Install Dependencies
         uses: gabrielfalcao/pyenv-action@v13
