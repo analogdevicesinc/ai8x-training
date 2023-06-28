@@ -50,6 +50,8 @@ def check_top_value(diff_file, threshold, map_value):
             try:
                 epoch_num = int(top1[0])
             except ValueError:
+                print(f"\033[31m\u2718\033[0m Test failed for {model_name}: "
+                      f"Cannot convert {top1[0]} to an epoch number.")
                 return False
             top1_diff = float(top1[1])
 
@@ -70,6 +72,8 @@ def check_top_value(diff_file, threshold, map_value):
         try:
             epoch_num = int(top1[0])
         except ValueError:
+            print(f"\033[31m\u2718\033[0m Test failed for {model_name}: "
+                  f"Cannot convert {top1[0]} to an epoch number.")
             return False
         top1_diff = float(top1[1])
         # top5_diff = float(top1[2])

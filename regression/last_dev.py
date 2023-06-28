@@ -16,6 +16,7 @@ import subprocess
 
 import git
 import yaml
+from git.exc import InvalidGitRepositoryError
 
 
 def joining(lst):
@@ -118,7 +119,7 @@ def dev_checkout():
 
     try:
         repo = git.Repo(local_path)
-    except git.exc.InvalidGitRepositoryError:
+    except InvalidGitRepositoryError:
         repo = git.Repo.clone_from(repo_url, local_path, branch="develop", recursive=True)
 
     commit_hash = repo.heads.develop.object.hexsha
@@ -143,10 +144,8 @@ def dev_checkout():
             subprocess.run(path_command, shell=True, check=True)
 
             source_path = "/home/asyaturhal/actions-runner/_work/ai8x-training/ai8x-training/logs/"
-            destination_path = (
-                                pathconfig["destination_path"]
-                                + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                                )
+            destination_path = pathconfig["destination_path"] \
+                + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             subprocess.run(['mv', source_path, destination_path], check=True)
 
 
