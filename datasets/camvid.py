@@ -74,8 +74,8 @@ class CamVidDataset(Dataset):
             lbl = np.zeros((lbl_rgb.shape[0], lbl_rgb.shape[1]), dtype=np.uint8)
 
             for label_idx, (_, mask) in enumerate(self.label_mask_dict.items()):
-                res = (lbl_rgb == mask)
-                res = (label_idx+1) * res.all(axis=2)
+                res = lbl_rgb == mask
+                res = (label_idx + 1) * res.all(axis=2)
                 lbl += res.astype(np.uint8)
 
             y_start = 0
@@ -153,7 +153,7 @@ class CamVidDataset(Dataset):
     def __getitem__(self, idx):
         if self.transform is not None:
             img = self.transform(self.img_list[idx])
-        return img, self.lbl_list[idx].astype(np.long)
+        return img, self.lbl_list[idx].astype(np.int64)
 
 
 def camvid_get_datasets_s80(data, load_train=True, load_test=True, num_classes=33):

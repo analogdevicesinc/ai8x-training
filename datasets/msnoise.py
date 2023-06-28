@@ -301,7 +301,7 @@ class MSnoise:
                             record, fs = librosa.load(record_path, offset=0, sr=None)
                             rec_len = np.size(record)
                             max_start_time = \
-                                ((rec_len / fs - 1) - (rec_len / fs % noise_time_step))
+                                (rec_len / fs - 1) - (rec_len / fs % noise_time_step)
                             for start_time in np.arange(0,
                                                         int((max_start_time+noise_time_step)*fs),
                                                         int(noise_time_step*fs)):

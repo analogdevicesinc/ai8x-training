@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-June 14, 2023
+June 27, 2023
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -2681,7 +2681,69 @@ Certain networks share weights between layers. The tools automatically deduplica
 Example:
         `weight_source: conv1p3`
 
-##### Dropout and Batch Normalization
+#### Rolling Buffers
+
+Certain networks (such as TCN) require rolling data buffers. These are implemented in the YAML file (for a complete example, please see `networks/ai85-kinetics-actiontcn.yaml`).
+
+##### `data_buffer` (Global)
+
+The data buffer is allocated and named using the global `data_buffer` configuration key. `processor`,  `dim` (1D or 2D), `channels`, and `offset` must be defined.
+
+Example:
+
+```yaml
+data_buffer:
+  - processors: 0xffffffff00000000
+    dim: 15
+    channels: 32
+    offset: 0x7fc4
+    name: tcn_buffer
+```
+
+##### `buffer_shift` (per layer)
+
+The buffer is shifted `n` places using `buffer_shift: n`. `in_offset` and `in_dim` are required.
+
+Example:
+
+```yaml
+- processors: 0xffffffff00000000
+    output_processors: 0xffffffff00000000
+    in_offset: 0x7FC8
+    in_channels: 32
+    in_dim: 14
+    in_sequences: tcn_buffer
+    out_offset: 0x7fc4
+    operation: passthrough
+    buffer_shift: 1
+    name: buffer_shift
+```
+
+##### `buffer_insert` (per layer)
+
+New data is added using `buffer_insert: n`.
+
+Example:
+
+```yaml
+ - processors: 0xffffffffffffffff
+    output_processors: 0xffffffff00000000
+    in_offset: 0x5000
+    out_offset: 0x7FFC
+    operation: Conv2d
+    in_sequences: res4_out
+    buffer_insert: 1
+    kernel_size: 3x3
+    pad: 0
+    activate: ReLU
+    name: conv5
+```
+
+##### Buffer use
+
+The buffer is used with `in_sequences`, in the example `in_sequences: tcn_buffer`. To use the buffer contents as input, `in_offset` and `in_dim` are required.
+
+#### Dropout and Batch Normalization
 
 * Dropout is only used during training, and corresponding YAML entries are not needed.
 * Batch normalization (“batchnorm”) is fused into the preceding layer’s weights and bias values (see [Batch Normalization](#batch-normalization)), and YAML entries are not needed.

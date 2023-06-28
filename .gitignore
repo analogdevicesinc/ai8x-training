@@ -17,4 +17,5 @@
 **/__pycache__/
 /super-linter.log
 /super-linter.report
-/venv/
+/venv*/
+/typings/
