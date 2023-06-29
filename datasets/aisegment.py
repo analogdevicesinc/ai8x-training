@@ -360,7 +360,7 @@ class AISegment(Dataset):
         if self.transform is not None:
             img = self.transform(img)
 
-        return img, lbl.astype(np.long)
+        return img, lbl.astype(np.int64)
 
 
 def AISegment_get_datasets(data, load_train=True, load_test=True, im_size=(80, 80),
