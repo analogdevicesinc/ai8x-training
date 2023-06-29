@@ -388,7 +388,7 @@ class Kinetics(Dataset):
 
         (imgs, lab, _) = self.dataset[index]
 
-        start_ind = np.random.randint(low=0, high=(len(imgs)-self.num_frames_model+1))
+        start_ind = np.random.randint(low=0, high=len(imgs) - self.num_frames_model + 1)
         images = imgs[start_ind:start_ind+self.num_frames_model]
 
         transforms_album = []

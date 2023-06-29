@@ -44,7 +44,7 @@ class AFSK(Dataset):
             with open(os.path.join(self.processed_path, self.train1fn), 'rb') as fd:
                 onebits = np.fromfile(fd, dtype=np.uint8)
         else:
-            raise Exception('Unable to locate training data')
+            raise RuntimeError('Unable to locate training data')
 
         # Make available an equal amount from each classification
         numbitper = int(min([len(zerobits), len(onebits)]) / BYTES_PER_SAMPLE)
@@ -71,10 +71,12 @@ class AFSK(Dataset):
         return self.avail
 
     def __getitem__(self, idx):
+        assert self.data is not None and self.avail is not None
+
         # Index [0 avail) to byte offset
         offs = idx * BYTES_PER_SAMPLE
 
-        sampl = self.data[offs:offs + BYTES_PER_SAMPLE].astype(np.float)
+        sampl = self.data[offs:offs + BYTES_PER_SAMPLE].astype(np.float64)
 
         # min-max normalization (rescaling)
         _min = sampl.min()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 ###################################################################################################
 #
-# Copyright (C) 2020-2021 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2020-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -21,7 +21,7 @@ def create_input_data(num_channels):
     '''
     Creates random data
     '''
-    inp = (2.0 * torch.rand(1, num_channels, 8, 8) - 1.0)  # pylint: disable=no-member
+    inp = 2.0 * torch.rand(1, num_channels, 8, 8) - 1.0  # pylint: disable=no-member
     inp_int = torch.clamp(torch.round(128 * inp), min=-128, max=127.)  # pylint: disable=no-member
     inp = inp_int / 128.
 
