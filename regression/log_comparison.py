@@ -154,7 +154,7 @@ def log_path_list(path):
 
 log_new = pathconfig["log_new"]
 log_old = pathconfig["log_old"]
-script_path = pathconfig["script_patha"]
+script_path = pathconfig["script_path_log"]
 
 time = str(datetime.datetime.now())
 time = time.replace(' ', '.')
