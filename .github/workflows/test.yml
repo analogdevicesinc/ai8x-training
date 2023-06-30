@@ -31,7 +31,7 @@ jobs:
           pip3 install -U pip wheel setuptools
           pip3 install -r requirements-cu11.txt
       - name: Last Develop Check
-        run: python ./regression/last_dev.py --testconf ./regression/test_config.yml --testpaths ./regression/paths.yml
+        run: python ./regression/last_dev.py --testconf ./regression/test_config.yaml --testpaths ./regression/paths.yaml
 
   new-code:
     runs-on: self-hosted
@@ -58,7 +58,7 @@ jobs:
           pip3 install -U pip wheel setuptools
           pip3 install -r requirements-cu11.txt
       - name: Create Test Script
-        run: python ./regression/create_test_script.py --testconf ./regression/test_config.yml --testpaths ./regression/paths.yml
+        run: python ./regression/create_test_script.py --testconf ./regression/test_config.yaml --testpaths ./regression/paths.yaml
       - name: Run Training Scripts
         run: bash /home/asyaturhal/actions-runner/_work/ai8x-training/ai8x-training/scripts/output_file.sh
       - name: Save Log Files
@@ -66,7 +66,7 @@ jobs:
       - name: Save test scripts
         run: cp -r /home/asyaturhal/actions-runner/_work/ai8x-training/ai8x-training/scripts/output_file.sh /home/asyaturhal/desktop/ai/test_scripts/
       - name: Create and run ONNX script
-        run: python ./regression/create_onnx_script.py --testconf ./regression/test_config.yml --testpaths ./regression/paths.yml
+        run: python ./regression/create_onnx_script.py --testconf ./regression/test_config.yaml --testpaths ./regression/paths.yaml
 
   test-results:
     runs-on: self-hosted
@@ -94,6 +94,6 @@ jobs:
           pip3 install -U pip wheel setuptools
           pip3 install -r requirements-cu11.txt
       - name: Log Diff
-        run: python ./regression/log_comparison.py --testconf ./regression/test_config.yml --testpaths ./regression/paths.yml
+        run: python ./regression/log_comparison.py --testconf ./regression/test_config.yaml --testpaths ./regression/paths.yaml
       - name: Test Results
-        run: python ./regression/pass_fail.py --testconf ./regression/test_config.yml --testpaths ./regression/paths.yml
+        run: python ./regression/pass_fail.py --testconf ./regression/test_config.yaml --testpaths ./regression/paths.yaml
