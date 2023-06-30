@@ -88,7 +88,7 @@ PascalVOC_2007_2012_256_320_augmented:
     threshold: -500
     epoch: 15
 Kinetics400:
-  datapath: "/data_ssd"
+  datapath: "/data/alican_data/"
   ai85actiontcn:
     threshold: -500
     epoch: 15
