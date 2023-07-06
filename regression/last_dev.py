@@ -144,7 +144,10 @@ def dev_checkout():
             subprocess.run(path_command, shell=True, check=True)
 
             source_path = pathconfig["source_path"]
-            destination_path = os.path.join(pathconfig["destination_path"], datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+            destination_path = os.path.join(
+                pathconfig["destination_path"],
+                datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            )
             subprocess.run(['mv', source_path, destination_path], check=True)
 
 
