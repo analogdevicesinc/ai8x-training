@@ -143,7 +143,7 @@ def dev_checkout():
             path_command = "cd " + local_path
             subprocess.run(path_command, shell=True, check=True)
 
-            source_path = pathconfig["source_path/home/asyaturhal/actions-runner/_work/ai8x-training/ai8x-training/logs/"
+            source_path = pathconfig["source_path']
             destination_path = os.path.join(pathconfig["destination_path"], datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
             subprocess.run(['mv', source_path, destination_path], check=True)
 
