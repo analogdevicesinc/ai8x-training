@@ -120,7 +120,7 @@ def compare_logs(old_log, new_log, output_name, output_pth):
                 top5_diff = ((float(list2[3])-float(list1[3]))/float(list1[1]))*100
                 top1[i-1].append(top5_diff)
 
-        output_path_2 = output_pth + '/' + output_name + '.txt'
+        output_path_2 = os.path.join(output_pth, (output_name + '.txt'))
         with open(output_path_2, "w", encoding='utf-8') as output_file:
             output_file.write(tabulate(top1, headers=header))
 
@@ -136,7 +136,7 @@ def compare_logs(old_log, new_log, output_name, output_pth):
                 map_list.append([i])
                 map_list[i-1].append(map_diff)
 
-        output_path_2 = output_pth + '/' + output_name + '.txt'
+        output_path_2 = os.path.join(output_pth, (output_name + '.txt'))
         with open(output_path_2, "w", encoding='utf-8') as output_file:
             output_file.write(tabulate(map_list, headers=header_map))
     return map_value
@@ -199,8 +199,8 @@ for files_new in sorted(os.listdir(new_logs_path)):
         files_old_temp = files_old.split("___")[0]
         if files_old_temp == files_new_temp:
 
-            old_path = old_logs_path + '/' + files_old
-            new_path = new_logs_path + '/' + files_new
+            old_path = os.path.join(old_logs_path, files_old)
+            new_path = os.path.join(new_logs_path, files_new)
 
             old_files = sorted(os.listdir(old_path))
             new_files = sorted(os.listdir(new_path))
@@ -208,8 +208,8 @@ for files_new in sorted(os.listdir(new_logs_path)):
             old_log_file = [file for file in old_files if file.endswith(".log")][0]
             new_log_file = [file for file in new_files if file.endswith(".log")][0]
 
-            old_path_log = old_path + '/' + old_log_file
-            new_path_log = new_path + '/' + new_log_file
+            old_path_log = os.path.join(old_path, old_log_file)
+            new_path_log = os.path.join(new_path, new_log_file)
 
             map_value_list[files_new_temp] = compare_logs(
                 old_path_log, new_path_log, files_new, output_path

@@ -33,7 +33,7 @@ with open(test_path, 'r', encoding='utf-8') as file2:
     pathconfig = yaml.safe_load(file2)
 
 log_path = pathconfig["log_path"]
-log_path = log_path + '/' + sorted(os.listdir(log_path))[-1]
+log_path = os.path.join(log_path, sorted(os.listdir(log_path))[-1])
 
 
 def check_top_value(diff_file, threshold, map_value):
@@ -100,7 +100,7 @@ for logs in sorted(os.listdir(log_path)):
         threshold_temp = float(config[f'{log_data}'][f'{log_model}']['threshold'])
     else:
         threshold_temp = 0
-    logs = log_path + '/' + str(logs)
+    logs = os.path.join(log_path, str(logs))
     map_val = map_value_list[log_name]
     passing.append(check_top_value(logs, threshold_temp, map_val))
 
