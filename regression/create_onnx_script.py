@@ -98,7 +98,7 @@ with open(output_file_path, "w", encoding='utf-8') as onnx_scripts:
         temp_path = os.path.join(logs_list, file_p)
         for temp_file in sorted(os.listdir(temp_path)):
             if temp_file.endswith("_checkpoint.pth.tar"):
-                temp = f"{temp_path}/{temp_file}"
+                temp = os.path.join(temp_path,temp_file)
                 model_paths.append(temp)
                 tar_names.append(temp_file)
 
