@@ -8,7 +8,7 @@ The regression test for the `ai8x-training` repository is tested when there is a
 
 ## Creating Test Scripts
 
-The sample training scripts are under the `scripts` path. In order to create training scripts for regression tests, these scripts are rewritten by changing their epoch numbers by running `regression/create_test_script.py`. The aim of changing the epoch number is to keep the duration of the test under control. This epoch number is defined in `regression/test_config.yaml` for each model/dataset combination. Since the sizes of the models are different, different epoch numbers can be defined for each of them in order to create a healthy test. If a new training script is added, the epoch number and threshold values must be defined in the `regression/test_config.yaml` file for the relevant model.
+The sample training scripts are under the `scripts` path. In order to create training scripts for regression tests, these scripts are rewritten by changing their epoch numbers by running `regression/create_test_script.py`. The aim of changing the epoch number is to keep the duration of the test under control. This epoch number is defined in `regression/test_config.yaml` for each model/dataset combination. Since the sizes of the models and the datasets are varying, different epoch numbers can be defined for each of them in order to create a healthy test. If a new training script is added, the epoch number and threshold values must be defined in the `regression/test_config.yaml` file for the relevant model.
 
 ## Comparing Log Files
 

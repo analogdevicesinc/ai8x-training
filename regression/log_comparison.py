@@ -1,9 +1,7 @@
 ###################################################################################################
 #
-# Copyright (C) 2023 Maxim Integrated Products, Inc. All Rights Reserved.
-#
-# Maxim Integrated Products, Inc. Default Copyright Notice:
-# https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
+# Copyright © 202 Analog Devices, Inc. All Rights Reserved. 
+# This software is proprietary and confidential to Analog Devices, Inc. and its licensors.
 #
 ###################################################################################################
 """
@@ -29,9 +27,9 @@ with open(yaml_path, 'r', encoding='utf-8') as yaml_file:
     # Load the YAML content into a Python dictionary
     config = yaml.safe_load(yaml_file)
 
-with open(test_path, 'r', encoding='utf-8') as file2:
+with open(test_path, 'r', encoding='utf-8') as path_file:
     # Load the YAML content into a Python dictionary
-    pathconfig = yaml.safe_load(file2)
+    pathconfig = yaml.safe_load(path_file)
 
 
 def compare_logs(old_log, new_log, output_name, output_pth):
