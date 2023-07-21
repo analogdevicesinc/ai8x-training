@@ -763,8 +763,8 @@ class Conv2d(QuantizationAwareModule):
                 assert dev.device != 84
                 opn = nn.ConvTranspose2d(in_channels, out_channels,
                                          kernel_size=kernel_size, stride=stride,
-                                         output_padding=1,
-                                         padding=padding, dilation=dilation, bias=bias)
+                                         output_padding=1, padding=padding,
+                                         dilation=dilation, bias=bias, groups=groups)
             else:
                 raise ValueError('Unsupported operation')
         else:
@@ -1016,6 +1016,32 @@ class ConvTranspose2d(Conv2d):
         super().__init__(*args, op='ConvTranspose2d', **kwargs)
 
 
+class FusedConvTranspose2dReLU(ConvTranspose2d):
+    """
+    Fused Transposed 2D Convolution and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, activation='ReLU', **kwargs)
+
+
+class FusedConvTranspose2dAbs(ConvTranspose2d):
+    """
+    Fused Transposed 2D Convolution and Abs
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, activation='Abs', **kwargs)
+
+
+class FusedConvTranspose2dBNReLU(FusedConvTranspose2dReLU):
+    """
+    Fused Transposed 2D Convolution and BatchNorm and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        if 'batchnorm' not in kwargs:
+            kwargs['batchnorm'] = 'Affine'
+        super().__init__(*args, **kwargs)
+
+
 class FusedMaxPoolConvTranspose2d(ConvTranspose2d):
     """
     Fused 2D Max Pool, Transposed 2D Convolution and Activation ('ReLU', 'Abs', None)
@@ -1030,6 +1056,16 @@ class FusedMaxPoolConvTranspose2dReLU(FusedMaxPoolConvTranspose2d):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, activation='ReLU', **kwargs)
+
+
+class FusedMaxPoolConvTranspose2dBNReLU(FusedMaxPoolConvTranspose2dReLU):
+    """
+    Fused 2d Max Pool, Transposed 2D Convolution and BatchNorm and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        if 'batchnorm' not in kwargs:
+            kwargs['batchnorm'] = 'Affine'
+        super().__init__(*args, **kwargs)
 
 
 class FusedMaxPoolConvTranspose2dAbs(FusedMaxPoolConvTranspose2d):
@@ -1056,6 +1092,16 @@ class FusedAvgPoolConvTranspose2dReLU(FusedAvgPoolConvTranspose2d):
         super().__init__(*args, activation='ReLU', **kwargs)
 
 
+class FusedAvgPoolConvTranspose2dBNReLU(FusedAvgPoolConvTranspose2dReLU):
+    """
+    Fused 2d Avg Pool, Transposed 2D Convolution, BatchNorm and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        if 'batchnorm' not in kwargs:
+            kwargs['batchnorm'] = 'Affine'
+        super().__init__(*args, **kwargs)
+
+
 class FusedAvgPoolConvTranspose2dAbs(FusedAvgPoolConvTranspose2d):
     """
     Fused 2D Avg Pool, Transposed 2D Convolution and Abs
@@ -1064,20 +1110,76 @@ class FusedAvgPoolConvTranspose2dAbs(FusedAvgPoolConvTranspose2d):
         super().__init__(*args, activation='Abs', **kwargs)
 
 
-class FusedConvTranspose2dReLU(ConvTranspose2d):
+class DepthwiseConvTranspose2d(ConvTranspose2d):
     """
-    Fused Transposed 2D Convolution and ReLU
-    """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, activation='ReLU', **kwargs)
-
-
-class FusedConvTranspose2dAbs(ConvTranspose2d):
-    """
-    Fused Transposed 2D Convolution and Abs
+    AI8X - Depthwise Transposed 2D Convolution
     """
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, activation='Abs', **kwargs)
+        super().__init__(*args, groups=args[0], **kwargs)
+
+
+class FusedDepthwiseConvTranspose2dReLU(FusedConvTranspose2dReLU):
+    """
+    AI8X - Fused Depthwise Transposed 2D Convolution and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, groups=args[0], **kwargs)
+
+
+class FusedDepthwiseConvTranspose2dBNReLU(FusedConvTranspose2dBNReLU):
+    """
+    AI8X - Fused Depthwise Transposed 2D Convolution, BatchNorm and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, groups=args[0], **kwargs)
+
+
+class FusedAvgPoolDepthwiseConvTranspose2d(FusedAvgPoolConvTranspose2d):
+    """
+    AI8X - Fused 2D Avg Pool, Depthwise Transposed 2D Convolution and no activation
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, groups=args[0], **kwargs)
+
+
+class FusedAvgPoolDepthwiseConvTranspose2dReLU(FusedAvgPoolConvTranspose2dReLU):
+    """
+    AI8X - Fused 2D Avg Pool, Depthwise Transposed 2D Convolution and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, groups=args[0], **kwargs)
+
+
+class FusedAvgPoolDepthwiseConvTranspose2dBNReLU(FusedAvgPoolConvTranspose2dBNReLU):
+    """
+    AI8X - Fused 2D Avg Pool, Depthwise Transposed 2D Convolution, BatchNorm and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, groups=args[0], **kwargs)
+
+
+class FusedMaxPoolDepthwiseConvTranspose2d(FusedMaxPoolConvTranspose2d):
+    """
+    AI8X - Fused 2D Max Pool, Depthwise Transposed 2D Convolution and no activation
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, groups=args[0], **kwargs)
+
+
+class FusedMaxPoolDepthwiseConvTranspose2dReLU(FusedMaxPoolConvTranspose2dReLU):
+    """
+    AI8X - Fused 2D Max Pool, Depthwise Transposed 2D Convolution and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, groups=args[0], **kwargs)
+
+
+class FusedMaxPoolDepthwiseConvTranspose2dBNReLU(FusedMaxPoolConvTranspose2dBNReLU):
+    """
+    AI8X - Fused 2D Max Pool, Depthwise Transposed 2D Convolution, BatchNorm and ReLU
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, groups=args[0], **kwargs)
 
 
 class FusedSoftwareLinearReLU(nn.Module):
