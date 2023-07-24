@@ -403,7 +403,9 @@ def main():
         args.workers, args.validation_split, args.deterministic,
         args.effective_train_size, args.effective_valid_size, args.effective_test_size,
         test_only=args.evaluate, collate_fn=args.collate_fn, cpu=args.device == 'cpu')
-    assert train_loader is not None and val_loader is not None
+    assert args.evaluate or train_loader is not None and val_loader is not None, \
+        "No training and/or validation data in train mode"
+    assert not args.evaluate or test_loader is not None, "No test data in eval mode"
 
     if args.sensitivity is not None:
         sensitivities = np.arange(args.sensitivity_range[0], args.sensitivity_range[1],
