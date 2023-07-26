@@ -26,3 +26,12 @@ Scripts for ONNX export are created and run by running `create_onnx_scripts.py` 
 
 In `regression/test_config.yaml`, the `Onnx_Status` and `Qat_Test` settings should be defined to `True` when ONNX export or QAT tests by using `policies/qat_policy.yaml` are desired. When `Qat_Test` is set to `False`, QAT will be done according to the main training script. All threshold values and test epoch numbers for each model/dataset combination are also configured in this file. In order to set up the test on a new system, `regression/paths.yaml` needs to be configured accordingly.
 
+# Setting Up Regression Test
+
+## GitHub Actions
+
+GitHub Actions is a continuous integration (CI) and continuous deployment (CD) platform provided by GitHub. It allows developers to automate various tasks, workflows, and processes directly within their GitHub repositories. A GitHub Workflow is an automated process defined using a YAML file that helps automate various tasks in a GitHub Repository.
+
+In this project, with GitHub Actions, there is a 'test.yml' workflow that is triggered when a pull-request is opened for the 'develop' branch of the 'MaximIntegratedAI/ai8x-training' repository. This workflow contains and runs the jobs and steps required for the regression test. Also, a Self-Hosted GitHub Runner is used to run regression test actions in this workflow. In order to install GitHub Runner, you can look in Settings -> Actions -> Runners -> New self-hosted runner on GitHub. To learn more about GitHub Actions, see https://docs.github.com/en/actions/quickstart.
+
+After installing and configuring GitHub Runner in your local environment, to ensure that the self-hosted runner runs continuously and automatically, it can be configured to start as a service during system startup. You can find more information about systemd services at https://linuxhandbook.com/create-systemd-services/.
