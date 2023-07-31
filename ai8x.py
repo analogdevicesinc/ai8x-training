@@ -438,7 +438,7 @@ class One(nn.Module):
     """
     def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
-        return torch.ones(1).to(x.device)
+        return torch.ones(1, device=x.device)
 
 
 class WeightScale(nn.Module):
@@ -1807,9 +1807,9 @@ def fuse_bn_layers(m):
                 gamma = target_attr.bn.bias
 
                 if beta is None:
-                    beta = torch.ones(w.shape[0]).to(device)
+                    beta = torch.ones(w.shape[0], device=device)
                 if gamma is None:
-                    gamma = torch.zeros(w.shape[0]).to(device)
+                    gamma = torch.zeros(w.shape[0], device=device)
 
                 beta = 0.25 * beta
                 gamma = 0.25 * gamma

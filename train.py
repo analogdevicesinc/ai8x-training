@@ -417,6 +417,7 @@ def main():
         return evaluate_model(model, criterion, test_loader, pylogger, activations_collectors,
                               args, compression_scheduler)
 
+    assert train_loader and val_loader
     msglogger.info('Dataset sizes:\n\ttraining=%d\n\tvalidation=%d\n\ttest=%d',
                    len(train_loader.sampler), len(val_loader.sampler), len(test_loader.sampler))
 
@@ -921,11 +922,11 @@ def test(test_loader, model, criterion, loggers, activations_collectors, args):
             with torch.no_grad():
                 global weight_min, weight_max, weight_count  # pylint: disable=global-statement
                 global weight_sum, weight_stddev, weight_mean  # pylint: disable=global-statement
-                weight_min = torch.tensor(float('inf')).to(args.device)
-                weight_max = torch.tensor(float('-inf')).to(args.device)
-                weight_count = torch.tensor(0, dtype=torch.int).to(args.device)
-                weight_sum = torch.tensor(0.0).to(args.device)
-                weight_stddev = torch.tensor(0.0).to(args.device)
+                weight_min = torch.tensor(float('inf'), device=args.device)
+                weight_max = torch.tensor(float('-inf'), device=args.device)
+                weight_count = torch.tensor(0, dtype=torch.int, device=args.device)
+                weight_sum = torch.tensor(0.0, device=args.device)
+                weight_stddev = torch.tensor(0.0, device=args.device)
 
                 def traverse_pass1(m):
                     """
@@ -978,7 +979,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
             # iou_type='bbox',  # Enable in torchmetrics > 0.6
             class_metrics=False,
             # iou_thresholds=[0.5],  # Enable in torchmetrics > 0.6
-        )
+        ).to(args.device)
         mAP = 0.00
     if not args.regression:
         classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, min(args.num_classes, 5)))
