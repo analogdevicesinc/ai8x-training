@@ -395,7 +395,7 @@ class TinierSSD(nn.Module):
 
                 # A torch.bool tensor to keep track of which predicted boxes to suppress
                 # True implies suppress, False implies don't suppress
-                suppress = torch.zeros((n_above_min_score), dtype=torch.bool).to(self.device)
+                suppress = torch.zeros((n_above_min_score), dtype=torch.bool, device=self.device)
                 # (n_qualified)
 
                 # Consider each box in order of decreasing scores
