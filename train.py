@@ -1045,6 +1045,8 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
     mAP = 0.0
     have_mAP = False
     with torch.no_grad():
+        m = model.module if isinstance(model, nn.DataParallel) else model
+
         for validation_step, (inputs, target) in enumerate(data_loader):
             if args.obj_detection:
                 if not object_detection_utils.check_target_exists(target):
@@ -1070,10 +1072,10 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                     output_boxes /= 128.
                     output_conf /= 128.
 
-                    if (hasattr(model, 'are_locations_wide') and model.are_locations_wide):
+                    if (hasattr(m, 'are_locations_wide') and m.are_locations_wide):
                         output_boxes /= 128.
 
-                    if (hasattr(model, 'are_scores_wide') and model.are_scores_wide):
+                    if (hasattr(m, 'are_scores_wide') and m.are_scores_wide):
                         output_conf /= 128.
 
                 output = (output_boxes, output_conf)
@@ -1081,8 +1083,6 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                 if boxes_list:
                     # .module is added to model for access in multi GPU environments
                     # as https://github.com/pytorch/pytorch/issues/16885 has not been merged yet
-                    m = model.module if isinstance(model, nn.DataParallel) else model
-
                     det_boxes_batch, det_labels_batch, det_scores_batch = \
                         m.detect_objects(output_boxes, output_conf,
                                          min_score=obj_detection_params['nms']['min_score'],
