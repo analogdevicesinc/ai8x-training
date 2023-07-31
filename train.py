@@ -70,7 +70,6 @@ from pydoc import locate
 import numpy as np
 
 import matplotlib
-from pkg_resources import parse_version
 
 # TensorFlow 2.x compatibility
 try:
@@ -1700,20 +1699,6 @@ def save_collectors_data(collectors, directory):
         collector.save(workbook)
 
 
-def check_pytorch_version():
-    """Ensure PyTorch >= 1.5.0"""
-    if parse_version(torch.__version__) < parse_version('1.5.0'):
-        print("\nNOTICE:")
-        print("This software requires at least PyTorch version 1.5.0 due to "
-              "PyTorch API changes which are not backward-compatible.\n"
-              "Please install PyTorch 1.5.0 or its derivative.\n"
-              "If you are using a virtual environment, do not forget to update it:\n"
-              "  1. Deactivate the old environment\n"
-              "  2. Install the new environment\n"
-              "  3. Activate the new environment")
-        sys.exit(1)
-
-
 def update_old_model_params(model_path, model_new):
     """Adds missing model parameters added with default values.
     This is mainly due to the saved checkpoint is from previous versions of the repo.
@@ -1747,7 +1732,6 @@ def update_old_model_params(model_path, model_new):
 
 if __name__ == '__main__':
     try:
-        check_pytorch_version()
         np.set_printoptions(threshold=sys.maxsize, linewidth=190)
         torch.set_printoptions(threshold=sys.maxsize, linewidth=190)
 
