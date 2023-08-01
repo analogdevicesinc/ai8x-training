@@ -80,7 +80,6 @@ except (ModuleNotFoundError, AttributeError):
     pass
 
 import torch
-import torch.nn.parallel
 import torch.optim
 import torch.utils.data
 from torch import nn
@@ -353,7 +352,7 @@ def main():
         ai8x.update_model(model)
 
     if not args.load_serialized and args.gpus != -1 and torch.cuda.device_count() > 1:
-        model = torch.nn.DataParallel(model, device_ids=args.gpus).to(args.device)
+        model = nn.DataParallel(model, device_ids=args.gpus).to(args.device)
 
     if args.reset_optimizer:
         start_epoch = 0
@@ -989,7 +988,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
         """ Save tensor `t` to file handle `f` in CSV format """
         if t.dim() > 1:
             if not regression:
-                t = torch.nn.functional.softmax(t, dim=1)
+                t = nn.functional.softmax(t, dim=1)
             np.savetxt(f, t.reshape(t.shape[0], t.shape[1], -1).cpu().numpy().mean(axis=2),
                        delimiter=",")
         else:
@@ -1173,7 +1172,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
             if steps_completed % args.print_freq == 0 or steps_completed == total_steps:
                 if args.display_prcurves and tflogger is not None:
                     # TODO PR Curve generation for Object Detection case is NOT implemented yet
-                    class_probs_batch = [torch.nn.functional.softmax(el, dim=0) for el in output]
+                    class_probs_batch = [nn.functional.softmax(el, dim=0) for el in output]
                     _, class_preds_batch = torch.max(output, 1)
                     class_probs.append(class_probs_batch)
                     class_preds.append(class_preds_batch)
@@ -1674,7 +1673,7 @@ def create_activation_stats_collectors(model, *phases):
         "mean_channels": SummaryActivationStatsCollector(model, "mean_channels",
                                                          distiller.utils.
                                                          activation_channels_means),
-        "records":       RecordsActivationStatsCollector(model, classes=[torch.nn.Conv2d])
+        "records":       RecordsActivationStatsCollector(model, classes=[nn.Conv2d])
     })
 
     return {k: (genCollectors() if k in phases else missingdict())
