@@ -95,6 +95,8 @@ class QuantizationFunction(Function):
     nearest integer.
     The backward pass is straight through.
     """
+    # pylint: disable=abstract-method
+
     @staticmethod
     def forward(_, x, bits=8, extra_bit_shift=0):  # pylint: disable=arguments-differ
         """Forward prop"""
@@ -138,6 +140,8 @@ class FloorFunction(Function):
     The forward pass returns the integer floor.
     The backward pass is straight through.
     """
+    # pylint: disable=abstract-method
+
     @staticmethod
     def forward(_, x):  # pylint: disable=arguments-differ
         """Forward prop"""
@@ -158,6 +162,8 @@ class AvgPoolFloorFunction(Function):
     ceil for negative numbers.
     The backward pass is straight through.
     """
+    # pylint: disable=abstract-method
+
     @staticmethod
     def forward(_, x):  # pylint: disable=arguments-differ
         """Forward prop"""
@@ -207,6 +213,8 @@ class RoundFunction(Function):
     The forward pass returns the integer rounded.
     The backward pass is straight through.
     """
+    # pylint: disable=abstract-method
+
     @staticmethod
     def forward(_, x):  # pylint: disable=arguments-differ
         """Forward prop"""
