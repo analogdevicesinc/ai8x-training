@@ -47,6 +47,7 @@ class OnceForAllModule(nn.Module):
         self.clamp = None
         self.quantize_pool = None
         self.clamp_pool = None
+        self.kernel_list = None
 
         if op is not None:
             self.in_channels = op.weight.shape[1]
@@ -55,7 +56,7 @@ class OnceForAllModule(nn.Module):
             self.max_pad_size = op.padding[0]
             self.kernel_size = self.max_kernel_size
             self.pad = self.max_pad_size
-            self.kernel_list = []
+            klist = []
             self.padding_list = []
             self.ktm_list = torch.nn.ParameterList()
             self.in_ch_order = torch.arange(self.in_channels)
@@ -65,7 +66,7 @@ class OnceForAllModule(nn.Module):
                 kernel_size = self.max_kernel_size - 2
                 padding = self.max_pad_size - 1
                 while (kernel_size > 0) and (padding >= 0):
-                    self.kernel_list.append(kernel_size)
+                    klist.append(kernel_size)
                     self.padding_list.append(padding)
                     ktm = torch.zeros(self.max_kernel_size, kernel_size)
                     j = (self.max_kernel_size-kernel_size)//2
@@ -77,7 +78,7 @@ class OnceForAllModule(nn.Module):
                     padding -= 1
             elif op.__class__.__name__.endswith('2d'):
                 if (self.max_kernel_size == 3) and (self.max_pad_size >= 0):
-                    self.kernel_list.append(1)
+                    klist.append(1)
                     self.padding_list.append(0)
                     ktm = torch.zeros(self.max_kernel_size**2, 1)
                     ktm[self.max_kernel_size**2 // 2] = 1
@@ -88,7 +89,7 @@ class OnceForAllModule(nn.Module):
             # parameters to store in the checkpoint file
             self.max_kernel_size = nn.Parameter(data=torch.tensor(self.max_kernel_size),
                                                 requires_grad=False)
-            self.kernel_list = nn.Parameter(data=torch.tensor(self.kernel_list),
+            self.kernel_list = nn.Parameter(data=torch.tensor(klist),
                                             requires_grad=False)
             self.padding_list = nn.Parameter(data=torch.tensor(self.padding_list),
                                              requires_grad=False)
@@ -117,6 +118,8 @@ class OnceForAllModule(nn.Module):
 
     def sample_subnet_kernel(self, level):
         """OFA Elastic kernel search strategy"""
+        assert self.kernel_list
+
         kernel_opts = [int(self.max_kernel_size.detach().cpu().item())]
         kernel_list = self.kernel_list.detach().cpu().numpy()
         k_level = level if level >= 0 else kernel_list.size
@@ -128,6 +131,7 @@ class OnceForAllModule(nn.Module):
     def reset_kernel_sampling(self):
         """Resets kernel to maximum widths"""
         with torch.no_grad():
+            assert self.op
             self.set_kernel_size(self.op.weight.shape[2])
 
     def set_out_ch_order(self, inds, reset_order=False):
@@ -138,6 +142,7 @@ class OnceForAllModule(nn.Module):
         else:
             self.out_ch_order = self.out_ch_order[inds]
 
+        assert self.op
         self.op.weight.data = self.op.weight.data[inds]
         if self.op.bias is not None:
             self.op.bias.data = self.op.bias.data[inds]
@@ -160,6 +165,7 @@ class OnceForAllModule(nn.Module):
         else:
             self.in_ch_order = self.in_ch_order[inds]
 
+        assert self.op
         self.op.weight.data = self.op.weight.data[:, inds]
 
     def reset_in_ch_order(self):
@@ -170,6 +176,7 @@ class OnceForAllModule(nn.Module):
     def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
         if self.pool is not None:
+            assert self.clamp_pool and self.quantize_pool
             x = self.clamp_pool(self.quantize_pool(self.pool(x)))
         if self.op is not None:
             weight = self.op.weight[:self.out_channels, :self.in_channels]
@@ -178,9 +185,11 @@ class OnceForAllModule(nn.Module):
                 bias = bias[:self.out_channels]
 
             if self.kernel_size == int(self.max_kernel_size.detach().cpu().item()):
+                assert self.func
                 x = self.func(x, weight, bias, self.op.stride, self.max_pad_size, self.op.dilation,
                               self.op.groups)
             else:
+                assert self.kernel_list
                 for k_idx, k_size in enumerate(self.kernel_list):
                     if k_size == self.kernel_size:
                         break
@@ -193,6 +202,7 @@ class OnceForAllModule(nn.Module):
                 weight = flattened_weight @ self.ktm_list[k_idx]
                 # pylint: disable=undefined-loop-variable
                 pad = int(self.padding_list[k_idx].detach().cpu().item())
+                assert self.func
                 x = self.func(x, weight, bias, self.op.stride, pad, self.op.dilation,
                               self.op.groups)
 
@@ -205,6 +215,7 @@ class OnceForAllModule(nn.Module):
                                  self.bn.momentum,
                                  self.bn.eps)
                 x /= 4.
+            assert self.clamp and self.quantize
             x = self.clamp(self.quantize(self.activate(x)))
         return x
 
@@ -553,7 +564,7 @@ def sample_subnet_kernel(ofa_model, level=0):
     """
     def _sample_subnet_kernel(m):
         if isinstance(m, OnceForAllModel):
-            m.sample_subnet_kernel(level)
+            m.sample_subnet_kernel(level)  # type: ignore
 
     ofa_model.apply(_sample_subnet_kernel)
 
@@ -564,7 +575,7 @@ def reset_kernel_sampling(ofa_model):
     """
     def _reset_kernel_sampling(m):
         if isinstance(m, OnceForAllModel):
-            m.reset_kernel_sampling()
+            m.reset_kernel_sampling()  # type: ignore
 
     ofa_model.apply(_reset_kernel_sampling)
 
@@ -576,8 +587,8 @@ def sample_subnet_depth(ofa_model, level=0, sample_kernel=True):
     def _sample_subnet_depth(m):
         if isinstance(m, OnceForAllModel):
             if sample_kernel:
-                m.sample_subnet_kernel(level=-1)
-            m.sample_subnet_depth(level)
+                m.sample_subnet_kernel(level=-1)  # type: ignore
+            m.sample_subnet_depth(level)  # type: ignore
 
     ofa_model.apply(_sample_subnet_depth)
 
@@ -588,8 +599,8 @@ def reset_depth_sampling(ofa_model):
     """
     def _reset_depth_sampling(m):
         if isinstance(m, OnceForAllModel):
-            m.reset_kernel_sampling()
-            m.reset_depth_sampling()
+            m.reset_kernel_sampling()  # type: ignore
+            m.reset_depth_sampling()  # type: ignore
 
     ofa_model.apply(_reset_depth_sampling)
 
@@ -604,7 +615,7 @@ def sample_subnet_width(ofa_model, level=0, sample_depth=True):
                 with torch.no_grad():
                     sample_subnet_depth(m, level=-1)
 
-            m.sample_subnet_width(level)
+            m.sample_subnet_width(level)  # type: ignore
 
     ofa_model.apply(_sample_subnet_width)
 
@@ -616,6 +627,6 @@ def reset_width_sampling(ofa_model):
     def _reset_width_sampling(m):
         if isinstance(m, OnceForAllModel):
             reset_depth_sampling(m)
-            m.reset_width_sampling()
+            m.reset_width_sampling()  # type: ignore
 
     ofa_model.apply(_reset_width_sampling)

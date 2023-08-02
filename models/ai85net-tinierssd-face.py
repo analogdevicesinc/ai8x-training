@@ -96,7 +96,8 @@ class AuxiliaryConvolutions(nn.Module):
         for c in self.children():
             if isinstance(c, nn.Conv2d):
                 nn.init.xavier_uniform_(c.weight)
-                nn.init.constant_(c.bias, 0.)
+                if c.bias:
+                    nn.init.constant_(c.bias, 0.)
 
     def forward(self, fire10_feats):
         """
@@ -163,7 +164,8 @@ class PredictionConvolutions(nn.Module):
         for c in self.children():
             if isinstance(c, nn.Conv2d):
                 nn.init.xavier_uniform_(c.weight)
-                nn.init.constant_(c.bias, 0.)
+                if c.bias:
+                    nn.init.constant_(c.bias, 0.)
 
     def forward(self, fire4_feats, fire9_feats,  conv12_2_feats):
         """

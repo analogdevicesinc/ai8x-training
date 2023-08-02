@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2022 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2022-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -25,6 +25,7 @@ def parse(yaml_file):
             print(exc)
 
     print(parameters)
+    assert parameters
 
     try:
         _ = parameters['multi_box_loss']['alpha']
