@@ -1703,7 +1703,7 @@ def save_collectors_data(collectors, directory):
 
 def update_old_model_params(model_path, model_new):
     """Adds missing model parameters added with default values.
-    This is mainly due to the saved checkpoint is from previous versions of the repo.
+    This is mainly due to the saved checkpoints from previous versions of the repo.
     New model is saved to `model_path` and the old model copied into the same file_path with
     `__obsolete__` prefix."""
     is_model_old = False
