@@ -495,6 +495,9 @@ def main():
     for epoch in range(start_epoch, ending_epoch):
         # pylint: disable=unsubscriptable-object
         if qat_policy is not None and epoch > 0 and epoch == qat_policy['start_epoch']:
+            msglogger.info('\n')
+            msglogger.info('Initiating quantization aware training (QAT)...')
+
             # Fuse the BN parameters into conv layers before Quantization Aware Training (QAT)
             ai8x.fuse_bn_layers(model)
 

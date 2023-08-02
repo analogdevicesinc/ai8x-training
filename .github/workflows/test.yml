@@ -1,0 +1,98 @@
+name: auto-testing
+on:
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  build:
+    runs-on: self-hosted
+    timeout-minutes: 345600
+    steps:
+      - name: Checkout last-dev
+        uses: actions/checkout@v2
+        with:
+          repository: MaximIntegratedAI/ai8x-training
+          ref: develop
+          submodules: recursive
+      - name: Setup Pyenv and Install Dependencies
+        uses: gabrielfalcao/pyenv-action@v13
+        with:
+          default: 3.8.11
+      - name: Create Venv
+        run: |
+          pyenv local 3.8.11
+          python3 -m venv venv --prompt ai8x-training
+      - name: Activate Venv
+        run: source venv/bin/activate
+      - name: Install Dependencies
+        run: |
+          pip3 install -U pip wheel setuptools
+          pip3 install -r requirements-cu11.txt
+      - name: Last Develop Check
+        run: python ./regression/last_dev.py --testconf ./regression/test_config.yaml --testpaths ./regression/paths.yaml
+
+  new-code:
+    runs-on: self-hosted
+    needs: [build]
+    timeout-minutes: 345600
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          repository: MaximIntegratedAI/ai8x-training
+          ref: develop
+          submodules: recursive
+      - name: Setup Pyenv and Install Dependencies
+        uses: gabrielfalcao/pyenv-action@v13
+        with:
+          default: 3.8.11
+      - name: Create Venv
+        run: |
+          pyenv local 3.8.11
+          python3 -m venv venv --prompt ai8x-training
+      - name: Activate Venv
+        run: source venv/bin/activate
+      - name: Install Dependencies
+        run: |
+          pip3 install -U pip wheel setuptools
+          pip3 install -r requirements-cu11.txt
+      - name: Create Test Script
+        run: python ./regression/create_test_script.py --testconf ./regression/test_config.yaml --testpaths ./regression/paths.yaml
+      - name: Run Training Scripts
+        run: bash /home/test/actions-runner/_work/ai8x-training/ai8x-training/scripts/output_file.sh
+      - name: Save Log Files
+        run: cp -r /home/test/actions-runner/_work/ai8x-training/ai8x-training/logs//home/test/max7800x/test_logs/$(date +%Y-%m-%d_%H-%M-%S)
+      - name: Save Test Scripts
+        run: cp -r /home/test/actions-runner/_work/ai8x-training/ai8x-training/scripts/output_file.sh/home/test/max7800x/test_scripts/
+      - name: Create and run ONNX script
+        run: python ./regression/create_onnx_script.py --testconf ./regression/test_config.yaml --testpaths ./regression/paths.yaml
+
+  test-results:
+    runs-on: self-hosted
+    needs: [new-code]
+    timeout-minutes: 345600
+    steps:
+      - uses: actions/checkout@v2
+        name: Checkout Test Codes
+        with:
+          repository: MaximIntegratedAI/ai8x-training
+          ref: develop
+          submodules: recursive
+      - name: Setup Pyenv and Install Dependencies
+        uses: gabrielfalcao/pyenv-action@v13
+        with:
+          default: 3.8.11
+      - name: Create Venv
+        run: |
+          pyenv local 3.8.11
+          python3 -m venv venv --prompt ai8x-training
+      - name: Activate Venv
+        run: source venv/bin/activate
+      - name: Install Dependencies
+        run: |
+          pip3 install -U pip wheel setuptools
+          pip3 install -r requirements-cu11.txt
+      - name: Log Diff
+        run: python ./regression/log_comparison.py --testconf ./regression/test_config.yaml --testpaths ./regression/paths.yaml
+      - name: Test Results
+        run: python ./regression/pass_fail.py --testconf ./regression/test_config.yaml --testpaths ./regression/paths.yaml
