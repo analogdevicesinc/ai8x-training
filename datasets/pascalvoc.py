@@ -167,10 +167,10 @@ class PascalVOC(torch.utils.data.Dataset):
         return image, (boxes, labels)
 
     def __len__(self):
-        return len(self.dataset)
+        return len(self.dataset)  # type: ignore # dataset guaranteed to not be None
 
     def __getitem__(self, index):
-        image, target = self.dataset[index]
+        image, target = self.dataset[index]  # type: ignore # dataset guaranteed to not be None
         image = self.transform(image)
         return image, target
 
