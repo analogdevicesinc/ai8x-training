@@ -162,6 +162,7 @@ datasets = [
     {
         'name': 'ImageNet_Bayer',
         'input': (1, 128, 128),
+        'output': (1, 128, 128),
         'loader': imagenet_bayer_fold_2_get_dataset,
     }
 ]

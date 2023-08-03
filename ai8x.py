@@ -22,21 +22,6 @@ import devices
 dev = None
 
 
-class bayer_filter:
-    """
-    Implement bayer filter to rgb images
-    """
-    def __call__(self, img):
-        out = torch.zeros(1, img.shape[1], img.shape[2])
-
-        out[0, 0::2, 1::2] = img[2, 0::2, 1::2]
-        out[0, 0::2, 0::2] = img[1, 0::2, 0::2]
-        out[0, 1::2, 1::2] = img[1, 1::2, 1::2]
-        out[0, 1::2, 0::2] = img[0, 1::2, 0::2]
-
-        return out
-
-
 class normalize:
     """
     Normalize input to either [-128/128, +127/128] or [-128, +127]
@@ -1774,3 +1759,18 @@ def onnx_export_prep(m, simplify=False):
                 setattr(m, attr_str, ScalerONNX())
 
     m.apply(_onnx_export_prep)
+
+
+class bayer_filter:
+    """
+    Implement bayer filter to rgb images
+    """
+    def __call__(self, img):
+        out = torch.zeros(1, img.shape[1], img.shape[2])
+
+        out[0, 0::2, 1::2] = img[2, 0::2, 1::2]
+        out[0, 0::2, 0::2] = img[1, 0::2, 0::2]
+        out[0, 1::2, 1::2] = img[1, 1::2, 1::2]
+        out[0, 1::2, 0::2] = img[0, 1::2, 0::2]
+
+        return out
