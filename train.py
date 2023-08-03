@@ -60,6 +60,7 @@ import fnmatch
 import logging
 import operator
 import os
+import resource
 import sys
 import time
 import traceback
@@ -135,6 +136,12 @@ def main():
     supported_sources = []
     model_names = []
     dataset_names = []
+
+    # Check file descriptor limits
+    nfiles = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
+    if nfiles < 4096:
+        print(f'WARNING: The open file limit is {nfiles}. '
+              'Please raise the limit (see documentation).')
 
     # Dynamically load models
     for _, _, files in sorted(os.walk('models')):
