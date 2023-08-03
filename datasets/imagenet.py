@@ -25,14 +25,14 @@
 ImageNet Dataset (using PyTorch's ImageNet and ImageFolder classes)
 """
 import os
+import ai8x
+from torch.utils.data import Dataset
 
 import torchvision
 from torchvision import transforms
 
-import ai8x
 
-
-def imagenet_get_datasets(data, load_train=True, load_test=True, input_size=112, folder=False):
+def imagenet_get_datasets( data, load_train=True, load_test=True, input_size=112, folder=False ):
     """
     Load the ImageNet 2012 Classification dataset.
 
@@ -108,6 +108,44 @@ def imagenetfolder_get_datasets(data, load_train=True, load_test=True, input_siz
     return imagenet_get_datasets(data, load_train, load_test, input_size, folder=True)
 
 
+class Bayer_Dataset_Adapter(Dataset):
+    """
+    This class implements the transforms to generate bayer filtered images from RGB images,
+    and then folds the input data.
+    It also changes the target data as the input images.
+    """
+    def __init__(self, dataset, fold_ratio=2):
+        self.dataset = dataset
+        self.transform = transforms.Compose([ai8x.bayer_filter(),
+                                             ai8x.fold(fold_ratio=fold_ratio),
+                                             ])
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, idx):
+        image = self.dataset[idx][0]
+        data = self.transform(image)
+        return data, image
+
+
+def imagenet_bayer_fold_2_get_dataset(data, load_train=True, load_test=False):
+    """
+    Load the ImageNet 2012 Classification dataset using ImageNet.
+    This function is used to adjust the image dataset for debayerization network.
+    """
+
+    train_dataset, test_dataset = imagenet_get_datasets(data, load_train, load_test, input_size=128)
+
+    if load_train:
+        train_dataset = Bayer_Dataset_Adapter(train_dataset, fold_ratio=2)
+
+    if load_test:
+        test_dataset = Bayer_Dataset_Adapter(test_dataset, fold_ratio=2)
+
+    return train_dataset, test_dataset
+
+
 datasets = [
     {
         'name': 'ImageNet',
@@ -121,4 +159,9 @@ datasets = [
         'output': list(map(str, range(50))),
         'loader': imagenetfolder_get_datasets,
     },
+    {
+        'name': 'ImageNet_Bayer',
+        'input': (1, 128, 128),
+        'loader': imagenet_bayer_fold_2_get_dataset,
+    }
 ]
