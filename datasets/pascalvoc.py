@@ -75,7 +75,6 @@ class PascalVOC(torch.utils.data.Dataset):
                                            'Main', d_type + '.txt'))
 
     def __prepare_dataset(self, dtype):
-
         self.dataset = None
 
         for year_str in self.year_list:
@@ -83,14 +82,14 @@ class PascalVOC(torch.utils.data.Dataset):
                 torchvision.datasets.VOCDetection(root=self.data_root, year=year_str,
                                                   image_set=dtype,
                                                   download=self.download[year_str],
-                                                  transforms=self.__transforms_func)
+                                                  transforms=self.transforms_func)
 
             if self.dataset:
                 self.dataset = torch.utils.data.ConcatDataset([self.dataset, dataset_temp])
             else:
                 self.dataset = dataset_temp
 
-    def __transforms_func(self, image, target):
+    def transforms_func(self, image, target):
         """
         Torch vision VOCDetection dataset's __get_item__ returns: (image, target)
         where target is a dictionary of the XML tree.
@@ -195,8 +194,6 @@ def pascal_voc_get_datasets(data, load_train=True, load_test=True, img_size=(300
                                   augment_data=augment_data,
                                   transform=transform,
                                   download=True)
-
-        print(f'Train dataset length: {len(train_dataset)}\n')
     else:
         train_dataset = None
 
@@ -209,8 +206,6 @@ def pascal_voc_get_datasets(data, load_train=True, load_test=True, img_size=(300
         test_dataset = PascalVOC(data_dir, d_type, img_size, year_opt,
                                  augment_data=False,
                                  transform=transform, download=True)
-
-        print(f'Test dataset length: {len(test_dataset)}\n')
 
         if args.truncate_testset:
             test_dataset.data = \
@@ -235,7 +230,7 @@ datasets = [
     {
         'name': 'PascalVOC_2007_2012_256_320_augmented',
         'input': (3, 256, 320),
-        'output': PascalVOC.voc_id_to_label_map.keys(),
+        'output': PascalVOC.voc_labels,
         'loader': pascal_voc_2007_2012_256_320_aug_get_dataset,
         'collate': object_detection_utils.collate_fn
     },
