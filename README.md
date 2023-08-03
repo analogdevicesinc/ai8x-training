@@ -1349,6 +1349,7 @@ Since training can take a significant amount of time, the training script does n
 3. On resource constrained systems, training may abort with an error message such as `RuntimeError: unable to open shared memory object </torch_..._...> in read-write mode`. Add `--workers=0` when running the training script.
 
 4. By default, many systems limit the number of open file descriptors.  `train.py` checks this limit and prints `WARNING: The open file limit is 2048. Please raise the limit (see documentation)` when the limit is low. When the limit is too low, certain actions might abort:
+
    ```shell
    (ai8x-training) $ scripts/evaluate_facedet_tinierssd.sh 
    WARNING: The open file limit is 1024. Please raise the limit (see documentation).
