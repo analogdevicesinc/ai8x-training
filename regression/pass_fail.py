@@ -103,5 +103,5 @@ for logs in sorted(os.listdir(log_path)):
     passing.append(check_top_value(logs, threshold_temp, map_val))
 
 if not all(passing):
-    print("\033[31mAll tests did not passed. Cancelling github actions.")
+    print("\033[31mOne or more tests did not pass. Cancelling github actions.")
     sys.exit(1)
