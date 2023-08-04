@@ -73,7 +73,7 @@ jobs:
     timeout-minutes: 345600
     steps:
       - uses: actions/checkout@v2
-        name: Checkout Test Codes
+        name: Checkout Test Code
         with:
           repository: MaximIntegratedAI/ai8x-training
           ref: develop
