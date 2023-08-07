@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-August 3, 2023
+August 7, 2023
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -1365,6 +1365,31 @@ Since training can take a significant amount of time, the training script does n
    ```
 
    To fix this issue, check `ulimit -n` (the soft limit) as well as `ulimit -n -H` (the hard limit) and raise the file descriptor limit using `ulimit -n NUMBER` where NUMBER cannot exceed the hard limit. Note that on many Linux systems, the defaults can be configured in `/etc/security/limits.conf`.
+
+5. Datasets with larger-dimension images may require substantial amounts of system RAM. For example, `scripts/train_kinetics.sh` is configured for systems with 64 GB of RAM. When the system runs out of memory, training is abruptly killed and the error is logged to system journal. The following examples are from a system with 48 GB of RAM:
+
+   ```shell
+   ...
+   Epoch: [13][  142/  142]    Overall Loss 1.078153    Objective Loss 1.078153    Top1 64.062500    LR 0.000500    Time 1.247024    
+   --- validate (epoch=13)-----------
+   1422 samples (32 per mini-batch)
+   Epoch: [13][   10/   45]    Loss 1.082790    Top1 60.937500    
+   Epoch: [13][   20/   45]    Loss 1.099474    Top1 60.312500    
+   Epoch: [13][   30/   45]    Loss 1.113100    Top1 59.791667    
+   Killed
+   ```
+
+   and from the system journal:
+
+   ```shell
+   kernel: oom-kill:constraint=CONSTRAINT_NONE,nodemask=(null),cpuset=/,mems_allowed=0,global_oom,task_memcg=/user.slice/user-1000.slice/session-11289.scope,task=python,pid=226828,uid=1000
+   kernel: Out of memory: Killed process 226828 (python) total-vm:81269752kB, anon-rss:5711328kB, file-rss:146056kB, shmem-rss:648024kB, UID:1000 pgtables:97700kB oom_score_adj:0
+   kernel: oom_reaper: reaped process 226828 (python), now anon-rss:0kB, file-rss:145268kB, shmem-rss:648024kB
+   ```
+
+   Training might succeed after reducing the batch size, reducing image dimensions, or pruning the dataset. Unfortunately, the only real fix for this issue is more system RAM. In the example, `kinetics_get_datasets()` from `datasets/kinetics.py` states “The current implementation of using 2000 training and 150 test examples per class at 240×240 resolution and 5 frames per second requires around 50 GB of RAM.”
+
+
 
 
 ### Example Training Session
