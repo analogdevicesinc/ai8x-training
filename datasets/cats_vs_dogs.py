@@ -55,7 +55,7 @@ class CatsvsDogs(Dataset):
         self.album_transform = None
         if d_type == 'train' and augment_data:
             self.album_transform = album.Compose([
-                album.GaussNoise (var_limit=(1.0, 20.0), p=0.25),
+                album.GaussNoise(var_limit=(1.0, 20.0), p=0.25),
                 album.RGBShift(r_shift_limit=15, g_shift_limit=15, b_shift_limit=15, p=0.5),
                 album.ColorJitter(p=0.5),
                 album.SmallestMaxSize(max_size=int(1.2*min(resize_size))),
@@ -63,7 +63,7 @@ class CatsvsDogs(Dataset):
                 album.RandomCrop(height=resize_size[0], width=resize_size[1]),
                 album.HorizontalFlip(p=0.5),
                 album.Normalize(mean=(0.0, 0.0, 0.0), std=(1.0, 1.0, 1.0))])
-        if not augment_data or d_type=='test':
+        if not augment_data or d_type == 'test':
             self.album_transform = album.Compose([
                 album.SmallestMaxSize(max_size=int(1.2*min(resize_size))),
                 album.CenterCrop(height=resize_size[0], width=resize_size[1]),
@@ -74,7 +74,7 @@ class CatsvsDogs(Dataset):
     def __check_catsvsdogs_data_exist(self):
         return os.path.isdir(self.data_dir)
 
-    def __print_download_manual(self):    
+    def __print_download_manual(self):
         print("******************************************")
         print("Please follow the instructions below:")
         print("Download the dataset to the \'data\' folder by visiting this link: "
@@ -125,7 +125,7 @@ def get_catsvsdogs_dataset(data, load_train, load_test):
     """
     Load the Cats vs Dogs dataset.
     Returns each datasample in 128x128 size.
-    
+
     Data Augmentation: Train samples are augmented randomly with
         - Additive Gaussian Noise
         - RGB Shift
