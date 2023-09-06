@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2022 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2022-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -77,8 +77,8 @@ class MultiBoxLoss(nn.Module):
 
         assert n_priors == predicted_locs.size(1) == predicted_scores.size(1)
 
-        true_locs = torch.zeros((batch_size, n_priors, 4), dtype=torch.float).to(self.device)
-        true_classes = torch.zeros((batch_size, n_priors), dtype=torch.long).to(self.device)
+        true_locs = torch.zeros((batch_size, n_priors, 4), dtype=torch.float, device=self.device)
+        true_classes = torch.zeros((batch_size, n_priors), dtype=torch.long, device=self.device)
 
         for i in range(batch_size):
             n_objects = boxes[i].size(0)
@@ -103,7 +103,7 @@ class MultiBoxLoss(nn.Module):
                 # Then, assign each object to the corresponding maximum-overlap-prior.
                 # (This fixes 1.)
                 object_for_each_prior[prior_for_each_object] = \
-                    torch.LongTensor(range(n_objects)).to(self.device)
+                    torch.tensor(range(n_objects), dtype=torch.long, device=self.device)
 
                 # To ensure these priors qualify, artificially give them an overlap of greater
                 # than 0.5. (This fixes 2.)
@@ -169,8 +169,9 @@ class MultiBoxLoss(nn.Module):
             # (never in top n_hard_negatives)
             conf_loss_neg, _ = conf_loss_neg.sort(dim=1, descending=True)  # (N, number_of_priors),
             # sorted by decreasing hardness
-            hardness_ranks = torch.LongTensor(
-                range(n_priors)).unsqueeze(0).expand_as(conf_loss_neg).to(self.device)
+            hardness_ranks = torch.tensor(
+                range(n_priors), dtype=torch.long,
+                device=self.device).unsqueeze(0).expand_as(conf_loss_neg)
             # (N, number_of_priors)
             hard_negatives = hardness_ranks < n_hard_negatives.unsqueeze(1)
             # (N, number_of_priors)

@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2019-2022 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2019-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -30,12 +30,14 @@ import os
 import tarfile
 import time
 import urllib
+import urllib.error
+import urllib.request
 import warnings
 from zipfile import ZipFile
 
 import numpy as np
 import torch
-from torch.utils.model_zoo import tqdm
+from torch.utils.model_zoo import tqdm  # type: ignore # tqdm exists in model_zoo
 from torchvision import transforms
 
 import librosa
@@ -417,7 +419,7 @@ class KWS:
         """Stretches audio with specified ratio.
         """
         input_length = 16000
-        audio2 = librosa.effects.time_stretch(audio, rate)
+        audio2 = librosa.effects.time_stretch(audio, rate=rate)
         if len(audio2) > input_length:
             audio2 = audio2[:input_length]
         else:

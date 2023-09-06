@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2022 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2022-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -96,7 +96,8 @@ class AuxiliaryConvolutions(nn.Module):
         for c in self.children():
             if isinstance(c, nn.Conv2d):
                 nn.init.xavier_uniform_(c.weight)
-                nn.init.constant_(c.bias, 0.)
+                if c.bias:
+                    nn.init.constant_(c.bias, 0.)
 
     def forward(self, fire10_feats):
         """
@@ -169,7 +170,8 @@ class PredictionConvolutions(nn.Module):
         for c in self.children():
             if isinstance(c, nn.Conv2d):
                 nn.init.xavier_uniform_(c.weight)
-                nn.init.constant_(c.bias, 0.)
+                if c.bias:
+                    nn.init.constant_(c.bias, 0.)
 
     def forward(self, fire4_feats, fire8_feats, fire9_feats, fire10_feats, conv12_2_feats):
         """
@@ -325,7 +327,7 @@ class TinierSSD(nn.Module):
                                 additional_scale = 1.
                             prior_boxes.append([cx, cy, additional_scale, additional_scale])
 
-        prior_boxes = torch.FloatTensor(prior_boxes).to(device)  # (1700, 4)
+        prior_boxes = torch.tensor(prior_boxes, dtype=torch.float, device=device)  # (1700, 4)
         prior_boxes.clamp_(0, 1)  # (1700, 4)
 
         return prior_boxes
@@ -395,7 +397,7 @@ class TinierSSD(nn.Module):
 
                 # A torch.bool tensor to keep track of which predicted boxes to suppress
                 # True implies suppress, False implies don't suppress
-                suppress = torch.zeros((n_above_min_score), dtype=torch.bool).to(self.device)
+                suppress = torch.zeros((n_above_min_score), dtype=torch.bool, device=self.device)
                 # (n_qualified)
 
                 # Consider each box in order of decreasing scores
@@ -416,14 +418,16 @@ class TinierSSD(nn.Module):
                 # Store only unsuppressed boxes for this class
                 image_boxes.append(class_decoded_locs[~suppress])
                 image_labels.append(
-                    torch.LongTensor((~suppress).sum().item() * [c]).to(self.device))
+                    torch.tensor((~suppress).sum().item() * [c],
+                                 dtype=torch.long, device=self.device))
                 image_scores.append(class_scores[~suppress])
 
             # If no object in any class is found, store a placeholder for 'background'
             if len(image_boxes) == 0:
-                image_boxes.append(torch.FloatTensor([[0., 0., 1., 1.]]).to(self.device))
-                image_labels.append(torch.LongTensor([0]).to(self.device))
-                image_scores.append(torch.FloatTensor([0.]).to(self.device))
+                image_boxes.append(torch.tensor([[0., 0., 1., 1.]],
+                                                dtype=torch.float, device=self.device))
+                image_labels.append(torch.tensor([0], dtype=torch.long, device=self.device))
+                image_scores.append(torch.tensor([0.], dtype=torch.float, device=self.device))
 
             # Concatenate into single tensors
             image_boxes = torch.cat(image_boxes, dim=0)  # (n_objects, 4)

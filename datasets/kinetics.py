@@ -14,6 +14,8 @@ import os
 import pickle
 import tarfile
 import urllib
+import urllib.error
+import urllib.request
 from zipfile import ZipFile
 
 import numpy as np
@@ -26,7 +28,7 @@ import cv2
 import pandas as pd
 import yaml
 from pyffmpeg import FFmpeg
-from pytube import YouTube
+from pytube import YouTube  # type: ignore # class YouTube is in pytube.__main__
 from pytube.exceptions import VideoUnavailable
 from tqdm import tqdm
 

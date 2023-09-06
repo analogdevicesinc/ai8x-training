@@ -14,11 +14,13 @@ import hashlib
 import os
 import tarfile
 import urllib
+import urllib.error
+import urllib.request
 import warnings
 
 import numpy as np
 import torch
-from torch.utils.model_zoo import tqdm
+from torch.utils.model_zoo import tqdm  # type: ignore # tqdm exists in model_zoo
 from torchvision import transforms
 
 import librosa
@@ -359,11 +361,11 @@ def shift(audio, shift_sec, fs):
     return np.roll(audio, shift_count)
 
 
-def stretch(audio, rate=1):
+def stretch(audio, rate=1.):
     """Stretchs audio with specified ratio.
     """
     input_length = 16000
-    audio2 = librosa.effects.time_stretch(audio, rate)
+    audio2 = librosa.effects.time_stretch(audio, rate=rate)
     if len(audio2) > input_length:
         audio2 = audio2[:input_length]
     else:

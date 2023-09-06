@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-June 27, 2023
+August 3, 2023
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -1347,6 +1347,24 @@ Since training can take a significant amount of time, the training script does n
    ```
 
 3. On resource constrained systems, training may abort with an error message such as `RuntimeError: unable to open shared memory object </torch_..._...> in read-write mode`. Add `--workers=0` when running the training script.
+
+4. By default, many systems limit the number of open file descriptors.  `train.py` checks this limit and prints `WARNING: The open file limit is 2048. Please raise the limit (see documentation)` when the limit is low. When the limit is too low, certain actions might abort:
+
+   ```shell
+   (ai8x-training) $ scripts/evaluate_facedet_tinierssd.sh 
+   WARNING: The open file limit is 1024. Please raise the limit (see documentation).
+   ...
+   --- test ---------------------
+   165656 samples (256 per mini-batch)
+   {'multi_box_loss': {'alpha': 2, 'neg_pos_ratio': 3}, 'nms': {'min_score': 0.75, 'max_overlap': 0.3, 'top_k': 20}}
+   Traceback (most recent call last):
+   ...
+   RuntimeError: unable to open shared memory object </torch_202118_3977843486> in read-write mode
+   OSError: [Errno 24] Too many open files
+   ...
+   ```
+
+   To fix this issue, check `ulimit -n` (the soft limit) as well as `ulimit -n -H` (the hard limit) and raise the file descriptor limit using `ulimit -n NUMBER` where NUMBER cannot exceed the hard limit. Note that on many Linux systems, the defaults can be configured in `/etc/security/limits.conf`.
 
 
 ### Example Training Session
