@@ -95,6 +95,8 @@ class QuantizationFunction(Function):
     nearest integer.
     The backward pass is straight through.
     """
+    # pylint: disable=abstract-method
+
     @staticmethod
     def forward(_, x, bits=8, extra_bit_shift=0):  # pylint: disable=arguments-differ
         """Forward prop"""
@@ -138,6 +140,8 @@ class FloorFunction(Function):
     The forward pass returns the integer floor.
     The backward pass is straight through.
     """
+    # pylint: disable=abstract-method
+
     @staticmethod
     def forward(_, x):  # pylint: disable=arguments-differ
         """Forward prop"""
@@ -158,6 +162,8 @@ class AvgPoolFloorFunction(Function):
     ceil for negative numbers.
     The backward pass is straight through.
     """
+    # pylint: disable=abstract-method
+
     @staticmethod
     def forward(_, x):  # pylint: disable=arguments-differ
         """Forward prop"""
@@ -207,6 +213,8 @@ class RoundFunction(Function):
     The forward pass returns the integer rounded.
     The backward pass is straight through.
     """
+    # pylint: disable=abstract-method
+
     @staticmethod
     def forward(_, x):  # pylint: disable=arguments-differ
         """Forward prop"""
@@ -438,7 +446,7 @@ class One(nn.Module):
     """
     def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
-        return torch.ones(1).to(x.device)
+        return torch.ones(1, device=x.device)
 
 
 class WeightScale(nn.Module):
@@ -1807,9 +1815,9 @@ def fuse_bn_layers(m):
                 gamma = target_attr.bn.bias
 
                 if beta is None:
-                    beta = torch.ones(w.shape[0]).to(device)
+                    beta = torch.ones(w.shape[0], device=device)
                 if gamma is None:
-                    gamma = torch.zeros(w.shape[0]).to(device)
+                    gamma = torch.zeros(w.shape[0], device=device)
 
                 beta = 0.25 * beta
                 gamma = 0.25 * gamma

@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2018-2022 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2018-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -74,6 +74,7 @@ def confusion_matrix(cm, labels, normalize=False):
     buf.seek(0)
     data = np.frombuffer(buf.getvalue(), dtype=np.uint8)
     data = np.reshape(np.frombuffer(buf.getvalue(), dtype=np.uint8),
-                      newshape=(int(fig.bbox.bounds[3]), int(fig.bbox.bounds[2]), -1))
+                      newshape=(int(fig.bbox.bounds[3]),  # type: ignore
+                                int(fig.bbox.bounds[2]), -1))  # type: ignore
     buf.close()
     return data

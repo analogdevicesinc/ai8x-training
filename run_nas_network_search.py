@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 ###################################################################################################
 #
-# Copyright (C) 2021 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2021-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -81,10 +81,10 @@ def load_models():
                 fn = 'models.' + name[:-3]
                 m = locate(fn)
                 try:
-                    for i in m.models:
+                    for i in m.models:  # type: ignore
                         i['module'] = fn
-                    supported_models += m.models
-                    model_names += [item['name'] for item in m.models]
+                    supported_models += m.models  # type: ignore
+                    model_names += [item['name'] for item in m.models]  # type: ignore
                 except AttributeError:
                     # Skip files that don't have 'models' or 'models.name'
                     pass
@@ -102,8 +102,8 @@ def load_datasets():
             if fnmatch.fnmatch(name, '*.py'):
                 ds = locate('datasets.' + name[:-3])
                 try:
-                    supported_sources += ds.datasets
-                    dataset_names += [item['name'] for item in ds.datasets]
+                    supported_sources += ds.datasets  # type: ignore
+                    dataset_names += [item['name'] for item in ds.datasets]  # type: ignore
                 except AttributeError:
                     # Skip files that don't have 'datasets' or 'datasets.name'
                     pass
@@ -147,12 +147,12 @@ def create_model(supported_models, args):
                       num_channels=args.dimensions[0],
                       dimensions=(args.dimensions[1], args.dimensions[2]),
                       padding=(module['min_input'] - args.dimensions[2] + 1) // 2,
-                      bias=not args.no_bias).to(args.device)
+                      bias=not args.no_bias).to(args.device)  # type: ignore
     else:
         model = Model(pretrained=False, num_classes=args.num_classes,
                       num_channels=args.dimensions[0],
                       dimensions=(args.dimensions[1], args.dimensions[2]),
-                      bias=not args.no_bias).to(args.device)
+                      bias=not args.no_bias).to(args.device)  # type: ignore
 
     if '2D' in type(model).__name__:
         args.model_type = 'Conv2d'

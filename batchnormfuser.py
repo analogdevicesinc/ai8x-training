@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 ###################################################################################################
 #
-# Copyright (C) 2020-2021 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2020-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -46,7 +46,7 @@ def bn_fuser(state_dict):
         if b_key in state_dict:
             b = state_dict[b_key]
         else:
-            b = torch.zeros(w.shape[0]).to(device)
+            b = torch.zeros(w.shape[0], device=device)
         if r_mean_key in state_dict:
             r_mean = state_dict[r_mean_key]
         if r_var_key in state_dict:
@@ -55,11 +55,11 @@ def bn_fuser(state_dict):
         if beta_key in state_dict:
             beta = state_dict[beta_key]
         else:
-            beta = torch.ones(w.shape[0]).to(device)
+            beta = torch.ones(w.shape[0], device=device)
         if gamma_key in state_dict:
             gamma = state_dict[gamma_key]
         else:
-            gamma = torch.zeros(w.shape[0]).to(device)
+            gamma = torch.zeros(w.shape[0], device=device)
 
         beta = 0.25 * beta
         gamma = 0.25 * gamma
