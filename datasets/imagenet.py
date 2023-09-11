@@ -34,7 +34,7 @@ import ai8x
 
 
 def imagenet_get_datasets(data, load_train=True, load_test=True,
-                          input_size=112, folder=False, augment_data=False):
+                          input_size=112, folder=False, augment_data=True):
     """
     Load the ImageNet 2012 Classification dataset.
 
@@ -187,8 +187,7 @@ def imagenet_bayer_fold_2_get_dataset(data, load_train=True, load_test=True, fol
     """
 
     train_dataset, test_dataset = imagenet_get_datasets(
-        data, load_train, load_test, input_size=128, augment_data=True
-    )
+        data, load_train, load_test, input_size=128, augment_data=False    )
 
     if load_train:
         train_dataset = Bayer_Dataset_Adapter(train_dataset, fold_ratio=fold_ratio)
