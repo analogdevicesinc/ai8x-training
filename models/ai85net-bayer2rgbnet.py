@@ -9,7 +9,6 @@ Bayer to Rgb network for AI85
 """
 from torch import nn
 import ai8x
-import torch.nn as nn
 
 
 class bayer2rgbnet(nn.Module):
@@ -17,12 +16,12 @@ class bayer2rgbnet(nn.Module):
     Bayer to RGB Network Model
     """
     def __init__(
-            self, 
+            self,
             num_classes=None,  # pylint: disable=unused-argument
-            num_channels = 4,
-            dimensions = (64, 64),  # pylint: disable=unused-argument
-            bias = False,
-            **kwargs):
+            num_channels=4,
+            dimensions=(64,64),  # pylint: disable=unused-argument
+            bias=False,
+            **kwargs):  # pylint: disable=unused-argument
 
         super().__init__()
 
@@ -32,9 +31,7 @@ class bayer2rgbnet(nn.Module):
 
 
     def forward(self, x):
-        """
-        Forward prop
-        """
+        """Forward prop"""
         x = self.l1(x)
         x = self.l2(x)
         x = self.l3(x)

@@ -25,15 +25,15 @@
 ImageNet Dataset (using PyTorch's ImageNet and ImageFolder classes)
 """
 import os
-import ai8x
-from torch.utils.data import Dataset
-
-import torch
 import torchvision
+
+from torch.utils.data import Dataset
 from torchvision import transforms
+import ai8x
 
 
-def imagenet_get_datasets( data, load_train=True, load_test=True, input_size=112, folder=False, augment_data = False):
+def imagenet_get_datasets(data, load_train=True, load_test=True,
+                          input_size=112, folder=False, augment_data=False):
     """
     Load the ImageNet 2012 Classification dataset.
 
@@ -99,50 +99,50 @@ def imagenet_get_datasets( data, load_train=True, load_test=True, input_size=112
             test_dataset = None
 
     else:
-            if load_train:
-                train_transform = transforms.Compose([
-                    transforms.RandomResizedCrop(input_size),
-                    transforms.ToTensor(),
-                    ai8x.normalize(args=args),
-                ])
+        if load_train:
+            train_transform = transforms.Compose([
+                transforms.RandomResizedCrop(input_size),
+                transforms.ToTensor(),
+                ai8x.normalize(args=args),
+            ])
 
-                if not folder:
-                    train_dataset = torchvision.datasets.ImageNet(
-                        os.path.join(data_dir, 'ImageNet'),
-                        split='train',
-                        transform=train_transform,
-                    )
-                else:
-                    train_dataset = torchvision.datasets.ImageFolder(
-                        os.path.join(data_dir, 'ImageNet', 'train'),
-                        transform=train_transform,
-                    )
+            if not folder:
+                train_dataset = torchvision.datasets.ImageNet(
+                    os.path.join(data_dir, 'ImageNet'),
+                    split='train',
+                    transform=train_transform,
+                )
             else:
-                train_dataset = None
+                train_dataset = torchvision.datasets.ImageFolder(
+                    os.path.join(data_dir, 'ImageNet', 'train'),
+                    transform=train_transform,
+                )
+        else:
+            train_dataset = None
 
-            if load_test:
-                test_transform = transforms.Compose([
-                    transforms.RandomResizedCrop(input_size),
-                    transforms.ToTensor(),
-                    ai8x.normalize(args=args),
-                ])
+        if load_test:
+            test_transform = transforms.Compose([
+                transforms.RandomResizedCrop(input_size),
+                transforms.ToTensor(),
+                ai8x.normalize(args=args),
+            ])
 
-                if not folder:
-                    test_dataset = torchvision.datasets.ImageNet(
-                        os.path.join(data_dir, 'ImageNet'),
-                        split='val',
-                        transform=test_transform,
-                    )
-                else:
-                    test_dataset = torchvision.datasets.ImageFolder(
-                        os.path.join(data_dir, 'ImageNet', 'val'),
-                        transform=test_transform,
-                    )
-
-                if args.truncate_testset:
-                    test_dataset.data = test_dataset.data[:1]
+            if not folder:
+                test_dataset = torchvision.datasets.ImageNet(
+                    os.path.join(data_dir, 'ImageNet'),
+                    split='val',
+                    transform=test_transform,
+                )
             else:
-                test_dataset = None
+                test_dataset = torchvision.datasets.ImageFolder(
+                    os.path.join(data_dir, 'ImageNet', 'val'),
+                    transform=test_transform,
+                )
+
+            if args.truncate_testset:
+                test_dataset.data = test_dataset.data[:1]
+        else:
+            test_dataset = None
 
     return train_dataset, test_dataset
 
@@ -185,7 +185,9 @@ def imagenet_bayer_fold_2_get_dataset(data, load_train=True, load_test=True, fol
     Raw images obtained from RGB images.
     """
 
-    train_dataset, test_dataset = imagenet_get_datasets(data, load_train, load_test, input_size=128, augment_data = True)
+    train_dataset, test_dataset = imagenet_get_datasets(
+        data, load_train, load_test, input_size=128, augment_data=True
+    )
 
     if load_train:
         train_dataset = Bayer_Dataset_Adapter(train_dataset, fold_ratio=fold_ratio)
