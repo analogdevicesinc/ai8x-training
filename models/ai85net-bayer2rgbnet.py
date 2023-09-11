@@ -30,7 +30,6 @@ class bayer2rgbnet(nn.Module):
         self.l2 = ai8x.ConvTranspose2d(3, 3, kernel_size=3, padding=1, stride=2, bias=bias)
         self.l3 = ai8x.Conv2d(3, 3, kernel_size=3, padding=1, bias=bias)
 
-
     def forward(self, x):
         """Forward prop"""
         x = self.l1(x)
