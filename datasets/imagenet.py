@@ -25,10 +25,11 @@
 ImageNet Dataset (using PyTorch's ImageNet and ImageFolder classes)
 """
 import os
-import torchvision
 
+import torchvision
 from torch.utils.data import Dataset
 from torchvision import transforms
+
 import ai8x
 
 
@@ -48,7 +49,7 @@ def imagenet_get_datasets(data, load_train=True, load_test=True,
     """
     (data_dir, args) = data
 
-    if augment_data :
+    if augment_data:
         if load_train:
             train_transform = transforms.Compose([
                 transforms.RandomResizedCrop(input_size),

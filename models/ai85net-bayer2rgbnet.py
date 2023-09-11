@@ -8,6 +8,7 @@
 Bayer to Rgb network for AI85
 """
 from torch import nn
+
 import ai8x
 
 
@@ -19,7 +20,7 @@ class bayer2rgbnet(nn.Module):
             self,
             num_classes=None,  # pylint: disable=unused-argument
             num_channels=4,
-            dimensions=(64,64),  # pylint: disable=unused-argument
+            dimensions=(64, 64),  # pylint: disable=unused-argument
             bias=False,
             **kwargs):  # pylint: disable=unused-argument
 
