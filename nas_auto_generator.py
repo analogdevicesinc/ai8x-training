@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 ###################################################################################################
 #
-# Copyright (C) 2021 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2021-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -44,11 +44,13 @@ class AutoGen:
 
     def write_line(self, string):
         """Appends a line and a linebreak"""
+        assert self.f
         self.f.write(string)
         self.f.write(os.linesep)
 
     def append_line(self, string):
         """Appends a line"""
+        assert self.f
         self.f.write(string)
 
     def generate(self):

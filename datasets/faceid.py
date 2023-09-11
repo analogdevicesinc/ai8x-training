@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2019-2021 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2019-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -59,7 +59,7 @@ def faceid_get_datasets(data, load_train=True, load_test=True):
                                            resample_img_per_subj=test_resample_img_per_subj)
 
         if args.truncate_testset:
-            test_dataset.data = test_dataset.data[:1]
+            test_dataset.data = test_dataset.data[:1]  # type: ignore # .data exists
     else:
         test_dataset = None
 

@@ -124,8 +124,8 @@ class PascalVOC(torch.utils.data.Dataset):
 
         does_have_box = len(boxes) != 0
 
-        boxes = torch.FloatTensor(boxes)  # (n_objects, 4)
-        labels = torch.LongTensor(labels)  # (n_objects)
+        boxes = torch.tensor(boxes, dtype=torch.float)  # (n_objects, 4)
+        labels = torch.tensor(labels, dtype=torch.long)  # (n_objects)
         difficulties = torch.ByteTensor(difficulties)  # (n_objects)
 
         new_image = image
@@ -167,10 +167,10 @@ class PascalVOC(torch.utils.data.Dataset):
         return image, (boxes, labels)
 
     def __len__(self):
-        return len(self.dataset)
+        return len(self.dataset)  # type: ignore # dataset guaranteed to not be None
 
     def __getitem__(self, index):
-        image, target = self.dataset[index]
+        image, target = self.dataset[index]  # type: ignore # dataset guaranteed to not be None
         image = self.transform(image)
         return image, target
 

@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2018-2020 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2018-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html

@@ -60,6 +60,7 @@ import fnmatch
 import logging
 import operator
 import os
+import resource
 import sys
 import time
 import traceback
@@ -70,7 +71,6 @@ from pydoc import locate
 import numpy as np
 
 import matplotlib
-from pkg_resources import parse_version
 
 # TensorFlow 2.x compatibility
 try:
@@ -81,7 +81,6 @@ except (ModuleNotFoundError, AttributeError):
     pass
 
 import torch
-import torch.nn.parallel
 import torch.optim
 import torch.utils.data
 from torch import nn
@@ -137,6 +136,12 @@ def main():
     supported_sources = []
     model_names = []
     dataset_names = []
+
+    # Check file descriptor limits
+    nfiles = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
+    if nfiles < 4096:
+        print(f'WARNING: The open file limit is {nfiles}. '
+              'Please raise the limit (see documentation).')
 
     # Dynamically load models
     for _, _, files in sorted(os.walk('models')):
@@ -354,7 +359,7 @@ def main():
         ai8x.update_model(model)
 
     if not args.load_serialized and args.gpus != -1 and torch.cuda.device_count() > 1:
-        model = torch.nn.DataParallel(model, device_ids=args.gpus).to(args.device)
+        model = nn.DataParallel(model, device_ids=args.gpus).to(args.device)
 
     if args.reset_optimizer:
         start_epoch = 0
@@ -417,6 +422,7 @@ def main():
         return evaluate_model(model, criterion, test_loader, pylogger, activations_collectors,
                               args, compression_scheduler)
 
+    assert train_loader and val_loader
     msglogger.info('Dataset sizes:\n\ttraining=%d\n\tvalidation=%d\n\ttest=%d',
                    len(train_loader.sampler), len(val_loader.sampler), len(test_loader.sampler))
 
@@ -924,11 +930,11 @@ def test(test_loader, model, criterion, loggers, activations_collectors, args):
             with torch.no_grad():
                 global weight_min, weight_max, weight_count  # pylint: disable=global-statement
                 global weight_sum, weight_stddev, weight_mean  # pylint: disable=global-statement
-                weight_min = torch.tensor(float('inf')).to(args.device)
-                weight_max = torch.tensor(float('-inf')).to(args.device)
-                weight_count = torch.tensor(0, dtype=torch.int).to(args.device)
-                weight_sum = torch.tensor(0.0).to(args.device)
-                weight_stddev = torch.tensor(0.0).to(args.device)
+                weight_min = torch.tensor(float('inf'), device=args.device)
+                weight_max = torch.tensor(float('-inf'), device=args.device)
+                weight_count = torch.tensor(0, dtype=torch.int, device=args.device)
+                weight_sum = torch.tensor(0.0, device=args.device)
+                weight_stddev = torch.tensor(0.0, device=args.device)
 
                 def traverse_pass1(m):
                     """
@@ -981,7 +987,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
             # iou_type='bbox',  # Enable in torchmetrics > 0.6
             class_metrics=False,
             # iou_thresholds=[0.5],  # Enable in torchmetrics > 0.6
-        )
+        ).to(args.device)
         mAP = 0.00
     if not args.regression:
         classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, min(args.num_classes, 5)))
@@ -992,7 +998,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
         """ Save tensor `t` to file handle `f` in CSV format """
         if t.dim() > 1:
             if not regression:
-                t = torch.nn.functional.softmax(t, dim=1)
+                t = nn.functional.softmax(t, dim=1)
             np.savetxt(f, t.reshape(t.shape[0], t.shape[1], -1).cpu().numpy().mean(axis=2),
                        delimiter=",")
         else:
@@ -1048,6 +1054,8 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
     mAP = 0.0
     have_mAP = False
     with torch.no_grad():
+        m = model.module if isinstance(model, nn.DataParallel) else model
+
         for validation_step, (inputs, target) in enumerate(data_loader):
             if args.obj_detection:
                 if not object_detection_utils.check_target_exists(target):
@@ -1073,10 +1081,10 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                     output_boxes /= 128.
                     output_conf /= 128.
 
-                    if (hasattr(model, 'are_locations_wide') and model.are_locations_wide):
+                    if (hasattr(m, 'are_locations_wide') and m.are_locations_wide):
                         output_boxes /= 128.
 
-                    if (hasattr(model, 'are_scores_wide') and model.are_scores_wide):
+                    if (hasattr(m, 'are_scores_wide') and m.are_scores_wide):
                         output_conf /= 128.
 
                 output = (output_boxes, output_conf)
@@ -1084,8 +1092,6 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                 if boxes_list:
                     # .module is added to model for access in multi GPU environments
                     # as https://github.com/pytorch/pytorch/issues/16885 has not been merged yet
-                    m = model.module if isinstance(model, nn.DataParallel) else model
-
                     det_boxes_batch, det_labels_batch, det_scores_batch = \
                         m.detect_objects(output_boxes, output_conf,
                                          min_score=obj_detection_params['nms']['min_score'],
@@ -1176,7 +1182,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
             if steps_completed % args.print_freq == 0 or steps_completed == total_steps:
                 if args.display_prcurves and tflogger is not None:
                     # TODO PR Curve generation for Object Detection case is NOT implemented yet
-                    class_probs_batch = [torch.nn.functional.softmax(el, dim=0) for el in output]
+                    class_probs_batch = [nn.functional.softmax(el, dim=0) for el in output]
                     _, class_preds_batch = torch.max(output, 1)
                     class_probs.append(class_probs_batch)
                     class_preds.append(class_preds_batch)
@@ -1677,7 +1683,7 @@ def create_activation_stats_collectors(model, *phases):
         "mean_channels": SummaryActivationStatsCollector(model, "mean_channels",
                                                          distiller.utils.
                                                          activation_channels_means),
-        "records":       RecordsActivationStatsCollector(model, classes=[torch.nn.Conv2d])
+        "records":       RecordsActivationStatsCollector(model, classes=[nn.Conv2d])
     })
 
     return {k: (genCollectors() if k in phases else missingdict())
@@ -1702,23 +1708,9 @@ def save_collectors_data(collectors, directory):
         collector.save(workbook)
 
 
-def check_pytorch_version():
-    """Ensure PyTorch >= 1.5.0"""
-    if parse_version(torch.__version__) < parse_version('1.5.0'):
-        print("\nNOTICE:")
-        print("This software requires at least PyTorch version 1.5.0 due to "
-              "PyTorch API changes which are not backward-compatible.\n"
-              "Please install PyTorch 1.5.0 or its derivative.\n"
-              "If you are using a virtual environment, do not forget to update it:\n"
-              "  1. Deactivate the old environment\n"
-              "  2. Install the new environment\n"
-              "  3. Activate the new environment")
-        sys.exit(1)
-
-
 def update_old_model_params(model_path, model_new):
     """Adds missing model parameters added with default values.
-    This is mainly due to the saved checkpoint is from previous versions of the repo.
+    This is mainly due to the saved checkpoints from previous versions of the repo.
     New model is saved to `model_path` and the old model copied into the same file_path with
     `__obsolete__` prefix."""
     is_model_old = False
@@ -1749,7 +1741,6 @@ def update_old_model_params(model_path, model_new):
 
 if __name__ == '__main__':
     try:
-        check_pytorch_version()
         np.set_printoptions(threshold=sys.maxsize, linewidth=190)
         torch.set_printoptions(threshold=sys.maxsize, linewidth=190)
 

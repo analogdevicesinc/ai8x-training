@@ -91,7 +91,7 @@ class VGGFace2_FaceDetectionDataset(Dataset):
             img = Image.open(jpg)
             img = img.resize((self.img_size[1], self.img_size[0]))
             # pylint: disable-next=unbalanced-tuple-unpacking
-            gt, _ = mtcnn.detect(img, landmarks=False)
+            gt, _ = mtcnn.detect(img, landmarks=False)  # type: ignore  # returns tuple of 2
 
             if gt is None or None in gt:
                 nf_number += 1

@@ -115,7 +115,8 @@ class AI85ActionTCN(nn.Module):
         batch_size = x.shape[0]
         num_frames = x.shape[1]
         cnnoutputs = torch.zeros(batch_size, num_frames, self.cnn_out_channel,
-                                 self.cnn_out_shape[0], self.cnn_out_shape[1]).to(x.get_device())
+                                 self.cnn_out_shape[0], self.cnn_out_shape[1],
+                                 device=x.get_device())
         for i in range(num_frames):
             prep_out = self.create_prep(x[:, i])
             cnnoutputs[:, i] = self.create_cnn(prep_out)

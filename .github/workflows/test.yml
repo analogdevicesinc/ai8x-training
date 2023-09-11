@@ -61,9 +61,9 @@ jobs:
       - name: Run Training Scripts
         run: bash /home/test/actions-runner/_work/ai8x-training/ai8x-training/scripts/output_file.sh
       - name: Save Log Files
-        run: cp -r /home/test/actions-runner/_work/ai8x-training/ai8x-training/logs//home/test/max7800x/test_logs/$(date +%Y-%m-%d_%H-%M-%S)
+        run: cp -r /home/test/actions-runner/_work/ai8x-training/ai8x-training/logs/ /home/test/max7800x/test_logs/$(date +%Y-%m-%d_%H-%M-%S)
       - name: Save Test Scripts
-        run: cp -r /home/test/actions-runner/_work/ai8x-training/ai8x-training/scripts/output_file.sh/home/test/max7800x/test_scripts/
+        run: cp -r /home/test/actions-runner/_work/ai8x-training/ai8x-training/scripts/output_file.sh /home/test/max7800x/test_scripts/
       - name: Create and run ONNX script
         run: python ./regression/create_onnx_script.py --testconf ./regression/test_config.yaml --testpaths ./regression/paths.yaml
 
@@ -73,7 +73,7 @@ jobs:
     timeout-minutes: 345600
     steps:
       - uses: actions/checkout@v2
-        name: Checkout Test Codes
+        name: Checkout Test Code
         with:
           repository: MaximIntegratedAI/ai8x-training
           ref: develop
