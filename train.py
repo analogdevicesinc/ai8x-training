@@ -60,9 +60,12 @@ import fnmatch
 import logging
 import operator
 import os
+
 # pylint: disable=wrong-import-position
 if os.name == 'posix':
     import resource  # pylint: disable=import-error
+# pylint: enable=wrong-import-position
+
 import sys
 import time
 import traceback
