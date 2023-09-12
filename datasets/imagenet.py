@@ -159,9 +159,9 @@ def imagenetfolder_get_datasets(data, load_train=True, load_test=True, input_siz
 
 class Bayer_Dataset_Adapter(Dataset):
     """
-    This class implements the transforms to generate bayer filtered images from RGB images,
-    and then folds the input data.
-    It also changes the target data as the input images.
+    Implement the transforms to generate bayer filtered images from RGB images,
+    and fold the input data.
+    Change the target data as the input images.
     """
     def __init__(self, dataset, fold_ratio):
         self.dataset = dataset
@@ -183,7 +183,7 @@ def imagenet_bayer_fold_2_get_dataset(data, load_train=True, load_test=True, fol
     """
     Load the ImageNet 2012 Classification dataset using ImageNet.
     This function is used to modify the image dataset for debayerization network.
-    Raw images obtained from RGB images.
+    Obtain raw images  from RGB images.
     """
 
     train_dataset, test_dataset = imagenet_get_datasets(
