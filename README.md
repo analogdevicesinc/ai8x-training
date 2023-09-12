@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-August 7, 2023
+September 12, 2023
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -12,8 +12,9 @@ ADI’s MAX78000/MAX78002 project is comprised of five repositories:
     [ai8x-training](https://github.com/MaximIntegratedAI/ai8x-training) **(described in this document)**
 4. The synthesis repository, which is used to *convert a trained model into C code* using the “izer” tool:
     [ai8x-synthesis](https://github.com/MaximIntegratedAI/ai8x-synthesis) **(described in this document)**
-5. The reference design repository, which contains host applications and sample applications for reference designs:
+5. The reference design repository, which contains host applications and sample applications for reference designs such as [MAXREFDES178 (Cube Camera)](https://www.analog.com/en/design-center/reference-designs/maxrefdes178.html):
     [refdes](https://github.com/MaximIntegratedAI/refdes)
+    *Note: Examples for EVkits and Feather boards are part of the MSDK*
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (<http://typora.io>).
 See <https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet> for a description of Markdown. A [PDF copy of this file](README.pdf) is available in this repository. The GitHub rendering of this document does not show the mathematical formulas. Use the ≡ button to access the table of contents on GitHub._
