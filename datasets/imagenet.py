@@ -187,7 +187,8 @@ def imagenet_bayer_fold_2_get_dataset(data, load_train=True, load_test=True, fol
     """
 
     train_dataset, test_dataset = imagenet_get_datasets(
-        data, load_train, load_test, input_size=128, augment_data=False    )
+        data, load_train, load_test, input_size=128, augment_data=False
+    )
 
     if load_train:
         train_dataset = Bayer_Dataset_Adapter(train_dataset, fold_ratio=fold_ratio)
