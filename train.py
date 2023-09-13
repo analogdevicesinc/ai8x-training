@@ -60,7 +60,12 @@ import fnmatch
 import logging
 import operator
 import os
-import resource
+
+# pylint: disable=wrong-import-position
+if os.name == 'posix':
+    import resource  # pylint: disable=import-error
+# pylint: enable=wrong-import-position
+
 import sys
 import time
 import traceback
@@ -137,11 +142,12 @@ def main():
     model_names = []
     dataset_names = []
 
-    # Check file descriptor limits
-    nfiles = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
-    if nfiles < 4096:
-        print(f'WARNING: The open file limit is {nfiles}. '
-              'Please raise the limit (see documentation).')
+    if os.name == 'posix':
+        # Check file descriptor limits
+        nfiles = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
+        if nfiles < 4096:
+            print(f'WARNING: The open file limit is {nfiles}. '
+                  'Please raise the limit (see documentation).')
 
     # Dynamically load models
     for _, _, files in sorted(os.walk('models')):
