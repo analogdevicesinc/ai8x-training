@@ -54,7 +54,12 @@ ImageNet:
   datapath: "/data_ssd"
   ai87imageneteffnetv2:
     threshold: -5
-    epoch: 13
+    epoch: 15
+ImageNet_Bayer:
+  datapath: "/data_ssd"
+  bayer2rgbnet:
+    threshold: -5
+    epoch: 15
 KWS_20:
   datapath: "/data_ssd"
   ai85kws20net:
