@@ -1,6 +1,7 @@
 ###################################################################################################
 #
-# Copyright (C) 2022 Maxim Integrated Products, Inc. (now owned by Analog Devices Inc.) All Rights Reserved.
+# Copyright (C) 2022 Maxim Integrated Products, Inc. (now owned by Analog Devices Inc.)
+# All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
