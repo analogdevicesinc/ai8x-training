@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2019-2022 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2019-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -178,19 +178,19 @@ class KWS:
 
         # download Speech Command
         filename = self.url_speechcommand.rpartition('/')[2]
-        #self.__download_and_extract_archive(self.url_speechcommand,
-        #                                    download_root=self.raw_folder,
-        #                                    filename=filename)
+        self.__download_and_extract_archive(self.url_speechcommand,
+                                            download_root=self.raw_folder,
+                                            filename=filename)
 
         # download LibriSpeech
         filename = self.url_librispeech.rpartition('/')[2]
-        #self.__download_and_extract_archive(self.url_librispeech,
-        #                                    download_root=self.librispeech_folder,
-        #                                    filename=filename)
+        self.__download_and_extract_archive(self.url_librispeech,
+                                            download_root=self.librispeech_folder,
+                                            filename=filename)
 
         # convert the LibriSpeech audio files to 1-sec 16KHz .wav, stored under raw/librispeech
-        #self.__resample_convert_wav(folder_in=self.librispeech_folder,
-        #                            folder_out=os.path.join(self.raw_folder, 'librispeech'))
+        self.__resample_convert_wav(folder_in=self.librispeech_folder,
+                                    folder_out=os.path.join(self.raw_folder, 'librispeech'))
 
         self.__gen_datasets()
 
