@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2019-2023 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2019-2022 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -30,14 +30,12 @@ import os
 import tarfile
 import time
 import urllib
-import urllib.error
-import urllib.request
 import warnings
 from zipfile import ZipFile
 
 import numpy as np
 import torch
-from torch.utils.model_zoo import tqdm  # type: ignore # tqdm exists in model_zoo
+from torch.utils.model_zoo import tqdm
 from torchvision import transforms
 
 import librosa
@@ -180,19 +178,19 @@ class KWS:
 
         # download Speech Command
         filename = self.url_speechcommand.rpartition('/')[2]
-        self.__download_and_extract_archive(self.url_speechcommand,
-                                            download_root=self.raw_folder,
-                                            filename=filename)
+        #self.__download_and_extract_archive(self.url_speechcommand,
+        #                                    download_root=self.raw_folder,
+        #                                    filename=filename)
 
         # download LibriSpeech
         filename = self.url_librispeech.rpartition('/')[2]
-        self.__download_and_extract_archive(self.url_librispeech,
-                                            download_root=self.librispeech_folder,
-                                            filename=filename)
+        #self.__download_and_extract_archive(self.url_librispeech,
+        #                                    download_root=self.librispeech_folder,
+        #                                    filename=filename)
 
         # convert the LibriSpeech audio files to 1-sec 16KHz .wav, stored under raw/librispeech
-        self.__resample_convert_wav(folder_in=self.librispeech_folder,
-                                    folder_out=os.path.join(self.raw_folder, 'librispeech'))
+        #self.__resample_convert_wav(folder_in=self.librispeech_folder,
+        #                            folder_out=os.path.join(self.raw_folder, 'librispeech'))
 
         self.__gen_datasets()
 
@@ -367,8 +365,27 @@ class KWS:
             print(f'Unknown data type: {self.d_type}')
             return
 
+        set_size = idx_to_select.sum()
+        print(f'{self.d_type} set: {set_size} elements')
+        # take a copy of the original data and targets temporarily for validation set
+        self.data_original = self.data.clone()
+        self.targets_original = self.targets.clone()
         self.data = self.data[idx_to_select, :]
         self.targets = self.targets[idx_to_select, :]
+
+        # append validation set to the training set if validation examples are explicitly included
+        if self.d_type == 'train':
+            idx_to_select = (self.data_type == 2)[:, -1]
+            if idx_to_select.sum() > 0:  # if validation examples exist
+                self.data = torch.cat((self.data, self.data_original[idx_to_select, :]), dim=0)
+                self.targets = \
+                    torch.cat((self.targets, self.targets_original[idx_to_select, :]), dim=0)
+                # indicate the list of validation indices to be used by distiller's dataloader
+                self.valid_indices = range(set_size, set_size + idx_to_select.sum())
+                print(f'validation set: {idx_to_select.sum()} elements')
+
+        del self.data_original
+        del self.targets_original
         del self.data_type
 
     def __filter_classes(self):
@@ -419,7 +436,7 @@ class KWS:
         """Stretches audio with specified ratio.
         """
         input_length = 16000
-        audio2 = librosa.effects.time_stretch(audio, rate=rate)
+        audio2 = librosa.effects.time_stretch(audio, rate)
         if len(audio2) > input_length:
             audio2 = audio2[:input_length]
         else:
@@ -508,6 +525,16 @@ class KWS:
                 print(f'{label:8s}:  \t{len(record_list)}')
             print('------------------------------------------')
 
+            # read testing_list.txt & validation_list.txt into sets for fast access
+            with open(os.path.join(self.raw_folder, 'testing_list.txt')) as f:
+                testing_set = set(f.read().splitlines())
+            with open(os.path.join(self.raw_folder, 'validation_list.txt')) as f:
+                validation_set = set(f.read().splitlines())
+
+            train_count = 0
+            test_count = 0
+            valid_count = 0
+
             for i, label in enumerate(labels):
                 print(f'Processing the label: {label}. {i + 1} of {len(labels)}')
                 record_list = sorted(os.listdir(os.path.join(self.raw_folder, label)))
@@ -526,25 +553,29 @@ class KWS:
                                      dtype=np.uint8)
 
                 time_s = time.time()
-                train_count = 0
-                test_count = 0
+
                 for r, record_name in enumerate(record_list):
+                    
+                    local_filename = os.path.join(label, record_name)
                     if r % 1000 == 0:
                         print(f'\t{r + 1} of {len(record_list)}')
 
-                    if hash(record_name) % 10 < 9:
-                        d_typ = np.uint8(0)  # train+val
-                        train_count += 1
-                    else:
+                    if local_filename in testing_set:
                         d_typ = np.uint8(1)  # test
                         test_count += 1
+                    elif local_filename in validation_set:
+                        d_typ = np.uint8(2)  # val
+                        valid_count += 1
+                    else:
+                        d_typ = np.uint8(0)  # train
+                        train_count += 1
 
                     record_pth = os.path.join(self.raw_folder, label, record_name)
                     record, fs = librosa.load(record_pth, offset=0, sr=None)
                     audio_seq_list = self.augment_multiple(record, fs,
                                                            self.augmentation['aug_num'])
                     for n_a, audio_seq in enumerate(audio_seq_list):
-                        # store set type: train+validate or test
+                        # store set type: train, test or validate
                         data_type[(self.augmentation['aug_num'] + 1) * r + n_a, 0] = d_typ
 
                         # Write audio 128x128=16384 samples without overlap
@@ -588,7 +619,7 @@ class KWS:
             torch.save(mfcc_dataset, os.path.join(self.processed_folder, self.data_file))
 
         print('Dataset created.')
-        print(f'Training+Validation: {train_count},  Test: {test_count}')
+        print(f'Training: {train_count}, Validation: {valid_count}, Test: {test_count}')
 
 
 class KWS_20(KWS):
