@@ -35,11 +35,11 @@ from zipfile import ZipFile
 
 import numpy as np
 import torch
+import torchaudio
 from torch.utils.model_zoo import tqdm  # type: ignore # tqdm exists in model_zoo
 from torchvision import transforms
 
 import librosa
-import torchaudio
 import soundfile as sf
 
 import ai8x
@@ -558,6 +558,7 @@ class KWS:
                 time_s = time.time()
 
                 for r, record_name in enumerate(record_list):
+
                     local_filename = os.path.join(label, record_name)
                     if r % 1000 == 0:
                         print(f'\t{r + 1} of {len(record_list)}')
