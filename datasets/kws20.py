@@ -35,11 +35,11 @@ from zipfile import ZipFile
 
 import numpy as np
 import torch
-from torch.utils.model_zoo import tqdm
+from torch.utils.model_zoo import tqdm  # type: ignore # tqdm exists in model_zoo
 from torchvision import transforms
 
 import librosa
-import pytsmod as tsm
+import torchaudio
 import soundfile as sf
 
 import ai8x
@@ -436,7 +436,7 @@ class KWS:
         """Stretches audio with specified ratio.
         """
         input_length = 16000
-        audio2 = librosa.effects.time_stretch(audio, rate)
+        audio2 = librosa.effects.time_stretch(audio, rate=rate)
         if len(audio2) > input_length:
             audio2 = audio2[:input_length]
         else:
@@ -454,7 +454,10 @@ class KWS:
         random_strech_coeff = np.random.uniform(self.augmentation['strech']['min'],
                                                 self.augmentation['strech']['max'])
 
-        aug_audio = tsm.wsola(audio, random_strech_coeff)
+        sox_effects = [["speed", str(random_strech_coeff)], ["rate", str(fs)]]
+        aug_audio, _ = torchaudio.sox_effects.apply_effects_tensor(
+            torch.unsqueeze(torch.from_numpy(audio).float(), dim=0), fs, sox_effects)
+        aug_audio = aug_audio.numpy().squeeze()
         aug_audio = self.shift(aug_audio, random_shift_time, fs)
         aug_audio = self.add_white_noise(aug_audio, random_noise_var_coeff)
 
@@ -526,9 +529,9 @@ class KWS:
             print('------------------------------------------')
 
             # read testing_list.txt & validation_list.txt into sets for fast access
-            with open(os.path.join(self.raw_folder, 'testing_list.txt')) as f:
+            with open(os.path.join(self.raw_folder, 'testing_list.txt'), encoding="utf-8") as f:
                 testing_set = set(f.read().splitlines())
-            with open(os.path.join(self.raw_folder, 'validation_list.txt')) as f:
+            with open(os.path.join(self.raw_folder, 'validation_list.txt'), encoding="utf-8") as f:
                 validation_set = set(f.read().splitlines())
 
             train_count = 0
@@ -555,7 +558,6 @@ class KWS:
                 time_s = time.time()
 
                 for r, record_name in enumerate(record_list):
-                    
                     local_filename = os.path.join(label, record_name)
                     if r % 1000 == 0:
                         print(f'\t{r + 1} of {len(record_list)}')
