@@ -452,7 +452,7 @@ class KWS:
         random_shift_time = np.random.uniform(self.augmentation['shift']['min'],
                                               self.augmentation['shift']['max'])
         random_stretch_coeff = np.random.uniform(self.augmentation['stretch']['min'],
-                                                self.augmentation['stretch']['max'])
+                                                 self.augmentation['stretch']['max'])
 
         sox_effects = [["speed", str(random_stretch_coeff)], ["rate", str(fs)]]
         aug_audio, _ = torchaudio.sox_effects.apply_effects_tensor(
