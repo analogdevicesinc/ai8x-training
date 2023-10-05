@@ -163,10 +163,10 @@ class KWS:
                     print('No key `shift` in input augmentation dictionary! '
                           'Using defaults: [Min:-0.1, Max: 0.1]')
                     self.augmentation['shift'] = {'min': -0.1, 'max': 0.1}
-                if 'strech' not in augmentation:
-                    print('No key `strech` in input augmentation dictionary! '
+                if 'stretch' not in augmentation:
+                    print('No key `stretch` in input augmentation dictionary! '
                           'Using defaults: [Min: 0.8, Max: 1.3]')
-                    self.augmentation['strech'] = {'min': 0.8, 'max': 1.3}
+                    self.augmentation['stretch'] = {'min': 0.8, 'max': 1.3}
 
     def __download(self):
 
@@ -451,10 +451,10 @@ class KWS:
                                                    self.augmentation['noise_var']['max'])
         random_shift_time = np.random.uniform(self.augmentation['shift']['min'],
                                               self.augmentation['shift']['max'])
-        random_strech_coeff = np.random.uniform(self.augmentation['strech']['min'],
-                                                self.augmentation['strech']['max'])
+        random_stretch_coeff = np.random.uniform(self.augmentation['stretch']['min'],
+                                                self.augmentation['stretch']['max'])
 
-        sox_effects = [["speed", str(random_strech_coeff)], ["rate", str(fs)]]
+        sox_effects = [["speed", str(random_stretch_coeff)], ["rate", str(fs)]]
         aug_audio, _ = torchaudio.sox_effects.apply_effects_tensor(
             torch.unsqueeze(torch.from_numpy(audio).float(), dim=0), fs, sox_effects)
         aug_audio = aug_audio.numpy().squeeze()
@@ -463,7 +463,7 @@ class KWS:
 
         if verbose:
             print(f'random_noise_var_coeff: {random_noise_var_coeff:.2f}\nrandom_shift_time: \
-                    {random_shift_time:.2f}\nrandom_strech_coeff: {random_strech_coeff:.2f}')
+                    {random_shift_time:.2f}\nrandom_stretch_coeff: {random_stretch_coeff:.2f}')
         return aug_audio
 
     def augment_multiple(self, audio, fs, n_augment, verbose=False):
