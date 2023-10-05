@@ -78,7 +78,7 @@ def expand(image, boxes, filler):
     new_w = int(scale * original_w)
 
     # Create such an image with the filler
-    filler = torch.FloatTensor(filler)  # (3)
+    filler = torch.tensor(filler, dtype=torch.float)  # (3)
     new_image = torch.ones((3, new_h, new_w), dtype=torch.float) * \
         filler.unsqueeze(1).unsqueeze(1)  # (3, new_h, new_w)
 
@@ -98,7 +98,7 @@ def expand(image, boxes, filler):
     # Adjust bounding boxes' coordinates accordingly
     # (n_objects, 4), n_objects is the no. of objects in this image
     new_boxes = \
-        boxes + torch.FloatTensor([left, top, left, top]).unsqueeze(0)
+        boxes + torch.tensor([left, top, left, top], dtype=torch.float).unsqueeze(0)
 
     return new_image, new_boxes
 
@@ -180,7 +180,7 @@ def random_crop(image, boxes, labels, difficulties):
             right = left + new_w
             top = random.randint(0, original_h - new_h)
             bottom = top + new_h
-            crop = torch.FloatTensor([left, top, right, bottom])  # (4)
+            crop = torch.tensor([left, top, right, bottom], dtype=torch.float)  # (4)
 
             # Calculate Jaccard overlap between the crop and the bounding boxes
             # (1, n_objects), n_objects is the no. of objects in this image
@@ -242,13 +242,16 @@ def resize(image, boxes, dims=(300, 300), return_percent_coords=True):
 
     # Resize bounding boxes
     # old_dims =
-    # torch.FloatTensor([image.width, image.height, image.width, image.height]).unsqueeze(0)
-    old_dims = torch.FloatTensor(
-        [image.shape[2], image.shape[1], image.shape[2], image.shape[1]]).unsqueeze(0)
+    # torch.tensor([image.width, image.height, image.width, image.height],
+    #              dtype=torch.float).unsqueeze(0)
+    old_dims = torch.tensor(
+        [image.shape[2], image.shape[1], image.shape[2], image.shape[1]],
+        dtype=torch.float).unsqueeze(0)
     new_boxes = boxes / old_dims  # percent coordinates
 
     if not return_percent_coords:
-        new_dims = torch.FloatTensor([dims[1], dims[0], dims[1], dims[0]]).unsqueeze(0)
+        new_dims = torch.tensor([dims[1], dims[0], dims[1], dims[0]],
+                                dtype=torch.float).unsqueeze(0)
         new_boxes = new_boxes * new_dims
 
     return new_image, new_boxes

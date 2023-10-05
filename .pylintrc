@@ -15,3 +15,5 @@ max-args=20
 max-returns=10
 max-attributes=25
 max-nested-blocks=10
+[MASTER]
+init-hook="from pylint.config import find_pylintrc; import os, sys; sys.path.append(os.path.dirname(find_pylintrc()))"

@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-June 27, 2023
+September 20, 2023
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -12,8 +12,9 @@ ADI’s MAX78000/MAX78002 project is comprised of five repositories:
     [ai8x-training](https://github.com/MaximIntegratedAI/ai8x-training) **(described in this document)**
 4. The synthesis repository, which is used to *convert a trained model into C code* using the “izer” tool:
     [ai8x-synthesis](https://github.com/MaximIntegratedAI/ai8x-synthesis) **(described in this document)**
-5. The reference design repository, which contains host applications and sample applications for reference designs:
+5. The reference design repository, which contains host applications and sample applications for reference designs such as [MAXREFDES178 (Cube Camera)](https://www.analog.com/en/design-center/reference-designs/maxrefdes178.html):
     [refdes](https://github.com/MaximIntegratedAI/refdes)
+    *Note: Examples for EVkits and Feather boards are part of the MSDK*
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (<http://typora.io>).
 See <https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet> for a description of Markdown. A [PDF copy of this file](README.pdf) is available in this repository. The GitHub rendering of this document does not show the mathematical formulas. Use the ≡ button to access the table of contents on GitHub._
@@ -1348,6 +1349,49 @@ Since training can take a significant amount of time, the training script does n
 
 3. On resource constrained systems, training may abort with an error message such as `RuntimeError: unable to open shared memory object </torch_..._...> in read-write mode`. Add `--workers=0` when running the training script.
 
+4. By default, many systems limit the number of open file descriptors.  `train.py` checks this limit and prints `WARNING: The open file limit is 2048. Please raise the limit (see documentation)` when the limit is low. When the limit is too low, certain actions might abort:
+
+   ```shell
+   (ai8x-training) $ scripts/evaluate_facedet_tinierssd.sh 
+   WARNING: The open file limit is 1024. Please raise the limit (see documentation).
+   ...
+   --- test ---------------------
+   165656 samples (256 per mini-batch)
+   {'multi_box_loss': {'alpha': 2, 'neg_pos_ratio': 3}, 'nms': {'min_score': 0.75, 'max_overlap': 0.3, 'top_k': 20}}
+   Traceback (most recent call last):
+   ...
+   RuntimeError: unable to open shared memory object </torch_202118_3977843486> in read-write mode
+   OSError: [Errno 24] Too many open files
+   ...
+   ```
+
+   To fix this issue, check `ulimit -n` (the soft limit) as well as `ulimit -n -H` (the hard limit) and raise the file descriptor limit using `ulimit -n NUMBER` where NUMBER cannot exceed the hard limit. Note that on many Linux systems, the defaults can be configured in `/etc/security/limits.conf`.
+
+5. Datasets with larger-dimension images may require substantial amounts of system RAM. For example, `scripts/train_kinetics.sh` is configured for systems with 64 GB of RAM. When the system runs out of memory, training is abruptly killed and the error is logged to system journal. The following examples are from a system with 48 GB of RAM:
+
+   ```shell
+   ...
+   Epoch: [13][  142/  142]    Overall Loss 1.078153    Objective Loss 1.078153    Top1 64.062500    LR 0.000500    Time 1.247024    
+   --- validate (epoch=13)-----------
+   1422 samples (32 per mini-batch)
+   Epoch: [13][   10/   45]    Loss 1.082790    Top1 60.937500    
+   Epoch: [13][   20/   45]    Loss 1.099474    Top1 60.312500    
+   Epoch: [13][   30/   45]    Loss 1.113100    Top1 59.791667    
+   Killed
+   ```
+
+   and from the system journal:
+
+   ```shell
+   kernel: oom-kill:constraint=CONSTRAINT_NONE,nodemask=(null),cpuset=/,mems_allowed=0,global_oom,task_memcg=/user.slice/user-1000.slice/session-11289.scope,task=python,pid=226828,uid=1000
+   kernel: Out of memory: Killed process 226828 (python) total-vm:81269752kB, anon-rss:5711328kB, file-rss:146056kB, shmem-rss:648024kB, UID:1000 pgtables:97700kB oom_score_adj:0
+   kernel: oom_reaper: reaped process 226828 (python), now anon-rss:0kB, file-rss:145268kB, shmem-rss:648024kB
+   ```
+
+   Training might succeed after reducing the batch size, reducing image dimensions, or pruning the dataset. Unfortunately, the only real fix for this issue is more system RAM. In the example, `kinetics_get_datasets()` from `datasets/kinetics.py` states “The current implementation of using 2000 training and 150 test examples per class at 240×240 resolution and 5 frames per second requires around 50 GB of RAM.”
+
+
+
 
 ### Example Training Session
 
@@ -2244,6 +2288,9 @@ The following table describes the most important command line arguments for `ai8
 
 The [quick-start guide](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/Guides/YAML%20Quickstart.md) provides a short overview of the purpose and structure of the YAML network description file.
 
+If `yamllint` is installed and available in the shell path, it is automatically run against the configuration file and all warnings and errors are reported.
+*Note: The name of the linter can be changed using the `--yamllint` command line argument.*
+
 The following is a detailed guide into all supported configuration options.
 
 An example network description for the ai85net5 architecture and MNIST is shown below:
@@ -2313,7 +2360,7 @@ To generate an RTL simulation for the same network and sample data in the direct
 
 Network descriptions are written in YAML (see <https://en.wikipedia.org/wiki/YAML>). There are two sections in each file — global statements and a sequence of layer descriptions.
 
-*Note: The network loader automatically checks the configuration file for syntax errors and prints warnings for non-fatal errors. To perform the same checks manually, run:* `yamllint configfile.yaml`
+*Note: The network loader automatically checks the configuration file for syntax errors and prints warnings for non-fatal errors if `yamllint` is installed in the shell search path. To perform the same checks manually, run:* `yamllint configfile.yaml` (to use a different linter, specify `--yamllint mylinter`).
 
 #### Purpose of the YAML Network Description
 
@@ -2581,11 +2628,23 @@ Example:
 
 `in_dim` specifies the dimensions of the input data. This is usually automatically computed based on the output of the previous layer or the layer(s) referenced by `in_sequences`. This key allows overriding of the automatically calculated dimensions. `in_dim` must be used when changing from 1D to 2D data or vice versa. 1D dimensions can be specified as a tuple `[L, 1]` or as an integer `L`.
 
-See also: `in_channels`.
+See also: `in_channels`, `in_crop`.
 
 Examples:
         `in_dim: [64, 64]`
         `in_dim: 32`
+
+##### `in_crop` (Optional)
+
+`in_crop` specifies a number of rows (2D) or data bytes (1D) to skip (crop) when using the previous layer's output as input. By also adjusting `in_offset`, this provides the means to crop the top/bottom of an image or the beginning/end of 1D data. The dimensions and offsets are validated to match (minus the crop amount).
+
+See also: `in_dim`, `in_offset`.
+
+Example (1D cropping):
+        `# Output data had L=512`
+        `in_offset: 0x000c  # Skip 3 (x4 processors) at beginning`
+        `in_dim: 506  # Target length = 506`
+        `in_crop: [3, 3]  # Crop 3 at the beginning, 3 at the end`
 
 ##### `in_sequences` (Optional)
 

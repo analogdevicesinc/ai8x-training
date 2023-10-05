@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2021-2022 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2021-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -168,7 +168,7 @@ class OnceForAllSequentialModel(nn.Module):
             else:
                 pooling = True
                 dim1 = dim1 // 2
-                dim2 = (dim2 // 2) if inp_2d else 1
+                dim2 = dim2 // 2 if inp_2d else 1
 
             self.units.append(unit(depth_list[i], kernel_list[i], width_list[i], last_width, bias,
                                    pooling, bn, **kwargs))
@@ -347,8 +347,8 @@ class OnceForAllSequentialModel(nn.Module):
             for l_ind in range(unit.depth):
                 unit.layers[l_ind].out_channels = arch['width_list'][u_ind][l_ind]
                 unit.layers[l_ind].kernel_size = arch['kernel_list'][u_ind][l_ind]
-                if l_ind == (unit.depth-1):
-                    if u_ind != (self.n_units-1):
+                if l_ind == unit.depth - 1:
+                    if u_ind != self.n_units - 1:
                         self.units[u_ind+1].layers[0].in_channels = \
                             arch['width_list'][u_ind][l_ind]
                 else:
@@ -361,7 +361,7 @@ class OnceForAllSequentialModel(nn.Module):
     def reset_arch(self, sort_channels=False):
         """Resets architecture to the full model"""
         for unit in self.units:
-            unit.depth = len(unit.layers)
+            unit.depth = len(unit.layers)  # type: ignore
             for layer in unit.layers:
                 layer.out_channels = layer.op.weight.shape[0]
                 layer.in_channels = layer.op.weight.shape[1]
@@ -379,7 +379,7 @@ class OnceForAllSequentialModel(nn.Module):
         for u_ind, depth in enumerate(model_arch['depth_list']):
             if u_ind != 0:
                 dim1 = dim1 // 2
-                dim2 = (dim2 // 2) if len(model_arch['dimensions']) == 2 else 1
+                dim2 = dim2 // 2 if len(model_arch['dimensions']) == 2 else 1
             for l_ind in range(depth):
                 if l_ind != 0:
                     prev_layer_width = model_arch['width_list'][u_ind][l_ind-1]
