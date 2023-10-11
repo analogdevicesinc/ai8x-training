@@ -12,7 +12,7 @@ jobs:
       - name: Checkout last-dev
         uses: actions/checkout@v2
         with:
-          repository: asyatrhl/ai8x-training
+          repository: MaximIntegratedAI/ai8x-training
           ref: evaluation_scripts
           submodules: recursive
       - name: Checkout synthesis
