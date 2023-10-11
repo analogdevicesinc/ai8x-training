@@ -86,8 +86,9 @@ with open(output_file_path, "w", encoding='utf-8') as output_file:
                 try:
                     temp[i+1] = str(config[log_data][log_model]["epoch"])
                 except KeyError:
-                    # Handle the KeyError by assigning a dummy value
-                    temp[i+1] = "10"
+                    print(f"\033[93m\u26A0\033[0m Warning: {temp[j+1]} model is" +
+                          " missing information in test configuration files.")
+                    continue
 
                 if '--deterministic' not in temp:
                     temp.insert(-1, '--deterministic')
@@ -98,8 +99,9 @@ with open(output_file_path, "w", encoding='utf-8') as output_file:
                     path_data = config[log_data]["datapath"]
                     temp[i+1] = str(config[log_data][log_model]["epoch"])
                 except KeyError:
-                    # Handle the KeyError by assigning a dummy value
-                    path_data = "/data_ssd"
+                    print(f"\033[93m\u26A0\033[0m Warning: {temp[j+1]} model is" +
+                          " missing information in test configuration files.")
+                    continue
 
                 temp.insert(-1, '--data ' + path_data)
                 temp.append("\n")

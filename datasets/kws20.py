@@ -166,7 +166,7 @@ class KWS:
                           'Using defaults: [Min:-0.1, Max: 0.1]')
                     self.augmentation['shift'] = {'min': -0.1, 'max': 0.1}
                 if 'strech' not in augmentation:
-                    print('No key `strech` in input augmentation dictionary! '
+                    print('No key `stretch` in input augmentation dictionary! '
                           'Using defaults: [Min: 0.8, Max: 1.3]')
                     self.augmentation['strech'] = {'min': 0.8, 'max': 1.3}
 

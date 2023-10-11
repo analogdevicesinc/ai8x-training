@@ -28,7 +28,7 @@ jobs:
       - name: Create Venv
         run: |
           pyenv local 3.8.11
-          python3 -m venv venv --prompt ai8x-training
+          python -m venv venv --prompt ai8x-training
       - name: Activate Venv
         run: source venv/bin/activate
       - name: Install Dependencies
@@ -62,7 +62,7 @@ jobs:
       - name: Create Venv
         run: |
           pyenv local 3.8.11
-          python3 -m venv venv --prompt ai8x-training
+          python -m venv venv --prompt ai8x-training
       - name: Activate Venv
         run: source venv/bin/activate
       - name: Install Dependencies
@@ -89,7 +89,7 @@ jobs:
       - name: Create Venv
         run: |
           pyenv local 3.8.11
-          python3 -m venv venv --prompt ai8x-training
+          python -m venv venv --prompt ai8x-training
       - name: Activate Venv
         run: source venv/bin/activate
       - name: Install Dependencies
@@ -125,7 +125,7 @@ jobs:
       - name: Create Venv
         run: |
           pyenv local 3.8.11
-          python3 -m venv venv --prompt ai8x-training
+          python -m venv venv --prompt ai8x-training
       - name: Activate Venv
         run: source venv/bin/activate
       - name: Install Dependencies

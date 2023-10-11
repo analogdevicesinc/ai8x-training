@@ -37,7 +37,7 @@ def collate_fn(batch):
 def check_target_exists(target_list):
     """
     Checks whether any object exists in given target list
-    Object detection data laoders return target as
+    Object detection data loaders return target as
         target[0]: boxes list
         target[1]: labels list
     For images without any objects, these lists are both empty
