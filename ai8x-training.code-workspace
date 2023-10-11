@@ -4,13 +4,4 @@
 			"path": "."
 		}
 	],
-	"settings": {
-		"python.pythonPath": "venv/bin/python",
-		"python.linting.flake8Enabled": true,
-		"python.linting.pylintArgs": [
-			"--rcfile=.pylintrc"
-		],
-		"markdown.extension.toc.levels": "2..6",
-		"python.linting.mypyEnabled": true
-	}
 }

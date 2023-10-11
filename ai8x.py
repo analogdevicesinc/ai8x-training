@@ -278,6 +278,15 @@ class ScalerONNX(nn.Module):
         return x.mul(s)
 
 
+class ID3(nn.Module):
+    """
+    ID forward function with 3 arguments
+    """
+    def forward(self, x, _):  # pylint: disable=arguments-differ
+        """Forward prop"""
+        return x
+
+
 class RoundQat(nn.Module):
     """
     Round function for AvgPool in QAT mode
@@ -408,16 +417,55 @@ def quantize_clamp_parameters(weight_bits, bias_bits):
     return quantize_weight, quantize_bias, clamp_weight, clamp_bias
 
 
-class OutputShiftSqueeze(nn.Module):
+class OutputShiftPassthrough(nn.Module):
     """
     Return output_shift when not using quantization-aware training.
     """
     def forward(self, _, x):  # pylint: disable=arguments-differ
         """Forward prop"""
-        return x.squeeze(0)
+        return x
 
 
-class OutputShift(nn.Module):
+def interp(x, xp, fp, method='linear'):
+    """
+    Simple PyTorch implementation of `np.interp`.
+    1D data only, length must be 2 or greater.
+    `method` must be "linear" or "lower".
+    """
+    # Find the index
+    n = len(xp) - 1
+    if n == 0:
+        return fp[0]
+    if x == 1.:
+        return fp[-1]
+    i = torch.clip(torch.searchsorted(xp, x, side='right').unsqueeze(0), 1, n) - 1
+    # Calculate fractional index
+    if method == 'linear':
+        g = x * n - i
+    else:
+        assert method == 'lower'
+        g = .0
+    # Interpolate result
+    return fp[i] + g * (fp[i + 1] - fp[i])
+
+
+def quantile(x, q, method='linear'):
+    """
+    Ersatz quantile function in PyTorch that works with torch.compile().
+    1D data only, len(x) must be 2 or greater.
+    `method` must be "linear" or "lower".
+    """
+    x = x.flatten()
+    n = len(x)
+    return interp(
+        q,
+        torch.linspace(1 / (2 * n), (2 * n - 1) / (2 * n), n, device=x.device),
+        torch.sort(x)[0],
+        method,
+    ).squeeze(0)
+
+
+class OutputShiftLimit(nn.Module):
     """
     Calculate the clamped output shift when adjusting during quantization-aware training.
     """
@@ -427,7 +475,7 @@ class OutputShift(nn.Module):
 
     def forward(self, x, _):  # pylint: disable=arguments-differ
         """Forward prop"""
-        limit = torch.quantile(x.abs(), self.shift_quantile)
+        limit = quantile(x.abs(), self.shift_quantile)
         return -(1./limit).log2().floor().clamp(min=-15., max=15.)
 
 
@@ -555,40 +603,52 @@ class QuantizationAwareModule(nn.Module):
 
         self.pool = pool
         self.op = op
+        if op is not None and not hasattr(self, '_conv_forward'):
+            self._conv_forward = op._conv_forward  # pylint: disable=protected-access
         self.bn = bn
         self.pooling = pooling
 
         self.output_shift = nn.Parameter(torch.tensor([0.]), requires_grad=False)
         self.init_module(weight_bits, bias_bits, quantize_activation, shift_quantile)
 
-    def init_module(self, weight_bits, bias_bits, quantize_activation, shift_quantile):
+    def init_module(
+            self,
+            weight_bits,
+            bias_bits,
+            quantize_activation,
+            shift_quantile,
+            export=False,
+    ):
         """Initialize model parameters"""
         if weight_bits is None and bias_bits is None and not quantize_activation:
-            self.weight_bits = nn.Parameter(torch.tensor([0]), requires_grad=False)
-            self.bias_bits = nn.Parameter(torch.tensor([0]), requires_grad=False)
-            self.quantize_activation = nn.Parameter(torch.tensor([False]), requires_grad=False)
-            self.adjust_output_shift = nn.Parameter(torch.tensor([False]), requires_grad=False)
+            if not export:
+                self.weight_bits = nn.Parameter(torch.tensor([0]), requires_grad=False)
+                self.bias_bits = nn.Parameter(torch.tensor([0]), requires_grad=False)
+                self.quantize_activation = nn.Parameter(torch.tensor([False]), requires_grad=False)
+                self.adjust_output_shift = nn.Parameter(torch.tensor([False]), requires_grad=False)
         elif weight_bits in [1, 2, 4, 8] and bias_bits in [1, 2, 4, 8] and quantize_activation:
             self.weight_bits = nn.Parameter(torch.tensor([weight_bits]), requires_grad=False)
-            self.bias_bits = nn.Parameter(torch.tensor([bias_bits]), requires_grad=False)
-            self.quantize_activation = nn.Parameter(torch.tensor([True]), requires_grad=False)
-            self.adjust_output_shift = nn.Parameter(torch.tensor([not dev.simulate]),
-                                                    requires_grad=False)
+            if not export:
+                self.bias_bits = nn.Parameter(torch.tensor([bias_bits]), requires_grad=False)
+                self.quantize_activation = nn.Parameter(torch.tensor([True]), requires_grad=False)
+                self.adjust_output_shift = nn.Parameter(torch.tensor([not dev.simulate]),
+                                                        requires_grad=False)
         else:
             assert False, f'Undefined mode with weight_bits: {weight_bits}, ' \
                           f'bias_bits: {bias_bits}, ' \
                           f'quantize_activation: {quantize_activation}'
 
-        self.shift_quantile = nn.Parameter(torch.tensor([shift_quantile]), requires_grad=False)
-        self.set_functions()
+        if not export:
+            self.shift_quantile = nn.Parameter(torch.tensor([shift_quantile]), requires_grad=False)
+            self.set_functions()
 
     def set_functions(self):
         """Set functions to be used wrt the model parameters"""
         if self.adjust_output_shift.detach():
-            self.calc_out_shift = OutputShift(self.shift_quantile.detach().item())
+            self.calc_out_shift = OutputShiftLimit(self.shift_quantile.detach().item())
             self.calc_weight_scale = WeightScale()
         else:
-            self.calc_out_shift = OutputShiftSqueeze()
+            self.calc_out_shift = OutputShiftPassthrough()
             self.calc_weight_scale = One()
 
         self.scale = Scaler()
@@ -618,21 +678,12 @@ class QuantizationAwareModule(nn.Module):
             weight_scale = self.calc_weight_scale(out_shift)
             out_scale = self.calc_out_scale(out_shift)
 
-            self.output_shift.data = out_shift.unsqueeze(0)
-
-            weights = self.op.weight.data
-            self.op.weight.data = \
-                self.clamp_weight(self.quantize_weight(self.op.weight.mul(weight_scale)))
-            if self.op.bias is not None:
-                biases = self.op.bias.data
-                self.op.bias.data = \
-                    self.clamp_bias(self.quantize_bias(self.op.bias.mul(weight_scale)))
-
-            x = self.op(x)
-
-            self.op.weight.data = weights
-            if self.op.bias is not None:
-                self.op.bias.data = biases
+            x = self._conv_forward(  # pylint: disable=protected-access
+                x,
+                self.clamp_weight(self.quantize_weight(self.op.weight.mul(weight_scale))),
+                None if self.op.bias is None
+                else self.clamp_bias(self.quantize_bias(self.op.bias.mul(weight_scale))),
+            )
 
             if self.bn is not None:
                 x = self.bn(x).div(4.)
@@ -1023,6 +1074,15 @@ class ConvTranspose2d(Conv2d):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, op='ConvTranspose2d', **kwargs)
 
+    def _conv_forward(self, x, weight, bias):  # pylint: disable=method-hidden
+        output_padding = self.op._output_padding(  # pylint: disable=protected-access
+            x, None, self.op.stride, self.op.padding,  # type: ignore[arg-type]
+            self.op.kernel_size, 2, self.op.dilation)  # type: ignore[arg-type]
+
+        return nn.functional.conv_transpose2d(  # pylint: disable=method-hidden
+            x, weight, bias, self.op.stride, self.op.padding,
+            output_padding, self.op.groups, self.op.dilation)
+
 
 class FusedConvTranspose2dReLU(ConvTranspose2d):
     """
@@ -1272,6 +1332,9 @@ class Linear(QuantizationAwareModule):
         self.op.padding = None
         self.op.dilation = None
         self.op.groups = None
+
+    def _conv_forward(self, x, weight, bias):  # pylint: disable=method-hidden
+        return nn.functional.linear(x, weight, bias)
 
 
 class FusedLinearReLU(Linear):
@@ -1750,31 +1813,28 @@ class QuantizeONNX(nn.Module):
         return x.mul(factor).round().div(factor)
 
 
-def initiate_qat(m, qat_policy):
+def initiate_qat(m, qat_policy, export=False):
     """
-    Modify model `m` to start quantization aware training.
+    Modify the (unwrapped) model `m` to start quantization aware training.
     """
-    if isinstance(m, nn.DataParallel):
-        m = m.module
-
     for name, module in m.named_modules():
         if isinstance(module, QuantizationAwareModule) and hasattr(module, 'weight_bits'):
             if 'shift_quantile' in qat_policy:
                 module.init_module(qat_policy['weight_bits'],
                                    qat_policy['weight_bits'],
-                                   True, qat_policy['shift_quantile'])
+                                   True, qat_policy['shift_quantile'], export)
             else:
                 module.init_module(qat_policy['weight_bits'],
-                                   qat_policy['weight_bits'], True, 1.0)
+                                   qat_policy['weight_bits'], True, 1.0, export)
             if 'overrides' in qat_policy:
                 if name in qat_policy['overrides']:
                     weight_field = qat_policy['overrides'][name]['weight_bits']
                     if 'shift_quantile' in qat_policy:
                         module.init_module(weight_field, weight_field,
-                                           True, qat_policy['shift_quantile'])
+                                           True, qat_policy['shift_quantile'], export)
                     else:
                         module.init_module(weight_field,
-                                           weight_field, True, 1.0)
+                                           weight_field, True, 1.0, export)
 
 
 def update_model(m):
@@ -1829,6 +1889,7 @@ def update_optimizer(m, optimizer):
             if key != 'params':
                 new_state_dict['param_groups'][x][key] = \
                     old_state_dict['param_groups'][x][key]
+
     optimizer.load_state_dict(new_state_dict)
     return optimizer
 
@@ -1871,7 +1932,7 @@ def fuse_bn_layers(m):
     m.apply(_fuse_bn_layers)
 
 
-def onnx_export_prep(m, simplify=False):
+def onnx_export_prep(m, simplify=False, remove_clamp=False):
     """
     Prepare model `m` for ONNX export. When `simplify` is True, remove several
     quantization related operators from the model graph.
@@ -1890,7 +1951,7 @@ def onnx_export_prep(m, simplify=False):
                     setattr(m, attr_str, FloorQatONNX())
                 elif isinstance(target_attr, RoundQat):
                     setattr(m, attr_str, RoundQatONNX())
-                elif isinstance(target_attr, OutputShift):
+                elif isinstance(target_attr, OutputShiftLimit):
                     setattr(m, attr_str, OutputShiftONNX())
                 elif isinstance(target_attr, Scaler):
                     setattr(m, attr_str, ScalerONNX())
@@ -1901,10 +1962,16 @@ def onnx_export_prep(m, simplify=False):
             elif isinstance(target_attr, (Quantize, Clamp, Round,
                                           AvgPoolFloor, Floor, FloorQat, RoundQat)):
                 setattr(m, attr_str, Empty())
-            elif isinstance(target_attr, OutputShift):
-                setattr(m, attr_str, OutputShiftONNX())
+            elif isinstance(target_attr, OutputShiftLimit):
+                if remove_clamp:
+                    setattr(m, attr_str, ID3())
+                else:
+                    setattr(m, attr_str, OutputShiftONNX())
             elif isinstance(target_attr, Scaler):
-                setattr(m, attr_str, ScalerONNX())
+                if remove_clamp:
+                    setattr(m, attr_str, ID3())
+                else:
+                    setattr(m, attr_str, ScalerONNX())
 
     m.apply(_onnx_export_prep)
 

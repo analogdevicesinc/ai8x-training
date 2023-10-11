@@ -252,7 +252,7 @@ def resize(image, boxes, dims=(300, 300), return_percent_coords=True):
     in which case they remain the same)
     """
     # Resize image
-    new_image = FT.resize(image, dims)
+    new_image = FT.resize(image, dims, antialias=True)
 
     # Resize bounding boxes
     # old_dims =
