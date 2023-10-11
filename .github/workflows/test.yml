@@ -13,7 +13,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: MaximIntegratedAI/ai8x-training
-          ref: evaluation_scripts
+          ref: develop
           submodules: recursive
       - name: Checkout synthesis
         uses: actions/checkout@v2
