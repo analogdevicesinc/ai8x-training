@@ -40,10 +40,10 @@ class AI85KWS20Netv3(nn.Module):
         # T: 126 F : 96
         self.voice_conv3 = ai8x.FusedMaxPoolConv1dReLU(96, 64, 3, stride=1, padding=1,
                                                        bias=bias, **kwargs)
-        # T: 62 F : 64
+        # T: 63 F : 64
         self.voice_conv4 = ai8x.FusedConv1dReLU(64, 48, 3, stride=1, padding=0,
                                                 bias=bias, **kwargs)
-        # T : 60 F : 48
+        # T : 61 F : 48
         self.kws_conv1 = ai8x.FusedMaxPoolConv1dReLU(48, 64, 3, stride=1, padding=1,
                                                      bias=bias, **kwargs)
         # T: 30 F : 64
@@ -55,7 +55,7 @@ class AI85KWS20Netv3(nn.Module):
         # T : 14 F: 100
         self.kws_conv4 = ai8x.FusedMaxPoolConv1dReLU(100, 64, 6, stride=1, padding=1,
                                                      bias=bias, **kwargs)
-        # T : 2 F: 128
+        # T : 4 F: 64
         self.fc = ai8x.Linear(256, num_classes, bias=bias, wide=True, **kwargs)
 
     def forward(self, x):  # pylint: disable=arguments-differ
