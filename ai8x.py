@@ -1808,26 +1808,26 @@ def update_optimizer(m, optimizer):
         for p in g['params']:
             if (len(p.shape) == 1 and p.shape[0] == 1):
                 continue
-            else:
-                nf_keys = []
-                key_reduce = 0
-                for key in old_state_dict['state'].keys():
-                    sub_keys = old_state_dict['state'][key].keys()
-                    if (old_groups[x]['params'][int(key)].shape == p.shape):
-                        for y, sub_key in enumerate(sub_keys):
-                            if y == 0:
-                                new_state_dict['state'][key-key_reduce] = {sub_key: old_state_dict['state'][key][sub_key]}
-                            else:
-                                new_state_dict['state'][key-key_reduce][sub_key] = old_state_dict['state'][key][sub_key]
-                        old_state_dict['state'].pop(key)
-                        break
-                    else:
-                        nf_keys.append(key)
-                        key_reduce += 1
-                        continue
-                for key in nf_keys:
+            nf_keys = []
+            key_reduce = 0
+            for key in old_state_dict['state'].keys():
+                sub_keys = old_state_dict['state'][key].keys()
+                if old_groups[x]['params'][int(key)].shape == p.shape:
+                    for y, sub_key in enumerate(sub_keys):
+                        if y == 0:
+                            new_state_dict['state'][key-key_reduce] = \
+                                {sub_key: old_state_dict['state'][key][sub_key]}
+                        else:
+                            new_state_dict['state'][key-key_reduce][sub_key] = \
+                                old_state_dict['state'][key][sub_key]
                     old_state_dict['state'].pop(key)
-        new_state_dict['param_groups'][x]['initial_lr'] = old_state_dict['param_groups'][x]['initial_lr']
+                    break
+                nf_keys.append(key)
+                key_reduce += 1
+            for key in nf_keys:
+                old_state_dict['state'].pop(key)
+        new_state_dict['param_groups'][x]['initial_lr'] = \
+            old_state_dict['param_groups'][x]['initial_lr']
 
     optimizer.load_state_dict(new_state_dict)
     return optimizer

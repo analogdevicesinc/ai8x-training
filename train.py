@@ -521,7 +521,7 @@ def main():
             # Fuse the BN parameters into conv layers before Quantization Aware Training (QAT)
             ai8x.fuse_bn_layers(model)
 
-            # Update the optimizer to reflect fused batchnorm layers 
+            # Update the optimizer to reflect fused batchnorm layers
             optimizer = ai8x.update_optimizer(model, optimizer)
 
             # Switch model from unquantized to quantized for QAT
