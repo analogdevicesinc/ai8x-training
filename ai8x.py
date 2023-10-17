@@ -1794,6 +1794,7 @@ def update_model(m):
 
     m.apply(_update_model)
 
+
 def update_optimizer(m, optimizer):
     """
     Update optimizer after model 'm' had a batchnorm fusion.
@@ -1831,6 +1832,7 @@ def update_optimizer(m, optimizer):
 
     optimizer.load_state_dict(new_state_dict)
     return optimizer
+
 
 def fuse_bn_layers(m):
     """
