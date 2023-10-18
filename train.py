@@ -347,6 +347,10 @@ def main():
             # pylint: disable=unsubscriptable-object
             if checkpoint.get('epoch', None) >= qat_policy['start_epoch']:
                 ai8x.fuse_bn_layers(model)
+                if args.name:
+                    args.name = f'{args.name}_qat'
+                else:
+                    args.name = 'qat'
             # pylint: enable=unsubscriptable-object
         model, compression_scheduler, optimizer, start_epoch = apputils.load_checkpoint(
             model, args.resumed_checkpoint_path, model_device=args.device)
@@ -359,6 +363,10 @@ def main():
             # pylint: disable=unsubscriptable-object
             if checkpoint.get('epoch', None) >= qat_policy['start_epoch']:
                 ai8x.fuse_bn_layers(model)
+                if args.name:
+                    args.name = f'{args.name}_qat'
+                else:
+                    args.name = 'qat'
             # pylint: enable=unsubscriptable-object
         model = apputils.load_lean_checkpoint(model, args.load_model_path,
                                               model_device=args.device)
@@ -512,6 +520,9 @@ def main():
 
             # Fuse the BN parameters into conv layers before Quantization Aware Training (QAT)
             ai8x.fuse_bn_layers(model)
+
+            # Update the optimizer to reflect fused batchnorm layers
+            optimizer = ai8x.update_optimizer(model, optimizer)
 
             # Switch model from unquantized to quantized for QAT
             ai8x.initiate_qat(model, qat_policy)
