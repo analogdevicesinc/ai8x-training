@@ -1,3 +1,4 @@
+---
 name: auto-testing
 on:
   pull_request:
