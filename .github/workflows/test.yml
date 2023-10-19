@@ -1,3 +1,4 @@
+---
 name: auto-testing
 on:
   pull_request:
@@ -5,8 +6,48 @@ on:
       - develop
 
 jobs:
+  eval:
+    runs-on: self-hosted
+    timeout-minutes: 345600
+    steps:
+      - name: Checkout last-dev
+        uses: actions/checkout@v2
+        with:
+          repository: MaximIntegratedAI/ai8x-training
+          ref: develop
+          submodules: recursive
+      - name: Checkout synthesis
+        uses: actions/checkout@v2
+        with:
+          repository: MaximIntegratedAI/ai8x-synthesis
+          ref: develop
+          path: ai8x-synthesis
+      - name: Setup Pyenv and Install Dependencies
+        uses: gabrielfalcao/pyenv-action@v13
+        with:
+          default: 3.8.11
+      - name: Create Venv
+        run: |
+          pyenv local 3.8.11
+          python -m venv venv --prompt ai8x-training
+      - name: Activate Venv
+        run: source venv/bin/activate
+      - name: Install Dependencies
+        run: |
+          pip3 install -U pip wheel setuptools
+          pip3 install -r requirements-cu11.txt
+      - name: Create Evaluation Scripts
+        run: python ./regression/create_eval_script.py --testconf ./regression/test_config.yaml --testpaths ./regression/paths.yaml
+      - name: Run Evaluation Scripts
+        run: bash ./scripts/evaluation_file.sh
+      - name: Save Evaluation Log Files
+        run: cp -r /home/test/actions-runner/_work/ai8x-training/ai8x-training/logs/ /home/test/max7800x/evaluation_logs/
+      - name: Evaluation Results
+        run: python ./regression/eval_pass_fail.py --testpaths ./regression/paths.yaml
+
   build:
     runs-on: self-hosted
+    needs: [eval]
     timeout-minutes: 345600
     steps:
       - name: Checkout last-dev
@@ -22,7 +63,7 @@ jobs:
       - name: Create Venv
         run: |
           pyenv local 3.8.11
-          python3 -m venv venv --prompt ai8x-training
+          python -m venv venv --prompt ai8x-training
       - name: Activate Venv
         run: source venv/bin/activate
       - name: Install Dependencies
@@ -49,7 +90,7 @@ jobs:
       - name: Create Venv
         run: |
           pyenv local 3.8.11
-          python3 -m venv venv --prompt ai8x-training
+          python -m venv venv --prompt ai8x-training
       - name: Activate Venv
         run: source venv/bin/activate
       - name: Install Dependencies
@@ -85,7 +126,7 @@ jobs:
       - name: Create Venv
         run: |
           pyenv local 3.8.11
-          python3 -m venv venv --prompt ai8x-training
+          python -m venv venv --prompt ai8x-training
       - name: Activate Venv
         run: source venv/bin/activate
       - name: Install Dependencies

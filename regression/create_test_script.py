@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright © 2023 Analog Devices, Inc. All Rights Reserved.
+# Copyright (C) 2023 Analog Devices, Inc. All Rights Reserved.
 # This software is proprietary and confidential to Analog Devices, Inc. and its licensors.
 #
 ###################################################################################################
@@ -83,18 +83,28 @@ with open(output_file_path, "w", encoding='utf-8') as output_file:
                 if log_data == "VGGFace2_FaceDetection":
                     continue
 
-                temp[i+1] = str(config[log_data][log_model]["epoch"])
+                try:
+                    temp[i+1] = str(config[log_data][log_model]["epoch"])
+                except KeyError:
+                    print(f"\033[93m\u26A0\033[0m Warning: {temp[j+1]} model is" +
+                          " missing information in test configuration files.")
+                    continue
 
                 if '--deterministic' not in temp:
                     temp.insert(-1, '--deterministic')
 
                 temp.insert(-1, '--name ' + log_name)
 
-                data_name = temp[k+1]
-                if data_name in config and "datapath" in config[data_name]:
+                try:
                     path_data = config[log_data]["datapath"]
-                    temp.insert(-1, '--data ' + path_data)
+                    temp[i+1] = str(config[log_data][log_model]["epoch"])
+                except KeyError:
+                    print(f"\033[93m\u26A0\033[0m Warning: {temp[j+1]} model is" +
+                          " missing information in test configuration files.")
+                    continue
 
+                temp.insert(-1, '--data ' + path_data)
                 temp.append("\n")
+
                 contents = joining(temp)
                 output_file.write(contents)

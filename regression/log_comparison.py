@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright © 2023 Analog Devices, Inc. All Rights Reserved.
+# Copyright (C) 2023 Analog Devices, Inc. All Rights Reserved.
 # This software is proprietary and confidential to Analog Devices, Inc. and its licensors.
 #
 ###################################################################################################
@@ -126,7 +126,7 @@ def compare_logs(old_log, new_log, output_name, output_pth):
         i = 0
         for (map1, map2) in zip(mAP_list1, mAP_list2):
             if float(map1[1]) == 0:
-                print("Map value of " + output_name + " is 0.00.")
+                print(f"Map value of {output_name} is 0.00 at epoch {i}.")
                 map1[1] = 0.000001
             i = i+1
             if '[mAP:' in map2:
