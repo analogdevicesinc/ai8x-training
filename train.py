@@ -66,9 +66,9 @@ if os.name == 'posix':
     import resource  # pylint: disable=import-error
 # pylint: enable=wrong-import-position
 
+import shutil
 import sys
 import time
-import shutil
 import traceback
 from collections import OrderedDict
 from functools import partial
@@ -113,10 +113,10 @@ import nnplot
 import parse_qat_yaml
 import parsecmd
 import sample
-from losses.multiboxloss import MultiBoxLoss
 from losses.dummyloss import DummyLoss
+from losses.multiboxloss import MultiBoxLoss
 from nas import parse_nas_yaml
-from utils import object_detection_utils, parse_obj_detection_yaml, kd_relationbased
+from utils import kd_relationbased, object_detection_utils, parse_obj_detection_yaml
 
 # from range_linear_ai84 import PostTrainLinearQuantizerAI84
 
@@ -632,7 +632,7 @@ def main():
 
     # Finally run results on the test set
     test(test_loader, model, criterion, [pylogger], activations_collectors, args=args)
-    
+
     if args.copy_output_folder:
         msglogger.info('Copying output folder to: %s', args.copy_output_folder)
         shutil.copytree(msglogger.logdir, args.copy_output_folder, dirs_exist_ok=True)
@@ -643,7 +643,7 @@ OVERALL_LOSS_KEY = 'Overall Loss'
 OBJECTIVE_LOSS_KEY = 'Objective Loss'
 
 
-def create_model(supported_models, dimensions, args, mode = 'default'):
+def create_model(supported_models, dimensions, args, mode='default'):
     """Create the model"""
     if mode == 'default':
         module = next(item for item in supported_models if item['name'] == args.cnn)
@@ -663,7 +663,6 @@ def create_model(supported_models, dimensions, args, mode = 'default'):
         Model = locate(module['module'] + '.' + args.kd_teacher)
         if not Model:
             raise RuntimeError("Model " + args.kd_teacher + " not found\n")
-
 
     # Set model parameters
     if args.act_mode_8bit:
@@ -1022,7 +1021,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
     """Execute the validation/test loop."""
     losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                           (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
-    
+
     if args.obj_detection:
         map_calculator = MeanAveragePrecision(
             # box_format='xyxy',  # Enable in torchmetrics > 0.6
@@ -1333,7 +1332,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
         f_x.close()
 
     if not args.earlyexit_thresholds:
-        
+
         if args.kd_relationbased:
 
             msglogger.info('==> Overall Loss: %.3f\n',

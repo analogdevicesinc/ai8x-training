@@ -31,11 +31,11 @@ from collections import namedtuple
 import torch
 from torch import nn
 
-
-from distiller.policy import ScheduledTrainingPolicy, PolicyLoss, LossComponent
+from distiller.policy import LossComponent, PolicyLoss, ScheduledTrainingPolicy
 
 DistillationLossWeights = namedtuple('DistillationLossWeights',
                                      ['distill', 'student', 'teacher'])
+
 
 class RelationBasedKDPolicy(ScheduledTrainingPolicy):
     """
@@ -46,9 +46,6 @@ class RelationBasedKDPolicy(ScheduledTrainingPolicy):
                  loss_weights=DistillationLossWeights(0.5, 0.5, 0)):
         super().__init__()
 
-
-        self.active = False
-
         self.student = student_model
         self.teacher = teacher_model
         self.teacher_output = None
@@ -57,8 +54,8 @@ class RelationBasedKDPolicy(ScheduledTrainingPolicy):
         self.distillation_loss = nn.MSELoss()
         self.overall_loss = None
 
-        #Active is always true, because test will be based on the overall loss and it will be
-        #realized outside of the epoch loop
+        # Active is always true, because test will be based on the overall loss and it will be
+        # realized outside of the epoch loop
         self.active = True
 
     def forward(self, *inputs):
@@ -80,21 +77,21 @@ class RelationBasedKDPolicy(ScheduledTrainingPolicy):
         out = self.student(*inputs)
         self.student_output = out.clone()
 
-
         return out
-    #pylint: disable=unused-argument
+
+    # pylint: disable=unused-argument
     def on_epoch_begin(self, model, zeros_mask_dict, meta, **kwargs):
         """
         Not used
         """
-        pass
-    #pylint: disable=unused-argument
+
+    # pylint: disable=unused-argument
     def on_epoch_end(self, model, zeros_mask_dict, meta, **kwargs):
         """
         Not used
         """
-        pass
-    #pylint: disable=unused-argument
+
+    # pylint: disable=unused-argument
     def before_backward_pass(self, model, epoch, minibatch_id, minibatches_per_epoch, loss,
                              zeros_mask_dict, optimizer=None):
         """
@@ -108,11 +105,9 @@ class RelationBasedKDPolicy(ScheduledTrainingPolicy):
                                "KnowledgeDistillationPolicy.forward() in your script instead of "
                                "calling the model directly.")
 
-
         distillation_loss = self.distillation_loss(self.student_output, self.teacher_output)
 
         overall_loss = self.loss_wts.student * loss + self.loss_wts.distill * distillation_loss
-
 
         # For logging purposes, we return the un-scaled distillation loss so it's
         # comparable between runs with different temperatures

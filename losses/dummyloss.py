@@ -6,14 +6,14 @@
 # https://www.analog.com/en/about-adi/legal-and-risk-oversight/intellectual-property/copyright-notice.html
 #
 ###################################################################################################
-
+"""
+Dummy Loss to use in knowledge distillation when student loss weigth is 0
+"""
 
 import torch
 from torch import nn
 
-"""
-    Dummy Loss to use in knowledge distillation when student loss weigth is 0
-"""
+
 class DummyLoss(nn.Module):
     """
     Class for dummy loss
@@ -25,7 +25,9 @@ class DummyLoss(nn.Module):
         super().__init__()
 
         self.device = device
-    def forward(self, output=None, target=None):
+
+    #pylint: disable=unused-argument
+    def forward(self, output, target):
         """
         returns 0.0
         """
