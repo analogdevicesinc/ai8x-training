@@ -7,22 +7,27 @@
 #
 ###################################################################################################
 
-"""
-Dummy Loss to use in knowledge distillation when student loss weigth is 0
-"""
+
 import torch
 from torch import nn
 
-
+"""
+    Dummy Loss to use in knowledge distillation when student loss weigth is 0
+"""
 class DummyLoss(nn.Module):
-
+    """
+    Class for dummy loss
+    """
     def __init__(self,  device='cpu'):
+        """
+        Initializes the loss
+        """
         super().__init__()
 
         self.device = device
-
-    def forward(self, output, target):
+    def forward(self, output=None, target=None):
         """
+        returns 0.0
         """
 
         return torch.tensor(0.0, device=self.device)

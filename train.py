@@ -406,7 +406,7 @@ def main():
         else:
             criterion = nn.MSELoss().to(args.device)
 
-    #Override criterion with dummy loss when student weight is 0
+    # Override criterion with dummy loss when student weight is 0
     if args.kd_student_wt == 0:
         criterion = DummyLoss(device=args.device).to(args.device)
         msglogger.info("WARNING: kd_student_wt == 0, Overwriting criterion with a dummy loss")
@@ -477,15 +477,16 @@ def main():
 
     args.kd_policy = None
     if args.kd_teacher:
-        teacher = create_model(supported_models, dimensions, args, mode = 'kd_teacher')
+        teacher = create_model(supported_models, dimensions, args, mode='kd_teacher')
         if args.kd_resume:
             teacher = apputils.load_lean_checkpoint(teacher, args.kd_resume)
         dlw = distiller.DistillationLossWeights(args.kd_distill_wt, args.kd_student_wt,
                                                 args.kd_teacher_wt)
         if args.kd_relationbased:
-            args.kd_policy = kd_relationbased.RelationBasedKnowledgeDistillationPolicy(model, teacher, dlw)
+            args.kd_policy = kd_relationbased.RelationBasedKDPolicy(model, teacher, dlw)
         else:
-            args.kd_policy = distiller.KnowledgeDistillationPolicy(model, teacher, args.kd_temp, dlw)
+            args.kd_policy = distiller.KnowledgeDistillationPolicy(model, teacher,
+                                                                   args.kd_temp, dlw)
         compression_scheduler.add_policy(args.kd_policy, starting_epoch=args.kd_start_epoch,
                                          ending_epoch=args.epochs, frequency=1)
 
@@ -1204,7 +1205,8 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                 # compute loss
                 loss = criterion(output, target)
                 if args.kd_relationbased:
-                    agg_loss = args.kd_policy.before_backward_pass(None, None, None, None, loss, None) #TODO: Check this
+                    agg_loss = args.kd_policy.before_backward_pass(None, None, None, None,
+                                                                   loss, None)
                     losses[OVERALL_LOSS_KEY].add(agg_loss.overall_loss.item())
                 # measure accuracy and record loss
                 losses[OBJECTIVE_LOSS_KEY].add(loss.item())
@@ -1339,7 +1341,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
 
             return 0, 0, losses[OVERALL_LOSS_KEY].mean, 0
 
-        elif args.obj_detection:
+        if args.obj_detection:
 
             msglogger.info('==> mAP: %.5f    Loss: %.3f\n',
                            mAP,
@@ -1388,13 +1390,13 @@ def update_training_scores_history(perf_scores_history, model, top1, top5, mAP, 
     if args.kd_relationbased:
 
         # Keep perf_scores_history sorted from best to worst based on overall loss
-        #overall_loss = student_loss*student_loss_weight + distillation_loss*distillation_loss_weight
+        # overall_loss = student_loss*student_weight + distillation_loss*distillation_weight
         if not args.sparsity_perf:
             perf_scores_history.sort(key=operator.attrgetter('vloss', 'epoch'),
-                                    reverse=True)
+                                     reverse=True)
         else:
             perf_scores_history.sort(key=operator.attrgetter('params_nnz_cnt', 'vloss', 'epoch'),
-                                    reverse=True)
+                                     reverse=True)
         for score in perf_scores_history[:args.num_best_scores]:
             msglogger.info('==> Best [Overall Loss: %f on epoch: %d]',
                            -score.vloss, score.epoch)
