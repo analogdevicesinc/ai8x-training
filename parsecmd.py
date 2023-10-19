@@ -76,7 +76,10 @@ def get_parser(model_names, dataset_names):
     parser.add_argument('--avg-pool-rounding', action='store_true', default=False,
                         help='when simulating, use "round()" in AvgPool operations '
                              '(default: use "floor()")')
-
+    parser.add_argument('--copy-output-folder', type=str, default=None, metavar='PATH',
+                        help='Path to copy output folder (default: None)')
+    parser.add_argument('--kd-relationbased', action='store_true', default=False,
+                        help='enables Relation Based Knowledge Distillation')
     qat_args = parser.add_argument_group('Quantization Arguments')
     qat_args.add_argument('--qat-policy', dest='qat_policy',
                           default=os.path.join('policies', 'qat_policy.yaml'),

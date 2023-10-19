@@ -1805,12 +1805,13 @@ def update_optimizer(m, optimizer):
     optimizer = type(optimizer)(m.parameters(), **optimizer.defaults)
     new_state_dict = optimizer.state_dict()
     groups = optimizer.param_groups
+
     for x, g in enumerate(groups):
+        key_reduce = 0
         for p in g['params']:
             if (len(p.shape) == 1 and p.shape[0] == 1):
                 continue
             nf_keys = []
-            key_reduce = 0
             for key in old_state_dict['state'].keys():
                 sub_keys = old_state_dict['state'][key].keys()
                 if old_groups[x]['params'][int(key)].shape == p.shape:
@@ -1827,9 +1828,10 @@ def update_optimizer(m, optimizer):
                 key_reduce += 1
             for key in nf_keys:
                 old_state_dict['state'].pop(key)
-        new_state_dict['param_groups'][x]['initial_lr'] = \
-            old_state_dict['param_groups'][x]['initial_lr']
-
+        for key in old_state_dict['param_groups'][x].keys():
+            if key != 'params':
+                new_state_dict['param_groups'][x][key] = \
+                    old_state_dict['param_groups'][x][key]
     optimizer.load_state_dict(new_state_dict)
     return optimizer
 
