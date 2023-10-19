@@ -7,7 +7,7 @@
 #
 ###################################################################################################
 """
-Dummy Loss to use in knowledge distillation when student loss weigth is 0
+Dummy Loss to use in knowledge distillation when student loss weight is 0
 """
 
 import torch
