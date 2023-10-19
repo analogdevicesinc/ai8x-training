@@ -26,7 +26,7 @@ class DummyLoss(nn.Module):
 
         self.device = device
 
-    #pylint: disable=unused-argument
+    # pylint: disable=unused-argument
     def forward(self, output, target):
         """
         returns 0.0
