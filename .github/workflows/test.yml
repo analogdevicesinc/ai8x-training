@@ -78,11 +78,12 @@ jobs:
     needs: [build]
     timeout-minutes: 345600
     steps:
-      - uses: actions/checkout@v2
-        with:
-          repository: MaximIntegratedAI/ai8x-training
-          ref: develop
-          submodules: recursive
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Checkout PR
+        run: |
+          fork_repo=$(jq -r .pull_request.head.repo.clone_url $GITHUB_EVENT_PATH)
+          git clone $fork_repo --recursive
       - name: Setup Pyenv and Install Dependencies
         uses: gabrielfalcao/pyenv-action@v13
         with:
