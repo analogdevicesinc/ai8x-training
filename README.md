@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-September 20, 2023
+October 23, 2023
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -601,8 +601,8 @@ The [Analog Devices MSDK](https://github.com/Analog-Devices-MSDK/msdk) for MAX78
     MAXIM_PATH=$HOME/MaximSDK  # Change me!
     export MAXIM_PATH
     
-    # Arm GCC
-    ARMGCC_DIR=$MAXIM_PATH/Tools/GNUTools/10.3
+    # Arm GCC -- adjust version number
+    ARMGCC_DIR=$MAXIM_PATH/Tools/GNUTools/12.3
     echo $PATH | grep -q -s "$ARMGCC_DIR/bin"
     if [ $? -eq 1 ] ; then
         PATH=$PATH:"$ARMGCC_DIR/bin"
@@ -610,8 +610,8 @@ The [Analog Devices MSDK](https://github.com/Analog-Devices-MSDK/msdk) for MAX78
         export ARMGCC_DIR
     fi
     
-    # RISC-V GCC
-    RISCVGCC_DIR=$MAXIM_PATH/Tools/xPack/riscv-none-embed-gcc/10.2.0-1.2
+    # RISC-V GCC -- adjust version number
+    RISCVGCC_DIR=$MAXIM_PATH/Tools/xPack/riscv-none-embed-gcc/12.3.0-2
     echo $PATH | grep -q -s "$RISCVGCC_DIR/bin"
     if [ $? -eq 1 ] ; then
         PATH=$PATH:"$RISCVGCC_DIR/bin"
@@ -643,15 +643,15 @@ The MAX78000/MAX78002 MSDK is available as a git repository. The repository cont
     $ git clone https://github.com/Analog-Devices-MSDK/msdk.git sdk
     ```
 
-2. Download and install the Arm Embedded GNU Toolchain from [https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads).
+2. Download and install the Arm Embedded GNU Toolchain from [https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads).
 
-    * Recommended version: 10.3-2021.10 *(newer versions may or may not work correctly)*
-    * Recommended installation location: `/usr/local/gcc-arm-none-eabi-10.3-2021.10/`
+    * Recommended version: 12.3.Rel1 *(newer versions may or may not work correctly)*
+    * Recommended installation location: `/usr/local/arm-gnu-toolchain-12.3.rel1/`
 
-3. Download and install the RISC-V Embedded GNU Toolchain from [https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/](https://github.com/xpack-dev-tools/riscv-none-embed-gcc-xpack/releases/)
+3. Download and install the RISC-V Embedded GNU Toolchain from [https://github.com/xpack-dev-tools/riscv-none-elf-gcc-xpack/releases](https://github.com/xpack-dev-tools/riscv-none-elf-gcc-xpack/releases/)
 
-    * Recommended version: 10.2.0-1.2 *(newer versions may or may not work correctly)*
-    * Recommended installation location: `/usr/local/riscv-none-embed-gcc/10.2.0-1.2/`
+    * Recommended version: 12.3.0-2 *(newer versions may or may not work correctly)*
+    * Recommended installation location: `/usr/local/xpack-riscv-none-elf-gcc-12.3.0-2/`
 
 4. Install GNU Make
 

@@ -412,7 +412,7 @@ class SVHN(Dataset):
     @staticmethod
     def fold_image(img, fold_ratio):
         """Folds high resolution H-W-3 image h-w-c such that H * W * 3 = h * w * c.
-           These correspond to c/3 downsampled images of the original high resoluiton image."""
+           These correspond to c/3 downsampled images of the original high resolution image."""
         if fold_ratio == 1:
             img_folded = img
         else:

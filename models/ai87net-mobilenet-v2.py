@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2022 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2022-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -55,7 +55,7 @@ class AI87MobileNetV2(nn.Module):
                                                   **kwargs)
 
     def _create_bottleneck_stage(self, setting, bias, depthwise_bias, **kwargs):
-        """Function to create bottlencek stage. Setting format is:
+        """Function to create bottleneck stage. Setting format is:
            [num_repeat, in_channels, out_channels, stride, expansion_factor]
         """
         stage = []

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 ###################################################################################################
 #
-# Copyright (C) 2020-2021 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2020-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
 #
 ###################################################################################################
 """
-Script to merge YouTubeFaces data samples into more compact file series to effetively use during
+Script to merge YouTubeFaces data samples into more compact file series to effectively use during
 FaceID model training.
 """
 

@@ -218,7 +218,7 @@ def pascal_voc_get_datasets(data, load_train=True, load_test=True, img_size=(300
 
 def pascal_voc_2007_2012_256_320_aug_get_dataset(data, load_train=True,
                                                  load_test=True):
-    """ Returns Pascal VOC 2007 and 2012 mrged dataset group with augmentation in
+    """ Returns Pascal VOC 2007 and 2012 merged dataset group with augmentation in
         resolution 256x320
     """
     return pascal_voc_get_datasets(data, load_train, load_test,
