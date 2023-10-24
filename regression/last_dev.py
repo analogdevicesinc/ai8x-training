@@ -18,7 +18,7 @@ import yaml
 
 def joining(lst):
     """
-      Join based on the ' ' delimiter
+    Join based on the ' ' delimiter
     """
     join_str = ' '.join(lst)
     return join_str
