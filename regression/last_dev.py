@@ -10,8 +10,9 @@ Create the last developed code logs for base testing source
 import argparse
 import datetime
 import os
-import requests
 import subprocess
+
+import requests
 import yaml
 
 
