@@ -10,11 +10,9 @@ Create the last developed code logs for base testing source
 import argparse
 import datetime
 import os
-import subprocess
 import requests
-import git
+import subprocess
 import yaml
-from git.exc import InvalidGitRepositoryError
 
 
 def joining(lst):
