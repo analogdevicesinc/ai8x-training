@@ -5,7 +5,6 @@ folder_path: /home/test/max7800x/test_logs/
 output_file_path_onnx: ./scripts/onnx_scripts.sh
 train_path: /home/test/max7800x/test_scripts/output_file.sh
 
-
 # create_test_script.py
 
 script_path: ./scripts

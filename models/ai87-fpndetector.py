@@ -285,7 +285,7 @@ class FeaturePyramidNetworkDetector(nn.Module):
     The FeaturePyramidNetworkDetector network consisting
         * ResNet Backbone Network
         * Feature Pyramid Network
-        * Classificaiton Network
+        * Classification Network
         * Regression Network
     """
 
@@ -319,7 +319,7 @@ class FeaturePyramidNetworkDetector(nn.Module):
 
         self.backbone = ResNetBackbone(preprocess_channels)
         self.fpn = FPN(channels_32_40, channels_16_20, channels_8_10, channels_4_5, **kwargs)
-        self.classication_net = ClassificationModel(
+        self.classification_net = ClassificationModel(
             num_classes=self.num_classes, feature_size=64, wide=wide_scores, **kwargs)
         self.regression_net = RegressionModel(feature_size=64, wide=wide_locations, **kwargs)
 
@@ -330,7 +330,7 @@ class FeaturePyramidNetworkDetector(nn.Module):
         The FeaturePyramidNetworkDetector forward propagation
             * Runs preprocessing layers and ResNet Backbone Network
             * Runs Feature Pyramid Network
-            * Runs Classificaiton Network for all features
+            * Runs Classification Network for all features
             * Runs Regression Network for all features
         """
 
@@ -345,7 +345,7 @@ class FeaturePyramidNetworkDetector(nn.Module):
             torch.cat([self.regression_net(feature) for feature in pyramide_features],
                       dim=1)
         classification = \
-            torch.cat([self.classication_net(feature) for feature in pyramide_features],
+            torch.cat([self.classification_net(feature) for feature in pyramide_features],
                       dim=1)
 
         return regression, classification
@@ -526,7 +526,7 @@ class FeaturePyramidNetworkDetector(nn.Module):
         """
         Returns whether model uses wide outputs for the classification part (box predictions)
         """
-        return self.classication_net.conv5.wide
+        return self.classification_net.conv5.wide
 
 
 def ai87fpndetector(pretrained=False, **kwargs):

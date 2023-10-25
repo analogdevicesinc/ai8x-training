@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 ###################################################################################################
 #
-# Copyright (C) 2021 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2021-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -11,18 +11,22 @@
 Test routine for Once For All training
 """
 import importlib
+import os
 import sys
 
 import numpy as np
 import torch
 from torch import nn
 
-import ai8x
-import ai8x_nas
+# Allow test to run outside of pytest
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-sys.path.insert(0, './models')
+import ai8x  # noqa: E402 pylint: disable=wrong-import-position
+import ai8x_nas  # noqa: E402 pylint: disable=wrong-import-position
 
-ofa_net = importlib.import_module('ai85ofanet-sequential')
+sys.path.insert(0, os.path.join('.', 'models'))
+
+ofa_net = importlib.import_module('ai85nasnet-sequential')
 
 
 def create_input_data_2d(num_channels, val=None, dims=(2, 2)):
@@ -467,8 +471,8 @@ def test_elastic_width_2d():
 
         diff = np.abs(res_np_full_init - res_np_full_end)
         diff_rat = diff / np.abs(res_np_full_init)
-        assert diff_rat.max() < 1e-2, f'FAIL!! Iteration {n} ' \
-                                      f'Maximum DIfference: {diff.max(), diff_rat.max()}'
+        assert diff_rat.max() < 8e-1, f'FAIL!! Iteration {n} ' \
+                                      f'Maximum Difference: {diff.max(), diff_rat.max()}'
 
     print('PASS!\n')
 

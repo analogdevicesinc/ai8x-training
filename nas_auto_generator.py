@@ -40,7 +40,7 @@ class AutoGen:
                 self.pool_layer = 'ai8x.FusedMaxPoolConv1dReLU'
                 self.layer = 'ai8x.FusedConv1dReLU'
         else:
-            print('Architecure type must be either Conv1d or Conv2d')
+            print('Architecture type must be either Conv1d or Conv2d')
 
     def write_line(self, string):
         """Appends a line and a linebreak"""

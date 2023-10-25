@@ -154,7 +154,7 @@ def dev_checkout():
                 pathconfig["destination_path"],
                 datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             )
-            subprocess.run(['mv', source_path, destination_path], check=True)
+            subprocess.run(['/bin/mv', source_path, destination_path], check=True)
 
 
 dev_checkout()
