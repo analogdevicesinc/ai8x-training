@@ -14,13 +14,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: true
 
       - name: Lint code
-        uses: github/super-linter@v4
+        uses: super-linter/super-linter/slim@v5
         env:
           VALIDATE_ALL_CODEBASE: true
           DEFAULT_BRANCH: develop

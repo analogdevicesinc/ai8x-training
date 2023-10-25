@@ -118,7 +118,7 @@ class OnceForAllModule(nn.Module):
 
     def sample_subnet_kernel(self, level):
         """OFA Elastic kernel search strategy"""
-        assert self.kernel_list
+        assert self.kernel_list is not None
 
         kernel_opts = [int(self.max_kernel_size.detach().cpu().item())]
         kernel_list = self.kernel_list.detach().cpu().numpy()
@@ -189,7 +189,7 @@ class OnceForAllModule(nn.Module):
                 x = self.func(x, weight, bias, self.op.stride, self.max_pad_size, self.op.dilation,
                               self.op.groups)
             else:
-                assert self.kernel_list
+                assert self.kernel_list is not None
                 for k_idx, k_size in enumerate(self.kernel_list):
                     if k_size == self.kernel_size:
                         break

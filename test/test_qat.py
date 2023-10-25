@@ -11,10 +11,15 @@
 Test routine for QAT
 """
 import copy
+import os
+import sys
 
 import torch
 
-import ai8x
+# Allow test to run outside of pytest
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+import ai8x  # noqa: E402 pylint: disable=wrong-import-position
 
 
 def create_input_data(num_channels):
@@ -109,7 +114,7 @@ def test():
     Main test function
     '''
     wide_opts = [False, True]
-    act_opts = [None, 'ReLU']
+    act_opts = [None, 'ReLU', 'Abs']
     bit_opts = [8, 4, 2, 1]
 
     inp, inp_int = create_input_data(512)
@@ -120,7 +125,7 @@ def test():
                 if wide and (act is not None):
                     continue
 
-                print(f'Testing for bits:{bit}, wide:{wide}, activation:{act} ...', end=' ')
+                print(f'Testing for bits:{bit}, wide:{wide}, activation:{act}... ', end='')
                 fp_layer = create_conv2d_layer(512, 16, 3, wide, act)
                 q_fp_layer = quantize_fp_layer(fp_layer, wide, act, bit)
                 q_int_layer = quantize_layer(q_fp_layer, wide, act, bit)
@@ -130,7 +135,12 @@ def test():
                 ai8x.set_device(device=85, simulate=True, round_avg=False, verbose=False)
                 q_int_out = q_int_layer(inp_int)
 
-                assert ((128. * q_fp_out) == q_int_out).all(), 'FAIL!!'
+                if not wide:
+                    factor = 128.
+                else:
+                    factor = 128. * 2.**(bit - 1)
+
+                assert torch.isclose(q_fp_out*factor, q_int_out).all(), 'FAIL!!'
                 print('PASS')
 
     print('\nSUCCESS!!')

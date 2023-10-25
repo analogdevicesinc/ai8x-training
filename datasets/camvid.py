@@ -62,7 +62,7 @@ class CamVidDataset(Dataset):
 
         img_file_list = sorted(os.listdir(img_folder))
 
-        for _, img_file in enumerate(img_file_list):
+        for img_file in img_file_list:
             img = np.asarray(Image.open(os.path.join(img_folder, img_file)))
             if im_scale != 1:
                 img = img[::im_scale, ::im_scale, :]
@@ -128,7 +128,7 @@ class CamVidDataset(Dataset):
                 self.label_mask_dict[label] = label_mask
 
     def __filter_classes(self):
-        for _, e in enumerate(self.lbl_list):
+        for e in self.lbl_list:
             initial_new_class_label = len(self.class_dict) + 5
             new_class_label = initial_new_class_label
             for l_class in self.classes:

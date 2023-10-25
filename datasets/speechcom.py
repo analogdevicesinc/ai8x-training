@@ -362,7 +362,7 @@ def shift(audio, shift_sec, fs):
 
 
 def stretch(audio, rate=1.):
-    """Stretchs audio with specified ratio.
+    """Stretches audio with specified ratio.
     """
     input_length = 16000
     audio2 = librosa.effects.time_stretch(audio, rate=rate)
@@ -379,14 +379,14 @@ def augment(audio, fs, verbose=False):
     """
     random_noise_var_coeff = np.random.uniform(0, 1)
     random_shift_time = np.random.uniform(-0.1, 0.1)
-    random_strech_coeff = np.random.uniform(0.8, 1.3)
+    random_stretch_coeff = np.random.uniform(0.8, 1.3)
 
-    aug_audio = stretch(audio, random_strech_coeff)
+    aug_audio = stretch(audio, random_stretch_coeff)
     aug_audio = shift(aug_audio, random_shift_time, fs)
     aug_audio = add_white_noise(aug_audio, random_noise_var_coeff)
     if verbose:
         print(f'random_noise_var_coeff: {random_noise_var_coeff:.2f}\nrandom_shift_time: \
-                {random_shift_time:.2f}\nrandom_strech_coeff: {random_strech_coeff:.2f}')
+                {random_shift_time:.2f}\nrandom_stretch_coeff: {random_stretch_coeff:.2f}')
     return aug_audio
 
 

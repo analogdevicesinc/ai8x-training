@@ -44,12 +44,12 @@ def get_parser(model_names, dataset_names):
     """
     Return the argument parser
     """
-    parser = argparse.ArgumentParser(description='Image classification model')
+    parser = argparse.ArgumentParser(description='Model')
     parser.add_argument('--device', type=device, default=84,
                         help='set device (default: AI84)')
     parser.add_argument('--8-bit-mode', '-8', dest='act_mode_8bit', action='store_true',
                         default=False,
-                        help='simluate device operation (8-bit data)')
+                        help='simulate device operation (8-bit data)')
     parser.add_argument('--arch', '-a', '--model', metavar='ARCH', required=True,
                         type=lambda s: s.lower(), dest='cnn',
                         choices=model_names,

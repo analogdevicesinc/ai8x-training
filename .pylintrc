@@ -1,5 +1,5 @@
 [MESSAGES CONTROL]
-disable=invalid-name, consider-using-with
+disable=invalid-name, consider-using-with, duplicate-code, not-callable
 [TYPECHECK]
 ignored-modules = numpy, matplotlib.cm, torch, distiller
 ignored-classes = ModelProto
@@ -16,4 +16,4 @@ max-returns=10
 max-attributes=25
 max-nested-blocks=10
 [MASTER]
-init-hook="from pylint.config import find_pylintrc; import os, sys; sys.path.append(os.path.dirname(find_pylintrc()))"
+init-hook="from pylint.config import find_default_config_files; import os, sys; sys.path.append(os.path.dirname(next(find_default_config_files())))"

@@ -10,12 +10,12 @@ jobs:
     runs-on: self-hosted
     timeout-minutes: 345600
     steps:
-      - name: Checkout last-dev
+      - name: Checkout code
         uses: actions/checkout@v2
-        with:
-          repository: MaximIntegratedAI/ai8x-training
-          ref: develop
-          submodules: recursive
+      - name: Checkout PR
+        run: |
+          fork_repo=$(jq -r .pull_request.head.repo.clone_url $GITHUB_EVENT_PATH)
+          git clone $fork_repo --recursive
       - name: Checkout synthesis
         uses: actions/checkout@v2
         with:
