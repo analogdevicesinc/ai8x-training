@@ -13,7 +13,7 @@ ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 4. The synthesis repository, which is used to *convert a trained model into C code* using the “izer” tool:
     [ai8x-synthesis](https://github.com/MaximIntegratedAI/ai8x-synthesis) **(described in this document)**
 5. The reference design repository, which contains host applications and sample applications for reference designs such as [MAXREFDES178 (Cube Camera)](https://www.analog.com/en/design-center/reference-designs/maxrefdes178.html):
-    [refdes](https://github.com/MaximIntegratedAI/refdes)
+    [refdes](https://github.com/Analog-Devices-MSDK/refdes)
     *Note: Examples for EVkits and Feather boards are part of the MSDK*
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (<http://typora.io>).
