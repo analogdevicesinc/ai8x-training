@@ -1,16 +1,7 @@
 #!/usr/bin/env python3
-###################################################################################################
 #
-# Copyright (C) 2019-2023 Maxim Integrated Products, Inc. All Rights Reserved.
-#
-# Maxim Integrated Products, Inc. Default Copyright Notice:
-# https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
-#
-###################################################################################################
-# pyright: reportMissingModuleSource=false, reportGeneralTypeIssues=false
-# pyright: reportOptionalSubscript=false
-#
-# Portions Copyright (c) 2018 Intel Corporation
+# Copyright (c) 2018 Intel Corporation
+# Portions Copyright (C) 2019-2023 Maxim Integrated Products, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,7 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
+# pyright: reportMissingModuleSource=false, reportGeneralTypeIssues=false
+# pyright: reportOptionalSubscript=false
 """This is an example application for compressing image classification models.
 
 The application borrows its main flow code from torchvision's ImageNet classification
