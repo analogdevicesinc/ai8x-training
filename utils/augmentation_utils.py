@@ -1,19 +1,33 @@
-###################################################################################################
 #
-# Copyright (C) 2023 Maxim Integrated Products, Inc. All Rights Reserved.
-#
-# Maxim Integrated Products, Inc. Default Copyright Notice:
-# https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
-###################################################################################################
-
-#
-# GitHub repo for the below helper methods:
-# https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection:
 # MIT License
+#
 # Copyright (c) 2019 Sagar Vinodababu
-
-# Some augmentation functions below have been adapted from
-# From https://github.com/amdegroot/ssd.pytorch/blob/master/utils/augmentations.py
+# Copyright (c) 2017 Max deGroot, Ellis Brown
+# Portions Copyright (C) 2023 Maxim Integrated Products, Inc.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+# Helper methods originate from:
+# https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection
+# Some augmentation functions have been adapted from:
+# https://github.com/amdegroot/ssd.pytorch/blob/master/utils/augmentations.py
+#
 
 """ Some utility functions for Augmentation Tasks """
 import random
