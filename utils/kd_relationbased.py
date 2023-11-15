@@ -1,15 +1,6 @@
-###################################################################################################
-#
-# Copyright (C) 2023 Analog Devices, Inc. All Rights Reserved.
-#
-# Analog Devices, Inc. Default Copyright Notice:
-# https://www.analog.com/en/about-adi/legal-and-risk-oversight/intellectual-property/copyright-notice.html
-#
-###################################################################################################
-#
-# Portions Copyright (c) 2018 Intel Corporation
 #
 # Copyright (c) 2018 Intel Corporation
+# Portions Copyright (C) 2023 Analog Devices, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 """ Relation based Knowledge Distillation Policy"""
 
 from collections import namedtuple

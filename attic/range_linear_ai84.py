@@ -1,5 +1,6 @@
 #
 # Copyright (c) 2018 Intel Corporation
+# Portions Copyright (C) 2019-2023 Maxim Integrated Products, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
