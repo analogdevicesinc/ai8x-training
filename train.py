@@ -527,6 +527,14 @@ def main():
             # Update the optimizer to reflect fused batchnorm layers
             optimizer = ai8x.update_optimizer(model, optimizer)
 
+            # Update the compression scheduler to reflect the updated optimizer
+            for ep in range(len(compression_scheduler.policies)):
+                for i in range(len(compression_scheduler.policies[ep])):
+                    for attr_key in compression_scheduler.policies[ep][i].__dir__():
+                        attr = getattr(compression_scheduler.policies[ep][i], attr_key)
+                        if hasattr(attr, 'optimizer'):
+                            attr.optimizer = optimizer
+ 
             # Switch model from unquantized to quantized for QAT
             ai8x.initiate_qat(model, qat_policy)
 
