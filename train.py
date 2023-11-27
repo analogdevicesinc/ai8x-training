@@ -531,7 +531,7 @@ def main():
             # Update the compression scheduler to reflect the updated optimizer
             for ep, _ in enumerate(compression_scheduler.policies):
                 for i, _ in enumerate(compression_scheduler.policies[ep]):
-                    for attr_key in compression_scheduler.policies[ep][i].__dir__():
+                    for attr_key in dir(compression_scheduler.policies[ep][i]):
                         attr = getattr(compression_scheduler.policies[ep][i], attr_key)
                         if hasattr(attr, 'optimizer'):
                             attr.optimizer = optimizer
