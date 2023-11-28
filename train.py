@@ -128,7 +128,6 @@ weight_mean = None
 
 def main():
     """main"""
-    # pylint: disable=too-many-branches
     script_dir = os.path.dirname(__file__)
     global msglogger  # pylint: disable=global-statement
 
