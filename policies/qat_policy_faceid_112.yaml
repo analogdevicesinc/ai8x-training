@@ -1,0 +1,17 @@
+---
+start_epoch: 25
+weight_bits: 4
+shift_quantile: 0.6
+overrides:
+  pre_stage:
+    weight_bits: 8
+  pre_stage_2:
+    weight_bits: 8
+  feature_stage.1.0.conv2:
+    weight_bits: 2
+  feature_stage.2.0.conv2:
+    weight_bits: 2
+  feature_stage.4.0.conv2:
+    weight_bits: 2
+  linear:
+    weight_bits: 8
