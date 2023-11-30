@@ -25,6 +25,12 @@ jobs:
           find . -name 'distiller' -prune -o -type f -size +0c -regex '.*\.\(py\|yaml\|yml\|txt\|h\|c\|sh\)' -print0 | xargs -0 file | grep -v ASCII || exit 0
           exit 1
 
+      - name: Check shell scripts for x-bit
+        run: |
+          set -e
+          find . -name 'distiller' -prune -o -type f -name \*.sh \! -perm -1 -print0 | xargs -0 grep . || exit 0
+          exit 1
+
       - name: Lint code
         uses: super-linter/super-linter/slim@v5
         env:
