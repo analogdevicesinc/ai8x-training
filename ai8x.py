@@ -1754,30 +1754,27 @@ def initiate_qat(m, qat_policy):
     """
     Modify model `m` to start quantization aware training.
     """
-    def _initiate_qat(m):
-        for attr_str in dir(m):
-            target_attr = getattr(m, attr_str)
-            if isinstance(target_attr, QuantizationAwareModule):
-                if 'shift_quantile' in qat_policy:
-                    target_attr.init_module(qat_policy['weight_bits'],
-                                            qat_policy['weight_bits'],
-                                            True, qat_policy['shift_quantile'])
-                else:
-                    target_attr.init_module(qat_policy['weight_bits'],
-                                            qat_policy['weight_bits'], True, 1.0)
-                if 'overrides' in qat_policy:
-                    if attr_str in qat_policy['overrides']:
-                        weight_field = qat_policy['overrides'][attr_str]['weight_bits']
-                        if 'shift_quantile' in qat_policy:
-                            target_attr.init_module(weight_field, weight_field,
-                                                    True, qat_policy['shift_quantile'])
-                        else:
-                            target_attr.init_module(weight_field,
-                                                    weight_field, True, 1.0)
-
-                setattr(m, attr_str, target_attr)
-
-    m.apply(_initiate_qat)
+    for name, module in m.named_modules():
+        # Check Name for Data Parallel Models
+        if "module." in name:
+            name = name[7:]
+        if hasattr(module, "weight_bits"):
+            if 'shift_quantile' in qat_policy:
+                module.init_module(qat_policy['weight_bits'],
+                                   qat_policy['weight_bits'],
+                                   True, qat_policy['shift_quantile'])
+            else:
+                module.init_module(qat_policy['weight_bits'],
+                                   qat_policy['weight_bits'], True, 1.0)
+            if 'overrides' in qat_policy:
+                if name in qat_policy['overrides']:
+                    weight_field = qat_policy['overrides'][name]['weight_bits']
+                    if 'shift_quantile' in qat_policy:
+                        module.init_module(weight_field, weight_field,
+                                           True, qat_policy['shift_quantile'])
+                    else:
+                        module.init_module(weight_field,
+                                           weight_field, True, 1.0)
 
 
 def update_model(m):
