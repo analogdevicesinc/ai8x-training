@@ -17,7 +17,7 @@
 #
 # pyright: reportMissingModuleSource=false, reportGeneralTypeIssues=false
 # pyright: reportOptionalSubscript=false
-"""This is an example application for compressing image classification models.
+"""This is the example training application for MAX7800x.
 
 The application borrows its main flow code from torchvision's ImageNet classification
 training sample application (https://github.com/pytorch/examples/tree/master/imagenet).
