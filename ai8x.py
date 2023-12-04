@@ -1754,11 +1754,11 @@ def initiate_qat(m, qat_policy):
     """
     Modify model `m` to start quantization aware training.
     """
+    if isinstance(m, nn.DataParallel):
+        m = m.module
+
     for name, module in m.named_modules():
-        # Check Name for Data Parallel Models
-        if "module." in name:
-            name = name[7:]
-        if hasattr(module, "weight_bits"):
+        if isinstance(module, QuantizationAwareModule) and hasattr(module, 'weight_bits'):
             if 'shift_quantile' in qat_policy:
                 module.init_module(qat_policy['weight_bits'],
                                    qat_policy['weight_bits'],
