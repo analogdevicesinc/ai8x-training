@@ -153,7 +153,6 @@ class VGGFace2(Dataset):
             return self.__getitem_identification_dr(index)
 
 
-
     def __getitem_detection(self, index):
 
         if torch.is_tensor(index):
@@ -411,7 +410,6 @@ datasets = [
        'name': 'VGGFace2_FaceID',
        'input': (3, 112, 112),
        'output': ('id'),
-       'regression': True,
        'loader': VGGFace2_FaceID_get_datasets,
     },
     {

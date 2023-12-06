@@ -136,6 +136,9 @@ def get_parser(model_names, dataset_names):
                         help='save as CSVs with the given prefix during evaluation')
     mgroup.add_argument('--save-sample', dest='generate_sample', type=int,
                         help='save the sample at given index as NumPy sample data')
+    parser.add_argument('--slice-sample', action='store_true', default=False,
+                        help='for models that require RGB input, when the sample from the dataset '
+                             'has additional channels, slice the sample into 3 channels')
     parser.add_argument('--shap', default=0, type=int,
                         help='select # of images from the test set and plot SHAP after evaluation')
     parser.add_argument('--activation-stats', '--act-stats', nargs='+', metavar='PHASE',

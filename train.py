@@ -458,15 +458,6 @@ def main():
                                   args.sensitivity_range[2])
         return sensitivity_analysis(model, criterion, test_loader, pylogger, args, sensitivities)
 
-    if args.evaluate:
-        msglogger.info('Dataset sizes:\n\ttest=%d', len(test_loader.sampler))
-        return evaluate_model(model, criterion, test_loader, pylogger, activations_collectors,
-                              args, compression_scheduler)
-
-    assert train_loader and val_loader
-    msglogger.info('Dataset sizes:\n\ttraining=%d\n\tvalidation=%d\n\ttest=%d',
-                   len(train_loader.sampler), len(val_loader.sampler), len(test_loader.sampler))
-
     if args.compress:
         # The main use-case for this sample application is CNN compression. Compression
         # requires a compression schedule configuration file in YAML.
@@ -503,7 +494,7 @@ def main():
         dlw = distiller.DistillationLossWeights(args.kd_distill_wt, args.kd_student_wt,
                                                 args.kd_teacher_wt)
         if args.kd_relationbased:
-            args.kd_policy = kd_relationbased.RelationBasedKDPolicy(model, teacher, dlw)
+            args.kd_policy = kd_relationbased.RelationBasedKDPolicy(model, teacher, dlw, args.act_mode_8bit)
         else:
             args.kd_policy = distiller.KnowledgeDistillationPolicy(model, teacher,
                                                                    args.kd_temp, dlw)
@@ -541,6 +532,15 @@ def main():
                                                               args.nas_stage_transition_list,
                                                               args.epochs)
                 create_nas_kd_policy(model, compression_scheduler, start_epoch, kd_end_epoch, args)
+
+    if args.evaluate:
+        msglogger.info('Dataset sizes:\n\ttest=%d', len(test_loader.sampler))
+        return evaluate_model(model, criterion, test_loader, pylogger, activations_collectors,
+                              args, compression_scheduler)
+
+    assert train_loader and val_loader
+    msglogger.info('Dataset sizes:\n\ttraining=%d\n\tvalidation=%d\n\ttest=%d',
+                   len(train_loader.sampler), len(val_loader.sampler), len(test_loader.sampler))
 
     vloss = 10**6
     for epoch in range(start_epoch, ending_epoch):
@@ -1255,7 +1255,7 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                         target /= 128.
 
             if args.generate_sample is not None and args.act_mode_8bit and not sample_saved:
-                sample.generate(args.generate_sample, inputs, target, output, args.dataset, False)
+                sample.generate(args.generate_sample, inputs, target, output, args.dataset, False, args.slice_sample)
                 sample_saved = True
 
             if args.csv_prefix is not None:
