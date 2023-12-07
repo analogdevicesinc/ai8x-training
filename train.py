@@ -95,6 +95,11 @@ from distiller.data_loggers.collector import (QuantCalibrationStatsCollector,
                                               RecordsActivationStatsCollector,
                                               SummaryActivationStatsCollector, collectors_context)
 from distiller.quantization.range_linear import PostTrainLinearQuantizer
+from pytorch_metric_learning import losses as pml_losses
+from pytorch_metric_learning import testers
+from pytorch_metric_learning.distances import CosineSimilarity
+from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
+from pytorch_metric_learning.utils.inference import CustomKNN
 from torchmetrics.detection.map import MAP as MeanAveragePrecision
 
 # pylint: enable=no-name-in-module
@@ -107,11 +112,6 @@ import parsecmd
 import sample
 from losses.dummyloss import DummyLoss
 from losses.multiboxloss import MultiBoxLoss
-from pytorch_metric_learning import testers
-from pytorch_metric_learning import losses as pml_losses
-from pytorch_metric_learning.distances import CosineSimilarity
-from pytorch_metric_learning.utils.inference import CustomKNN
-from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
 from nas import parse_nas_yaml
 from utils import kd_relationbased, object_detection_utils, parse_obj_detection_yaml
 
@@ -396,7 +396,10 @@ def main():
 
     elif args.dr:
 
-        criterion = pml_losses.SubCenterArcFaceLoss(num_classes=args.num_classes, embedding_size=args.dr, margin=args.scaf_margin, scale=args.scaf_scale)
+        criterion = pml_losses.SubCenterArcFaceLoss(num_classes=args.num_classes,
+                                                    embedding_size=args.dr,
+                                                    margin=args.scaf_margin,
+                                                    scale=args.scaf_scale)
         if args.resumed_checkpoint_path:
             checkpoint = torch.load(args.resumed_checkpoint_path,
                                     map_location=lambda storage, loc: storage)
@@ -409,11 +412,8 @@ def main():
 
         distance_fn = CosineSimilarity()
         custom_knn = CustomKNN(distance_fn, batch_size=args.batch_size)
-        accuracy_calculator = AccuracyCalculator(knn_func=custom_knn, include=("precision_at_1",), k=1)
-
-        if args.validation_split != 0:
-            msglogger.info("WARNING: DR works with whole training set, overwriting validation split to 0")
-            args.validation_split = 0
+        accuracy_calculator = AccuracyCalculator(knn_func=custom_knn,
+                                                 include=("precision_at_1",), k=1)
 
     else:
         if not args.regression:
@@ -464,7 +464,8 @@ def main():
         compression_scheduler = distiller.file_config(model, optimizer, args.compress,
                                                       compression_scheduler,
                                                       (start_epoch-1)
-                                                      if args.resumed_checkpoint_path else None, loss_optimizer)
+                                                      if args.resumed_checkpoint_path
+                                                      else None, loss_optimizer)
     elif compression_scheduler is None:
         compression_scheduler = distiller.CompressionScheduler(model)
 
@@ -494,7 +495,8 @@ def main():
         dlw = distiller.DistillationLossWeights(args.kd_distill_wt, args.kd_student_wt,
                                                 args.kd_teacher_wt)
         if args.kd_relationbased:
-            args.kd_policy = kd_relationbased.RelationBasedKDPolicy(model, teacher, dlw, args.act_mode_8bit)
+            args.kd_policy = kd_relationbased.RelationBasedKDPolicy(model, teacher,
+                                                                    dlw, args.act_mode_8bit)
         else:
             args.kd_policy = distiller.KnowledgeDistillationPolicy(model, teacher,
                                                                    args.kd_temp, dlw)
@@ -585,7 +587,7 @@ def main():
         # Train for one epoch
         with collectors_context(activations_collectors["train"]) as collectors:
             train(train_loader, model, criterion, optimizer, epoch, compression_scheduler,
-                loggers=all_loggers, args=args,  loss_optimizer = loss_optimizer)
+                  loggers=all_loggers, args=args, loss_optimizer=loss_optimizer)
 
             # distiller.log_weights_sparsity(model, epoch, loggers=all_loggers)
             distiller.log_activation_statistics(epoch, "train", loggers=all_tbloggers,
@@ -615,7 +617,7 @@ def main():
             with collectors_context(activations_collectors["valid"]) as collectors:
                 if not args.dr:
                     top1, top5, vloss, mAP = validate(val_loader, model, criterion, [pylogger],
-                                                    args, epoch, tflogger)
+                                                      args, epoch, tflogger)
                 else:
                     top1, top5, vloss, mAP = scaf_test(val_loader, model, accuracy_calculator)
                 distiller.log_activation_statistics(epoch, "valid", loggers=all_tbloggers,
@@ -701,8 +703,8 @@ def create_model(supported_models, dimensions, args, mode='default'):
             raise RuntimeError("Model " + args.kd_teacher + " not found\n")
 
     if args.dr:
-        if not 'dr' in module or not module['dr']:
-            raise ValueError(f'Dimensionality reduction is not supported for this model')
+        if 'dr' not in module or not module['dr']:
+            raise ValueError("Dimensionality reduction is not supported for this model")
 
     # Set model parameters
     if args.act_mode_8bit:
@@ -775,7 +777,7 @@ def create_nas_kd_policy(model, compression_scheduler, epoch, next_state_start_e
 
 
 def train(train_loader, model, criterion, optimizer, epoch,
-          compression_scheduler, loggers, args, loss_optimizer = None):
+          compression_scheduler, loggers, args, loss_optimizer=None):
     """Training loop for one epoch."""
     losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                           (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
@@ -996,18 +998,23 @@ def update_bn_stats(train_loader, model, args):
         inputs, target = inputs.to(args.device), target.to(args.device)
         _ = model(inputs)
 
+
 def get_all_embeddings(dataset, model):
+    """Get all embeddings from the test set"""
     tester = testers.BaseTester()
     return tester.get_all_embeddings(dataset, model)
 
+
 def scaf_test(val_loader, model, accuracy_calculator):
+    """Perform test for SCAF"""
     test_embeddings, test_labels = get_all_embeddings(val_loader.dataset, model)
     test_labels = test_labels.squeeze(1)
     accuracies = accuracy_calculator.get_accuracy(
         test_embeddings, test_embeddings, test_labels, test_labels, True
     )
-    msglogger.info("Test set accuracy (Precision@1) = {}".format(accuracies["precision_at_1"]))
-    return accuracies["precision_at_1"], 0 , 0 , 0
+    msglogger.info('Test set accuracy (Precision@1) = %f', accuracies['precision_at_1'])
+    return accuracies["precision_at_1"], 0, 0, 0
+
 
 def validate(val_loader, model, criterion, loggers, args, epoch=-1, tflogger=None):
     """Model validation"""
@@ -1255,7 +1262,8 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                         target /= 128.
 
             if args.generate_sample is not None and args.act_mode_8bit and not sample_saved:
-                sample.generate(args.generate_sample, inputs, target, output, args.dataset, False, args.slice_sample)
+                sample.generate(args.generate_sample, inputs, target, output,
+                                args.dataset, False, args.slice_sample)
                 sample_saved = True
 
             if args.csv_prefix is not None:

@@ -68,13 +68,16 @@ def get_parser(model_names, dataset_names):
                         help='when simulating, use "round()" in AvgPool operations '
                              '(default: use "floor()")')
     parser.add_argument('--dr', type=int, default=None,
-                        help='Embedding dimensionality for dimensionality reduction (default: None)')
+                        help='Embedding dimensionality for dimensionality'
+                             'reduction (default: None)')
     parser.add_argument('--scaf-margin', default=28.6,
-                                type=float, help='Margin hyperparameter for Sub-center ArcFace Loss')
+                        type=float, help='Margin hyperparameter'
+                                         'for Sub-center ArcFace Loss')
     parser.add_argument('--scaf-scale', default=64,
-                                type=int, help='Scale hyperparameter for Sub-center ArcFace Loss')
+                        type=int, help='Scale hyperparameter for Sub-center ArcFace Loss')
     parser.add_argument('--backbone-checkpoint', type=str, default=None, metavar='PATH',
-                        help='path to checkpoint from which to load backbone weights (default: None)')
+                        help='path to checkpoint from which to load'
+                             'backbone weights (default: None)')
     parser.add_argument('--copy-output-folder', type=str, default=None, metavar='PATH',
                         help='Path to copy output folder (default: None)')
     parser.add_argument('--kd-relationbased', action='store_true', default=False,
@@ -104,7 +107,9 @@ def get_parser(model_names, dataset_names):
     optimizer_args.add_argument('--lr', '--learning-rate',
                                 type=float, metavar='LR', help='initial learning rate')
     optimizer_args.add_argument('--scaf-lr', default=1e-4,
-                                type=float, metavar='SCAF_LR', help='initial learning rate for Sub-center ArcFace Loss optimizer')
+                                type=float, metavar='SCAF_LR',
+                                help='initial learning rate for Sub-center'
+                                     'ArcFace Loss optimizer')
     optimizer_args.add_argument('--momentum', default=0.9, type=float,
                                 metavar='M', help='momentum')
     optimizer_args.add_argument('--weight-decay', '--wd', default=1e-4, type=float,

@@ -147,30 +147,28 @@ class ConvResidualBottleneck(nn.Module):
         if stride == 1:
             if depthwise_bias:
                 self.conv2 = ai8x.FusedConv2dBN(hidden_channels, out_channels, 3,
-                                                             padding=1, stride=stride,
-                                                             bias=depthwise_bias, **kwargs)
+                                                padding=1, stride=stride,
+                                                bias=depthwise_bias, **kwargs)
 
             else:
                 self.conv2 = ai8x.Conv2d(hidden_channels, out_channels, 3,
-                                                           padding=1, stride=stride,
-                                                           bias=depthwise_bias, **kwargs)
+                                         padding=1, stride=stride,
+                                         bias=depthwise_bias, **kwargs)
 
         else:
             if depthwise_bias:
                 self.conv2 = ai8x.FusedMaxPoolConv2dBN(hidden_channels,
-                                                                    out_channels,
-                                                                    3, padding=1, pool_size=stride,
-                                                                    pool_stride=stride,
-                                                                    bias=depthwise_bias,
-                                                                    **kwargs)
+                                                       out_channels, 3,
+                                                       padding=1, pool_size=stride,
+                                                       pool_stride=stride,
+                                                       bias=depthwise_bias, **kwargs)
 
             else:
                 self.conv2 = ai8x.FusedMaxPoolConv2d(hidden_channels,
-                                                                  out_channels,
-                                                                  3, padding=1, pool_size=stride,
-                                                                  pool_stride=stride,
-                                                                  bias=depthwise_bias,
-                                                                  **kwargs)
+                                                     out_channels, 3,
+                                                     padding=1, pool_size=stride,
+                                                     pool_stride=stride,
+                                                     bias=depthwise_bias, **kwargs)
 
         if (stride == 1) and (in_channels == out_channels):
             self.resid = ai8x.Add()
