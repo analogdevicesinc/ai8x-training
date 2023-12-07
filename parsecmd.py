@@ -67,6 +67,17 @@ def get_parser(model_names, dataset_names):
     parser.add_argument('--avg-pool-rounding', action='store_true', default=False,
                         help='when simulating, use "round()" in AvgPool operations '
                              '(default: use "floor()")')
+    parser.add_argument('--dr', type=int, default=None,
+                        help='Embedding dimensionality for dimensionality'
+                             'reduction (default: None)')
+    parser.add_argument('--scaf-margin', default=28.6,
+                        type=float, help='Margin hyperparameter'
+                                         'for Sub-center ArcFace Loss')
+    parser.add_argument('--scaf-scale', default=64,
+                        type=int, help='Scale hyperparameter for Sub-center ArcFace Loss')
+    parser.add_argument('--backbone-checkpoint', type=str, default=None, metavar='PATH',
+                        help='path to checkpoint from which to load'
+                             'backbone weights (default: None)')
     parser.add_argument('--copy-output-folder', type=str, default=None, metavar='PATH',
                         help='Path to copy output folder (default: None)')
     parser.add_argument('--kd-relationbased', action='store_true', default=False,
@@ -95,6 +106,10 @@ def get_parser(model_names, dataset_names):
                                 help='optimizer for training (default: SGD)')
     optimizer_args.add_argument('--lr', '--learning-rate',
                                 type=float, metavar='LR', help='initial learning rate')
+    optimizer_args.add_argument('--scaf-lr', default=1e-4,
+                                type=float, metavar='SCAF_LR',
+                                help='initial learning rate for Sub-center'
+                                     'ArcFace Loss optimizer')
     optimizer_args.add_argument('--momentum', default=0.9, type=float,
                                 metavar='M', help='momentum')
     optimizer_args.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
@@ -126,6 +141,9 @@ def get_parser(model_names, dataset_names):
                         help='save as CSVs with the given prefix during evaluation')
     mgroup.add_argument('--save-sample', dest='generate_sample', type=int,
                         help='save the sample at given index as NumPy sample data')
+    parser.add_argument('--slice-sample', action='store_true', default=False,
+                        help='for models that require RGB input, when the sample from the dataset '
+                             'has additional channels, slice the sample into 3 channels')
     parser.add_argument('--shap', default=0, type=int,
                         help='select # of images from the test set and plot SHAP after evaluation')
     parser.add_argument('--activation-stats', '--act-stats', nargs='+', metavar='PHASE',

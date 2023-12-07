@@ -19,6 +19,7 @@ def generate(
         outputs,  # pylint: disable=unused-argument
         dataset_name,
         search=False,  # pylint: disable=unused-argument
+        slice_sample=False,
 ):
     """
     Save the element `index` from the `inputs` batch to a file named "sample_`dataset_name`.npy".
@@ -33,6 +34,8 @@ def generate(
 
     print(f'==> Saving sample at index {index} to {sample_name}.npy')
     x = inputs[index].cpu().numpy().astype('int64')
+    if slice_sample:
+        x = x[0:3, :, :]
     x = np.clip(x, -128, 127)
     np.save(sample_name, x, allow_pickle=False, fix_imports=False)
 

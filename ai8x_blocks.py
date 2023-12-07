@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2020-2022 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2020-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -113,6 +113,80 @@ class ResidualBottleneck(nn.Module):
         y = self.conv1(x)
         y = self.conv2(y)
         y = self.conv3(y)
+        return self.resid(y, x)
+
+
+class ConvResidualBottleneck(nn.Module):
+    """
+    AI8X module based on Residual Bottleneck Layer.
+    Depthwise convolution is replaced with standard convolution.
+    This module uses ReLU activation not ReLU6 as the original study suggests [1],
+    because of MAX7800X capabilities.
+
+    Args:
+        in_channels: number of input channels
+        out_channels: number of output channels
+        expansion_factor: expansion_factor
+        stride: stirde size (default=1)
+        bias: determines if bias used at non-depthwise layers.
+        depthwise_bias: determines if bias used at depthwise layers.
+
+    References:
+        [1] https://arxiv.org/pdf/1801.04381.pdf (MobileNetV2)
+    """
+    def __init__(self, in_channels, out_channels, expansion_factor, stride=1, bias=False,
+                 depthwise_bias=False, **kwargs):
+        super().__init__()
+        self.stride = stride
+        hidden_channels = int(round(in_channels * expansion_factor))
+        if hidden_channels == in_channels:
+            self.conv1 = ai8x.Empty()
+        else:
+            self.conv1 = ai8x.FusedConv2dBNReLU(in_channels, hidden_channels, 1, padding=0,
+                                                bias=bias, **kwargs)
+        if stride == 1:
+            if depthwise_bias:
+                self.conv2 = ai8x.FusedConv2dBN(hidden_channels, out_channels, 3,
+                                                padding=1, stride=stride,
+                                                bias=depthwise_bias, **kwargs)
+
+            else:
+                self.conv2 = ai8x.Conv2d(hidden_channels, out_channels, 3,
+                                         padding=1, stride=stride,
+                                         bias=depthwise_bias, **kwargs)
+
+        else:
+            if depthwise_bias:
+                self.conv2 = ai8x.FusedMaxPoolConv2dBN(hidden_channels,
+                                                       out_channels, 3,
+                                                       padding=1, pool_size=stride,
+                                                       pool_stride=stride,
+                                                       bias=depthwise_bias, **kwargs)
+
+            else:
+                self.conv2 = ai8x.FusedMaxPoolConv2d(hidden_channels,
+                                                     out_channels, 3,
+                                                     padding=1, pool_size=stride,
+                                                     pool_stride=stride,
+                                                     bias=depthwise_bias, **kwargs)
+
+        if (stride == 1) and (in_channels == out_channels):
+            self.resid = ai8x.Add()
+        else:
+            self.resid = self.NoResidual()
+
+    class NoResidual(nn.Module):
+        """
+        Does nothing.
+        """
+        def forward(self, *x):  # pylint: disable=arguments-differ
+            """Forward prop"""
+            return x[0]
+
+    def forward(self, x):  # pylint: disable=arguments-differ
+        """Forward prop"""
+        y = self.conv1(x)
+        y = self.conv2(y)
         return self.resid(y, x)
 
 

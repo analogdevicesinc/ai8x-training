@@ -2,6 +2,3 @@
 	path = distiller
 	url = https://github.com/MaximIntegratedAI/distiller.git
 	branch = pytorch-1.8
-[submodule "datasets/face_id/facenet_pytorch"]
-	path = datasets/face_id/facenet_pytorch
-	url = https://github.com/MaximIntegratedAI/facenet-pytorch.git
