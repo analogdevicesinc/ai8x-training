@@ -50,13 +50,12 @@ class DRL(nn.Module):
             self,
             dimensionality,
             bias=True,
-            **kwargs
     ):
         super().__init__()
-        self.conv1 = nn.Conv1d(512, 512, 1, padding=0, bias=bias, **kwargs)
+        self.conv1 = nn.Conv1d(512, 512, 1, padding=0, bias=bias)
         self.BN1 = nn.BatchNorm1d(512)
         self.PRelu1 = nn.PReLU(512)
-        self.conv2 = nn.Conv1d(512, dimensionality, 1, padding=0, bias=bias, **kwargs)
+        self.conv2 = nn.Conv1d(512, dimensionality, 1, padding=0, bias=bias)
         self.BN2 = nn.BatchNorm1d(dimensionality)
 
     def forward(self, x):  # pylint: disable=arguments-differ
@@ -299,7 +298,9 @@ class Backbone(nn.Module):
                     m.bias.data.zero_()
 
 
-def ir_50(input_size=(112, 112), dimensionality=64, backbone_checkpoint=None, **kwargs):
+def ir_50(input_size=(112, 112),
+          dimensionality=64,
+          backbone_checkpoint=None, **kwargs): # pylint: disable=unused-argument
     """Constructs a ir-50 model.
     """
     model = Backbone(input_size, 50, 'ir')
@@ -307,13 +308,15 @@ def ir_50(input_size=(112, 112), dimensionality=64, backbone_checkpoint=None, **
         model.load_state_dict(torch.load(backbone_checkpoint, map_location=torch.device('cpu')))
     for param in model.parameters():
         param.requires_grad = False
-    drl = DRL(dimensionality, **kwargs)
+    drl = DRL(dimensionality)
     ensemble = Ensemble(model, drl)
 
     return ensemble
 
 
-def ir_101(input_size=(112, 112), dimensionality=64, backbone_checkpoint=None, **kwargs):
+def ir_101(input_size=(112, 112),
+           dimensionality=64,
+           backbone_checkpoint=None, **kwargs): # pylint: disable=unused-argument
     """Constructs a ir-101 model.
     """
     model = Backbone(input_size, 100, 'ir')
@@ -321,13 +324,15 @@ def ir_101(input_size=(112, 112), dimensionality=64, backbone_checkpoint=None, *
         model.load_state_dict(torch.load(backbone_checkpoint, map_location=torch.device('cpu')))
     for param in model.parameters():
         param.requires_grad = False
-    drl = DRL(dimensionality, **kwargs)
+    drl = DRL(dimensionality)
     ensemble = Ensemble(model, drl)
 
     return ensemble
 
 
-def ir_152(input_size=(112, 112), dimensionality=64, backbone_checkpoint=None, **kwargs):
+def ir_152(input_size=(112, 112),
+           dimensionality=64,
+           backbone_checkpoint=None, **kwargs): # pylint: disable=unused-argument
     """Constructs a ir-152 model.
     """
     model = Backbone(input_size, 152, 'ir')
@@ -335,14 +340,16 @@ def ir_152(input_size=(112, 112), dimensionality=64, backbone_checkpoint=None, *
         model.load_state_dict(torch.load(backbone_checkpoint, map_location=torch.device('cpu')))
     for param in model.parameters():
         param.requires_grad = False
-    drl = DRL(dimensionality, **kwargs)
+    drl = DRL(dimensionality)
 
     ensemble = Ensemble(model, drl)
 
     return ensemble
 
 
-def ir_se_50(input_size=(112, 112), dimensionality=64, backbone_checkpoint=None, **kwargs):
+def ir_se_50(input_size=(112, 112),
+             dimensionality=64,
+             backbone_checkpoint=None, **kwargs): # pylint: disable=unused-argument
     """Constructs a ir_se-50 model.
     """
     model = Backbone(input_size, 50, 'ir_se')
@@ -350,13 +357,15 @@ def ir_se_50(input_size=(112, 112), dimensionality=64, backbone_checkpoint=None,
         model.load_state_dict(torch.load(backbone_checkpoint, map_location=torch.device('cpu')))
     for param in model.parameters():
         param.requires_grad = False
-    drl = DRL(dimensionality, **kwargs)
+    drl = DRL(dimensionality)
     ensemble = Ensemble(model, drl)
 
     return ensemble
 
 
-def ir_se_101(input_size=(112, 112), dimensionality=64, backbone_checkpoint=None, **kwargs):
+def ir_se_101(input_size=(112, 112),
+              dimensionality=64,
+              backbone_checkpoint=None, **kwargs): # pylint: disable=unused-argument
     """Constructs a ir_se-101 model.
     """
     model = Backbone(input_size, 100, 'ir_se')
@@ -364,13 +373,15 @@ def ir_se_101(input_size=(112, 112), dimensionality=64, backbone_checkpoint=None
         model.load_state_dict(torch.load(backbone_checkpoint, map_location=torch.device('cpu')))
     for param in model.parameters():
         param.requires_grad = False
-    drl = DRL(dimensionality, **kwargs)
+    drl = DRL(dimensionality)
     ensemble = Ensemble(model, drl)
 
     return ensemble
 
 
-def ir_se_152(input_size=(112, 112), dimensionality=64, backbone_checkpoint=None, **kwargs):
+def ir_se_152(input_size=(112, 112),
+              dimensionality=64,
+              backbone_checkpoint=None, **kwargs): # pylint: disable=unused-argument
     """Constructs a ir_se-152 model.
     """
     model = Backbone(input_size, 152, 'ir_se')
@@ -378,7 +389,7 @@ def ir_se_152(input_size=(112, 112), dimensionality=64, backbone_checkpoint=None
         model.load_state_dict(torch.load(backbone_checkpoint, map_location=torch.device('cpu')))
     for param in model.parameters():
         param.requires_grad = False
-    drl = DRL(dimensionality, **kwargs)
+    drl = DRL(dimensionality)
     ensemble = Ensemble(model, drl)
 
     return ensemble
