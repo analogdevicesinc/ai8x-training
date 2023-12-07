@@ -298,9 +298,9 @@ class Backbone(nn.Module):
                     m.bias.data.zero_()
 
 
-def ir_50(input_size=(112, 112),
+def ir_50(input_size=(112, 112),  # pylint: disable=unused-argument
           dimensionality=64,
-          backbone_checkpoint=None, **kwargs): # pylint: disable=unused-argument
+          backbone_checkpoint=None, **kwargs):
     """Constructs a ir-50 model.
     """
     model = Backbone(input_size, 50, 'ir')
@@ -314,9 +314,9 @@ def ir_50(input_size=(112, 112),
     return ensemble
 
 
-def ir_101(input_size=(112, 112),
+def ir_101(input_size=(112, 112),  # pylint: disable=unused-argument
            dimensionality=64,
-           backbone_checkpoint=None, **kwargs): # pylint: disable=unused-argument
+           backbone_checkpoint=None, **kwargs):
     """Constructs a ir-101 model.
     """
     model = Backbone(input_size, 100, 'ir')
@@ -330,9 +330,9 @@ def ir_101(input_size=(112, 112),
     return ensemble
 
 
-def ir_152(input_size=(112, 112),
+def ir_152(input_size=(112, 112),  # pylint: disable=unused-argument
            dimensionality=64,
-           backbone_checkpoint=None, **kwargs): # pylint: disable=unused-argument
+           backbone_checkpoint=None, **kwargs):
     """Constructs a ir-152 model.
     """
     model = Backbone(input_size, 152, 'ir')
@@ -347,9 +347,9 @@ def ir_152(input_size=(112, 112),
     return ensemble
 
 
-def ir_se_50(input_size=(112, 112),
+def ir_se_50(input_size=(112, 112),  # pylint: disable=unused-argument
              dimensionality=64,
-             backbone_checkpoint=None, **kwargs): # pylint: disable=unused-argument
+             backbone_checkpoint=None, **kwargs):
     """Constructs a ir_se-50 model.
     """
     model = Backbone(input_size, 50, 'ir_se')
@@ -363,9 +363,9 @@ def ir_se_50(input_size=(112, 112),
     return ensemble
 
 
-def ir_se_101(input_size=(112, 112),
+def ir_se_101(input_size=(112, 112),  # pylint: disable=unused-argument
               dimensionality=64,
-              backbone_checkpoint=None, **kwargs): # pylint: disable=unused-argument
+              backbone_checkpoint=None, **kwargs):
     """Constructs a ir_se-101 model.
     """
     model = Backbone(input_size, 100, 'ir_se')
@@ -379,9 +379,9 @@ def ir_se_101(input_size=(112, 112),
     return ensemble
 
 
-def ir_se_152(input_size=(112, 112),
+def ir_se_152(input_size=(112, 112),  # pylint: disable=unused-argument
               dimensionality=64,
-              backbone_checkpoint=None, **kwargs): # pylint: disable=unused-argument
+              backbone_checkpoint=None, **kwargs):
     """Constructs a ir_se-152 model.
     """
     model = Backbone(input_size, 152, 'ir_se')
