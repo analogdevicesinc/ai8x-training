@@ -1,13 +1,6 @@
-###################################################################################################
 #
-# Copyright (C) 2021-2023 Maxim Integrated Products, Inc. All Rights Reserved.
-#
-# Maxim Integrated Products, Inc. Default Copyright Notice:
-# https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
-#
-###################################################################################################
-#
-# Portions Copyright (c) 2018 Intel Corporation
+# Copyright (c) 2018 Intel Corporation
+# Portions Copyright (C) 2019-2023 Maxim Integrated Products, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -69,8 +62,8 @@ class MSnoise:
                   'CopyMachine': 6, 'Field': 7, 'Hallway': 8, 'Kitchen': 9,
                   'LivingRoom': 10, 'Metro': 11, 'Munching': 12, 'NeighborSpeaking': 13,
                   'Office': 14, 'Park': 15, 'Restaurant': 16, 'ShuttingDoor': 17,
-                  'Square': 18, 'SqueakyChair': 19, 'Station': 20, 'Traffic': 21,
-                  'Typing': 22, 'VacuumCleaner': 23, 'WasherDryer': 24, 'Washing': 25}
+                  'Square': 18, 'SqueakyChair': 19, 'Station': 20,'TradeShow' : 21, 'Traffic': 22,
+                  'Typing': 23, 'VacuumCleaner': 24, 'WasherDryer': 25, 'Washing': 26}
 
     def __init__(self, root, classes, d_type, remove_unknowns=False,
                  transform=None, quantize=False, download=False):
@@ -119,6 +112,10 @@ class MSnoise:
         if self.__check_exists():
             return
 
+        if os.path.exists(self.raw_folder):
+            self.__gen_datasets()
+            return
+        
         self.__makedir_exist_ok(self.noise_train_folder)
         self.__makedir_exist_ok(self.noise_test_folder)
         self.__makedir_exist_ok(self.processed_folder)
@@ -191,6 +188,7 @@ class MSnoise:
             num_elems = (self.targets == self.class_dict[c]).cpu().sum()
             print(f'Number of elements in class {c}: {num_elems}')
             self.targets[(self.targets == self.class_dict[c])] = new_class_label
+            print(f'{c}: {new_class_label - initial_new_class_label}')
             new_class_label += 1
 
         num_elems = (self.targets < initial_new_class_label).cpu().sum()
@@ -292,12 +290,13 @@ class MSnoise:
                 for folder in train_test_folders:
                     for record_name in sorted(os.listdir(folder)):
                         if record_name.split('_')[0] in label:
-                            if hash(record_name) % 10 < 10*train_ratio:
+                            if folder == self.noise_train_folder:
                                 d_type = np.uint8(0)  # train+val
                                 train_count += 1
-                            else:
+                            elif folder == self.noise_test_folder:
                                 d_type = np.uint8(1)  # test
                                 test_count += 1
+
                             record_path = os.path.join(folder, record_name)
                             record, fs = librosa.load(record_path, offset=0, sr=None)
                             rec_len = np.size(record)
@@ -344,10 +343,18 @@ def MSnoise_get_datasets(data, load_train=True, load_test=True):
     (data_dir, args) = data
 
     classes = ['AirConditioner', 'AirportAnnouncements',
-               'Babble', 'Bus', 'CafeTeria', 'Car',
-               'CopyMachine', 'Metro',
-               'Office', 'Restaurant', 'ShuttingDoor',
-               'Traffic', 'Typing', 'VacuumCleaner', 'Washing']
+                'Babble', 'Bus', 'CafeTeria', 'Car',
+                'CopyMachine', 'Field', 'Hallway', 'Kitchen',
+                'LivingRoom', 'Metro', 'Munching', 'NeighborSpeaking',
+                'Office', 'Park', 'Restaurant', 'ShuttingDoor',
+                'Square', 'SqueakyChair', 'Station', 'Traffic',
+                'Typing', 'VacuumCleaner', 'WasherDryer', 'Washing', 'TradeShow']
+
+    #classes = ['AirConditioner', 'AirportAnnouncements',
+    #           'Babble', 'Bus', 'CafeTeria', 'Car',
+    #           'CopyMachine', 'Metro',
+    #           'Office', 'Restaurant', 'ShuttingDoor',
+    #           'Traffic', 'Typing', 'VacuumCleaner', 'Washing']
 
     remove_unknowns = True
     transform = transforms.Compose([
