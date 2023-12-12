@@ -24,6 +24,7 @@ from torchvision import transforms
 
 import cv2
 import kornia.geometry.transform as GT
+import onnxruntime
 from hawk_eyes.face import RetinaFace
 from PIL import Image
 from skimage import transform as trans
@@ -99,6 +100,7 @@ class VGGFace2(Dataset):
         """
         Extracts the ground truth from the dataset
         """
+        onnxruntime.set_default_logger_severity(3)  # suppress onnxruntime warnings
         retina = RetinaFace(model_name='retina_l', conf=0.5)
         img_paths = list(glob.glob(os.path.join(self.d_path + '/**/', '*.jpg'), recursive=True))
         nf_number = 0

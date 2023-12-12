@@ -25,4 +25,5 @@ hawk-eyes==2.1.2
 onnx==1.15.0
 onnxruntime-gpu==1.10.0
 imutils==0.5.4
+kornia==0.6.8
 -e distiller
