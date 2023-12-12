@@ -141,6 +141,9 @@ class VGGFace2(Dataset):
         return len(self.pickle_dict["img_list"]) - 1
 
     def __getitem__(self, index):
+        """
+        Get the image and associated target according to the mode
+        """
         if index >= len(self):
             raise IndexError
 
@@ -157,7 +160,9 @@ class VGGFace2(Dataset):
         return None
 
     def __getitem_detection(self, index):
-
+        """
+        Get the image and associated target for face detection
+        """
         if torch.is_tensor(index):
             index = index.tolist()
 
@@ -181,7 +186,9 @@ class VGGFace2(Dataset):
         return img, (boxes, labels)
 
     def __getitem_identification(self, index):
-
+        """
+        Get the image and associated target for face identification
+        """
         if torch.is_tensor(index):
             index = index.tolist()
 
@@ -246,7 +253,9 @@ class VGGFace2(Dataset):
         return concat_img, lbl_index
 
     def __getitem_identification_dr(self, index):
-
+        """
+        Get the image and associated target for dimensionality reduction
+        """
         if torch.is_tensor(index):
             index = index.tolist()
 

@@ -1010,7 +1010,7 @@ def scaf_test(val_loader, model, accuracy_calculator):
     test_embeddings, test_labels = get_all_embeddings(val_loader.dataset, model)
     test_labels = test_labels.squeeze(1)
     accuracies = accuracy_calculator.get_accuracy(
-        test_embeddings, test_embeddings, test_labels, test_labels, True
+        test_embeddings, test_labels, None, None, True
     )
     msglogger.info('Test set accuracy (Precision@1) = %f', accuracies['precision_at_1'])
     return accuracies["precision_at_1"], 0, 0, 0

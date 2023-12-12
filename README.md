@@ -3340,7 +3340,7 @@ Additional information about the evaluation kits, and the software development k
 
 [AHB Addresses for MAX78000 and MAX78002](docs/AHBAddresses.md)
 
-[Facial Recognition System](docs/FacialRecognitionSystem.md)
+[Facial Recognition System](https://github.com/MaximIntegratedAI/ai8x-training/blob/develop/docs/FacialRecognitionSystem.md)
 
 
 ---
