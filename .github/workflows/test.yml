@@ -10,8 +10,8 @@ jobs:
     steps:
       - name: Check if the repository is a specific repository and branch
         run: |
-          echo "IS_SPECIFIC_REPOSITORY=${{ github.repository == 'asyatrhl/ai8x-training' }}" >> $GITHUB_ENV
-          echo "IS_DEVELOP_BRANCH=${{ github.ref == 'refs/heads/main_test_fork' }}" >> $GITHUB_ENV
+          echo "IS_SPECIFIC_REPOSITORY=${{ github.repository == 'MaximIntegratedAI/ai8x-training' }}" >> $GITHUB_ENV
+          echo "IS_DEVELOP_BRANCH=${{ github.ref == 'refs/heads/develop' }}" >> $GITHUB_ENV
 
       - name: Set up environment
         if: env.IS_SPECIFIC_REPOSITORY == 'true' && env.IS_DEVELOP_BRANCH == 'true'
