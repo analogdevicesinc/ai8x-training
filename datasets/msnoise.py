@@ -82,14 +82,14 @@ class MSnoise:
         self.quantize = quantize
 
         if self.quantize:
-            self.data_file = 'dataset_quantized.pt'
+            self.data_file = 'dataset_quantized_rms.pt'
         else:
-            self.data_file = 'dataset_unquantized.pt'
+            self.data_file = 'dataset_unquantized_rms.pt'
 
         if download:
             self.__download()
 
-        self.data, self.targets, self.data_type = torch.load(os.path.join(
+        self.data, self.targets, self.data_type, self.rms_val = torch.load(os.path.join(
             self.processed_folder, self.data_file))
 
         self.__filter_dtype()
@@ -161,6 +161,7 @@ class MSnoise:
             else:
                 raise
 
+
     def __filter_dtype(self):
         if self.d_type == 'train':
             idx_to_select = (self.data_type == 0)[:, -1]
@@ -173,6 +174,7 @@ class MSnoise:
         print(self.data.shape)
         self.data = self.data[idx_to_select, :]
         self.targets = self.targets[idx_to_select, :]
+        self.rms_val = self.rms_val[idx_to_select, :]
         del self.data_type
 
     def __filter_classes(self):
@@ -199,6 +201,7 @@ class MSnoise:
             idx_to_keep = torch.logical_not(idx_to_remove)
             self.data = self.data[idx_to_keep, :]
             self.targets = self.targets[idx_to_keep, :]
+            self.rms_val = self.rms_val[idx_to_keep, :]
         self.targets -= initial_new_class_label
         print(np.unique(self.targets.data.cpu()))
         print('\n')
@@ -282,6 +285,8 @@ class MSnoise:
             data_type = np.zeros((num_seqs, 1), dtype=np.uint8)
             data_class = np.zeros((num_seqs, 1), dtype=np.uint8)
 
+            rms_val = np.zeros((num_seqs, 1), dtype=np.float32)
+
             data_idx = 0
             for i, label in enumerate(labels):
                 print(f'Processing label:{label}')
@@ -299,6 +304,9 @@ class MSnoise:
 
                             record_path = os.path.join(folder, record_name)
                             record, fs = librosa.load(record_path, offset=0, sr=None)
+
+                            rms_record = np.mean(record**2)**0.5
+
                             rec_len = np.size(record)
                             max_start_time = \
                                 (rec_len / fs - 1) - (rec_len / fs % noise_time_step)
@@ -307,6 +315,9 @@ class MSnoise:
                                                         int(noise_time_step*fs)):
                                 end_time = start_time + fs
                                 audio_seq = record[start_time:end_time]
+
+                                rms_val[data_idx, 0] = rms_record
+
                                 data_type[data_idx, 0] = d_type
                                 data_class[data_idx, 0] = i
                                 for n_r in range(num_rows):
@@ -325,8 +336,9 @@ class MSnoise:
             data_in = torch.from_numpy(data_in)
             data_class = torch.from_numpy(data_class)
             data_type = torch.from_numpy(data_type)
+            rms_val = torch.from_numpy(rms_val)
 
-            noise_dataset = (data_in, data_class, data_type)
+            noise_dataset = (data_in, data_class, data_type, rms_val)
             torch.save(noise_dataset, os.path.join(self.processed_folder, self.data_file))
         print('Dataset created!')
 
@@ -392,19 +404,13 @@ def MSnoise_get_unquantized_datasets(data, load_train=True, load_test=True):
     """
     (data_dir, args) = data
 
-    # classes = ['AirConditioner', 'AirportAnnouncements',
-    #            'Babble', 'Bus', 'CafeTeria', 'Car',
-    #            'CopyMachine', 'Field', 'Hallway', 'Kitchen',
-    #            'LivingRoom', 'Metro', 'Munching', 'NeighborSpeaking',
-    #            'Office', 'Park', 'Restaurant', 'ShuttingDoor',
-    #            'Square', 'SqueakyChair', 'Station', 'Traffic',
-    #            'Typing', 'VacuumCleaner', 'WasherDryer', 'Washing']
-
-    classes = ['AirConditioner',
-               'CafeTeria', 'Car',
-               'CopyMachine',
-               'Office', 'Restaurant',
-               'Typing', 'VacuumCleaner', 'WasherDryer']
+    classes = ['AirConditioner', 'AirportAnnouncements',
+                'Babble', 'Bus', 'CafeTeria', 'Car',
+                'CopyMachine', 'Field', 'Hallway', 'Kitchen',
+                'LivingRoom', 'Metro', 'Munching', 'NeighborSpeaking',
+                'Office', 'Park', 'Restaurant', 'ShuttingDoor',
+                'Square', 'SqueakyChair', 'Station', 'Traffic',
+                'Typing', 'VacuumCleaner', 'WasherDryer', 'Washing', 'TradeShow']
 
     remove_unknowns = True
     transform = None
