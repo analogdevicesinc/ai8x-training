@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-November 13, 2023
+December 22, 2023
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
