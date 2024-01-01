@@ -20,12 +20,13 @@ class signalmixer:
         if (self.noise and noise_kind != 'WhiteNoise'):
             self.noise_data = noise_dataset.data
             self.noise_targets = noise_dataset.targets
-            self.noise_rms = noise_dataset.rms_val
-
+            
             if quantized_noise:
-                self.noise_dataset_float = next(iter(torch.utils.data.DataLoader(noise_dataset, batch_size = noise_dataset.data.shape[0])))[0]
+                self.noise_dataset_float = next(iter(torch.utils.data.DataLoader(noise_dataset, batch_size = noise_dataset.len)))[0]
             else:
-                self.noise_dataset_float = noise_dataset.data
+                self.noise_dataset_float = next(iter(torch.utils.data.DataLoader(noise_dataset, batch_size = noise_dataset.len)))[0]
+                
+            self.noise_rms = noise_dataset.rms
 
         self.snr = snr
         self.quantized_noise = quantized_noise
@@ -64,16 +65,18 @@ class signalmixer:
         scalarclean = 1 / rmsclean
         clean = clean * scalarclean
 
-        scalarnoise = 1 / (rms_noise.unsqueeze(1))
+        scalarnoise = 1 / rms_noise.reshape(-1,1,1)
         noise = noise * scalarnoise
 
         cleanfactor = 10**(snr/20)
         noisyspeech = cleanfactor*clean + noise
-        noisyspeech = noisyspeech / (scalarnoise + cleanfactor * scalarclean)
+        noisyspeech = noisyspeech / (torch.tensor(scalarnoise) + cleanfactor * scalarclean)
 
-        max_mixed = torch.max(abs(noisyspeech.reshape(noisyspeech.shape[0], 16384)), 1, keepdims = True).values
-        noisyspeech = noisyspeech * (torch.where(max_mixed != 0, 1.0 / max_mixed, max_mixed)).unsqueeze(1)
+        # 16384 --> (noisyspeech[0].shape[0])*(noisyspeech[0].shape[1])
+        max_mixed = torch.max(abs(noisyspeech.reshape(noisyspeech.shape[0], (noisyspeech[0].shape[0])*(noisyspeech[0].shape[1]))), 1, keepdims = True).values
+        # noisyspeech = noisyspeech * (torch.where(max_mixed != 0, 1.0 / max_mixed, max_mixed)).unsqueeze(1)
 
+        noisyspeech = noisyspeech * (1/max_mixed).unsqueeze(1)
         return noisyspeech
     
     def white_noise_mixer(self):
