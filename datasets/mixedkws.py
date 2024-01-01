@@ -221,7 +221,19 @@ class MixedKWS:
 
     @staticmethod
     def snr_mixer(clean, noise, snr):
+<<<<<<< HEAD
         
+=======
+
+        # Set the input clean range ~[-1,1]
+        max_clean = torch.max(abs(clean.reshape(clean.shape[0], -1)), 1, keepdims = True).values
+        clean = clean * (torch.where(max_clean != 0, 1.0 / max_clean, max_clean)).unsqueeze(1)
+
+        # Set the noise range ~[-1,1]
+        max_noise = torch.max(abs(noise.reshape(noise.shape[0], -1)), 1, keepdims = True).values
+        noise = noise * (torch.where(max_noise != 0, 1.0 / max_noise, max_noise)).unsqueeze(1)
+
+>>>>>>> da27cd9ef9d6cf67ebcf35d401b9dd2e62ff5a75
         # Normalizing to rms equal to 1
         rmsclean = torch.mean(clean[:, :125]**2)**0.5
         scalarclean = 1 / rmsclean
