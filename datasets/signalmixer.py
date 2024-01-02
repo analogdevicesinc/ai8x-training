@@ -21,13 +21,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 import numpy as np
 import torch
 
 class signalmixer:
+    """
+    Signal mixer dataloader to create datasets with specified 
+    length using a noise dataset and a speech dataset and a specified SNR level.
 
-    def __init__(self, signal_dataset, noise = False, noise_dataset = None, snr = None, noise_kind = None, 
-                    quantized_noise = False, transform = None):
+    Args:
+    signal_dataset(object): KWS dataset object.
+    noise (bool, optional): Represents whether a noise kind will be applied to speech data or not.
+    noise_dataset(object, optional): MSnoise dataset object.
+    snr(int, optional): SNR level to be created in the mixed dataset.
+    noise_kind(string, optional): Noise kind that will be applied to the speech dataset.
+    
+    """
+
+    def __init__(self, signal_dataset, noise = False, noise_dataset = None, snr = None, 
+                 noise_kind = None, transform = None):
 
         self.signal_data = signal_dataset.data
         self.signal_targets = signal_dataset.targets
@@ -38,19 +51,16 @@ class signalmixer:
             self.noise_data = noise_dataset.data
             self.noise_targets = noise_dataset.targets
             
-            if quantized_noise:
-                self.noise_dataset_float = next(iter(torch.utils.data.DataLoader(noise_dataset, batch_size = noise_dataset.len)))[0]
-            else:
-                self.noise_dataset_float = next(iter(torch.utils.data.DataLoader(noise_dataset, batch_size = noise_dataset.len)))[0]
-                
+            # using getitem to reach the noise test data 
+            self.noise_dataset_float = next(iter(torch.utils.data.DataLoader(noise_dataset, batch_size = noise_dataset.len)))[0]
+
             self.noise_rms = noise_dataset.rms
 
         self.snr = snr
-        self.quantized_noise = quantized_noise
         self.transform = transform
         self.noise_kind = noise_kind
 
-        # using getitem to reach the test data ()
+        # using getitem to reach the speech test data 
         self.test_dataset_float = next(iter(torch.utils.data.DataLoader(signal_dataset, batch_size = signal_dataset.data.shape[0])))[0]
 
         if noise:
@@ -68,6 +78,8 @@ class signalmixer:
         return len(self.mixed_signal)
 
     def snr_mixer(self):
+
+        # creates mixed signal dataset using the SNR level and the noise dataset
 
         clean = self.test_dataset_float
         noise = self.noise_dataset_float
@@ -91,12 +103,13 @@ class signalmixer:
 
         # 16384 --> (noisyspeech[0].shape[0])*(noisyspeech[0].shape[1])
         max_mixed = torch.max(abs(noisyspeech.reshape(noisyspeech.shape[0], (noisyspeech[0].shape[0])*(noisyspeech[0].shape[1]))), 1, keepdims = True).values
-        # noisyspeech = noisyspeech * (torch.where(max_mixed != 0, 1.0 / max_mixed, max_mixed)).unsqueeze(1)
 
         noisyspeech = noisyspeech * (1/max_mixed).unsqueeze(1)
         return noisyspeech
     
     def white_noise_mixer(self):
+
+        # creates mixed signal dataset using the SNR level and white noise
 
         clean = self.test_dataset_float
         snr = self.snr
@@ -118,6 +131,7 @@ class signalmixer:
         noisyspeech = cleanfactor*clean + noise
         noisyspeech = noisyspeech / (scalarnoise + cleanfactor * scalarclean)
 
+        # scaling to ~[-1,1]
         max_mixed = torch.max(abs(noisyspeech.reshape(noisyspeech.shape[0], 16384)), 1, keepdims = True).values
         noisyspeech = noisyspeech * (torch.where(max_mixed != 0, 1.0 / max_mixed, max_mixed)).unsqueeze(1)
 

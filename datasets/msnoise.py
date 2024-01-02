@@ -44,6 +44,7 @@ class MSnoise:
         exist.
     classes(array): List of keywords to be used.
     d_type(string): Option for the created dataset. ``train`` or ``test``.
+    len(int): Dataset length to be returned.
     remove_unknowns (bool, optional): If true, unchosen classes are not gathered as
         the unknown class.
     transform (callable, optional): A function/transform that takes in an PIL image
@@ -90,6 +91,8 @@ class MSnoise:
             self.__download()
 
         self.data, self.targets, self.data_type, self.rms_val = self.__gen_datasets()
+        
+        # rms values for each sample to be returned
         self.rms = np.zeros(self.len)
 
         self.__filter_dtype()
