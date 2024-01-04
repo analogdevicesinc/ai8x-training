@@ -39,15 +39,12 @@ class signalmixer:
     
     """
 
-    def __init__(self, signal_dataset, noise = False, noise_dataset = None, snr = None, 
-                 noise_kind = None, transform = None):
+    def __init__(self, signal_dataset, snr, noise_kind, noise_dataset = None):
 
         self.signal_data = signal_dataset.data
         self.signal_targets = signal_dataset.targets
 
-        self.noise = noise
-
-        if (self.noise and noise_kind != 'WhiteNoise'):
+        if (noise_kind != 'WhiteNoise'):
             self.noise_data = noise_dataset.data
             self.noise_targets = noise_dataset.targets
             
@@ -57,17 +54,15 @@ class signalmixer:
             self.noise_rms = noise_dataset.rms
 
         self.snr = snr
-        self.transform = transform
         self.noise_kind = noise_kind
 
         # using getitem to reach the speech test data 
         self.test_dataset_float = next(iter(torch.utils.data.DataLoader(signal_dataset, batch_size = signal_dataset.data.shape[0])))[0]
 
-        if noise:
-            if (noise_kind == 'WhiteNoise'):
-                self.mixed_signal = self.white_noise_mixer()
-            else:
-                self.mixed_signal = self.snr_mixer()
+        if (noise_kind == 'WhiteNoise'):
+            self.mixed_signal = self.white_noise_mixer()
+        else:
+            self.mixed_signal = self.snr_mixer()
         
     def __getitem__(self, index):
 
