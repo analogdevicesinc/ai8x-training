@@ -32,10 +32,9 @@ class signalmixer:
 
     Args:
     signal_dataset(object): KWS dataset object.
-    noise (bool, optional): Represents whether a noise kind will be applied to speech data or not.
+    snr(int): SNR level to be created in the mixed dataset.
+    noise_kind(string): Noise kind that will be applied to the speech dataset.
     noise_dataset(object, optional): MSnoise dataset object.
-    snr(int, optional): SNR level to be created in the mixed dataset.
-    noise_kind(string, optional): Noise kind that will be applied to the speech dataset.
     
     """
 
