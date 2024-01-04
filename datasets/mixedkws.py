@@ -31,10 +31,10 @@ import numpy as np
 import torch
 from torchvision import transforms
 
-import ai8x
-
 from kws20 import KWS_35_get_unquantized_datasets
 from msnoise import MSnoise_get_unquantized_datasets
+
+import ai8x
 
 
 class MixedKWS:
@@ -221,19 +221,7 @@ class MixedKWS:
 
     @staticmethod
     def snr_mixer(clean, noise, snr):
-<<<<<<< HEAD
-        
-=======
-
-        # Set the input clean range ~[-1,1]
-        max_clean = torch.max(abs(clean.reshape(clean.shape[0], -1)), 1, keepdims = True).values
-        clean = clean * (torch.where(max_clean != 0, 1.0 / max_clean, max_clean)).unsqueeze(1)
-
-        # Set the noise range ~[-1,1]
-        max_noise = torch.max(abs(noise.reshape(noise.shape[0], -1)), 1, keepdims = True).values
-        noise = noise * (torch.where(max_noise != 0, 1.0 / max_noise, max_noise)).unsqueeze(1)
-
->>>>>>> da27cd9ef9d6cf67ebcf35d401b9dd2e62ff5a75
+        """Mix audio with noise at a given SNR level"""
         # Normalizing to rms equal to 1
         rmsclean = torch.mean(clean[:, :125]**2)**0.5
         scalarclean = 1 / rmsclean
@@ -246,10 +234,7 @@ class MixedKWS:
         cleanfactor = 10**(snr/20)
         noisyspeech = cleanfactor*clean + noise
         noisyspeech = noisyspeech / (scalarnoise + cleanfactor * scalarclean)
-
-        # Set the output range ~[-1,1]
-        max_mixed = torch.max(abs(noisyspeech.reshape(noisyspeech.shape[0], 16384)), 1, keepdims = True).values
-        noisyspeech = noisyspeech * (torch.where(max_mixed != 0, 1.0 / max_mixed, max_mixed)).unsqueeze(1)
+        
         return noisyspeech
 
     def __gen_datasets(self, exp_len=16384, row_len=128, overlap_ratio=0):

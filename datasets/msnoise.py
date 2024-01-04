@@ -63,11 +63,11 @@ class MSnoise:
                   'CopyMachine': 6, 'Field': 7, 'Hallway': 8, 'Kitchen': 9,
                   'LivingRoom': 10, 'Metro': 11, 'Munching': 12, 'NeighborSpeaking': 13,
                   'Office': 14, 'Park': 15, 'Restaurant': 16, 'ShuttingDoor': 17,
-                  'Square': 18, 'SqueakyChair': 19, 'Station': 20,'TradeShow' : 21, 'Traffic': 22,
+                  'Square': 18, 'SqueakyChair': 19, 'Station': 20, 'TradeShow': 21, 'Traffic': 22,
                   'Typing': 23, 'VacuumCleaner': 24, 'WasherDryer': 25, 'Washing': 26}
 
-    def __init__(self, root, classes, d_type, len, exp_len = 16384, fs = 16000, noise_time_step = 0.25, remove_unknowns=False,
-                 transform=None, quantize=False, download=False):
+    def __init__(self, root, classes, d_type, len, exp_len=16384, fs=16000, noise_time_step=0.25,
+                 remove_unknowns=False, transform=None, quantize=False, download=False):
         self.root = root
         self.classes = classes
         self.d_type = d_type
@@ -91,7 +91,7 @@ class MSnoise:
             self.__download()
 
         self.data, self.targets, self.data_type, self.rms_val = self.__gen_datasets()
-        
+
         # rms values for each sample to be returned
         self.rms = np.zeros(self.len)
 
@@ -108,13 +108,12 @@ class MSnoise:
 
         if os.path.exists(self.raw_folder):
             return
-        
+
         self.__makedir_exist_ok(self.noise_train_folder)
         self.__makedir_exist_ok(self.noise_test_folder)
 
         self.__download_raw(self.url_train)
         self.__download_raw(self.url_test)
-
 
     def __download_raw(self, api_url):
         opener = urllib.request.build_opener()
@@ -161,7 +160,7 @@ class MSnoise:
         else:
             print(f'Unknown data type: {self.d_type}')
             return
-        
+
         self.data = [self.data[i] for i in idx_to_select]
         self.targets = [self.targets[i] for i in idx_to_select]
         self.rms_val = [self.rms_val[i] for i in idx_to_select]
@@ -213,8 +212,8 @@ class MSnoise:
     def __getitem__(self, index):
 
         rec_num = len(self.data)
-       
-        rnd_num = np.random.randint(0,rec_num)
+
+        rnd_num = np.random.randint(0, rec_num)
         self.rms[index] = self.rms_val[rnd_num]
 
         rec_len = len(self.data[rnd_num])
@@ -223,7 +222,7 @@ class MSnoise:
         start_idx = np.random.randint(0, max_start_idx)
         end_idx = start_idx + self.exp_len
 
-        inp = self.reshape_audio(self.data[rnd_num][start_idx:end_idx])
+        inp = self.__reshape_audio(self.data[rnd_num][start_idx:end_idx])
         target = int(self.targets[rnd_num])
 
         if self.quantize:
@@ -232,12 +231,11 @@ class MSnoise:
             inp = self.transform(inp)
         return inp, target
 
-    def reshape_audio(self, audio, exp_len=16384, row_len=128):
+    def __reshape_audio(self, audio, row_len=128):
 
         return torch.transpose(torch.tensor(audio.reshape((-1, row_len))),1,0)
 
-    def __gen_datasets(self, exp_len=16384, row_len=128, overlap_ratio=0,
-                       noise_time_step=0.25, train_ratio=0.6):
+    def __gen_datasets(self, exp_len=16384, row_len=128, overlap_ratio=0):
 
         with warnings.catch_warnings():
             warnings.simplefilter('error')
@@ -274,30 +272,27 @@ class MSnoise:
             rms_val = []
 
             for i, label in enumerate(labels):
-                train_count = 0
-                test_count = 0
                 for folder in train_test_folders:
                     for record_name in os.listdir(folder):
                         if record_name.split('_')[0] in label:
                             record_path = os.path.join(folder, record_name)
-                            record, fs = librosa.load(record_path, offset=0, sr=None)
+                            record, _ = librosa.load(record_path, offset=0, sr=None)
 
                             if self.quantize:
                                 data_in.append(self.quantize_audio(record))
                             else:
                                 data_in.append(record)
 
-                            if (folder == self.noise_train_folder):
-                                data_type.append(0) # train + val
-                            elif (folder == self.noise_test_folder):
-                                data_type.append(1) # test
+                            if folder == self.noise_train_folder:
+                                data_type.append(0)  # train + val
+                            elif folder == self.noise_test_folder:
+                                data_type.append(1)  # test
 
                             data_class.append(i)
                             rms_val.append(np.mean(record**2)**0.5)
 
             noise_dataset = (data_in, data_class, data_type, rms_val)
         return noise_dataset
-        print('Dataset created!')
 
 
 def MSnoise_get_datasets(data, load_train=True, load_test=True):
@@ -312,18 +307,20 @@ def MSnoise_get_datasets(data, load_train=True, load_test=True):
     (data_dir, args) = data
 
     classes = ['AirConditioner', 'AirportAnnouncements',
-                'Babble', 'Bus', 'CafeTeria', 'Car',
-                'CopyMachine', 'Field', 'Hallway', 'Kitchen',
-                'LivingRoom', 'Metro', 'Munching', 'NeighborSpeaking',
-                'Office', 'Park', 'Restaurant', 'ShuttingDoor',
-                'Square', 'SqueakyChair', 'Station', 'Traffic',
-                'Typing', 'VacuumCleaner', 'WasherDryer', 'Washing', 'TradeShow']
+               'Babble', 'Bus', 'CafeTeria', 'Car',
+               'CopyMachine', 'Field', 'Hallway', 'Kitchen',
+               'LivingRoom', 'Metro', 'Munching', 'NeighborSpeaking',
+               'Office', 'Park', 'Restaurant', 'ShuttingDoor',
+               'Square', 'SqueakyChair', 'Station', 'Traffic',
+               'Typing', 'VacuumCleaner', 'WasherDryer', 'Washing', 'TradeShow']
 
-    #classes = ['AirConditioner', 'AirportAnnouncements',
-    #           'Babble', 'Bus', 'CafeTeria', 'Car',
-    #           'CopyMachine', 'Metro',
-    #           'Office', 'Restaurant', 'ShuttingDoor',
-    #           'Traffic', 'Typing', 'VacuumCleaner', 'Washing']
+    """
+    classes = ['AirConditioner', 'AirportAnnouncements',
+               'Babble', 'Bus', 'CafeTeria', 'Car',
+               'CopyMachine', 'Metro',
+               'Office', 'Restaurant', 'ShuttingDoor',
+               'Traffic', 'Typing', 'VacuumCleaner', 'Washing']
+    """
 
     remove_unknowns = True
     transform = transforms.Compose([
