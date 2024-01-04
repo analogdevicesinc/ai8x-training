@@ -332,14 +332,14 @@ def MSnoise_get_datasets(data, load_train=True, load_test=True):
     quantize = True
 
     if load_train:
-        train_dataset = MSnoise(root=data_dir, classes=classes, d_type='train',
+        train_dataset = MSnoise(root=data_dir, classes=classes, d_type='train', len=11005,
                                 remove_unknowns=remove_unknowns, transform=transform,
                                 quantize=quantize, download=True)
     else:
         train_dataset = None
 
     if load_test:
-        test_dataset = MSnoise(root=data_dir, classes=classes, d_type='test',
+        test_dataset = MSnoise(root=data_dir, classes=classes, d_type='test', len=11005,
                                remove_unknowns=remove_unknowns, transform=transform,
                                quantize=quantize, download=True)
 
@@ -374,14 +374,14 @@ def MSnoise_get_unquantized_datasets(data, load_train=True, load_test=True):
     quantize = False
 
     if load_train:
-        train_dataset = MSnoise(root=data_dir, classes=classes, d_type='train',
+        train_dataset = MSnoise(root=data_dir, classes=classes, d_type='train', len=11005,
                                 remove_unknowns=remove_unknowns, transform=transform,
                                 quantize=quantize, download=True)
     else:
         train_dataset = None
 
     if load_test:
-        test_dataset = MSnoise(root=data_dir, classes=classes, d_type='test',
+        test_dataset = MSnoise(root=data_dir, classes=classes, d_type='test', len=11005,
                                remove_unknowns=remove_unknowns, transform=transform,
                                quantize=quantize, download=True)
 
