@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-October 23, 2023
+November 13, 2023
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -13,7 +13,7 @@ ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 4. The synthesis repository, which is used to *convert a trained model into C code* using the “izer” tool:
     [ai8x-synthesis](https://github.com/MaximIntegratedAI/ai8x-synthesis) **(described in this document)**
 5. The reference design repository, which contains host applications and sample applications for reference designs such as [MAXREFDES178 (Cube Camera)](https://www.analog.com/en/design-center/reference-designs/maxrefdes178.html):
-    [refdes](https://github.com/MaximIntegratedAI/refdes)
+    [refdes](https://github.com/Analog-Devices-MSDK/refdes)
     *Note: Examples for EVkits and Feather boards are part of the MSDK*
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (<http://typora.io>).
@@ -1164,7 +1164,7 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   
   * `Flatten` functionality is available to convert 2D input data for use by fully connected layers, see [Fully Connected Layers](#fully-connected-linear-layers).
   
-  * When “flattening” two-dimensional data, the input dimensions (C×H×W) must satisfy C×H×W ≤ 16384. Pooling cannot be used at the same time as flattening.
+  * When “flattening” two-dimensional data, the input dimensions (C×H×W) must satisfy C×H×W ≤ 16384, and H×W ≤ 256. Pooling cannot be used at the same time as flattening.
   
   * Element-wise operators support from 2 up to 16 inputs.
   
@@ -1259,7 +1259,7 @@ The MAX78002 hardware does not support arbitrary network parameters. Specificall
 
   * The maximum number of input neurons is 1024, and the maximum number of output neurons is 1024 (16 each per processor used).
   * `Flatten` functionality is available to convert 2D input data for use by fully connected layers, see [Fully Connected Layers](#fully-connected-linear-layers).
-  * When “flattening” two-dimensional data, the input dimensions (C×H×W) must satisfy C×H×W ≤ 16384. Pooling cannot be used at the same time as flattening.
+  * When “flattening” two-dimensional data, the input dimensions (C×H×W) must satisfy C×H×W ≤ 16384, and H×W ≤ 256. Pooling cannot be used at the same time as flattening.
   * Element-wise operators support from 2 up to 16 inputs.
   * Element-wise operators can be chained in-flight with pooling and 2D convolution (where the order of pooling and element-wise operations can be swapped).
   * For convenience, a `Softmax` operator is supported in software.
