@@ -73,7 +73,6 @@ class MixedKWS:
         if self.save_unquantized:
             self.data_file = f'dataset_unquantized_{str(self.snr)}dB.pt'
 
-        #changed
         else:
             self.data_file = f'dataset_quantized_{str(self.snr)}dB.pt'
 
@@ -227,7 +226,7 @@ class MixedKWS:
         cleanfactor = 10**(snr/20)
         noisyspeech = cleanfactor*clean + noise
         noisyspeech = noisyspeech / (scalarnoise + cleanfactor * scalarclean)
-        
+
         return noisyspeech
 
     def __gen_datasets(self, exp_len=16384, row_len=128, overlap_ratio=0):
@@ -277,7 +276,7 @@ class MixedKWS:
                             break
 
                     noisy_speech = self.snr_mixer(speech[i, :, :],
-                                                    random_noise, self.snr)
+                                                  random_noise, self.snr)
                     if not self.save_unquantized:
                         data_in[new_ind, :, :] = (self.quantize_audio(noisy_speech,
                                                   num_bits=self.quantization['bits'],

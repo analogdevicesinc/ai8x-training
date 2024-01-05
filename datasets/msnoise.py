@@ -44,7 +44,7 @@ class MSnoise:
         exist.
     classes(array): List of keywords to be used.
     d_type(string): Option for the created dataset. ``train`` or ``test``.
-    len(int): Dataset length to be returned.
+    dataset_len(int): Dataset length to be returned.
     remove_unknowns (bool, optional): If true, unchosen classes are not gathered as
         the unknown class.
     transform (callable, optional): A function/transform that takes in an PIL image
@@ -66,15 +66,16 @@ class MSnoise:
                   'Square': 18, 'SqueakyChair': 19, 'Station': 20, 'TradeShow': 21, 'Traffic': 22,
                   'Typing': 23, 'VacuumCleaner': 24, 'WasherDryer': 25, 'Washing': 26}
 
-    def __init__(self, root, classes, d_type, len, exp_len=16384, fs=16000, noise_time_step=0.25,
-                 remove_unknowns=False, transform=None, quantize=False, download=False):
+    def __init__(self, root, classes, d_type, dataset_len, exp_len=16384, fs=16000,
+                 noise_time_step=0.25, remove_unknowns=False, transform=None,
+                 quantize=False, download=False):
         self.root = root
         self.classes = classes
         self.d_type = d_type
         self.remove_unknowns = remove_unknowns
         self.transform = transform
 
-        self.len = len
+        self.dataset_len = dataset_len
         self.exp_len = exp_len
         self.fs = fs
         self.noise_time_step = noise_time_step
@@ -93,7 +94,7 @@ class MSnoise:
         self.data, self.targets, self.data_type, self.rms_val = self.__gen_datasets()
 
         # rms values for each sample to be returned
-        self.rms = np.zeros(self.len)
+        self.rms = np.zeros(self.dataset_len)
 
         self.__filter_dtype()
         self.__filter_classes()
@@ -207,7 +208,7 @@ class MSnoise:
         return np.uint8(q_data)
 
     def __len__(self):
-        return self.len
+        return self.dataset_len
 
     def __getitem__(self, index):
 
@@ -233,7 +234,7 @@ class MSnoise:
 
     def __reshape_audio(self, audio, row_len=128):
 
-        return torch.transpose(torch.tensor(audio.reshape((-1, row_len))),1,0)
+        return torch.transpose(torch.tensor(audio.reshape((-1, row_len))), 1, 0)
 
     def __gen_datasets(self, exp_len=16384, row_len=128, overlap_ratio=0):
 
@@ -314,14 +315,6 @@ def MSnoise_get_datasets(data, load_train=True, load_test=True):
                'Square', 'SqueakyChair', 'Station', 'Traffic',
                'Typing', 'VacuumCleaner', 'WasherDryer', 'Washing', 'TradeShow']
 
-    """
-    classes = ['AirConditioner', 'AirportAnnouncements',
-               'Babble', 'Bus', 'CafeTeria', 'Car',
-               'CopyMachine', 'Metro',
-               'Office', 'Restaurant', 'ShuttingDoor',
-               'Traffic', 'Typing', 'VacuumCleaner', 'Washing']
-    """
-
     remove_unknowns = True
     transform = transforms.Compose([
         ai8x.normalize(args=args)
@@ -359,26 +352,26 @@ def MSnoise_get_unquantized_datasets(data, load_train=True, load_test=True):
     (data_dir, args) = data
 
     classes = ['AirConditioner', 'AirportAnnouncements',
-                'Babble', 'Bus', 'CafeTeria', 'Car',
-                'CopyMachine', 'Field', 'Hallway', 'Kitchen',
-                'LivingRoom', 'Metro', 'Munching', 'NeighborSpeaking',
-                'Office', 'Park', 'Restaurant', 'ShuttingDoor',
-                'Square', 'SqueakyChair', 'Station', 'Traffic',
-                'Typing', 'VacuumCleaner', 'WasherDryer', 'Washing', 'TradeShow']
+               'Babble', 'Bus', 'CafeTeria', 'Car',
+               'CopyMachine', 'Field', 'Hallway', 'Kitchen',
+               'LivingRoom', 'Metro', 'Munching', 'NeighborSpeaking',
+               'Office', 'Park', 'Restaurant', 'ShuttingDoor',
+               'Square', 'SqueakyChair', 'Station', 'Traffic',
+               'Typing', 'VacuumCleaner', 'WasherDryer', 'Washing', 'TradeShow']
 
     remove_unknowns = True
     transform = None
     quantize = False
 
     if load_train:
-        train_dataset = MSnoise(root=data_dir, classes=classes, d_type='train', len=11005,
+        train_dataset = MSnoise(root=data_dir, classes=classes, d_type='train', dataset_len=11005,
                                 remove_unknowns=remove_unknowns, transform=transform,
                                 quantize=quantize, download=True)
     else:
         train_dataset = None
 
     if load_test:
-        test_dataset = MSnoise(root=data_dir, classes=classes, d_type='test', len=11005,
+        test_dataset = MSnoise(root=data_dir, classes=classes, d_type='test', dataset_len=11005,
                                remove_unknowns=remove_unknowns, transform=transform,
                                quantize=quantize, download=True)
 

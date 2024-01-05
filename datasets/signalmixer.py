@@ -21,7 +21,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
+"""
+Classes and functions used to create noisy keyword spotting dataset.
+"""
 import numpy as np
 import torch
 
@@ -38,7 +40,7 @@ class signalmixer:
     noise_dataset(object, optional): MSnoise dataset object.
     """
 
-    def __init__(self, signal_dataset, snr, noise_kind, noise_dataset = None):
+    def __init__(self, signal_dataset, snr, noise_kind, noise_dataset=None):
 
         self.signal_data = signal_dataset.data
         self.signal_targets = signal_dataset.targets
@@ -49,7 +51,7 @@ class signalmixer:
 
             # using getitem to reach the noise test data
             self.noise_dataset_float = next(iter(torch.utils.data.DataLoader(
-                noise_dataset, batch_size = noise_dataset.len)))[0]
+                noise_dataset, batch_size=noise_dataset.len)))[0]
 
             self.noise_rms = noise_dataset.rms
 
@@ -58,7 +60,7 @@ class signalmixer:
 
         # using getitem to reach the speech test data
         self.test_dataset_float = next(iter(torch.utils.data.DataLoader(
-            signal_dataset, batch_size = signal_dataset.data.shape[0])))[0]
+            signal_dataset, batch_size=signal_dataset.data.shape[0])))[0]
 
         if noise_kind == 'WhiteNoise':
             self.mixed_signal = self.white_noise_mixer()
@@ -75,9 +77,8 @@ class signalmixer:
         return len(self.mixed_signal)
 
     def snr_mixer(self):
-
-        # creates mixed signal dataset using the SNR level and the noise dataset
-
+        ''' creates mixed signal dataset using the SNR level and the noise dataset
+        '''
         clean = self.test_dataset_float
         noise = self.noise_dataset_float
 
@@ -87,7 +88,8 @@ class signalmixer:
 
         snr = self.snr
 
-        rmsclean = torch.mean(clean.reshape(clean.shape[0], -1)**2, 1, keepdims = True)**0.5.unsqueeze(1)
+        rmsclean = torch.sqrt(torch.mean(clean.reshape(
+            clean.shape[0], -1)**2, 1, keepdims=True)).unsqueeze(1)
         scalarclean = 1 / rmsclean
         clean = clean * scalarclean
 
@@ -101,30 +103,30 @@ class signalmixer:
         # 16384 --> (noisyspeech[0].shape[0])*(noisyspeech[0].shape[1])
         speech_shape = noisyspeech[0].shape[0]*noisyspeech[0].shape[1]
         max_mixed = torch.max(abs(noisyspeech.reshape(
-                        noisyspeech.shape[0], speech_shape)), 1, keepdims = True).values
+                        noisyspeech.shape[0], speech_shape)), 1, keepdims=True).values
 
         noisyspeech = noisyspeech * (1 / max_mixed).unsqueeze(1)
         return noisyspeech
 
     def white_noise_mixer(self):
 
-        # creates mixed signal dataset using the SNR level and white noise
-
+        '''creates mixed signal dataset using the SNR level and white noise
+        '''
         clean = self.test_dataset_float
         snr = self.snr
 
         mean = 0
         std = 1
         noise = np.random.normal(mean, std, clean.shape)
-        noise = torch.tensor(noise, dtype = torch.float32)
+        noise = torch.tensor(noise, dtype=torch.float32)
 
         rmsclean = (torch.mean(clean.reshape(
-            clean.shape[0], -1)**2, 1, keepdims = True)**0.5).unsqueeze(1)
+            clean.shape[0], -1)**2, 1, keepdims=True)**0.5).unsqueeze(1)
         scalarclean = 1 / rmsclean
         clean = clean * scalarclean
 
         rmsnoise = (torch.mean(noise.reshape(
-            noise.shape[0], -1)**2, 1, keepdims = True)**0.5).unsqueeze(1)
+            noise.shape[0], -1)**2, 1, keepdims=True)**0.5).unsqueeze(1)
         scalarnoise = 1 / rmsnoise
         noise = noise * scalarnoise
 
@@ -134,7 +136,7 @@ class signalmixer:
 
         # scaling to ~[-1,1]
         max_mixed = torch.max(abs(noisyspeech.reshape(
-            noisyspeech.shape[0], 16384)), 1, keepdims = True).values
+            noisyspeech.shape[0], 16384)), 1, keepdims=True).values
         noisyspeech = noisyspeech * (1 / max_mixed).unsqueeze(1)
 
         return noisyspeech
