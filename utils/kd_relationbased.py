@@ -33,7 +33,7 @@ class RelationBasedKDPolicy(ScheduledTrainingPolicy):
     the distiller's ScheduledTrainingPolicy class.
     """
     def __init__(self, student_model, teacher_model,
-                 loss_weights=DistillationLossWeights(0.5, 0.5, 0)):
+                 loss_weights=DistillationLossWeights(0.5, 0.5, 0), act_mode_8bit=False):
         super().__init__()
 
         self.student = student_model
@@ -43,6 +43,7 @@ class RelationBasedKDPolicy(ScheduledTrainingPolicy):
         self.loss_wts = loss_weights
         self.distillation_loss = nn.MSELoss()
         self.overall_loss = None
+        self.act_mode_8bit = act_mode_8bit
 
         # Active is always true, because test will be based on the overall loss and it will be
         # realized outside of the epoch loop
@@ -65,6 +66,8 @@ class RelationBasedKDPolicy(ScheduledTrainingPolicy):
             self.teacher_output = self.teacher(*inputs)
 
         out = self.student(*inputs)
+        if self.act_mode_8bit:
+            out /= 128.
         self.student_output = out.clone()
 
         return out
