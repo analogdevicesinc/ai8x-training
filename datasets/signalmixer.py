@@ -1,5 +1,12 @@
 ###################################################################################################
 #
+# Copyright (C) 2023-2024 Analog Devices, Inc. All Rights Reserved.
+#
+# Analog Devices, Inc. Default Copyright Notice:
+# https://www.analog.com/en/about-adi/legal-and-risk-oversight/intellectual-property/copyright-notice.html
+#
+###################################################################################################
+#
 # Copyright (C) 2019-2023 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
