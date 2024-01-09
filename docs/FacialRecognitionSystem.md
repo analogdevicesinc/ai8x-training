@@ -38,7 +38,7 @@ To train the facedetection model, "scripts/train_facedet_tinierssd.sh" script ca
 
 To train a FaceID model for MAX7800x microcontrollers, there are multiple steps. As the MAX7800x FaceID models will be trained in a knowledge distillation fashion, the first step will be downloading a backbone checkpoint for the teacher model.
 
-The suggested teacher model is IR-152, but the other teacher models defined in "model_irse_DRL.py" may be used as well. Please review the terms and conditions at face.evoLVe[3] repository, and download the checkpoint according to your teacher model selection.
+The suggested teacher model is IR-152, but the other teacher models defined in "model_irse_drl.py" may be used as well. Please review the terms and conditions at face.evoLVe[3] repository, and download the checkpoint according to your teacher model selection.
 
 There are two FaceID models, one for the MAX78000 and one for the MAX78002. The MAX78000 one is named faceid_112, and it is a relatively lightweight model. To enable more performance on MAX78002, a more complex model was developed, which is named mobilefacenet_112. To train the FaceID models, "scripts/train_faceid_112.sh" and "scripts/train_mobilefacenet_112.sh" scripts can be used, respectivey. Training scripts will realize Dimensionality Reduction and Relation Based-Knowledge Knowledge Distillation steps automatically. A summary of Dimensionality Reduction and Relation-Based Knowledge Distillation can be found in the following sub-sections.
 

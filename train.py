@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
 # Copyright (c) 2018 Intel Corporation
-# Portions Copyright (C) 2019-2023 Maxim Integrated Products, Inc.
+# Portions Copyright (C) 2019-2024 Maxim Integrated Products, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -702,9 +702,8 @@ def create_model(supported_models, dimensions, args, mode='default'):
         if not Model:
             raise RuntimeError("Model " + args.kd_teacher + " not found\n")
 
-    if args.dr:
-        if 'dr' not in module or not module['dr']:
-            raise ValueError("Dimensionality reduction is not supported for this model")
+    if args.dr and ('dr' not in module or not module['dr']):
+        raise ValueError("Dimensionality reduction is not supported for this model")
 
     # Set model parameters
     if args.act_mode_8bit:
