@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-November 13, 2023
+December 22, 2023
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -3339,6 +3339,8 @@ See the [benchmarking guide](https://github.com/MaximIntegratedAI/MaximAI_Docume
 Additional information about the evaluation kits, and the software development kit (MSDK) is available on the web at <https://github.com/MaximIntegratedAI/MaximAI_Documentation>.
 
 [AHB Addresses for MAX78000 and MAX78002](docs/AHBAddresses.md)
+
+[Facial Recognition System](https://github.com/MaximIntegratedAI/ai8x-training/blob/develop/docs/FacialRecognitionSystem.md)
 
 
 ---

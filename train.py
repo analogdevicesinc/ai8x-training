@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
 # Copyright (c) 2018 Intel Corporation
-# Portions Copyright (C) 2019-2023 Maxim Integrated Products, Inc.
+# Portions Copyright (C) 2019-2024 Maxim Integrated Products, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -95,6 +95,11 @@ from distiller.data_loggers.collector import (QuantCalibrationStatsCollector,
                                               RecordsActivationStatsCollector,
                                               SummaryActivationStatsCollector, collectors_context)
 from distiller.quantization.range_linear import PostTrainLinearQuantizer
+from pytorch_metric_learning import losses as pml_losses
+from pytorch_metric_learning import testers
+from pytorch_metric_learning.distances import CosineSimilarity
+from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
+from pytorch_metric_learning.utils.inference import CustomKNN
 from torchmetrics.detection.map import MAP as MeanAveragePrecision
 
 # pylint: enable=no-name-in-module
@@ -333,6 +338,7 @@ def main():
 
     # We can optionally resume from a checkpoint
     optimizer = None
+    loss_optimizer = None
     if args.resumed_checkpoint_path:
         update_old_model_params(args.resumed_checkpoint_path, model)
         if qat_policy is not None:
@@ -387,6 +393,28 @@ def main():
                                  alpha=obj_detection_params['multi_box_loss']['alpha'],
                                  neg_pos_ratio=obj_detection_params['multi_box_loss']
                                  ['neg_pos_ratio'], device=args.device).to(args.device)
+
+    elif args.dr:
+
+        criterion = pml_losses.SubCenterArcFaceLoss(num_classes=args.num_classes,
+                                                    embedding_size=args.dr,
+                                                    margin=args.scaf_margin,
+                                                    scale=args.scaf_scale)
+        if args.resumed_checkpoint_path:
+            checkpoint = torch.load(args.resumed_checkpoint_path,
+                                    map_location=lambda storage, loc: storage)
+            criterion.W = checkpoint['extras']['loss_weights']
+        criterion = criterion.to(args.device)
+
+        loss_optimizer = torch.optim.Adam(criterion.parameters(), lr=args.scaf_lr)
+        if args.resumed_checkpoint_path:
+            loss_optimizer.load_state_dict(checkpoint['extras']['loss_optimizer_state_dict'])
+
+        distance_fn = CosineSimilarity()
+        custom_knn = CustomKNN(distance_fn, batch_size=args.batch_size)
+        accuracy_calculator = AccuracyCalculator(knn_func=custom_knn,
+                                                 include=("precision_at_1",), k=1)
+
     else:
         if not args.regression:
             if 'weight' in selected_source:
@@ -430,22 +458,14 @@ def main():
                                   args.sensitivity_range[2])
         return sensitivity_analysis(model, criterion, test_loader, pylogger, args, sensitivities)
 
-    if args.evaluate:
-        msglogger.info('Dataset sizes:\n\ttest=%d', len(test_loader.sampler))
-        return evaluate_model(model, criterion, test_loader, pylogger, activations_collectors,
-                              args, compression_scheduler)
-
-    assert train_loader and val_loader
-    msglogger.info('Dataset sizes:\n\ttraining=%d\n\tvalidation=%d\n\ttest=%d',
-                   len(train_loader.sampler), len(val_loader.sampler), len(test_loader.sampler))
-
     if args.compress:
         # The main use-case for this sample application is CNN compression. Compression
         # requires a compression schedule configuration file in YAML.
         compression_scheduler = distiller.file_config(model, optimizer, args.compress,
                                                       compression_scheduler,
                                                       (start_epoch-1)
-                                                      if args.resumed_checkpoint_path else None)
+                                                      if args.resumed_checkpoint_path
+                                                      else None, loss_optimizer)
     elif compression_scheduler is None:
         compression_scheduler = distiller.CompressionScheduler(model)
 
@@ -475,7 +495,8 @@ def main():
         dlw = distiller.DistillationLossWeights(args.kd_distill_wt, args.kd_student_wt,
                                                 args.kd_teacher_wt)
         if args.kd_relationbased:
-            args.kd_policy = kd_relationbased.RelationBasedKDPolicy(model, teacher, dlw)
+            args.kd_policy = kd_relationbased.RelationBasedKDPolicy(model, teacher,
+                                                                    dlw, args.act_mode_8bit)
         else:
             args.kd_policy = distiller.KnowledgeDistillationPolicy(model, teacher,
                                                                    args.kd_temp, dlw)
@@ -513,6 +534,15 @@ def main():
                                                               args.nas_stage_transition_list,
                                                               args.epochs)
                 create_nas_kd_policy(model, compression_scheduler, start_epoch, kd_end_epoch, args)
+
+    if args.evaluate:
+        msglogger.info('Dataset sizes:\n\ttest=%d', len(test_loader.sampler))
+        return evaluate_model(model, criterion, test_loader, pylogger, activations_collectors,
+                              args, compression_scheduler)
+
+    assert train_loader and val_loader
+    msglogger.info('Dataset sizes:\n\ttraining=%d\n\tvalidation=%d\n\ttest=%d',
+                   len(train_loader.sampler), len(val_loader.sampler), len(test_loader.sampler))
 
     vloss = 10**6
     for epoch in range(start_epoch, ending_epoch):
@@ -557,7 +587,8 @@ def main():
         # Train for one epoch
         with collectors_context(activations_collectors["train"]) as collectors:
             train(train_loader, model, criterion, optimizer, epoch, compression_scheduler,
-                  loggers=all_loggers, args=args)
+                  loggers=all_loggers, args=args, loss_optimizer=loss_optimizer)
+
             # distiller.log_weights_sparsity(model, epoch, loggers=all_loggers)
             distiller.log_activation_statistics(epoch, "train", loggers=all_tbloggers,
                                                 collector=collectors["sparsity"])
@@ -584,8 +615,11 @@ def main():
                     checkpoint_name = f'nas_stg{stage}_lev{level}'
 
             with collectors_context(activations_collectors["valid"]) as collectors:
-                top1, top5, vloss, mAP = validate(val_loader, model, criterion, [pylogger],
-                                                  args, epoch, tflogger)
+                if not args.dr:
+                    top1, top5, vloss, mAP = validate(val_loader, model, criterion, [pylogger],
+                                                      args, epoch, tflogger)
+                else:
+                    top1, top5, vloss, mAP = scaf_test(val_loader, model, accuracy_calculator)
                 distiller.log_activation_statistics(epoch, "valid", loggers=all_tbloggers,
                                                     collector=collectors["sparsity"])
                 save_collectors_data(collectors, msglogger.logdir)
@@ -596,7 +630,7 @@ def main():
                 if not args.regression:
                     stats = ('Performance/Validation/', OrderedDict([('Loss', vloss),
                                                                      ('Top1', top1)]))
-                    if args.num_classes > 5:
+                    if args.num_classes > 5 and not args.dr:
                         stats[1]['Top5'] = top5
                 else:
                     stats = ('Performance/Validation/', OrderedDict([('Loss', vloss),
@@ -621,6 +655,9 @@ def main():
                 is_best = False
                 checkpoint_extras = {'current_top1': top1,
                                      'current_mAP': mAP}
+            if args.dr:
+                checkpoint_extras['loss_weights'] = criterion.W
+                checkpoint_extras['loss_optimizer_state_dict'] = loss_optimizer.state_dict()
 
             apputils.save_checkpoint(epoch, args.cnn, model, optimizer=optimizer,
                                      scheduler=compression_scheduler, extras=checkpoint_extras,
@@ -631,7 +668,8 @@ def main():
             compression_scheduler.on_epoch_end(epoch, optimizer)
 
     # Finally run results on the test set
-    test(test_loader, model, criterion, [pylogger], activations_collectors, args=args)
+    if not args.dr:
+        test(test_loader, model, criterion, [pylogger], activations_collectors, args=args)
 
     if args.copy_output_folder:
         msglogger.info('Copying output folder to: %s', args.copy_output_folder)
@@ -664,6 +702,9 @@ def create_model(supported_models, dimensions, args, mode='default'):
         if not Model:
             raise RuntimeError("Model " + args.kd_teacher + " not found\n")
 
+    if args.dr and ('dr' not in module or not module['dr']):
+        raise ValueError("Dimensionality reduction is not supported for this model")
+
     # Set model parameters
     if args.act_mode_8bit:
         weight_bits = 8
@@ -683,6 +724,12 @@ def create_model(supported_models, dimensions, args, mode='default'):
     model_args["weight_bits"] = weight_bits
     model_args["bias_bits"] = bias_bits
     model_args["quantize_activation"] = quantize_activation
+
+    if args.dr:
+        model_args["dimensionality"] = args.dr
+
+    if args.backbone_checkpoint:
+        model_args["backbone_checkpoint"] = args.backbone_checkpoint
 
     if args.obj_detection:
         model_args["device"] = args.device
@@ -729,7 +776,7 @@ def create_nas_kd_policy(model, compression_scheduler, epoch, next_state_start_e
 
 
 def train(train_loader, model, criterion, optimizer, epoch,
-          compression_scheduler, loggers, args):
+          compression_scheduler, loggers, args, loss_optimizer=None):
     """Training loop for one epoch."""
     losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                           (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
@@ -823,7 +870,7 @@ def train(train_loader, model, criterion, optimizer, epoch,
 
         loss = criterion(output, target)
         # TODO Early exit mechanism for Object Detection case is NOT implemented yet
-        if not args.obj_detection and not args.kd_relationbased:
+        if not args.obj_detection and not args.dr and not args.kd_relationbased:
             if not args.earlyexit_lossweights:
                 # Measure accuracy if the conditions are set. For `Last Batch` only accuracy
                 # calculation last two batches are used as the last batch might include just a few
@@ -868,11 +915,16 @@ def train(train_loader, model, criterion, optimizer, epoch,
 
         # Compute the gradient and do SGD step
         optimizer.zero_grad()
+        if args.dr:
+            loss_optimizer.zero_grad()
+
         loss.backward()
         if compression_scheduler:
             compression_scheduler.before_parameter_optimization(epoch, train_step,
                                                                 steps_per_epoch, optimizer)
         optimizer.step()
+        if args.dr:
+            loss_optimizer.step()
         if compression_scheduler:
             compression_scheduler.on_minibatch_end(epoch, train_step, steps_per_epoch, optimizer)
 
@@ -944,6 +996,23 @@ def update_bn_stats(train_loader, model, args):
     for (inputs, target) in train_loader:
         inputs, target = inputs.to(args.device), target.to(args.device)
         _ = model(inputs)
+
+
+def get_all_embeddings(dataset, model):
+    """Get all embeddings from the test set"""
+    tester = testers.BaseTester()
+    return tester.get_all_embeddings(dataset, model)
+
+
+def scaf_test(val_loader, model, accuracy_calculator):
+    """Perform test for SCAF"""
+    test_embeddings, test_labels = get_all_embeddings(val_loader.dataset, model)
+    test_labels = test_labels.squeeze(1)
+    accuracies = accuracy_calculator.get_accuracy(
+        test_embeddings, test_labels, None, None, True
+    )
+    msglogger.info('Test set accuracy (Precision@1) = %f', accuracies['precision_at_1'])
+    return accuracies["precision_at_1"], 0, 0, 0
 
 
 def validate(val_loader, model, criterion, loggers, args, epoch=-1, tflogger=None):
@@ -1192,7 +1261,8 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                         target /= 128.
 
             if args.generate_sample is not None and args.act_mode_8bit and not sample_saved:
-                sample.generate(args.generate_sample, inputs, target, output, args.dataset, False)
+                sample.generate(args.generate_sample, inputs, target, output,
+                                args.dataset, False, args.slice_sample)
                 sample_saved = True
 
             if args.csv_prefix is not None:
