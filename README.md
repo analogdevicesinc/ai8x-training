@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-December 22, 2023
+January 10, 2024
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -1534,6 +1534,11 @@ The following table describes the most important command line arguments for `tra
 | `--nas`                    | Enable network architecture search                           |                                 |
 | `--nas-policy`             | Define NAS policy in YAML file                               | `--nas-policy nas/nas_policy.yaml` |
 | `--regression` | Select regression instead of classification (changes Loss function, and log output) |  |
+| `--dr` | Set target embedding dimensionality for dimensionality reduction                |`--dr 64`                        |
+| `--scaf-lr` | Initial learning rate for sub-center ArcFace loss optimizer |  |
+| `--scaf-scale` |Scale hyperparameter for sub-center ArcFace loss |  |
+| `--scaf-margin` |Margin hyperparameter for sub-center ArcFace loss |  |
+| `--backbone-checkpoint` |Path to checkpoint from which to load backbone weights |  |
 | *Display and statistics*   |                                                              |                                 |
 | `--enable-tensorboard`     | Enable logging to TensorBoard (default: disabled)            |                                 |
 | `--confusion`              | Display the confusion matrix                                 |                                 |
@@ -1552,6 +1557,7 @@ The following table describes the most important command line arguments for `tra
 | `--summary onnx_simplified` | Export trained model to simplified [ONNX](https://onnx.ai/) file (default name: model.onnx) |                     |
 | `--summary-filename`       | Change the file name for the exported model                  | `--summary-filename mnist.onnx` |
 | `--save-sample`            | Save data[index] from the test set to a NumPy pickle for use as sample data | `--save-sample 10` |
+| `--slice-sample`  | For models that require RGB input, when the sample from the dataset has additional channels, slice the sample into 3 channels                                      |                                 |
 
 #### ONNX Model Export
 
