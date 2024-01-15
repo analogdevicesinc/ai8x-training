@@ -58,7 +58,7 @@ class signalmixer:
 
             # using getitem to reach the noise test data
             self.noise_dataset_float = next(iter(torch.utils.data.DataLoader(
-                noise_dataset, batch_size=noise_dataset.len)))[0]
+                noise_dataset, batch_size=noise_dataset.dataset_len)))[0]
 
             self.noise_rms = noise_dataset.rms
 
@@ -76,7 +76,7 @@ class signalmixer:
 
     def __getitem__(self, index):
 
-        inp, = self.mixed_signal[index].type(torch.FloatTensor)
+        inp = self.mixed_signal[index].type(torch.FloatTensor)
         target = int(self.signal_targets[index])
         return inp, target
 
