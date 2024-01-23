@@ -1,7 +1,7 @@
 ###################################################################################################
 #
 # Copyright (C) 2023-2024 Analog Devices, Inc. All Rights Reserved.
-# This software is proprietary and confidential to Analog Devices, Inc. and its licensors.
+# This software is proprietary to Analog Devices, Inc. and its licensors.
 #
 ###################################################################################################
 #
@@ -56,14 +56,14 @@ class KWS:
     Dataset, 1D folded.
 
     Args:
-    root (string): Root directory of dataset where ``KWS/processed/dataset.pt``
-        exist.
+    root (string): Root directory of dataset where ``KWS/processed/dataset.pt`` exist.
     classes(array): List of keywords to be used.
     d_type(string): Option for the created dataset. ``train`` or ``test``.
-    n_augment(int, optional): Number of augmented samples added to the dataset from
-        each sample by random modifications, i.e. stretching, shifting and random noise.
-    transform (callable, optional): A function/transform that takes in an PIL image
-        and returns a transformed version.
+    transform (callable, optional): A function/transform that takes in a signal between [0, 1]
+        and returns a transformed version, suitable for ai8x training / evaluation.
+    quantization_scheme (dict, optional): Dictionary containing quantization scheme parameters.
+        If not provided, default values are used.
+    augmentation (dict, optional): Dictionary containing augmentation parameters.
     download (bool, optional): If true, downloads the dataset from the internet and
         puts it in root directory. If dataset is already downloaded, it is not
         downloaded again.
@@ -451,7 +451,7 @@ class KWS:
 
     @staticmethod
     def add_white_noise(audio, noise_var_coeff):
-        """Adds zero mean Gaussian noise to image with specified variance.
+        """Adds zero mean Gaussian noise to the audio with specified variance.
         """
         coeff = noise_var_coeff * np.mean(np.abs(audio))
         noisy_audio = audio + coeff * np.random.randn(len(audio))
@@ -459,7 +459,7 @@ class KWS:
 
     @staticmethod
     def add_quantized_white_noise(audio, noise_var_coeff):
-        """Adds zero mean Gaussian noise to image with specified variance.
+        """Adds zero mean Gaussian noise to the audio with specified variance.
         """
         coeff = noise_var_coeff * torch.mean(torch.abs(audio.type(torch.float)-128))
         noise = (coeff * torch.randn(len(audio))).type(torch.int16)
@@ -515,7 +515,7 @@ class KWS:
             q_data = np.clip(q_data, 0, max_val)
         return np.uint8(q_data)
 
-    def energy_detector(self, audio, fs):
+    def get_audio_endpoints(self, audio, fs):
         """Future: May implement a method to detect the beginning & end of voice activity in audio.
         Currently, it returns end points compatible with augmentation['shift'] values
         """
@@ -542,7 +542,7 @@ class KWS:
         aug_audio = [None] * (n_augment + 1)
         aug_speed = np.ones((n_augment + 1,))
         shift_limits = np.zeros((n_augment + 1, 2))
-        voice_begin_idx, voice_end_idx = self.energy_detector(audio, fs)
+        voice_begin_idx, voice_end_idx = self.get_audio_endpoints(audio, fs)
         aug_audio[0] = audio
         for i in range(n_augment):
             aug_audio[i+1], aug_speed[i+1] = self.speed_augment(audio, fs, sample_no=i)

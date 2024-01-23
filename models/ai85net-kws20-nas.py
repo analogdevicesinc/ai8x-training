@@ -1,7 +1,7 @@
 ###################################################################################################
 #
 # Copyright (C) 2023-2024 Analog Devices, Inc. All Rights Reserved.
-# This software is proprietary and confidential to Analog Devices, Inc. and its licensors.
+# This software is proprietary to Analog Devices, Inc. and its licensors.
 #
 ###################################################################################################
 #
