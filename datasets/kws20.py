@@ -98,7 +98,7 @@ class KWS:
         self.__parse_augmentation(augmentation)
 
         if not self.save_unquantized:
-            self.data_file = 'dataset3.pt'
+            self.data_file = 'dataset.pt'
         else:
             self.data_file = 'unquantized.pt'
 
@@ -328,7 +328,7 @@ class KWS:
 
                     precursor_len = 30 * 128
                     postcursor_len = 98 * 128
-                    utternace_threshold = 30
+                    utterance_threshold = 30
 
                     while True:
                         if chunk_start + postcursor_len > len(data):
@@ -339,7 +339,7 @@ class KWS:
                         avg = 1000 * np.average(abs(chunk))
                         i += 128
 
-                        if avg > utternace_threshold and chunk_start >= precursor_len:
+                        if avg > utterance_threshold and chunk_start >= precursor_len:
                             print(f"\r Converting {converted_count + 1}/{total_count} "
                                   f"to {frame_count + 1} segments", end=" ")
                             frame = data[chunk_start - precursor_len:chunk_start + postcursor_len]
