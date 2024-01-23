@@ -18,7 +18,7 @@ jobs:
         if: env.IS_SPECIFIC_REPOSITORY == 'true' && env.IS_DEVELOP_BRANCH == 'true'
         run: |
           PR_Branch=${{ github.event.pull_request.head.ref }}
-          Repository=${{ github.event.repository.full_name }}
+          Repository=${{ github.event.pull_request.head.repo.full_name }}
           PR_Number=${{ github.event.pull_request.number }}
           PR_Sha=${{ github.event.pull_request.head.sha }}
           echo "PR_Branch: $PR_Branch"
@@ -33,4 +33,4 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.REGRESSION_TEST }}" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/MaximIntegratedAI/ai8x-regression/dispatches" \
-            -d '{"event_type": "repo-pull-request", "client_payload": {"PR_Branch": "${{ github.event.pull_request.head.ref }}", "Repository": "${{ github.event.repository.full_name }}","PR_Number": "${{ github.event.pull_request.number }}","PR_Sha": "${{ github.event.pull_request.head.sha }}" }'
+            -d '{"event_type": "repo-pull-request", "client_payload": {"PR_Branch": "${{ github.event.pull_request.head.ref }}", "Repository": "${{ github.event.pull_request.head.repo.full_name }}","PR_Number": "${{ github.event.pull_request.number }}","PR_Sha": "${{ github.event.pull_request.head.sha }}" }'
