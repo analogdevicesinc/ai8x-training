@@ -848,7 +848,7 @@ datasets = [
         'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
                    'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
                    'UNKNOWN'),
-        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
+        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5),
         'loader': KWS_20_get_datasets,
     },
     {
