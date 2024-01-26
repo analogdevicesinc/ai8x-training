@@ -1,7 +1,9 @@
 ###################################################################################################
 #
 # Copyright (C) 2023-2024 Analog Devices, Inc. All Rights Reserved.
-# This software is proprietary to Analog Devices, Inc. and its licensors.
+#
+# Analog Devices, Inc. Default Copyright Notice:
+# https://www.analog.com/en/about-adi/legal-and-risk-oversight/intellectual-property/copyright-notice.html
 #
 ###################################################################################################
 #
