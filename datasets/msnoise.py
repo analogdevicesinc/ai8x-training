@@ -257,7 +257,7 @@ class MSnoise:
 
             idx = 0
             for i, label in enumerate(labels):
-                for num in range(self.data_class_count[label]):
+                for _ in range(self.data_class_count[label]):
                     final_probs[idx] = self.desired_probs[i]/self.data_class_count[label]
                     idx += 1
             self.final_probs = final_probs
