@@ -182,7 +182,7 @@ class MSnoise:
 
         return torch.transpose(torch.tensor(audio.reshape((-1, row_len))), 1, 0)
 
-    def __gen_datasets(self, exp_len=16384, row_len=128, overlap_ratio=0):
+    def __gen_datasets(self):
 
         with warnings.catch_warnings():
             warnings.simplefilter('error')
