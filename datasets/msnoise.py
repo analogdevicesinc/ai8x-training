@@ -191,8 +191,8 @@ class MSnoise:
             idx_to_keep = [i for i, x in enumerate(bool_list) if x]
 
             self.data = [self.data[i] for i in idx_to_keep]
-            self.targets = [self.targets[i] for i in idx]
-            self.rms_val = [self.rms_val[i] for i in idx]
+            self.targets = [self.targets[i] for i in idx_to_keep]
+            self.rms_val = [self.rms_val[i] for i in idx_to_keep]
 
         self.targets = [target - initial_new_class_label for target in self.targets]
         print('\n')
@@ -228,7 +228,7 @@ class MSnoise:
         target = int(self.targets[rnd_num])
 
         if self.quantize:
-            inp /= 256
+            inp = inp / 256
         if self.transform is not None:
             inp = self.transform(inp)
         return inp, target
@@ -297,7 +297,7 @@ class MSnoise:
         return noise_dataset
 
 
-def MSnoise_get_datasets(data, load_train=True, load_test=True):
+def MSnoise_get_datasets(data, train_len=346338, test_len=11005, load_train=True, load_test=True):
     """
     Load the folded 1D version of MS Scalable Noisy Speech dataset (MS-SNSD)
 
@@ -323,14 +323,16 @@ def MSnoise_get_datasets(data, load_train=True, load_test=True):
     quantize = True
 
     if load_train:
-        train_dataset = MSnoise(root=data_dir, classes=classes, d_type='train', dataset_len=11005,
+        train_dataset = MSnoise(root=data_dir, classes=classes, d_type='train',
+                                dataset_len=train_len,
                                 remove_unknowns=remove_unknowns, transform=transform,
                                 quantize=quantize, download=True)
     else:
         train_dataset = None
 
     if load_test:
-        test_dataset = MSnoise(root=data_dir, classes=classes, d_type='test', dataset_len=11005,
+        test_dataset = MSnoise(root=data_dir, classes=classes, d_type='test',
+                               dataset_len=test_len,
                                remove_unknowns=remove_unknowns, transform=transform,
                                quantize=quantize, download=True)
 
@@ -342,7 +344,8 @@ def MSnoise_get_datasets(data, load_train=True, load_test=True):
     return train_dataset, test_dataset
 
 
-def MSnoise_get_unquantized_datasets(data, load_train=True, load_test=True):
+def MSnoise_get_unquantized_datasets(data, train_len=346338, test_len=11005,
+                                     load_train=True, load_test=True):
     """
     Load the folded 1D and unquantized version of MS Scalable Noisy Speech dataset (MS-SNSD)
 
@@ -365,14 +368,16 @@ def MSnoise_get_unquantized_datasets(data, load_train=True, load_test=True):
     quantize = False
 
     if load_train:
-        train_dataset = MSnoise(root=data_dir, classes=classes, d_type='train', dataset_len=11005,
+        train_dataset = MSnoise(root=data_dir, classes=classes, d_type='train',
+                                dataset_len=train_len,
                                 remove_unknowns=remove_unknowns, transform=transform,
                                 quantize=quantize, download=True)
     else:
         train_dataset = None
 
     if load_test:
-        test_dataset = MSnoise(root=data_dir, classes=classes, d_type='test', dataset_len=11005,
+        test_dataset = MSnoise(root=data_dir, classes=classes, d_type='test',
+                               dataset_len=test_len,
                                remove_unknowns=remove_unknowns, transform=transform,
                                quantize=quantize, download=True)
 
