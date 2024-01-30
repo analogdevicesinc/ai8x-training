@@ -23,8 +23,8 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 
 import cv2
-import kornia.geometry.transform as GT
 import face_detection
+import kornia.geometry.transform as GT
 from PIL import Image
 from skimage import transform as trans
 from tqdm import tqdm
@@ -99,7 +99,8 @@ class VGGFace2(Dataset):
         """
         Extracts the ground truth from the dataset
         """
-        detector = face_detection.build_detector("RetinaNetResNet50", confidence_threshold=.5, nms_iou_threshold=.4)
+        detector = face_detection.build_detector("RetinaNetResNet50", confidence_threshold=.5,
+                                                 nms_iou_threshold=.4)
         img_paths = list(glob.glob(os.path.join(self.d_path + '/**/', '*.jpg'), recursive=True))
         nf_number = 0
         n_words = 0
@@ -110,11 +111,10 @@ class VGGFace2(Dataset):
             boxes = []
             image = cv2.imread(jpg)
 
-
             img_max = max(image.shape[0], image.shape[1])
             if img_max > 1320:
                 continue
-            bboxes, lndmrks = detector.batched_detect_with_landmarks(np.expand_dims(image,0))
+            bboxes, lndmrks = detector.batched_detect_with_landmarks(np.expand_dims(image, 0))
             bboxes = bboxes[0]
             lndmrks = lndmrks[0]
 
