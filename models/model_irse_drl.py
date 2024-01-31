@@ -299,7 +299,13 @@ def ir_50(input_size=(112, 112),  # pylint: disable=unused-argument
     """
     model = Backbone(input_size, 50, 'ir')
     if backbone_checkpoint is not None:
-        model.load_state_dict(torch.load(backbone_checkpoint, map_location=torch.device('cpu')))
+        try:
+            model.load_state_dict(torch.load(backbone_checkpoint,
+                                             map_location=torch.device('cpu')))
+        except FileNotFoundError as e:
+            raise FileNotFoundError('Backbone checkpoint was not found. Please follow the'
+                                    'instructions in the docs/FacialRecognitionSystem.md file,'
+                                    'FaceID section to download the backbone checkpoint.') from e
     for param in model.parameters():
         param.requires_grad = False
     drl = DRL(dimensionality)
@@ -315,7 +321,13 @@ def ir_101(input_size=(112, 112),  # pylint: disable=unused-argument
     """
     model = Backbone(input_size, 100, 'ir')
     if backbone_checkpoint is not None:
-        model.load_state_dict(torch.load(backbone_checkpoint, map_location=torch.device('cpu')))
+        try:
+            model.load_state_dict(torch.load(backbone_checkpoint,
+                                             map_location=torch.device('cpu')))
+        except FileNotFoundError as e:
+            raise FileNotFoundError('Backbone checkpoint was not found. Please follow the'
+                                    'instructions in the docs/FacialRecognitionSystem.md file,'
+                                    'FaceID section to download the backbone checkpoint.') from e
     for param in model.parameters():
         param.requires_grad = False
     drl = DRL(dimensionality)
@@ -331,7 +343,13 @@ def ir_152(input_size=(112, 112),  # pylint: disable=unused-argument
     """
     model = Backbone(input_size, 152, 'ir')
     if backbone_checkpoint is not None:
-        model.load_state_dict(torch.load(backbone_checkpoint, map_location=torch.device('cpu')))
+        try:
+            model.load_state_dict(torch.load(backbone_checkpoint,
+                                             map_location=torch.device('cpu')))
+        except FileNotFoundError as e:
+            raise FileNotFoundError('Backbone checkpoint was not found. Please follow the'
+                                    'instructions in the docs/FacialRecognitionSystem.md file,'
+                                    'FaceID section to download the backbone checkpoint.') from e
     for param in model.parameters():
         param.requires_grad = False
     drl = DRL(dimensionality)
@@ -348,7 +366,13 @@ def ir_se_50(input_size=(112, 112),  # pylint: disable=unused-argument
     """
     model = Backbone(input_size, 50, 'ir_se')
     if backbone_checkpoint is not None:
-        model.load_state_dict(torch.load(backbone_checkpoint, map_location=torch.device('cpu')))
+        try:
+            model.load_state_dict(torch.load(backbone_checkpoint,
+                                             map_location=torch.device('cpu')))
+        except FileNotFoundError as e:
+            raise FileNotFoundError('Backbone checkpoint was not found. Please follow the'
+                                    'instructions in the docs/FacialRecognitionSystem.md file,'
+                                    'FaceID section to download the backbone checkpoint.') from e
     for param in model.parameters():
         param.requires_grad = False
     drl = DRL(dimensionality)
@@ -364,7 +388,13 @@ def ir_se_101(input_size=(112, 112),  # pylint: disable=unused-argument
     """
     model = Backbone(input_size, 100, 'ir_se')
     if backbone_checkpoint is not None:
-        model.load_state_dict(torch.load(backbone_checkpoint, map_location=torch.device('cpu')))
+        try:
+            model.load_state_dict(torch.load(backbone_checkpoint,
+                                             map_location=torch.device('cpu')))
+        except FileNotFoundError as e:
+            raise FileNotFoundError('Backbone checkpoint was not found. Please follow the'
+                                    'instructions in the docs/FacialRecognitionSystem.md file,'
+                                    'FaceID section to download the backbone checkpoint.') from e
     for param in model.parameters():
         param.requires_grad = False
     drl = DRL(dimensionality)
@@ -380,7 +410,13 @@ def ir_se_152(input_size=(112, 112),  # pylint: disable=unused-argument
     """
     model = Backbone(input_size, 152, 'ir_se')
     if backbone_checkpoint is not None:
-        model.load_state_dict(torch.load(backbone_checkpoint, map_location=torch.device('cpu')))
+        try:
+            model.load_state_dict(torch.load(backbone_checkpoint,
+                                             map_location=torch.device('cpu')))
+        except FileNotFoundError as e:
+            raise FileNotFoundError('Backbone checkpoint was not found. Please follow the'
+                                    'instructions in the docs/FacialRecognitionSystem.md file,'
+                                    'FaceID section to download the backbone checkpoint.') from e
     for param in model.parameters():
         param.requires_grad = False
     drl = DRL(dimensionality)
