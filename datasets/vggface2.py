@@ -69,7 +69,7 @@ class VGGFace2(Dataset):
 
         if self.d_type in ('train', 'test'):
             self.gt_path = os.path.join(self.dataset_path, "processed",
-                                        self.d_type+"_vggface2t.pickle")
+                                        self.d_type+"_vggface2.pickle")
             self.d_path = os.path.join(self.dataset_path, self.d_type)
             if not os.path.exists(self.gt_path):
                 assert os.path.isdir(self.d_path), (f'No dataset at {self.d_path}.\n'
