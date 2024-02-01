@@ -27,6 +27,7 @@
 """
 FaceID Teacher Model to be used for Knowledge Distillation
 """
+import sys
 from collections import namedtuple
 
 import torch
@@ -302,10 +303,12 @@ def ir_50(input_size=(112, 112),  # pylint: disable=unused-argument
         try:
             model.load_state_dict(torch.load(backbone_checkpoint,
                                              map_location=torch.device('cpu')))
-        except FileNotFoundError as e:
-            raise FileNotFoundError('Backbone checkpoint was not found. Please follow the'
-                                    'instructions in the docs/FacialRecognitionSystem.md file,'
-                                    'FaceID section to download the backbone checkpoint.') from e
+        except FileNotFoundError:
+            print('Backbone checkpoint was not found. Please follow the '
+                  'instructions in the docs/FacialRecognitionSystem.md file, '
+                  'FaceID section to download the backbone checkpoint.',
+                  file=sys.stderr)
+            sys.exit()
     for param in model.parameters():
         param.requires_grad = False
     drl = DRL(dimensionality)
@@ -324,10 +327,12 @@ def ir_101(input_size=(112, 112),  # pylint: disable=unused-argument
         try:
             model.load_state_dict(torch.load(backbone_checkpoint,
                                              map_location=torch.device('cpu')))
-        except FileNotFoundError as e:
-            raise FileNotFoundError('Backbone checkpoint was not found. Please follow the'
-                                    'instructions in the docs/FacialRecognitionSystem.md file,'
-                                    'FaceID section to download the backbone checkpoint.') from e
+        except FileNotFoundError:
+            print('Backbone checkpoint was not found. Please follow the '
+                  'instructions in the docs/FacialRecognitionSystem.md file, '
+                  'FaceID section to download the backbone checkpoint.',
+                  file=sys.stderr)
+            sys.exit()
     for param in model.parameters():
         param.requires_grad = False
     drl = DRL(dimensionality)
@@ -346,10 +351,12 @@ def ir_152(input_size=(112, 112),  # pylint: disable=unused-argument
         try:
             model.load_state_dict(torch.load(backbone_checkpoint,
                                              map_location=torch.device('cpu')))
-        except FileNotFoundError as e:
-            raise FileNotFoundError('Backbone checkpoint was not found. Please follow the'
-                                    'instructions in the docs/FacialRecognitionSystem.md file,'
-                                    'FaceID section to download the backbone checkpoint.') from e
+        except FileNotFoundError:
+            print('Backbone checkpoint was not found. Please follow the '
+                  'instructions in the docs/FacialRecognitionSystem.md file, '
+                  'FaceID section to download the backbone checkpoint.',
+                  file=sys.stderr)
+            sys.exit()
     for param in model.parameters():
         param.requires_grad = False
     drl = DRL(dimensionality)
@@ -369,10 +376,12 @@ def ir_se_50(input_size=(112, 112),  # pylint: disable=unused-argument
         try:
             model.load_state_dict(torch.load(backbone_checkpoint,
                                              map_location=torch.device('cpu')))
-        except FileNotFoundError as e:
-            raise FileNotFoundError('Backbone checkpoint was not found. Please follow the'
-                                    'instructions in the docs/FacialRecognitionSystem.md file,'
-                                    'FaceID section to download the backbone checkpoint.') from e
+        except FileNotFoundError:
+            print('Backbone checkpoint was not found. Please follow the '
+                  'instructions in the docs/FacialRecognitionSystem.md file, '
+                  'FaceID section to download the backbone checkpoint.',
+                  file=sys.stderr)
+            sys.exit()
     for param in model.parameters():
         param.requires_grad = False
     drl = DRL(dimensionality)
@@ -391,10 +400,12 @@ def ir_se_101(input_size=(112, 112),  # pylint: disable=unused-argument
         try:
             model.load_state_dict(torch.load(backbone_checkpoint,
                                              map_location=torch.device('cpu')))
-        except FileNotFoundError as e:
-            raise FileNotFoundError('Backbone checkpoint was not found. Please follow the'
-                                    'instructions in the docs/FacialRecognitionSystem.md file,'
-                                    'FaceID section to download the backbone checkpoint.') from e
+        except FileNotFoundError:
+            print('Backbone checkpoint was not found. Please follow the '
+                  'instructions in the docs/FacialRecognitionSystem.md file, '
+                  'FaceID section to download the backbone checkpoint.',
+                  file=sys.stderr)
+            sys.exit()
     for param in model.parameters():
         param.requires_grad = False
     drl = DRL(dimensionality)
@@ -413,10 +424,12 @@ def ir_se_152(input_size=(112, 112),  # pylint: disable=unused-argument
         try:
             model.load_state_dict(torch.load(backbone_checkpoint,
                                              map_location=torch.device('cpu')))
-        except FileNotFoundError as e:
-            raise FileNotFoundError('Backbone checkpoint was not found. Please follow the'
-                                    'instructions in the docs/FacialRecognitionSystem.md file,'
-                                    'FaceID section to download the backbone checkpoint.') from e
+        except FileNotFoundError:
+            print('Backbone checkpoint was not found. Please follow the '
+                  'instructions in the docs/FacialRecognitionSystem.md file, '
+                  'FaceID section to download the backbone checkpoint.',
+                  file=sys.stderr)
+            sys.exit()
     for param in model.parameters():
         param.requires_grad = False
     drl = DRL(dimensionality)
