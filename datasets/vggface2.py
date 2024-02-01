@@ -103,7 +103,7 @@ class VGGFace2(Dataset):
                                                  nms_iou_threshold=.4)
         img_paths = list(glob.glob(os.path.join(self.d_path + '/**/', '*.jpg'), recursive=True))
         nf_number = 0
-        n_words = 0
+        words_count = 0
         pickle_dict = {key: [] for key in ["boxes", "landmarks", "img_list", "lbl_list"]}
         pickle_dict["word2index"] = {}
 
@@ -132,8 +132,8 @@ class VGGFace2(Dataset):
             lbl = os.path.relpath(dir_name, self.d_path)
 
             if lbl not in pickle_dict["word2index"]:
-                pickle_dict["word2index"][lbl] = n_words
-                n_words += 1
+                pickle_dict["word2index"][lbl] = words_count
+                words_count += 1
 
             pickle_dict["lbl_list"].append(lbl)
             pickle_dict["boxes"].append(boxes)
