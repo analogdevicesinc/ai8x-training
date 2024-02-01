@@ -1,6 +1,7 @@
 #
 # Copyright (c) 2018 Intel Corporation
 # Portions Copyright (C) 2019-2023 Maxim Integrated Products, Inc.
+# Portions Copyright (C) 2023-2024 Analog Devices, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -44,14 +45,14 @@ class KWS:
     Dataset, 1D folded.
 
     Args:
-    root (string): Root directory of dataset where ``KWS/processed/dataset.pt``
-        exist.
+    root (string): Root directory of dataset where ``KWS/processed/dataset.pt`` exist.
     classes(array): List of keywords to be used.
     d_type(string): Option for the created dataset. ``train`` or ``test``.
-    n_augment(int, optional): Number of augmented samples added to the dataset from
-        each sample by random modifications, i.e. stretching, shifting and random noise.
-    transform (callable, optional): A function/transform that takes in an PIL image
-        and returns a transformed version.
+    transform (callable, optional): A function/transform that takes in a signal between [0, 1]
+        and returns a transformed version, suitable for ai8x training / evaluation.
+    quantization_scheme (dict, optional): Dictionary containing quantization scheme parameters.
+        If not provided, default values are used.
+    augmentation (dict, optional): Dictionary containing augmentation parameters.
     download (bool, optional): If true, downloads the dataset from the internet and
         puts it in root directory. If dataset is already downloaded, it is not
         downloaded again.
@@ -86,15 +87,15 @@ class KWS:
         self.__parse_augmentation(augmentation)
 
         if not self.save_unquantized:
-            self.data_file = 'dataset2.pt'
+            self.data_file = 'dataset.pt'
         else:
             self.data_file = 'unquantized.pt'
 
         if download:
             self.__download()
 
-        self.data, self.targets, self.data_type = torch.load(os.path.join(
-            self.processed_folder, self.data_file))
+        self.data, self.targets, self.data_type, self.shift_limits = \
+            torch.load(os.path.join(self.processed_folder, self.data_file))
 
         print(f'\nProcessing {self.d_type}...')
         self.__filter_dtype()
@@ -156,10 +157,6 @@ class KWS:
                     print('No key `shift` in input augmentation dictionary! '
                           'Using defaults: [Min:-0.1, Max: 0.1]')
                     self.augmentation['shift'] = {'min': -0.1, 'max': 0.1}
-                if 'stretch' not in augmentation:
-                    print('No key `stretch` in input augmentation dictionary! '
-                          'Using defaults: [Min: 0.8, Max: 1.3]')
-                    self.augmentation['stretch'] = {'min': 0.8, 'max': 1.3}
 
     def __download(self):
 
@@ -363,23 +360,27 @@ class KWS:
         # take a copy of the original data and targets temporarily for validation set
         self.data_original = self.data.clone()
         self.targets_original = self.targets.clone()
+        self.data_type_original = self.data_type.clone()
         self.data = self.data[idx_to_select, :]
         self.targets = self.targets[idx_to_select, :]
+        self.data_type = self.data_type[idx_to_select, :]
 
         # append validation set to the training set if validation examples are explicitly included
         if self.d_type == 'train':
-            idx_to_select = (self.data_type == 2)[:, -1]
+            idx_to_select = (self.data_type_original == 2)[:, -1]
             if idx_to_select.sum() > 0:  # if validation examples exist
                 self.data = torch.cat((self.data, self.data_original[idx_to_select, :]), dim=0)
                 self.targets = \
                     torch.cat((self.targets, self.targets_original[idx_to_select, :]), dim=0)
+                self.data_type = \
+                    torch.cat((self.data_type, self.data_type_original[idx_to_select, :]), dim=0)
                 # indicate the list of validation indices to be used by distiller's dataloader
                 self.valid_indices = range(set_size, set_size + idx_to_select.sum())
                 print(f'validation set: {idx_to_select.sum()} elements')
 
         del self.data_original
         del self.targets_original
-        del self.data_type
+        del self.data_type_original
 
     def __filter_classes(self):
         initial_new_class_label = len(self.class_dict)
@@ -401,28 +402,63 @@ class KWS:
     def __len__(self):
         return len(self.data)
 
+    def __reshape_audio(self, audio, row_len=128):
+        # add overlap if necessary later on
+        return torch.transpose(audio.reshape((-1, row_len)), 1, 0)
+
+    def shift_and_noise_augment(self, audio, shift_limits):
+        """Augments audio by adding random shift and noise.
+        """
+        random_noise_var_coeff = np.random.uniform(self.augmentation['noise_var']['min'],
+                                                   self.augmentation['noise_var']['max'])
+        random_shift_sample = np.random.randint(shift_limits[0], shift_limits[1])
+
+        aug_audio = self.shift(audio, random_shift_sample)
+        aug_audio = self.add_quantized_white_noise(aug_audio, random_noise_var_coeff)
+
+        return aug_audio
+
     def __getitem__(self, index):
-        inp, target = self.data[index].type(torch.FloatTensor), int(self.targets[index])
+        inp, target = self.data[index], int(self.targets[index])
+        data_type, shift_limits = self.data_type[index], self.shift_limits[index]
+
+        # apply dynamic shift and noise augmentation to training examples
+        if data_type == 0:
+            inp = self.shift_and_noise_augment(inp, shift_limits)
+
+        # reshape to 2D
+        inp = self.__reshape_audio(inp)
+
+        inp = inp.type(torch.FloatTensor)
+
         if not self.save_unquantized:
             inp /= 256
         if self.transform is not None:
             inp = self.transform(inp)
+
         return inp, target
 
     @staticmethod
     def add_white_noise(audio, noise_var_coeff):
-        """Adds zero mean Gaussian noise to image with specified variance.
+        """Adds zero mean Gaussian noise to the audio with specified variance.
         """
         coeff = noise_var_coeff * np.mean(np.abs(audio))
         noisy_audio = audio + coeff * np.random.randn(len(audio))
         return noisy_audio
 
     @staticmethod
-    def shift(audio, shift_sec, fs):
+    def add_quantized_white_noise(audio, noise_var_coeff):
+        """Adds zero mean Gaussian noise to the audio with specified variance.
+        """
+        coeff = noise_var_coeff * torch.mean(torch.abs(audio.type(torch.float)-128))
+        noise = (coeff * torch.randn(len(audio))).type(torch.int16)
+        return (audio + noise).clip(0, 255).type(torch.uint8)
+
+    @staticmethod
+    def shift(audio, shift_sample):
         """Shifts audio.
         """
-        shift_count = int(shift_sec * fs)
-        return np.roll(audio, shift_count)
+        return torch.roll(audio, shift_sample)
 
     @staticmethod
     def stretch(audio, rate=1):
@@ -436,36 +472,6 @@ class KWS:
             audio2 = np.pad(audio2, (0, max(0, input_length - len(audio2))), "constant")
 
         return audio2
-
-    def augment(self, audio, fs, verbose=False):
-        """Augments audio by adding random noise, shift and stretch ratio.
-        """
-        random_noise_var_coeff = np.random.uniform(self.augmentation['noise_var']['min'],
-                                                   self.augmentation['noise_var']['max'])
-        random_shift_time = np.random.uniform(self.augmentation['shift']['min'],
-                                              self.augmentation['shift']['max'])
-        random_stretch_coeff = np.random.uniform(self.augmentation['stretch']['min'],
-                                                 self.augmentation['stretch']['max'])
-
-        sox_effects = [["speed", str(random_stretch_coeff)], ["rate", str(fs)]]
-        aug_audio, _ = torchaudio.sox_effects.apply_effects_tensor(
-            torch.unsqueeze(torch.from_numpy(audio).float(), dim=0), fs, sox_effects)
-        aug_audio = aug_audio.numpy().squeeze()
-        aug_audio = self.shift(aug_audio, random_shift_time, fs)
-        aug_audio = self.add_white_noise(aug_audio, random_noise_var_coeff)
-
-        if verbose:
-            print(f'random_noise_var_coeff: {random_noise_var_coeff:.2f}\nrandom_shift_time: \
-                    {random_shift_time:.2f}\nrandom_stretch_coeff: {random_stretch_coeff:.2f}')
-        return aug_audio
-
-    def augment_multiple(self, audio, fs, n_augment, verbose=False):
-        """Calls `augment` function for n_augment times for given audio data.
-        Finally the original audio is added to have (n_augment+1) audio data.
-        """
-        aug_audio = [self.augment(audio, fs, verbose=verbose) for i in range(n_augment)]
-        aug_audio.insert(0, audio)
-        return aug_audio
 
     @staticmethod
     def compand(data, mu=255):
@@ -498,21 +504,65 @@ class KWS:
             q_data = np.clip(q_data, 0, max_val)
         return np.uint8(q_data)
 
-    def __gen_datasets(self, exp_len=16384, row_len=128, overlap_ratio=0):
-        print('Generating dataset from raw data samples for the first time. ')
-        print('This process will take significant time (~60 minutes)...')
+    def get_audio_endpoints(self, audio, fs):
+        """Future: May implement a method to detect the beginning & end of voice activity in audio.
+        Currently, it returns end points compatible with augmentation['shift'] values
+        """
+        return int(-self.augmentation['shift']['min'] * fs), \
+            int(len(audio) - self.augmentation['shift']['max'] * fs)
+
+    def speed_augment(self, audio, fs, sample_no=0):
+        """Augments audio by randomly changing the speed of the audio.
+        The generated coefficient follows 0.9, 1.1, 0.95, 1.05... pattern
+        """
+        speed_multiplier = 1.0 + 0.2 * (sample_no % 2 - 0.5) / (1 + sample_no // 2)
+
+        sox_effects = [["speed", str(speed_multiplier)], ["rate", str(fs)]]
+        aug_audio, _ = torchaudio.sox_effects.apply_effects_tensor(
+            torch.unsqueeze(torch.from_numpy(audio).float(), dim=0), fs, sox_effects)
+        aug_audio = aug_audio.numpy().squeeze()
+
+        return aug_audio, speed_multiplier
+
+    def speed_augment_multiple(self, audio, fs, exp_len, n_augment):
+        """Calls `speed_augment` function for n_augment times for given audio data.
+        Finally the original audio is added to have (n_augment+1) audio data.
+        """
+        aug_audio = [None] * (n_augment + 1)
+        aug_speed = np.ones((n_augment + 1,))
+        shift_limits = np.zeros((n_augment + 1, 2))
+        voice_begin_idx, voice_end_idx = self.get_audio_endpoints(audio, fs)
+        aug_audio[0] = audio
+        for i in range(n_augment):
+            aug_audio[i+1], aug_speed[i+1] = self.speed_augment(audio, fs, sample_no=i)
+        for i in range(n_augment + 1):
+            if len(aug_audio[i]) < exp_len:
+                aug_audio[i] = np.pad(aug_audio[i], (0, exp_len - len(aug_audio[i])), 'constant')
+            aug_begin_idx = voice_begin_idx * aug_speed[i]
+            aug_end_idx = voice_end_idx * aug_speed[i]
+            if aug_end_idx - aug_begin_idx <= exp_len:
+                # voice activity duration is shorter than the expected length
+                segment_begin = max(aug_end_idx, exp_len) - exp_len
+                segment_end = max(aug_end_idx, exp_len)
+                aug_audio[i] = aug_audio[i][segment_begin:segment_end]
+                shift_limits[i, 0] = -aug_begin_idx + (max(aug_end_idx, exp_len) - exp_len)
+                shift_limits[i, 1] = max(aug_end_idx, exp_len) - aug_end_idx
+            else:
+                # voice activity duraction is longer than the expected length
+                midpoint = (aug_begin_idx + aug_end_idx) // 2
+                aug_audio[i] = aug_audio[i][midpoint - exp_len // 2: midpoint + exp_len // 2]
+                shift_limits[i, :] = [0, 0]
+        return aug_audio, shift_limits
+
+    def __gen_datasets(self, exp_len=16384):
+        print('Generating dataset from raw data samples for the first time.')
+        print('This process may take a few minutes.')
         with warnings.catch_warnings():
             warnings.simplefilter('error')
 
             lst = sorted(os.listdir(self.raw_folder))
             labels = [d for d in lst if os.path.isdir(os.path.join(self.raw_folder, d))
                       and d[0].isalpha()]
-
-            # PARAMETERS
-            overlap = int(np.ceil(row_len * overlap_ratio))
-            num_rows = int(np.ceil(exp_len / (row_len - overlap)))
-            data_len = int((num_rows * row_len - (num_rows - 1) * overlap))
-            print(f'data_len: {data_len}')
 
             # show the size of dataset for each keyword
             print('------------- Label Size ---------------')
@@ -534,27 +584,36 @@ class KWS:
             for i, label in enumerate(labels):
                 print(f'Processing the label: {label}. {i + 1} of {len(labels)}')
                 record_list = sorted(os.listdir(os.path.join(self.raw_folder, label)))
+                record_len = len(record_list)
 
-                # dimension: row_length x number_of_rows
+                # get the number testing samples for the class
+                test_count_class = 0
+                for r, record_name in enumerate(record_list):
+                    local_filename = os.path.join(label, record_name)
+                    if local_filename in testing_set:
+                        test_count_class += 1
+
+                # no augmentation for testing set, subtract them accordingly
+                number_of_total_samples = record_len * (self.augmentation['aug_num'] + 1) - \
+                    test_count_class * self.augmentation['aug_num']
+
                 if not self.save_unquantized:
-                    data_in = np.empty(((self.augmentation['aug_num'] + 1) * len(record_list),
-                                        row_len, num_rows), dtype=np.uint8)
+                    data_in = np.empty((number_of_total_samples, exp_len), dtype=np.uint8)
                 else:
-                    data_in = np.empty(((self.augmentation['aug_num'] + 1) * len(record_list),
-                                        row_len, num_rows), dtype=np.float32)
-                data_type = np.empty(((self.augmentation['aug_num'] + 1) * len(record_list), 1),
-                                     dtype=np.uint8)
-                # create data classes
-                data_class = np.full(((self.augmentation['aug_num'] + 1) * len(record_list), 1), i,
-                                     dtype=np.uint8)
+                    data_in = np.empty((number_of_total_samples, exp_len), dtype=np.float32)
+
+                data_type = np.empty((number_of_total_samples, 1), dtype=np.uint8)
+                data_shift_limits = np.empty((number_of_total_samples, 2), dtype=np.int16)
+                data_class = np.full((number_of_total_samples, 1), i, dtype=np.uint8)
 
                 time_s = time.time()
 
+                sample_index = 0
                 for r, record_name in enumerate(record_list):
 
                     local_filename = os.path.join(label, record_name)
                     if r % 1000 == 0:
-                        print(f'\t{r + 1} of {len(record_list)}')
+                        print(f'\t{r + 1} of {record_len}')
 
                     if local_filename in testing_set:
                         d_typ = np.uint8(1)  # test
@@ -568,29 +627,28 @@ class KWS:
 
                     record_pth = os.path.join(self.raw_folder, label, record_name)
                     record, fs = librosa.load(record_pth, offset=0, sr=None)
-                    audio_seq_list = self.augment_multiple(record, fs,
-                                                           self.augmentation['aug_num'])
-                    for n_a, audio_seq in enumerate(audio_seq_list):
-                        # store set type: train, test or validate
-                        data_type[(self.augmentation['aug_num'] + 1) * r + n_a, 0] = d_typ
 
-                        # Write audio 128x128=16384 samples without overlap
-                        for n_r in range(num_rows):
-                            start_idx = n_r * (row_len - overlap)
-                            end_idx = start_idx + row_len
-                            audio_chunk = audio_seq[start_idx:end_idx]
-                            # pad zero if the length of the chunk is smaller than row_len
-                            audio_chunk = np.pad(audio_chunk, [0, row_len - audio_chunk.size])
-                            # store input data after quantization
-                            data_idx = (self.augmentation['aug_num'] + 1) * r + n_a
-                            if not self.save_unquantized:
-                                data_in[data_idx, :, n_r] = \
-                                    KWS.quantize_audio(audio_chunk,
-                                                       num_bits=self.quantization['bits'],
-                                                       compand=self.quantization['compand'],
-                                                       mu=self.quantization['mu'])
-                            else:
-                                data_in[data_idx, :, n_r] = audio_chunk
+                    # normalize dynamic range to [-1, +1]
+                    record = record / np.max(np.abs(record))
+
+                    if d_typ != 1:  # training and validation examples get speed augmentation
+                        no_augmentations = self.augmentation['aug_num']
+                    else:  # test examples don't get speed augmentation
+                        no_augmentations = 0
+
+                    # apply speed augmentations and calculate shift limits
+                    audio_seq_list, shift_limits = \
+                        self.speed_augment_multiple(record, fs, exp_len, no_augmentations)
+
+                    for local_id, audio_seq in enumerate(audio_seq_list):
+                        data_in[sample_index] = \
+                            KWS.quantize_audio(audio_seq,
+                                               num_bits=self.quantization['bits'],
+                                               compand=self.quantization['compand'],
+                                               mu=self.quantization['mu'])
+                        data_shift_limits[sample_index] = shift_limits[local_id]
+                        data_type[sample_index] = d_typ
+                        sample_index += 1
 
                 dur = time.time() - time_s
                 print(f'Finished in {dur:.3f} seconds.')
@@ -600,19 +658,30 @@ class KWS:
                     data_in_all = data_in.copy()
                     data_class_all = data_class.copy()
                     data_type_all = data_type.copy()
+                    data_shift_limits_all = data_shift_limits.copy()
                 else:
                     data_in_all = np.concatenate((data_in_all, data_in), axis=0)
                     data_class_all = np.concatenate((data_class_all, data_class), axis=0)
                     data_type_all = np.concatenate((data_type_all, data_type), axis=0)
+                    data_shift_limits_all = \
+                        np.concatenate((data_shift_limits_all, data_shift_limits), axis=0)
                 dur = time.time() - time_s
                 print(f'Data concatenation finished in {dur:.3f} seconds.')
 
             data_in_all = torch.from_numpy(data_in_all)
             data_class_all = torch.from_numpy(data_class_all)
             data_type_all = torch.from_numpy(data_type_all)
+            data_shift_limits_all = torch.from_numpy(data_shift_limits_all)
 
-            mfcc_dataset = (data_in_all, data_class_all, data_type_all)
-            torch.save(mfcc_dataset, os.path.join(self.processed_folder, self.data_file))
+            # apply static shift & noise augmentation for validation examples
+            for sample_index in range(data_in_all.shape[0]):
+                if data_type_all[sample_index] == 2:
+                    data_in_all[sample_index] = \
+                        self.shift_and_noise_augment(data_in_all[sample_index],
+                                                     data_shift_limits_all[sample_index])
+
+            raw_dataset = (data_in_all, data_class_all, data_type_all, data_shift_limits_all)
+            torch.save(raw_dataset, os.path.join(self.processed_folder, self.data_file))
 
         print('Dataset created.')
         print(f'Training: {train_count}, Validation: {valid_count}, Test: {test_count}')
@@ -658,7 +727,7 @@ def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6):
     else:
         raise ValueError(f'Unsupported num_classes {num_classes}')
 
-    augmentation = {'aug_num': 2, 'shift': {'min': -0.15, 'max': 0.15},
+    augmentation = {'aug_num': 2, 'shift': {'min': -0.1, 'max': 0.1},
                     'noise_var': {'min': 0, 'max': 1.0}}
     quantization_scheme = {'compand': False, 'mu': 10}
 
