@@ -307,11 +307,11 @@ def create_model(input_size=(112, 112),  # pylint: disable=unused-argument
             model.load_state_dict(torch.load(backbone_checkpoint,
                                              map_location=torch.device('cpu')))
         except FileNotFoundError:
-            print('Backbone checkpoint was not found. Please follow the '
-                  'instructions in the docs/FacialRecognitionSystem.md file, '
-                  'FaceID section to download the backbone checkpoint.',
+            print(f'Backbone checkpoint {backbone_checkpoint} not found. Please follow the '
+                  'instructions in docs/FacialRecognitionSystem.md, section ## FaceID, '
+                  'to download the backbone checkpoint.',
                   file=sys.stderr)
-            sys.exit()
+            sys.exit(1)
     for param in model.parameters():
         param.requires_grad = False
     drl = DRL(dimensionality)
