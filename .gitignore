@@ -10,6 +10,7 @@
 /logs/
 /ninja-python-distributions
 /pip-selfcheck.json
+/pretrained/
 /sensitivity.csv
 /sensitivity.png
 /tensorflow/

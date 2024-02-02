@@ -6,15 +6,13 @@ Pillow>=7
 PyYAML>=5.1.1
 albumentations>=1.3.0
 faiss-cpu==1.7.4
+face-detection==0.2.2
 h5py>=3.7.0
-hawk-eyes==2.1.0
 imutils==0.5.4
 kornia==0.6.8
 librosa>=0.7.2
 numba<0.50.0
 numpy>=1.22,<1.23
-onnx==1.15.0
-onnxruntime==1.7.0
 opencv-python>=4.4.0
 protobuf>=3.20.1,<4.0
 pycocotools==2.0.7

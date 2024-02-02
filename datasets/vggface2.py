@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2019-2023 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2019-2024 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -23,9 +23,8 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 
 import cv2
+import face_detection
 import kornia.geometry.transform as GT
-import onnxruntime
-from hawk_eyes.face import RetinaFace
 from PIL import Image
 from skimage import transform as trans
 from tqdm import tqdm
@@ -100,19 +99,26 @@ class VGGFace2(Dataset):
         """
         Extracts the ground truth from the dataset
         """
-        onnxruntime.set_default_logger_severity(3)  # suppress onnxruntime warnings
-        retina = RetinaFace(model_name='retina_l', conf=0.5)
+        detector = face_detection.build_detector("RetinaNetResNet50", confidence_threshold=.5,
+                                                 nms_iou_threshold=.4)
         img_paths = list(glob.glob(os.path.join(self.d_path + '/**/', '*.jpg'), recursive=True))
         nf_number = 0
-        n_words = 0
+        words_count = 0
         pickle_dict = {key: [] for key in ["boxes", "landmarks", "img_list", "lbl_list"]}
         pickle_dict["word2index"] = {}
 
         for jpg in tqdm(img_paths):
             boxes = []
             image = cv2.imread(jpg)
-            bboxes, lndmrks = retina.detect(image)
-            if len(bboxes) == 0:
+
+            img_max = max(image.shape[0], image.shape[1])
+            if img_max > 1320:
+                continue
+            bboxes, lndmrks = detector.batched_detect_with_landmarks(np.expand_dims(image, 0))
+            bboxes = bboxes[0]
+            lndmrks = lndmrks[0]
+
+            if (bboxes.shape[0] == 0) or (lndmrks.shape[0] == 0):
                 nf_number += 1
                 continue
 
@@ -126,8 +132,8 @@ class VGGFace2(Dataset):
             lbl = os.path.relpath(dir_name, self.d_path)
 
             if lbl not in pickle_dict["word2index"]:
-                pickle_dict["word2index"][lbl] = n_words
-                n_words += 1
+                pickle_dict["word2index"][lbl] = words_count
+                words_count += 1
 
             pickle_dict["lbl_list"].append(lbl)
             pickle_dict["boxes"].append(boxes)
