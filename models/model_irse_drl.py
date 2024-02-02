@@ -293,12 +293,14 @@ class Backbone(nn.Module):
                     m.bias.data.zero_()
 
 
-def ir_50(input_size=(112, 112),  # pylint: disable=unused-argument
-          dimensionality=64,
-          backbone_checkpoint=None, **kwargs):
-    """Constructs a ir-50 model.
+def create_model(input_size=(112, 112),  # pylint: disable=unused-argument
+                 dimensionality=64,
+                 backbone_checkpoint=None,
+                 model_name="ir", model_size=152, **kwargs):
     """
-    model = Backbone(input_size, 50, 'ir')
+    Model + DRL constructor
+    """
+    model = Backbone(input_size, model_size, model_name)
     if backbone_checkpoint is not None:
         try:
             model.load_state_dict(torch.load(backbone_checkpoint,
@@ -315,127 +317,72 @@ def ir_50(input_size=(112, 112),  # pylint: disable=unused-argument
     ensemble = Ensemble(model, drl)
 
     return ensemble
+
+
+def ir_50(input_size=(112, 112),  # pylint: disable=unused-argument
+          dimensionality=64,
+          backbone_checkpoint=None, **kwargs):
+    """
+    Constructs a ir-50 model.
+    """
+    model = create_model(input_size, dimensionality, backbone_checkpoint, "ir", 50)
+
+    return model
 
 
 def ir_101(input_size=(112, 112),  # pylint: disable=unused-argument
            dimensionality=64,
            backbone_checkpoint=None, **kwargs):
-    """Constructs a ir-101 model.
     """
-    model = Backbone(input_size, 100, 'ir')
-    if backbone_checkpoint is not None:
-        try:
-            model.load_state_dict(torch.load(backbone_checkpoint,
-                                             map_location=torch.device('cpu')))
-        except FileNotFoundError:
-            print('Backbone checkpoint was not found. Please follow the '
-                  'instructions in the docs/FacialRecognitionSystem.md file, '
-                  'FaceID section to download the backbone checkpoint.',
-                  file=sys.stderr)
-            sys.exit()
-    for param in model.parameters():
-        param.requires_grad = False
-    drl = DRL(dimensionality)
-    ensemble = Ensemble(model, drl)
+    Constructs a ir-101 model.
+    """
+    model = create_model(input_size, dimensionality, backbone_checkpoint, "ir", 100)
 
-    return ensemble
+    return model
 
 
 def ir_152(input_size=(112, 112),  # pylint: disable=unused-argument
            dimensionality=64,
            backbone_checkpoint=None, **kwargs):
-    """Constructs a ir-152 model.
     """
-    model = Backbone(input_size, 152, 'ir')
-    if backbone_checkpoint is not None:
-        try:
-            model.load_state_dict(torch.load(backbone_checkpoint,
-                                             map_location=torch.device('cpu')))
-        except FileNotFoundError:
-            print('Backbone checkpoint was not found. Please follow the '
-                  'instructions in the docs/FacialRecognitionSystem.md file, '
-                  'FaceID section to download the backbone checkpoint.',
-                  file=sys.stderr)
-            sys.exit()
-    for param in model.parameters():
-        param.requires_grad = False
-    drl = DRL(dimensionality)
+    Constructs a ir-152 model.
+    """
+    model = create_model(input_size, dimensionality, backbone_checkpoint, "ir", 152)
 
-    ensemble = Ensemble(model, drl)
-
-    return ensemble
+    return model
 
 
 def ir_se_50(input_size=(112, 112),  # pylint: disable=unused-argument
              dimensionality=64,
              backbone_checkpoint=None, **kwargs):
-    """Constructs a ir_se-50 model.
     """
-    model = Backbone(input_size, 50, 'ir_se')
-    if backbone_checkpoint is not None:
-        try:
-            model.load_state_dict(torch.load(backbone_checkpoint,
-                                             map_location=torch.device('cpu')))
-        except FileNotFoundError:
-            print('Backbone checkpoint was not found. Please follow the '
-                  'instructions in the docs/FacialRecognitionSystem.md file, '
-                  'FaceID section to download the backbone checkpoint.',
-                  file=sys.stderr)
-            sys.exit()
-    for param in model.parameters():
-        param.requires_grad = False
-    drl = DRL(dimensionality)
-    ensemble = Ensemble(model, drl)
+    Constructs a ir_se-50 model.
+    """
+    model = create_model(input_size, dimensionality, backbone_checkpoint, "ir_se", 50)
 
-    return ensemble
+    return model
 
 
 def ir_se_101(input_size=(112, 112),  # pylint: disable=unused-argument
               dimensionality=64,
               backbone_checkpoint=None, **kwargs):
-    """Constructs a ir_se-101 model.
     """
-    model = Backbone(input_size, 100, 'ir_se')
-    if backbone_checkpoint is not None:
-        try:
-            model.load_state_dict(torch.load(backbone_checkpoint,
-                                             map_location=torch.device('cpu')))
-        except FileNotFoundError:
-            print('Backbone checkpoint was not found. Please follow the '
-                  'instructions in the docs/FacialRecognitionSystem.md file, '
-                  'FaceID section to download the backbone checkpoint.',
-                  file=sys.stderr)
-            sys.exit()
-    for param in model.parameters():
-        param.requires_grad = False
-    drl = DRL(dimensionality)
-    ensemble = Ensemble(model, drl)
+    Constructs a ir_se-101 model.
+    """
+    model = create_model(input_size, dimensionality, backbone_checkpoint, "ir_se", 100)
 
-    return ensemble
+    return model
 
 
 def ir_se_152(input_size=(112, 112),  # pylint: disable=unused-argument
               dimensionality=64,
               backbone_checkpoint=None, **kwargs):
-    """Constructs a ir_se-152 model.
     """
-    model = Backbone(input_size, 152, 'ir_se')
-    if backbone_checkpoint is not None:
-        try:
-            model.load_state_dict(torch.load(backbone_checkpoint,
-                                             map_location=torch.device('cpu')))
-        except FileNotFoundError:
-            print('Backbone checkpoint was not found. Please follow the '
-                  'instructions in the docs/FacialRecognitionSystem.md file, '
-                  'FaceID section to download the backbone checkpoint.',
-                  file=sys.stderr)
-            sys.exit()
-    for param in model.parameters():
-        param.requires_grad = False
-    drl = DRL(dimensionality)
-    ensemble = Ensemble(model, drl)
+    Constructs a ir_se-152 model.
+    """
+    model = create_model(input_size, dimensionality, backbone_checkpoint, "ir_se", 152)
 
-    return ensemble
+    return model
 
 
 models = [
