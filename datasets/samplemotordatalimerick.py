@@ -5,7 +5,7 @@
 #
 ###################################################################################################
 """
-Classes and functions used to create Cork Motor Data Dataset
+Classes and functions for the Limerick Sample Motor Data Dataset
 """
 import errno
 import math
