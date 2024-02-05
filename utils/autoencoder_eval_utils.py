@@ -160,12 +160,12 @@ def sweep_performance_metrics(thresholds, train_tuple, test_tuple):
             print_all=False
             )
 
-        _, _, _, _, Accuracy_train, _, _ = calc_ae_perf_metrics(
-                train_reconstructions,
-                train_inputs,
-                train_labels,
-                threshold=threshold,
-                print_all=False
+        _, _, _, _, AccuracyTrain, _, _ = calc_ae_perf_metrics(
+            train_reconstructions,
+            train_inputs,
+            train_labels,
+            threshold=threshold,
+            print_all=False
             )
 
         F1s.append(F1.item())
@@ -176,7 +176,7 @@ def sweep_performance_metrics(thresholds, train_tuple, test_tuple):
         print(f"F1: {F1: .4f}, BalancedAccuracy: {BalancedAccuracy: .4f}, "
               f"FPRate: {FPRate: .4f}, Precision: {Precision: .4f}, TPRate (Recall): "
               f"{Recall: .4f}, Accuracy: {Accuracy: .4f}, "
-              f"TRAIN-SET Accuracy: {Accuracy_train: .4f}")
+              f"TRAIN-SET Accuracy: {AccuracyTrain: .4f}")
 
     return F1s, BalancedAccuracies, FPRs, Recalls
 

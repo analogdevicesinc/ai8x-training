@@ -35,29 +35,23 @@ class CNN_BASE(nn.Module):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 if weight_init == "kaiming":
-                    print("Initialising Conv2d weights with Kaiming distribution")
                     nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
 
                 elif weight_init in ('glorot', 'xavier'):
-                    print("Initialising Conv2d weights with Xavier Glorot distribution")
                     nn.init.xavier_uniform_(m.weight)
 
             elif isinstance(m, nn.ConvTranspose2d):
                 if weight_init == "kaiming":
-                    print("Initialising ConvTranspose2d weights with Kaiming distribution")
                     nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
 
                 elif weight_init in ('glorot', 'xavier'):
-                    print("Initialising ConvTranspose2d weights with Xavier Glorot distribution")
                     nn.init.xavier_uniform_(m.weight)
 
             elif isinstance(m, nn.Linear):
                 if weight_init == "kaiming":
-                    print("Initialising Linear weights with Kaiming distribution")
                     nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
 
                 elif weight_init in ('glorot', 'xavier'):
-                    print("Initialising Linear weights with Xavier Glorot distribution")
                     nn.init.xavier_uniform_(m.weight)
 
 
