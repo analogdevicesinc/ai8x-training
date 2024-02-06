@@ -216,12 +216,11 @@ class MSnoise:
                     self.desired_probs.append(1/label_count)
 
             elif np.sum(self.desired_probs) != 1:
-                self.desired_probs = []
+                sum = np.sum(self.desired_probs)
                 print('Sum of the probabilities is not 1!')
-                print('Each class will be selected using the same probability!')
-                label_count = len(labels)
-                for i in range(label_count):
-                    self.desired_probs.append(1/label_count)
+                self.desired_probs = self.desired_probs / sum
+
+            print(f'Desired porbabilities for each class: {self.desired_probs}')
 
             self.data_class_count = {}
             data_in = []
