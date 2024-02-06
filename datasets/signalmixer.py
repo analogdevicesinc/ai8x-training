@@ -33,7 +33,7 @@ Classes and functions used to create noisy keyword spotting dataset.
 """
 import numpy as np
 import torch
-from datasets import msnoise, kws20
+from datasets import kws20, msnoise
 
 
 class signalmixer:
@@ -156,7 +156,7 @@ def signalmixer_get_datasets(data, snr_range=range(0, 10), noise_type=['Babble']
     """
     Returns the KWS dataset mixed with MSnoise dataset.
     """
-    (data_dir, args) = data
+    (data_dir, _) = data
 
     kws_train_dataset, kws_test_dataset = kws20.KWS_20_get_datasets(
         data, load_train, load_test)
