@@ -202,8 +202,9 @@ class MSnoise:
 
             for label in labels:
                 if label not in check_label:
-                    print(f'Label {label} is not in the MSnoise {self.d_type} dataset.')
-                    labels.remove(label)
+                    if label != 'NeighborSpeaking':
+                        print(f'Label {label} is not in the MSnoise {self.d_type} dataset.')
+                        labels.remove(label)
 
             print(f'Labels for {self.d_type}: {labels}')
 
