@@ -153,7 +153,7 @@ class signalmixer:
 
 
 def signalmixer_get_datasets(data, snr_range=range(0, 10), noise_type=['Babble'],
-                             desired_probs=None, apply_prob=1, load_train=True, load_test=True):
+                             desired_probs=[1], apply_prob=1, load_train=True, load_test=True):
     """
     Returns the KWS dataset mixed with MSnoise dataset.
     """
