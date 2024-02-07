@@ -219,7 +219,7 @@ class MSnoise:
                 print('Sum of the probabilities is not 1!')
                 self.desired_probs = self.desired_probs / np.sum(self.desired_probs)
 
-            print(f'Desired porbabilities for each class: {self.desired_probs}')
+            print(f'Desired probabilities for each class: {self.desired_probs}')
 
             self.data_class_count = {}
             data_in = []
