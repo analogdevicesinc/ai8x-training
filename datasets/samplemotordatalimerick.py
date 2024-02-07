@@ -11,8 +11,6 @@ import errno
 import math
 import os
 import pickle
-import git
-from git.exc import GitCommandError
 
 import numpy as np
 import torch
@@ -20,8 +18,10 @@ from numpy.fft import fft
 from torch.utils.data import Dataset
 from torchvision import transforms
 
+import git
 import pandas as pd
 import scipy
+from git.exc import GitCommandError
 
 import ai8x
 
