@@ -11,6 +11,8 @@ import errno
 import math
 import os
 import pickle
+import git
+from git.exc import GitCommandError
 
 import numpy as np
 import torch
@@ -26,17 +28,16 @@ import ai8x
 
 class SampleMotorDataLimerick(Dataset):
     """
-    ADXL356C
+    Sample motor data is collected using SpectraQuest Machinery Fault Simulator.
+    ADXL356 sensor data is used for vibration raw data.
+    For ADXL356 sensor, the sampling frequency was 20kHz and
+    data csv files recorded for 2 sec in X, Y and Z direction.
     """
 
-    # Order 0 is used for default sensor: ADX365C
-    sensor_options = ['ADXL356C']
     # Order 0 is reserved for 'all' do not change order
     rpm_options = ('all', '0600', '1200', '1800', '2400', '3000')
-    # Order 0 is used for default sensor: ADX365C, do not change order
-    sensor_options_sr_Hz = [20000]
-    # Order 0 is used for default sensor: ADX365C, do not change order
-    sensor_options_file_len_in_sec = [2]
+    sensor_sr_Hz = 20000
+
     # Good Bearing, Good Shaft, Balanced Load and Well Aligned
     healthy_file_identifier = '_GoB_GS_BaLo_WA_'
 
@@ -201,6 +202,7 @@ class SampleMotorDataLimerick(Dataset):
                 raise
 
     def __init__(self, root, d_type, transform=None,
+                 download=True,
                  downsampling_ratio=2,
                  signal_duration_in_sec=0.25,
                  overlap_ratio=0.75,
@@ -208,7 +210,7 @@ class SampleMotorDataLimerick(Dataset):
                  label_as_signal=True,
                  random_or_speed_split=True,
                  accel_in_second_dim=True,
-                 sensor_selected=sensor_options[0],
+                 sensor_selected='ADXL356C',
                  rpm_selected=rpm_options[0]):
 
         if d_type not in ('test', 'train'):
@@ -226,11 +228,12 @@ class SampleMotorDataLimerick(Dataset):
                 "downsampling_ratio can only be set to an integer value greater than 0"
                 )
 
-        self.selected_sensor_sr = SampleMotorDataLimerick.sensor_options_sr_Hz[0]
+        self.selected_sensor_sr = SampleMotorDataLimerick.sensor_sr_Hz
 
         self.root = root
         self.d_type = d_type
         self.transform = transform
+        self.download = download
 
         self.downsampling_ratio = downsampling_ratio
         self.signal_duration_in_sec = signal_duration_in_sec
@@ -247,6 +250,9 @@ class SampleMotorDataLimerick(Dataset):
 
         self.num_of_features = 3
 
+        if self.download:
+            self.__download()
+
         processed_folder = \
             os.path.join(root, self.__class__.__name__, 'processed')
 
@@ -258,7 +264,6 @@ class SampleMotorDataLimerick(Dataset):
                                 f'dur_{self.signal_duration_in_sec}_' + \
                                 f'ovlp_ratio_{self.overlap_ratio}_' + \
                                 f'random_split_{self.random_or_speed_split}_' + \
-                                f'sensor_selected_{self.sensor_selected}_' +\
                                 f'rpm_{self.rpm_selected}'
 
         train_dataset_pkl_file_path = \
@@ -278,6 +283,28 @@ class SampleMotorDataLimerick(Dataset):
 
         self.__create_pkl_files()
         self.is_truncated = False
+
+    def __download(self):
+        """
+        Downloads Sample Motor Data Limerick dataset from:
+        https://github.com/analogdevicesinc/CbM-Datasets
+        """
+        destination_folder = self.root
+        dataset_repository = 'https://github.com/analogdevicesinc/CbM-Datasets'
+
+        self.__makedir_exist_ok(destination_folder)
+
+        try:
+            if not os.path.exists(os.path.join(destination_folder, 'SampleMotorDataLimerick')):
+                print('\nDownloading SampleMotorDataLimerick dataset from\n'
+                      f'{dataset_repository}\n')
+                git.Repo.clone_from(dataset_repository, destination_folder)
+
+            else:
+                print('\nSampleMotorDataLimerick dataset already downloaded...')
+
+        except GitCommandError:
+            pass
 
     def __create_pkl_files(self):
         if os.path.exists(self.dataset_pkl_file_path):
@@ -315,7 +342,10 @@ class SampleMotorDataLimerick(Dataset):
         actual_root_dir = os.path.join(self.root, self.__class__.__name__,
                                        "SpectraQuest_Rig_Data_Voyager_3/")
 
-        data_dir = os.path.join(actual_root_dir, f'Test_Results_Data_{self.sensor_selected}/')
+        data_dir = os.path.join(actual_root_dir, f'Data_{self.sensor_selected}/')
+
+        if not os.listdir(data_dir):
+            print('\nDataset directory is empty.\n')
 
         selected_rpm_prefixes = (
             SampleMotorDataLimerick.rpm_options[1:]
@@ -470,6 +500,7 @@ class SampleMotorDataLimerick(Dataset):
 
 
 def samplemotordatalimerick_get_datasets(data, load_train=True, load_test=True,
+                                         download=True,
                                          downsampling_ratio=10,
                                          signal_duration_in_sec=0.25,
                                          overlap_ratio=0.75,
@@ -477,7 +508,7 @@ def samplemotordatalimerick_get_datasets(data, load_train=True, load_test=True,
                                          label_as_signal=True,
                                          random_or_speed_split=True,
                                          accel_in_second_dim=True,
-                                         sensor_selected=SampleMotorDataLimerick.sensor_options[0],
+                                         sensor_selected='ADXL356C',
                                          rpm_selected=SampleMotorDataLimerick.rpm_options[0]):
     """"
     Returns Sample Motor Data Limerick Dataset
@@ -490,6 +521,7 @@ def samplemotordatalimerick_get_datasets(data, load_train=True, load_test=True,
         ])
 
         train_dataset = SampleMotorDataLimerick(root=data_dir, d_type='train',
+                                                download=download,
                                                 transform=train_transform,
                                                 downsampling_ratio=downsampling_ratio,
                                                 signal_duration_in_sec=signal_duration_in_sec,
@@ -511,6 +543,7 @@ def samplemotordatalimerick_get_datasets(data, load_train=True, load_test=True,
         ])
 
         test_dataset = SampleMotorDataLimerick(root=data_dir, d_type='test',
+                                               download=download,
                                                transform=test_transform,
                                                downsampling_ratio=downsampling_ratio,
                                                signal_duration_in_sec=signal_duration_in_sec,
@@ -539,17 +572,16 @@ def samplemotordatalimerick_get_datasets_for_train(data,
     eval_mode = False   # Test set includes validation normals
     label_as_signal = True
 
-    selected_sensor_idx = 0  # ADX356
     signal_duration_in_sec = 0.25
     overlap_ratio = 0.75
 
     wanted_sampling_rate_Hz = 2000
-    downsampling_ratio = round(SampleMotorDataLimerick.sensor_options_sr_Hz[selected_sensor_idx] /
+    downsampling_ratio = round(SampleMotorDataLimerick.sensor_sr_Hz /
                                wanted_sampling_rate_Hz)
 
     # ds_ratio = 10,  sr: 20K / 10 = 2000, 0.25 sec window, fft input will have: 500 samples,
     # fftout's first 256 samples will be used
-    # cnn input will have 2556 samples
+    # cnn input will have 256 samples
 
     accel_in_second_dim = True
 
@@ -576,12 +608,11 @@ def samplemotordatalimerick_get_datasets_for_eval_with_anomaly_label(data,
     eval_mode = True   # Test set includes validation normals
     label_as_signal = False
 
-    selected_sensor_idx = 0  # ADX356
     signal_duration_in_sec = 0.25
     overlap_ratio = 0.75
 
     wanted_sampling_rate_Hz = 2000
-    downsampling_ratio = round(SampleMotorDataLimerick.sensor_options_sr_Hz[selected_sensor_idx] /
+    downsampling_ratio = round(SampleMotorDataLimerick.sensor_sr_Hz /
                                wanted_sampling_rate_Hz)
 
     # ds_ratio = 10,  sr: 20K / 10 = 2000, 0.25 sec window, fft input will have: 500 samples,
@@ -613,12 +644,11 @@ def samplemotordatalimerick_get_datasets_for_eval_with_signal(data,
     eval_mode = True   # Test set includes validation normals
     label_as_signal = True
 
-    selected_sensor_idx = 0  # ADX356
     signal_duration_in_sec = 0.25
     overlap_ratio = 0.75
 
     wanted_sampling_rate_Hz = 2000
-    downsampling_ratio = round(SampleMotorDataLimerick.sensor_options_sr_Hz[selected_sensor_idx] /
+    downsampling_ratio = round(SampleMotorDataLimerick.sensor_sr_Hz /
                                wanted_sampling_rate_Hz)
 
     # ds_ratio = 10,  sr: 20K / 10 = 2000, 0.25 sec window, fft input will have: 500 samples,
