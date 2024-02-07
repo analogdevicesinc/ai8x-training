@@ -202,6 +202,46 @@ def signalmixer_all_get_datasets(data, load_train=True, load_test=True):
                                     load_train=load_train, load_test=load_test)
 
 
+def signalmixer_all_100_get_datasets(data, load_train=True, load_test=True):
+    """
+    Returns the KWS dataset mixed with MSnoise dataset.
+    """
+    snr_range = range(-5, 10)
+    noise_type = ['AirConditioner', 'AirportAnnouncements',
+                  'Babble', 'Bus', 'CafeTeria', 'Car',
+                  'CopyMachine', 'Field', 'Hallway', 'Kitchen',
+                  'LivingRoom', 'Metro', 'Munching', 'NeighborSpeaking',
+                  'Office', 'Park', 'Restaurant', 'ShuttingDoor',
+                  'Square', 'SqueakyChair', 'Station', 'Traffic',
+                  'Typing', 'VacuumCleaner', 'WasherDryer', 'Washing']
+    desired_probs = None
+    apply_prob = 1
+
+    return signalmixer_get_datasets(data=data, snr_range=snr_range, noise_type=noise_type,
+                                    desired_probs=desired_probs, apply_prob=apply_prob,
+                                    load_train=load_train, load_test=load_test)
+
+
+def signalmixer_all_snr_get_datasets(data, load_train=True, load_test=True):
+    """
+    Returns the KWS dataset mixed with MSnoise dataset.
+    """
+    snr_range = range(0, 15)
+    noise_type = ['AirConditioner', 'AirportAnnouncements',
+                  'Babble', 'Bus', 'CafeTeria', 'Car',
+                  'CopyMachine', 'Field', 'Hallway', 'Kitchen',
+                  'LivingRoom', 'Metro', 'Munching', 'NeighborSpeaking',
+                  'Office', 'Park', 'Restaurant', 'ShuttingDoor',
+                  'Square', 'SqueakyChair', 'Station', 'Traffic',
+                  'Typing', 'VacuumCleaner', 'WasherDryer', 'Washing']
+    desired_probs = None
+    apply_prob = 0.8
+
+    return signalmixer_get_datasets(data=data, snr_range=snr_range, noise_type=noise_type,
+                                    desired_probs=desired_probs, apply_prob=apply_prob,
+                                    load_train=load_train, load_test=load_test)
+
+
 def signalmixer_babble_get_datasets(data, load_train=True, load_test=True):
     """
     Returns the KWS dataset mixed with MSnoise dataset.
@@ -262,6 +302,24 @@ datasets = [
                    'UNKNOWN'),
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
         'loader': signalmixer_all_get_datasets,
+    },
+    {
+        'name': 'signalmixer_all_100',
+        'input': (128, 128),
+        'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
+                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
+                   'UNKNOWN'),
+        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
+        'loader': signalmixer_all_100_get_datasets,
+    },
+    {
+        'name': 'signalmixer_all_snr',
+        'input': (128, 128),
+        'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
+                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
+                   'UNKNOWN'),
+        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
+        'loader': signalmixer_all_snr_get_datasets,
     },
     {
         'name': 'signalmixer_babble',

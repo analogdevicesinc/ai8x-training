@@ -216,9 +216,8 @@ class MSnoise:
                     self.desired_probs.append(1/label_count)
 
             elif np.sum(self.desired_probs) != 1:
-                sum = np.sum(self.desired_probs)
                 print('Sum of the probabilities is not 1!')
-                self.desired_probs = self.desired_probs / sum
+                self.desired_probs = self.desired_probs / np.sum(self.desired_probs)
 
             print(f'Desired porbabilities for each class: {self.desired_probs}')
 
