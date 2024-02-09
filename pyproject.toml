@@ -4,7 +4,7 @@ target-version = ['py36']
 
 [tool.codespell]
 count = ''
-ignore-words-list = 'nervana,cconfiguration'
+ignore-words-list = 'nervana,cconfiguration,anormal'
 quiet-level = 3
 skip = '*.dasm,*.map,./.mypy_cache,./venv,./.git,./distiller,./data,./datasets/face_id/facenet_pytorch/dependencies,./super-linter.log'
 ignore-regex = '^\s+"image/png".*$'
