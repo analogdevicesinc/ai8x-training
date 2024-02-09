@@ -5,7 +5,8 @@
 #
 ###################################################################################################
 """
-Classes and functions for the Limerick Sample Motor Data Dataset
+Classes and functions for the Sample Motor Data Limerick Dataset
+https://github.com/analogdevicesinc/CbM-Datasets
 """
 import errno
 import math
@@ -35,7 +36,6 @@ class SampleMotorDataLimerick(Dataset):
     """
 
     # Order 0 is reserved for 'all' do not change order
-    rpm_options = ('all', '0600', '1200', '1800', '2400', '3000')
     sensor_sr_Hz = 20000
 
     # Good Bearing, Good Shaft, Balanced Load and Well Aligned
@@ -209,18 +209,11 @@ class SampleMotorDataLimerick(Dataset):
                  eval_mode=False,
                  label_as_signal=True,
                  random_or_speed_split=True,
-                 accel_in_second_dim=True,
-                 sensor_selected='ADXL356C',
-                 rpm_selected=rpm_options[0]):
+                 accel_in_second_dim=True):
 
         if d_type not in ('test', 'train'):
             raise ValueError(
                 "d_type can only be set to 'test' or 'train'"
-                )
-
-        if rpm_selected not in SampleMotorDataLimerick.rpm_options:
-            raise ValueError(
-                f"rpm_selected can only be set from: {SampleMotorDataLimerick.rpm_options}"
                 )
 
         if not isinstance(downsampling_ratio, int) or downsampling_ratio < 1:
@@ -245,9 +238,6 @@ class SampleMotorDataLimerick(Dataset):
         self.random_or_speed_split = random_or_speed_split
         self.accel_in_second_dim = accel_in_second_dim
 
-        self.sensor_selected = sensor_selected
-        self.rpm_selected = rpm_selected
-
         self.num_of_features = 3
 
         if self.download:
@@ -263,8 +253,7 @@ class SampleMotorDataLimerick(Dataset):
                                 f'ds_{self.downsampling_ratio}_' + \
                                 f'dur_{self.signal_duration_in_sec}_' + \
                                 f'ovlp_ratio_{self.overlap_ratio}_' + \
-                                f'random_split_{self.random_or_speed_split}_' + \
-                                f'rpm_{self.rpm_selected}'
+                                f'random_split_{self.random_or_speed_split}_'
 
         train_dataset_pkl_file_path = \
             os.path.join(processed_folder, f'train_{self.specs_identifier}.pkl')
@@ -342,15 +331,12 @@ class SampleMotorDataLimerick(Dataset):
         actual_root_dir = os.path.join(self.root, self.__class__.__name__,
                                        "SpectraQuest_Rig_Data_Voyager_3/")
 
-        data_dir = os.path.join(actual_root_dir, f'Data_{self.sensor_selected}/')
+        data_dir = os.path.join(actual_root_dir, 'Data_ADXL356C')
 
         if not os.listdir(data_dir):
             print('\nDataset directory is empty.\n')
 
-        selected_rpm_prefixes = (
-            SampleMotorDataLimerick.rpm_options[1:]
-            if self.rpm_selected == SampleMotorDataLimerick.rpm_options[0] else self.rpm_selected
-            )
+        rpm_prefixes = ('0600', '1200', '1800', '2400', '3000')
 
         faulty_data_list = []
         healthy_data_list = []
@@ -362,18 +348,17 @@ class SampleMotorDataLimerick(Dataset):
             full_path = os.path.join(data_dir, file)
 
             if any(file.startswith(rpm_prefix + SampleMotorDataLimerick.healthy_file_identifier)
-                   for rpm_prefix in selected_rpm_prefixes):
-                if self.sensor_selected == 'ADXL356C':
+                for rpm_prefix in rpm_prefixes):
                     healthy_row = SampleMotorDataLimerick.parse_ADXL356C_and_return_common_df_row(
                         file_full_path=full_path
                         )
-                healthy_data_list.append(healthy_row)
+
+                    healthy_data_list.append(healthy_row)
 
             else:
-                if self.sensor_selected == 'ADXL356C':
-                    faulty_row = SampleMotorDataLimerick.parse_ADXL356C_and_return_common_df_row(
-                        file_full_path=full_path
-                        )
+                faulty_row = SampleMotorDataLimerick.parse_ADXL356C_and_return_common_df_row(
+                    file_full_path=full_path
+                    )
 
                 faulty_data_list.append(faulty_row)
 
@@ -507,9 +492,7 @@ def samplemotordatalimerick_get_datasets(data, load_train=True, load_test=True,
                                          eval_mode=False,
                                          label_as_signal=True,
                                          random_or_speed_split=True,
-                                         accel_in_second_dim=True,
-                                         sensor_selected='ADXL356C',
-                                         rpm_selected=SampleMotorDataLimerick.rpm_options[0]):
+                                         accel_in_second_dim=True):
     """"
     Returns Sample Motor Data Limerick Dataset
     """
@@ -529,9 +512,7 @@ def samplemotordatalimerick_get_datasets(data, load_train=True, load_test=True,
                                                 eval_mode=eval_mode,
                                                 label_as_signal=label_as_signal,
                                                 random_or_speed_split=random_or_speed_split,
-                                                accel_in_second_dim=accel_in_second_dim,
-                                                sensor_selected=sensor_selected,
-                                                rpm_selected=rpm_selected)
+                                                accel_in_second_dim=accel_in_second_dim)
 
         print(f'Train dataset length: {len(train_dataset)}\n')
     else:
@@ -551,9 +532,7 @@ def samplemotordatalimerick_get_datasets(data, load_train=True, load_test=True,
                                                eval_mode=eval_mode,
                                                label_as_signal=label_as_signal,
                                                random_or_speed_split=random_or_speed_split,
-                                               accel_in_second_dim=accel_in_second_dim,
-                                               sensor_selected=sensor_selected,
-                                               rpm_selected=rpm_selected)
+                                               accel_in_second_dim=accel_in_second_dim)
 
         print(f'Test dataset length: {len(test_dataset)}\n')
     else:
