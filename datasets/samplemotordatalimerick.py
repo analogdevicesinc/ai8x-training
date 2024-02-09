@@ -347,7 +347,7 @@ class SampleMotorDataLimerick(Dataset):
         for file in os.listdir(data_dir):
             full_path = os.path.join(data_dir, file)
 
-            if any(file.startswith(rpm_prefix + SampleMotorDataLimerick.healthy_file_identifier) 
+            if any(file.startswith(rpm_prefix + SampleMotorDataLimerick.healthy_file_identifier)
                    for rpm_prefix in rpm_prefixes):
                 healthy_row = SampleMotorDataLimerick.parse_ADXL356C_and_return_common_df_row(
                     file_full_path=full_path
