@@ -35,7 +35,6 @@ class SampleMotorDataLimerick(Dataset):
     data csv files recorded for 2 sec in X, Y and Z direction.
     """
 
-    # Order 0 is reserved for 'all' do not change order
     sensor_sr_Hz = 20000
 
     # Good Bearing, Good Shaft, Balanced Load and Well Aligned
@@ -620,7 +619,7 @@ def samplemotordatalimerick_get_datasets_for_eval_with_signal(data,
     Label is signal
     """
 
-    eval_mode = True   # Test set includes validation normals
+    eval_mode = True   # Test set includes anormal samples as well as validation normals
     label_as_signal = True
 
     signal_duration_in_sec = 0.25
