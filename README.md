@@ -1,19 +1,19 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-January 10, 2024
+February 26, 2024
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
 1. **Start here**:
     **[Top Level Documentation](https://github.com/MaximIntegratedAI/MaximAI_Documentation)**
 2. The software development kit (MSDK), which contains drivers and example programs ready to run on the evaluation kits (EVkit and Feather):
-    [Analog Devices MSDK](https://github.com/Analog-Devices-MSDK/msdk)
+    [Analog Devices MSDK](https://github.com/analogdevicesinc/msdk)
 3. The training repository, which is used for deep learning *model development and training*:
     [ai8x-training](https://github.com/MaximIntegratedAI/ai8x-training) **(described in this document)**
 4. The synthesis repository, which is used to *convert a trained model into C code* using the “izer” tool:
     [ai8x-synthesis](https://github.com/MaximIntegratedAI/ai8x-synthesis) **(described in this document)**
 5. The reference design repository, which contains host applications and sample applications for reference designs such as [MAXREFDES178 (Cube Camera)](https://www.analog.com/en/design-center/reference-designs/maxrefdes178.html):
-    [refdes](https://github.com/Analog-Devices-MSDK/refdes)
+    [refdes](https://github.com/analogdevicesinc/MAX78xxx-RefDes)
     *Note: Examples for EVkits and Feather boards are part of the MSDK*
 
 _Open the `.md` version of this file in a markdown enabled viewer, for example Typora (<http://typora.io>).
@@ -423,7 +423,7 @@ For minor updates, pull the latest code and install the updated wheels:
 
 ##### MSDK Updates
 
-Please *also* update the MSDK or use the Maintenance Tool as documented in the [Analog Devices MSDK documentation](https://github.com/Analog-Devices-MSDK/msdk). The Maintenance Tool automatically updates the MSDK.
+Please *also* update the MSDK or use the Maintenance Tool as documented in the [Analog Devices MSDK documentation](https://github.com/analogdevicesinc/msdk). The Maintenance Tool automatically updates the MSDK.
 
 ##### Python Version Updates
 
@@ -551,96 +551,18 @@ There are two ways to install the MSDK.
 
 #### Method 1: MSDK Installer
 
-The [Analog Devices MSDK](https://github.com/Analog-Devices-MSDK/msdk) for MAX78000/MAX7802 is available via the installer links below. These installers require a GUI on your system.
+An automatic installer is available for the MSDK. Instructions for downloading, installing, and getting started with the MSDK’s supported development environments are found in the [**MSDK User Guide**](https://analogdevicesinc.github.io/msdk/USERGUIDE/).
 
-1. Download the MSDK installer for your operating system from one of the links below.
-    * [Windows](https://www.analog.com/en/design-center/evaluation-hardware-and-software/software/software-download?swpart=SFW0010820A)
-    * [Ubuntu Linux](https://www.analog.com/en/design-center/evaluation-hardware-and-software/software/software-download?swpart=SFW0018720A)
-    * [macOS](https://www.analog.com/en/design-center/evaluation-hardware-and-software/software/software-download?swpart=SFW0018610A)
-
-2. Run the installer executable. Note: On Linux, this may require making the file executable with the following command:
-
-    ```bash
-    $ chmod +x MaximMicrosSDK_linux.run
-    ```
-
-3. Follow the instructions in the installer to the component selection.
-
-4. Select the components to install. At _minimum_, the following components must be selected. This will enable command-line development.
-
-    * GNU RISC-V Embedded GCC
-    * GNU Tools for ARM Embedded Processors
-    * Open On-Chip Debugger
-    * MSYS2 (only on Windows)
-    * Microcontrollers
-      * MAX78000 Resources
-      * MAX78002 Resources
-    * Product Libs
-      * CMSIS Core Libraries
-      * Miscellaneous Drivers
-      * Peripheral Drivers
-
-5. (Optional) Select the “Eclipse” and/or “Visual Studio Code Support” components to add support for those IDEs.
-
-6. Continue through the instructions to complete the installation of the MSDK.
-
-7. (macOS only) Install OpenOCD dependencies using [Homebrew](https://brew.sh/)
-
-    ```shell
-    $ brew install libusb-compat libftdi hidapi libusb
-    ```
-
-8. (Linux and macOS only) Add the location of the toolchain binaries to the system `PATH`.
-
-    On Linux and macOS, copy the following contents into `~/.profile`...
-    On macOS, _also_ copy the following contents into `~/.zprofile`...
-    ...and change `MAXIM_PATH` to the installation location of the MSDK.
-
-    ```shell
-    # MSDK location
-    MAXIM_PATH=$HOME/MaximSDK  # Change me!
-    export MAXIM_PATH
-    
-    # Arm GCC -- adjust version number
-    ARMGCC_DIR=$MAXIM_PATH/Tools/GNUTools/12.3
-    echo $PATH | grep -q -s "$ARMGCC_DIR/bin"
-    if [ $? -eq 1 ] ; then
-        PATH=$PATH:"$ARMGCC_DIR/bin"
-        export PATH
-        export ARMGCC_DIR
-    fi
-    
-    # RISC-V GCC -- adjust version number
-    RISCVGCC_DIR=$MAXIM_PATH/Tools/xPack/riscv-none-embed-gcc/12.3.0-2
-    echo $PATH | grep -q -s "$RISCVGCC_DIR/bin"
-    if [ $? -eq 1 ] ; then
-        PATH=$PATH:"$RISCVGCC_DIR/bin"
-        export PATH
-        export RISCVGCC_DIR
-    fi
-    
-    # OpenOCD
-    OPENOCD_DIR=$MAXIM_PATH/Tools/OpenOCD
-    echo $PATH | grep -q -s "$OPENOCD_DIR"
-    if [ $? -eq 1 ] ; then
-        PATH=$PATH:$OPENOCD_DIR
-        export PATH
-        export OPENOCD_DIR
-    fi
-    ```
-
-    On Windows, this step is not necessary. However, “MaximSDK/Tools/MSYS2/msys.bat” file _must_ be used to launch the MSYS2 terminal for command-line development.
-
-Once the tools above have been installed, continue with [Final Check](#final-check).
+After installation and setup, continue with the [Final Check](#final-check).
 
 #### Method 2: Manual Installation
 
-The MAX78000/MAX78002 MSDK is available as a git repository. The repository contains all of the MSDK's components _except_ the Arm GCC, RISC-V GCC, and Make. These must be downloaded and installed manually.
+The MSDK is also available as a [git repository](https://github.com/analogdevicesinc/msdk), which can be used to obtain the latest development resources. The repository contains all of the MSDK’s components _except_ the Arm GCC, RISC-V GCC, and Make. These can be downloaded and installed manually.
 
 1. Clone the MSDK repository (recommendation: change to the *ai8x-synthesis* folder first):
 
     ```shell
-    $ git clone https://github.com/Analog-Devices-MSDK/msdk.git sdk
+    $ git clone https://github.com/analogdevicesinc/msdk.git sdk
     ```
 
 2. Download and install the Arm Embedded GNU Toolchain from [https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads).
