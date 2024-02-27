@@ -24,7 +24,7 @@ from utils.dataloader_utils import makedir_exist_ok
 
 class CbM_DataFrame_Parser(Dataset):  # pylint: disable=too-many-instance-attributes
     """
-    The base dataset class for motor vibration data used in Conditon Based Monitoring.
+    The base dataset class for motor vibration data used in Condition Based Monitoring.
     Includes main preprocessing functions.
     Expects a dataframe with common_dataframe_columns.
     """
