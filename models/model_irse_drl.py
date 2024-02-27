@@ -1,6 +1,7 @@
 ###################################################################################################
 #
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserve.
+# Portions Copyright (c) 2019 Jian Zhao
 # Portions Copyright (C) 2023-2024 Maxim Integrated Products, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
