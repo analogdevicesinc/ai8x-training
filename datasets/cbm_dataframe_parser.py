@@ -22,7 +22,7 @@ import scipy
 from utils.dataloader_utils import makedir_exist_ok
 
 
-class CbM_DataFrame_Parser(Dataset):
+class CbM_DataFrame_Parser(Dataset): # pylint: disable=too-many-instance-attributes
     """
     The base dataset class for motor vibration data used in Conditon Based Monitoring.
     Includes main preprocessing functions.
@@ -31,7 +31,6 @@ class CbM_DataFrame_Parser(Dataset):
 
     common_dataframe_columns = ["file_identifier", "raw_data_vib_in_g", "sensor_sr_Hz",
                                 "speed", "load", "label"]
-
 
     @staticmethod
     def sliding_windows_1d(array, window_size, overlap_ratio):
@@ -298,7 +297,7 @@ class CbM_DataFrame_Parser(Dataset):
                         train_features.append(cnn_signals[i])
                         train_speeds.append(file_speed)
 
-                else: # file_speed in normal_test_speeds
+                else:  # file_speed in normal_test_speeds
                     for i in range(cnn_signals.shape[0]):
                         test_normal_features.append(cnn_signals[i])
                         test_normal_speeds.append(file_speed)

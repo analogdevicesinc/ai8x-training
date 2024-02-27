@@ -11,7 +11,6 @@ https://github.com/analogdevicesinc/CbM-Datasets
 import os
 
 import numpy as np
-
 import torch
 from torchvision import transforms
 
@@ -21,6 +20,7 @@ from git.exc import GitCommandError
 
 import ai8x
 from utils.dataloader_utils import makedir_exist_ok
+
 from .cbm_dataframe_parser import CbM_DataFrame_Parser
 
 
@@ -48,12 +48,12 @@ class SampleMotorDataLimerick(CbM_DataFrame_Parser):
                  eval_mode,
                  label_as_signal,
                  random_or_speed_split,
-                 num_end_zeros = num_end_zeros,
-                 num_start_zeros = num_start_zeros,
-                 train_ratio = train_ratio,
-                 accel_in_second_dim = True,
+                 num_end_zeros=num_end_zeros,
+                 num_start_zeros=num_start_zeros,
+                 train_ratio=train_ratio,
+                 accel_in_second_dim=True,
                  download=True,
-                 healthy_file_identifier = healthy_file_identifier,):
+                 healthy_file_identifier=healthy_file_identifier,):
 
         self.download = download
         self.root = root
@@ -67,7 +67,7 @@ class SampleMotorDataLimerick(CbM_DataFrame_Parser):
             os.path.join(root, self.__class__.__name__, 'processed')
 
         self.healthy_file_identifier = healthy_file_identifier
-        main_df=self.gen_dataframe()
+        main_df = self.gen_dataframe()
 
         super().__init__(root,
                          d_type=d_type,
@@ -89,7 +89,7 @@ class SampleMotorDataLimerick(CbM_DataFrame_Parser):
         https://github.com/analogdevicesinc/CbM-Datasets
         """
         destination_folder = self.root
-        dataset_repository = 'https://github.com/asyatrhl/CbM-Datasets'
+        dataset_repository = 'https://github.com/analogdevicesinc/CbM-Datasets'
 
         makedir_exist_ok(destination_folder)
 
@@ -129,7 +129,8 @@ class SampleMotorDataLimerick(CbM_DataFrame_Parser):
         raw_data = df_raw[["Acceleration_x (g)", "Acceleration_y (g)", "Acceleration_z (g)"]]
         raw_data = raw_data.to_numpy()
 
-        return [os.path.basename(file_full_path).split('/')[-1], raw_data, sensor_sr_Hz, speed, load, label]
+        return [os.path.basename(file_full_path).split('/')[-1],
+                raw_data, sensor_sr_Hz, speed, load, label]
 
     def __getitem__(self, index):
         if self.accel_in_second_dim:
@@ -164,7 +165,7 @@ class SampleMotorDataLimerick(CbM_DataFrame_Parser):
 
         rpm_prefixes = ('0600', '1200', '1800', '2400', '3000')
 
-        sensor_sr_Hz = 20000 # Hz
+        sensor_sr_Hz = 20000   # Hz
 
         faulty_data_list = []
         healthy_data_list = []
@@ -175,25 +176,25 @@ class SampleMotorDataLimerick(CbM_DataFrame_Parser):
         for file in os.listdir(data_dir):
             full_path = os.path.join(data_dir, file)
             speed = int(file.split("_")[0]) / 60  # Hz
-            load = file.split("_")[-1][0:2] # LBS
+            load = file.split("_")[-1][0:2]  # LBS
 
             if any(file.startswith(rpm_prefix + self.healthy_file_identifier)
                    for rpm_prefix in rpm_prefixes):
                 healthy_row = self.parse_ADXL356C_and_return_common_df_row(
                     file_full_path=full_path, sensor_sr_Hz=sensor_sr_Hz,
-                        speed=speed,
-                        load=load,
-                        label=0
-                )
+                    speed=speed,
+                    load=load,
+                    label=0
+                    )
                 healthy_data_list.append(healthy_row)
 
             else:
                 faulty_row = self.parse_ADXL356C_and_return_common_df_row(
                     file_full_path=full_path, sensor_sr_Hz=sensor_sr_Hz,
-                        speed=speed,
-                        load=load,
-                        label=1
-                        )
+                    speed=speed,
+                    load=load,
+                    label=1
+                    )
                 faulty_data_list.append(faulty_row)
 
         df_normals = pd.DataFrame(data=np.array(healthy_data_list, dtype=object),

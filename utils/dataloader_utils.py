@@ -4,8 +4,9 @@
 # This software is proprietary to Analog Devices, Inc. and its licensors.
 #
 ###################################################################################################
-import os
+"""Data loader utils functions"""
 import errno
+import os
 
 
 def makedir_exist_ok(dirpath):
