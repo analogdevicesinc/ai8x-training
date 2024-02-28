@@ -180,7 +180,6 @@ class CbM_DataFrame_Parser(Dataset):  # pylint: disable=too-many-instance-attrib
         self.normal_train_speeds.sort()
 
         self.selected_sensor_sr = self.df_normals['sensor_sr_Hz'][0]
-        self.cnn_1dinput_len = 256
         self.num_end_zeros = num_end_zeros
         self.num_start_zeros = num_start_zeros
         self.train_ratio = train_ratio
@@ -204,7 +203,7 @@ class CbM_DataFrame_Parser(Dataset):  # pylint: disable=too-many-instance-attrib
                                         self.target_sampling_rate_Hz)
 
         self.cnn_1dinput_len = cnn_1dinput_len
-        assert self.cnn_1dinput_len >= (self.target_sampling_rate_Hz * \
+        assert self.cnn_1dinput_len >= (self.target_sampling_rate_Hz *
                                         self.signal_duration_in_sec)/2, \
                                             'CNN input length is incorrect.'
 
