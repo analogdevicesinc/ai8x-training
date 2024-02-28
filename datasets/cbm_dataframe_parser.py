@@ -205,7 +205,7 @@ class CbM_DataFrame_Parser(Dataset):  # pylint: disable=too-many-instance-attrib
         self.cnn_1dinput_len = cnn_1dinput_len
         assert self.cnn_1dinput_len >= (self.target_sampling_rate_Hz *
                                         self.signal_duration_in_sec)/2, \
-                                            'CNN input length is incorrect.'
+                                        'CNN input length is incorrect.'
 
         if not isinstance(self.downsampling_ratio, int) or self.downsampling_ratio < 1:
             raise ValueError(
