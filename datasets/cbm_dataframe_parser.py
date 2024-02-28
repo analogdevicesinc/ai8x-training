@@ -161,6 +161,7 @@ class CbM_DataFrame_Parser(Dataset):  # pylint: disable=too-many-instance-attrib
                  num_end_zeros=10,
                  num_start_zeros=3,
                  train_ratio=0.8,
+                 cnn_1dinput_len=256,
                  main_df=None):
 
         if d_type not in ('test', 'train'):
@@ -201,6 +202,8 @@ class CbM_DataFrame_Parser(Dataset):  # pylint: disable=too-many-instance-attrib
         self.target_sampling_rate_Hz = target_sampling_rate_Hz
         self.downsampling_ratio = round(self.selected_sensor_sr /
                                         self.target_sampling_rate_Hz)
+
+        assert self.cnn_1dinput_len >= (self.target_sampling_rate_Hz * self.signal_duration_in_sec)/2, 'CNN input length is incorrect.'
 
         if not isinstance(self.downsampling_ratio, int) or self.downsampling_ratio < 1:
             raise ValueError(

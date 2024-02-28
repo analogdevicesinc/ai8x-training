@@ -53,7 +53,8 @@ class SampleMotorDataLimerick(CbM_DataFrame_Parser):
                  train_ratio=train_ratio,
                  accel_in_second_dim=True,
                  download=True,
-                 healthy_file_identifier=healthy_file_identifier,):
+                 healthy_file_identifier=healthy_file_identifier,
+                 cnn_1dinput_len=256):
 
         self.download = download
         self.root = root
@@ -81,6 +82,7 @@ class SampleMotorDataLimerick(CbM_DataFrame_Parser):
                          num_end_zeros=num_end_zeros,
                          num_start_zeros=num_start_zeros,
                          train_ratio=train_ratio,
+                         cnn_1dinput_len=cnn_1dinput_len,
                          main_df=main_df)
 
     def __download(self):
@@ -154,7 +156,7 @@ class SampleMotorDataLimerick(CbM_DataFrame_Parser):
 
             return main_df
 
-        print('\nGenerating dataset pickle files from the raw data \n')
+        print('\nGenerating data frame pickle files from the raw data \n')
 
         actual_root_dir = os.path.join(self.root, self.__class__.__name__,
                                        "SpectraQuest_Rig_Data_Voyager_3/")
@@ -319,7 +321,7 @@ def samplemotordatalimerick_get_datasets_for_eval_with_anomaly_label(data,
 
     # ds_ratio = 10,  sr: 20K / 10 = 2000, 0.25 sec window, fft input will have: 500 samples,
     # fftout's first 256 samples will be used
-    # cnn input will have 2556 samples
+    # cnn input will have 256 samples
 
     accel_in_second_dim = True
 
@@ -353,7 +355,7 @@ def samplemotordatalimerick_get_datasets_for_eval_with_signal(data,
 
     # ds_ratio = 10,  sr: 20K / 10 = 2000, 0.25 sec window, fft input will have: 500 samples,
     # fftout's first 256 samples will be used
-    # cnn input will have 2556 samples
+    # cnn input will have 256 samples
 
     accel_in_second_dim = True
 
