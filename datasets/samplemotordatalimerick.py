@@ -221,7 +221,8 @@ def samplemotordatalimerick_get_datasets(data, load_train=True, load_test=True,
                                          label_as_signal=True,
                                          random_or_speed_split=True,
                                          accel_in_second_dim=True,
-                                         target_sampling_rate_Hz=2000):
+                                         target_sampling_rate_Hz=2000,
+                                         cnn_1dinput_len=256):
     """
     Returns Sample Motor Data Limerick Dataset
     """
@@ -241,7 +242,8 @@ def samplemotordatalimerick_get_datasets(data, load_train=True, load_test=True,
                                                 label_as_signal=label_as_signal,
                                                 random_or_speed_split=random_or_speed_split,
                                                 accel_in_second_dim=accel_in_second_dim,
-                                                target_sampling_rate_Hz=target_sampling_rate_Hz)
+                                                target_sampling_rate_Hz=target_sampling_rate_Hz,
+                                                cnn_1dinput_len=cnn_1dinput_len)
 
         print(f'Train dataset length: {len(train_dataset)}\n')
     else:
@@ -261,7 +263,8 @@ def samplemotordatalimerick_get_datasets(data, load_train=True, load_test=True,
                                                label_as_signal=label_as_signal,
                                                random_or_speed_split=random_or_speed_split,
                                                accel_in_second_dim=accel_in_second_dim,
-                                               target_sampling_rate_Hz=target_sampling_rate_Hz)
+                                               target_sampling_rate_Hz=target_sampling_rate_Hz,
+                                               cnn_1dinput_len=cnn_1dinput_len)
 
         print(f'Test dataset length: {len(test_dataset)}\n')
     else:
@@ -284,6 +287,7 @@ def samplemotordatalimerick_get_datasets_for_train(data,
     overlap_ratio = 0.75
 
     target_sampling_rate_Hz = 2000
+    cnn_1dinput_len = 256
 
     # ds_ratio = 10,  sr: 20K / 10 = 2000, 0.25 sec window, fft input will have: 500 samples,
     # fftout's first 256 samples will be used
@@ -300,7 +304,8 @@ def samplemotordatalimerick_get_datasets_for_train(data,
                                                 label_as_signal=label_as_signal,
                                                 random_or_speed_split=random_or_speed_split,
                                                 accel_in_second_dim=accel_in_second_dim,
-                                                target_sampling_rate_Hz=target_sampling_rate_Hz)
+                                                target_sampling_rate_Hz=target_sampling_rate_Hz,
+                                                cnn_1dinput_len=cnn_1dinput_len)
 
 
 def samplemotordatalimerick_get_datasets_for_eval_with_anomaly_label(data,
@@ -318,6 +323,7 @@ def samplemotordatalimerick_get_datasets_for_eval_with_anomaly_label(data,
     overlap_ratio = 0.75
 
     target_sampling_rate_Hz = 2000
+    cnn_1dinput_len = 256
 
     # ds_ratio = 10,  sr: 20K / 10 = 2000, 0.25 sec window, fft input will have: 500 samples,
     # fftout's first 256 samples will be used
@@ -334,7 +340,8 @@ def samplemotordatalimerick_get_datasets_for_eval_with_anomaly_label(data,
                                                 label_as_signal=label_as_signal,
                                                 random_or_speed_split=random_or_speed_split,
                                                 accel_in_second_dim=accel_in_second_dim,
-                                                target_sampling_rate_Hz=target_sampling_rate_Hz)
+                                                target_sampling_rate_Hz=target_sampling_rate_Hz,
+                                                cnn_1dinput_len=cnn_1dinput_len)
 
 
 def samplemotordatalimerick_get_datasets_for_eval_with_signal(data,
@@ -352,6 +359,7 @@ def samplemotordatalimerick_get_datasets_for_eval_with_signal(data,
     overlap_ratio = 0.75
 
     target_sampling_rate_Hz = 2000
+    cnn_1dinput_len = 256
 
     # ds_ratio = 10,  sr: 20K / 10 = 2000, 0.25 sec window, fft input will have: 500 samples,
     # fftout's first 256 samples will be used
@@ -368,7 +376,8 @@ def samplemotordatalimerick_get_datasets_for_eval_with_signal(data,
                                                 label_as_signal=label_as_signal,
                                                 random_or_speed_split=random_or_speed_split,
                                                 accel_in_second_dim=accel_in_second_dim,
-                                                target_sampling_rate_Hz=target_sampling_rate_Hz)
+                                                target_sampling_rate_Hz=target_sampling_rate_Hz,
+                                                cnn_1dinput_len=cnn_1dinput_len)
 
 
 datasets = [
