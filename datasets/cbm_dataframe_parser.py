@@ -158,11 +158,13 @@ class CbM_DataFrame_Parser(Dataset):  # pylint: disable=too-many-instance-attrib
                  eval_mode=False,
                  label_as_signal=True,
                  random_or_speed_split=True,
+                 speed_and_load_available=False,
                  num_end_zeros=10,
                  num_start_zeros=3,
                  train_ratio=0.8,
                  cnn_1dinput_len=256,
-                 main_df=None):
+                 main_df=None
+                 ):
 
         if d_type not in ('test', 'train'):
             raise ValueError(
@@ -195,6 +197,7 @@ class CbM_DataFrame_Parser(Dataset):  # pylint: disable=too-many-instance-attrib
         self.label_as_signal = label_as_signal
 
         self.random_or_speed_split = random_or_speed_split
+        self.speed_and_load_available = speed_and_load_available
 
         self.num_of_features = 3
 
@@ -241,6 +244,8 @@ class CbM_DataFrame_Parser(Dataset):  # pylint: disable=too-many-instance-attrib
 
         self.signal_list = []
         self.lbl_list = []
+        self.speed_list = []
+        self.load_list = []
 
         self.__create_pkl_files()
         self.is_truncated = False
@@ -250,7 +255,7 @@ class CbM_DataFrame_Parser(Dataset):  # pylint: disable=too-many-instance-attrib
 
             print('\nPickle files are already generated ...\n')
 
-            (self.signal_list, self.lbl_list) = \
+            (self.signal_list, self.lbl_list, self.speed_list, self.load_list) = \
                 pickle.load(open(self.dataset_pkl_file_path, 'rb'))
             return
 
@@ -282,10 +287,14 @@ class CbM_DataFrame_Parser(Dataset):  # pylint: disable=too-many-instance-attrib
         train_speeds = []
         test_normal_speeds = []
 
+        train_loads = []
+        test_normal_loads = []
+
         for _, row in self.df_normals.iterrows():
             raw_data = row['raw_data_vib_in_g']
             cnn_signals = self.process_file_and_return_signal_windows(raw_data)
             file_speed = row['speed']
+            file_load = row['load']
 
             if self.random_or_speed_split:
                 num_training = int(self.train_ratio * cnn_signals.shape[0])
@@ -293,8 +302,12 @@ class CbM_DataFrame_Parser(Dataset):  # pylint: disable=too-many-instance-attrib
                 for i in range(cnn_signals.shape[0]):
                     if i < num_training:
                         train_features.append(cnn_signals[i])
+                        train_speeds.append(file_speed)
+                        train_loads.append(file_load)
                     else:
                         test_normal_features.append(cnn_signals[i])
+                        test_normal_speeds.append(file_speed)
+                        test_normal_loads.append(file_load)
 
             else:
                 # split test-train using file identifiers and split
@@ -302,22 +315,31 @@ class CbM_DataFrame_Parser(Dataset):  # pylint: disable=too-many-instance-attrib
                     for i in range(cnn_signals.shape[0]):
                         train_features.append(cnn_signals[i])
                         train_speeds.append(file_speed)
+                        train_loads.append(file_load)
 
                 else:  # file_speed in normal_test_speeds
                     for i in range(cnn_signals.shape[0]):
                         test_normal_features.append(cnn_signals[i])
                         test_normal_speeds.append(file_speed)
+                        test_normal_loads.append(file_load)
 
         train_features = np.asarray(train_features)
         test_normal_features = np.asarray(test_normal_features)
 
         anomaly_features = []
+        test_anormal_speeds = []
+        test_anormal_loads = []
 
         for _, row in self.df_anormals.iterrows():
             raw_data = row['raw_data_vib_in_g']
             cnn_signals = self.process_file_and_return_signal_windows(raw_data)
+            file_speed = row['speed']
+            file_load = row['load']
+
             for i in range(cnn_signals.shape[0]):
                 anomaly_features.append(cnn_signals[i])
+                test_anormal_speeds.append(file_speed)
+                test_anormal_loads.append(file_load)
 
         anomaly_features = np.asarray(anomaly_features)
 
@@ -340,6 +362,8 @@ class CbM_DataFrame_Parser(Dataset):  # pylint: disable=too-many-instance-attrib
             self.lbl_list = [train_features[i, :, :] for i in range(train_features.shape[0])]
             self.signal_list = [torch.Tensor(label) for label in self.lbl_list]
             self.lbl_list = list(self.signal_list)
+            self.speed_list = np.array(train_speeds)
+            self.load_list = np.array(train_loads)
 
             if not self.label_as_signal:
                 self.lbl_list = np.zeros([len(self.signal_list), 1])
@@ -355,13 +379,18 @@ class CbM_DataFrame_Parser(Dataset):  # pylint: disable=too-many-instance-attrib
             self.lbl_list = [test_data[i, :, :] for i in range(test_data.shape[0])]
             self.signal_list = [torch.Tensor(label) for label in self.lbl_list]
             self.lbl_list = list(self.signal_list)
+            self.speed_list = np.concatenate((np.array(test_normal_speeds),
+                                              np.array(test_anormal_speeds)))
+            self.load_list = np.concatenate((np.array(test_normal_loads),
+                                             np.array(test_anormal_loads)))
 
             if not self.label_as_signal:
                 self.lbl_list = np.concatenate(
                                     (np.zeros([len(test_normal_features), 1]),
                                      np.ones([len(anomaly_features), 1])), axis=0)
         # Save pickle file
-        pickle.dump((self.signal_list, self.lbl_list), open(self.dataset_pkl_file_path, 'wb'))
+        pickle.dump((self.signal_list, self.lbl_list, self.speed_list, self.load_list),
+                     open(self.dataset_pkl_file_path, 'wb'))
 
     def __len__(self):
         if self.is_truncated:
@@ -388,5 +417,11 @@ class CbM_DataFrame_Parser(Dataset):  # pylint: disable=too-many-instance-attrib
             lbl = lbl.astype(np.long)
         else:
             lbl = lbl.numpy().astype(np.float32)
+
+        if self.speed_and_load_available:
+            speed = self.speed_list[index]
+            load = self.load_list[index]
+
+            return signal, lbl, speed, load
 
         return signal, lbl

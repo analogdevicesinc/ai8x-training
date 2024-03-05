@@ -48,6 +48,7 @@ class SampleMotorDataLimerick(CbM_DataFrame_Parser):
                  eval_mode,
                  label_as_signal,
                  random_or_speed_split,
+                 speed_and_load_available,
                  num_end_zeros=num_end_zeros,
                  num_start_zeros=num_start_zeros,
                  train_ratio=train_ratio,
@@ -68,6 +69,8 @@ class SampleMotorDataLimerick(CbM_DataFrame_Parser):
             os.path.join(root, self.__class__.__name__, 'processed')
 
         self.healthy_file_identifier = healthy_file_identifier
+        self.target_sampling_rate_Hz = target_sampling_rate_Hz
+        self.signal_duration_in_sec = signal_duration_in_sec
         main_df = self.gen_dataframe()
 
         super().__init__(root,
@@ -79,6 +82,7 @@ class SampleMotorDataLimerick(CbM_DataFrame_Parser):
                          eval_mode=eval_mode,
                          label_as_signal=label_as_signal,
                          random_or_speed_split=random_or_speed_split,
+                         speed_and_load_available=speed_and_load_available,
                          num_end_zeros=num_end_zeros,
                          num_start_zeros=num_start_zeros,
                          train_ratio=train_ratio,
@@ -113,6 +117,7 @@ class SampleMotorDataLimerick(CbM_DataFrame_Parser):
         Dataframe parser for Sample Motor Data Limerick.
         Reads csv files and returns file identifier, raw data,
         sensor frequency, speed, load and label.
+        The aw data size must be consecutive and bigger than window size.
         """
         df_raw = pd.read_csv(file_full_path, sep=';', header=None)
 
@@ -131,15 +136,24 @@ class SampleMotorDataLimerick(CbM_DataFrame_Parser):
         raw_data = df_raw[["Acceleration_x (g)", "Acceleration_y (g)", "Acceleration_z (g)"]]
         raw_data = raw_data.to_numpy()
 
+        window_size_assert_message = "CNN input length is incorrect."
+        assert self.signal_duration_in_sec <= (raw_data.shape[0] /
+                                               sensor_sr_Hz), window_size_assert_message
+
         return [os.path.basename(file_full_path).split('/')[-1],
                 raw_data, sensor_sr_Hz, speed, load, label]
 
     def __getitem__(self, index):
-        if self.accel_in_second_dim:
+        if self.accel_in_second_dim and not self.speed_and_load_available:
             signal, lbl = super().__getitem__(index)
             signal = torch.transpose(signal, 0, 1)
             lbl = lbl.transpose()
             return signal, lbl
+        if self.accel_in_second_dim and self.speed_and_load_available:
+            signal, lbl, speed, load = super().__getitem__(index)
+            signal = torch.transpose(signal, 0, 1)
+            lbl = lbl.transpose()
+            return signal, lbl, speed, load
         return super().__getitem__(index)
 
     def gen_dataframe(self):
@@ -178,7 +192,7 @@ class SampleMotorDataLimerick(CbM_DataFrame_Parser):
         for file in os.listdir(data_dir):
             full_path = os.path.join(data_dir, file)
             speed = int(file.split("_")[0]) / 60  # Hz
-            load = file.split("_")[-1][0:2]  # LBS
+            load = int(file.split("_")[-1][0:2])  # LBS
 
             if any(file.startswith(rpm_prefix + self.healthy_file_identifier)
                    for rpm_prefix in rpm_prefixes):
@@ -220,6 +234,7 @@ def samplemotordatalimerick_get_datasets(data, load_train=True, load_test=True,
                                          eval_mode=False,
                                          label_as_signal=True,
                                          random_or_speed_split=True,
+                                         speed_and_load_available=False,
                                          accel_in_second_dim=True,
                                          target_sampling_rate_Hz=2000,
                                          cnn_1dinput_len=256):
@@ -241,6 +256,7 @@ def samplemotordatalimerick_get_datasets(data, load_train=True, load_test=True,
                                                 eval_mode=eval_mode,
                                                 label_as_signal=label_as_signal,
                                                 random_or_speed_split=random_or_speed_split,
+                                                speed_and_load_available=speed_and_load_available,
                                                 accel_in_second_dim=accel_in_second_dim,
                                                 target_sampling_rate_Hz=target_sampling_rate_Hz,
                                                 cnn_1dinput_len=cnn_1dinput_len)
@@ -262,6 +278,7 @@ def samplemotordatalimerick_get_datasets(data, load_train=True, load_test=True,
                                                eval_mode=eval_mode,
                                                label_as_signal=label_as_signal,
                                                random_or_speed_split=random_or_speed_split,
+                                               speed_and_load_available=speed_and_load_available,
                                                accel_in_second_dim=accel_in_second_dim,
                                                target_sampling_rate_Hz=target_sampling_rate_Hz,
                                                cnn_1dinput_len=cnn_1dinput_len)
@@ -296,6 +313,7 @@ def samplemotordatalimerick_get_datasets_for_train(data,
     accel_in_second_dim = True
 
     random_or_speed_split = True
+    speed_and_load_available = False
 
     return samplemotordatalimerick_get_datasets(data, load_train, load_test,
                                                 signal_duration_in_sec=signal_duration_in_sec,
@@ -303,6 +321,7 @@ def samplemotordatalimerick_get_datasets_for_train(data,
                                                 eval_mode=eval_mode,
                                                 label_as_signal=label_as_signal,
                                                 random_or_speed_split=random_or_speed_split,
+                                                speed_and_load_available=speed_and_load_available,
                                                 accel_in_second_dim=accel_in_second_dim,
                                                 target_sampling_rate_Hz=target_sampling_rate_Hz,
                                                 cnn_1dinput_len=cnn_1dinput_len)
@@ -332,6 +351,7 @@ def samplemotordatalimerick_get_datasets_for_eval_with_anomaly_label(data,
     accel_in_second_dim = True
 
     random_or_speed_split = True
+    speed_and_load_available = False
 
     return samplemotordatalimerick_get_datasets(data, load_train, load_test,
                                                 signal_duration_in_sec=signal_duration_in_sec,
@@ -339,6 +359,7 @@ def samplemotordatalimerick_get_datasets_for_eval_with_anomaly_label(data,
                                                 eval_mode=eval_mode,
                                                 label_as_signal=label_as_signal,
                                                 random_or_speed_split=random_or_speed_split,
+                                                speed_and_load_available=speed_and_load_available,
                                                 accel_in_second_dim=accel_in_second_dim,
                                                 target_sampling_rate_Hz=target_sampling_rate_Hz,
                                                 cnn_1dinput_len=cnn_1dinput_len)
@@ -368,6 +389,7 @@ def samplemotordatalimerick_get_datasets_for_eval_with_signal(data,
     accel_in_second_dim = True
 
     random_or_speed_split = True
+    speed_and_load_available = False
 
     return samplemotordatalimerick_get_datasets(data, load_train, load_test,
                                                 signal_duration_in_sec=signal_duration_in_sec,
@@ -375,6 +397,7 @@ def samplemotordatalimerick_get_datasets_for_eval_with_signal(data,
                                                 eval_mode=eval_mode,
                                                 label_as_signal=label_as_signal,
                                                 random_or_speed_split=random_or_speed_split,
+                                                speed_and_load_available=speed_and_load_available,
                                                 accel_in_second_dim=accel_in_second_dim,
                                                 target_sampling_rate_Hz=target_sampling_rate_Hz,
                                                 cnn_1dinput_len=cnn_1dinput_len)
