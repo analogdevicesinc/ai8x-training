@@ -390,7 +390,7 @@ class CbM_DataFrame_Parser(Dataset):  # pylint: disable=too-many-instance-attrib
                                      np.ones([len(anomaly_features), 1])), axis=0)
         # Save pickle file
         pickle.dump((self.signal_list, self.lbl_list, self.speed_list, self.load_list),
-                     open(self.dataset_pkl_file_path, 'wb'))
+                    open(self.dataset_pkl_file_path, 'wb'))
 
     def __len__(self):
         if self.is_truncated:

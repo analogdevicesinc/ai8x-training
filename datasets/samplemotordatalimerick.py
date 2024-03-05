@@ -145,7 +145,7 @@ class SampleMotorDataLimerick(CbM_DataFrame_Parser):
 
     def __getitem__(self, index):
         if self.accel_in_second_dim and not self.speed_and_load_available:
-            signal, lbl = super().__getitem__(index)
+            signal, lbl = super().__getitem__(index)  # pylint: disable=unbalanced-tuple-unpacking
             signal = torch.transpose(signal, 0, 1)
             lbl = lbl.transpose()
             return signal, lbl
