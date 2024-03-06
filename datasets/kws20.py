@@ -1,7 +1,18 @@
+###################################################################################################
 #
-# Copyright (c) 2018 Intel Corporation
-# Portions Copyright (C) 2019-2023 Maxim Integrated Products, Inc.
-# Portions Copyright (C) 2023-2024 Analog Devices, Inc.
+# Copyright (C) 2023-2024 Analog Devices, Inc. All Rights Reserved.
+# This software is proprietary and confidential to Analog Devices, Inc. and its licensors.
+#
+###################################################################################################
+#
+# Copyright (C) 2019-2023 Maxim Integrated Products, Inc. All Rights Reserved.
+#
+# Maxim Integrated Products, Inc. Default Copyright Notice:
+# https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
+#
+###################################################################################################
+#
+# Portions Copyright (c) 2018 Intel Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -149,10 +160,10 @@ class KWS:
                       'Using 0.')
                 self.augmentation['aug_num'] = 0
             elif self.augmentation['aug_num'] != 0:
-                if 'noise_var' not in augmentation:
-                    print('No key `noise_var` in input augmentation dictionary! ',
-                          'Using defaults: [Min: 0., Max: 1.]')
-                    self.augmentation['noise_var'] = {'min': 0., 'max': 1.}
+                if 'snr' not in augmentation:
+                    print('No key `snr` in input augmentation dictionary! ',
+                          'Using defaults: [Min: -5.0, Max: 20.]')
+                    self.augmentation['snr'] = {'min': -5.0, 'max': 20.0}
                 if 'shift' not in augmentation:
                     print('No key `shift` in input augmentation dictionary! '
                           'Using defaults: [Min:-0.1, Max: 0.1]')
@@ -317,7 +328,7 @@ class KWS:
 
                     precursor_len = 30 * 128
                     postcursor_len = 98 * 128
-                    utterance_threshold = 30
+                    utternace_threshold = 30
 
                     while True:
                         if chunk_start + postcursor_len > len(data):
@@ -328,7 +339,7 @@ class KWS:
                         avg = 1000 * np.average(abs(chunk))
                         i += 128
 
-                        if avg > utterance_threshold and chunk_start >= precursor_len:
+                        if avg > utternace_threshold and chunk_start >= precursor_len:
                             print(f"\r Converting {converted_count + 1}/{total_count} "
                                   f"to {frame_count + 1} segments", end=" ")
                             frame = data[chunk_start - precursor_len:chunk_start + postcursor_len]
@@ -409,12 +420,13 @@ class KWS:
     def shift_and_noise_augment(self, audio, shift_limits):
         """Augments audio by adding random shift and noise.
         """
-        random_noise_var_coeff = np.random.uniform(self.augmentation['noise_var']['min'],
-                                                   self.augmentation['noise_var']['max'])
+        random_snr_coeff = int(np.random.uniform(self.augmentation['snr']['min'],
+                               self.augmentation['snr']['max']))
+        random_snr_coeff = 10 ** (random_snr_coeff / 10)
         random_shift_sample = np.random.randint(shift_limits[0], shift_limits[1])
 
         aug_audio = self.shift(audio, random_shift_sample)
-        aug_audio = self.add_quantized_white_noise(aug_audio, random_noise_var_coeff)
+        aug_audio = self.add_quantized_white_noise(aug_audio, random_snr_coeff)
 
         return aug_audio
 
@@ -428,30 +440,32 @@ class KWS:
 
         # reshape to 2D
         inp = self.__reshape_audio(inp)
-
         inp = inp.type(torch.FloatTensor)
 
         if not self.save_unquantized:
-            inp /= 256
+            inp = inp / 256
         if self.transform is not None:
             inp = self.transform(inp)
 
         return inp, target
 
     @staticmethod
-    def add_white_noise(audio, noise_var_coeff):
-        """Adds zero mean Gaussian noise to the audio with specified variance.
+    def add_white_noise(audio, random_snr_coeff):
+        """Adds zero mean Gaussian noise to image with specified SNR value.
         """
-        coeff = noise_var_coeff * np.mean(np.abs(audio))
-        noisy_audio = audio + coeff * np.random.randn(len(audio))
-        return noisy_audio
+        signal_var = torch.var(audio)
+        noise_var_coeff = signal_var / random_snr_coeff
+        noise = np.random.normal(0, torch.sqrt(noise_var_coeff), len(audio))
+        return audio + torch.Tensor(noise)
 
     @staticmethod
-    def add_quantized_white_noise(audio, noise_var_coeff):
-        """Adds zero mean Gaussian noise to the audio with specified variance.
+    def add_quantized_white_noise(audio, random_snr_coeff):
+        """Adds zero mean Gaussian noise to image with specified SNR value.
         """
-        coeff = noise_var_coeff * torch.mean(torch.abs(audio.type(torch.float)-128))
-        noise = (coeff * torch.randn(len(audio))).type(torch.int16)
+        signal_var = torch.var(audio.type(torch.float))
+        noise_var_coeff = signal_var / random_snr_coeff
+        noise = np.random.normal(0, torch.sqrt(noise_var_coeff), len(audio))
+        noise = torch.Tensor(noise).type(torch.int16)
         return (audio + noise).clip(0, 255).type(torch.uint8)
 
     @staticmethod
@@ -504,7 +518,7 @@ class KWS:
             q_data = np.clip(q_data, 0, max_val)
         return np.uint8(q_data)
 
-    def get_audio_endpoints(self, audio, fs):
+    def energy_detector(self, audio, fs):
         """Future: May implement a method to detect the beginning & end of voice activity in audio.
         Currently, it returns end points compatible with augmentation['shift'] values
         """
@@ -531,7 +545,7 @@ class KWS:
         aug_audio = [None] * (n_augment + 1)
         aug_speed = np.ones((n_augment + 1,))
         shift_limits = np.zeros((n_augment + 1, 2))
-        voice_begin_idx, voice_end_idx = self.get_audio_endpoints(audio, fs)
+        voice_begin_idx, voice_end_idx = self.energy_detector(audio, fs)
         aug_audio[0] = audio
         for i in range(n_augment):
             aug_audio[i+1], aug_speed[i+1] = self.speed_augment(audio, fs, sample_no=i)
@@ -712,8 +726,8 @@ def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6):
     split is used by default.
 
     Data is augmented to 3x duplicate data by random stretch/shift and randomly adding noise where
-    the stretching coefficient, shift amount and noise variance are randomly selected between
-    0.8 and 1.3, -0.1 and 0.1, 0 and 1, respectively.
+    the stretching coefficient, shift amount and noise SNR level are randomly selected between
+    0.8 and 1.3, -0.1 and 0.1, 5 and 30, respectively.
     """
     (data_dir, args) = data
 
@@ -728,7 +742,7 @@ def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6):
         raise ValueError(f'Unsupported num_classes {num_classes}')
 
     augmentation = {'aug_num': 2, 'shift': {'min': -0.1, 'max': 0.1},
-                    'noise_var': {'min': 0, 'max': 1.0}}
+                    'snr': {'min': -5.0, 'max': 20.}}
     quantization_scheme = {'compand': False, 'mu': 10}
 
     if load_train:
