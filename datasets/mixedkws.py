@@ -24,10 +24,10 @@ import numpy as np
 import torch
 from torchvision import transforms
 
+import ai8x
+
 from .kws20 import KWS_35_get_unquantized_datasets
 from .msnoise import MSnoise_get_unquantized_datasets
-
-import ai8x
 
 
 class MixedKWS:
