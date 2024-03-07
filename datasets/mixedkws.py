@@ -57,7 +57,7 @@ class MixedKWS:
                   'sheila': 24, 'six': 25, 'stop': 26, 'three': 27, 'tree': 28, 'two': 29,
                   'up': 30, 'visual': 31, 'wow': 32, 'yes': 33, 'zero': 34}
 
-    def __init__(self, root, classes, d_type, snr, n_augment=1,
+    def __init__(self, root, classes, d_type, snr, n_augment=3,
                  transform=None, quantization_scheme=None, download=False):
 
         self.root = root
@@ -72,7 +72,6 @@ class MixedKWS:
 
         if self.save_unquantized:
             self.data_file = f'dataset_unquantized_{str(self.snr)}dB.pt'
-
         else:
             self.data_file = f'dataset_quantized_{str(self.snr)}dB.pt'
 
@@ -212,21 +211,20 @@ class MixedKWS:
         return np.uint8(q_data)
 
     @staticmethod
-    def snr_mixer(clean, noise, snr):
-        """Mix audio with noise at a given SNR level"""
+    def __snr_mixer(clean, noise, snr):
         # Normalizing to rms equal to 1
-        rmsclean = torch.mean(clean[:, :125]**2)**0.5
+        rmsclean = np.mean(clean[:, :125]**2)**0.5
         scalarclean = 1 / rmsclean
         clean = clean * scalarclean
 
-        rmsnoise = torch.mean(noise[:, :125]**2)**0.5
+        rmsnoise = np.mean(noise[:, :125]**2)**0.5
         scalarnoise = 1 / rmsnoise
+        noise = noise * scalarnoise
 
         # Set the noise level for a given SNR
         cleanfactor = 10**(snr/20)
         noisyspeech = cleanfactor*clean + noise
         noisyspeech = noisyspeech / (scalarnoise + cleanfactor * scalarclean)
-
         return noisyspeech
 
     def __gen_datasets(self, exp_len=16384, row_len=128, overlap_ratio=0):
@@ -246,6 +244,7 @@ class MixedKWS:
         train_speech, test_speech = KWS_35_get_unquantized_datasets((self.root, args))
         train_noise, test_noise = MSnoise_get_unquantized_datasets((self.root, args))
 
+        assert train_speech and test_speech and train_noise and test_noise
         train_speech.data = train_speech.data.numpy()
         test_speech.data = test_speech.data.numpy()
         train_noise.data = train_noise.data.numpy()
@@ -275,8 +274,8 @@ class MixedKWS:
                         if np.any(random_noise):
                             break
 
-                    noisy_speech = self.snr_mixer(speech[i, :, :],
-                                                  random_noise, self.snr)
+                    noisy_speech = self.__snr_mixer(speech[i, :, :],
+                                                    random_noise, self.snr)
                     if not self.save_unquantized:
                         data_in[new_ind, :, :] = (self.quantize_audio(noisy_speech,
                                                   num_bits=self.quantization['bits'],
@@ -336,7 +335,7 @@ def MixedKWS_get_datasets(data, snr, load_train=True, load_test=True, num_classe
     else:
         raise ValueError(f'Unsupported num_classes {num_classes}')
 
-    n_augment = 1
+    n_augment = 3
     quantization_scheme = {'compand': False, 'mu': 10}
 
     if load_train:
