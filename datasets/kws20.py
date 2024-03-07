@@ -47,10 +47,9 @@ from torchvision import transforms
 import librosa
 import soundfile as sf
 
+import ai8x
 from datasets.msnoise import MSnoise
 from datasets.signalmixer import signalmixer
-
-import ai8x
 
 
 class KWS:
