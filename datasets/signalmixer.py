@@ -34,8 +34,6 @@ Classes and functions used to create noisy keyword spotting dataset.
 import numpy as np
 import torch
 
-from datasets import kws20, msnoise
-
 
 class signalmixer:
     """
@@ -43,11 +41,11 @@ class signalmixer:
     length using a noise dataset and a speech dataset and a specified SNR level.
 
     Args:
-    signal_dataset(object): KWS dataset object.
+    signal_dataset(object): Dataset object.
     snr_range(list,int): SNR level range to be used in the snr mixing operation.
     noise_type(string): Noise kind that will be applied to the speech dataset.
-    apply_prob(int): Percentage of noise that will be applied to speech dataset.
-    noise_dataset(object, optional): MSnoise dataset object.
+    apply_prob(int): Probability of noise that will be applied to speech dataset.
+    noise_dataset(object, optional): Noise dataset object.
     """
 
     def __init__(self, signal_dataset, snr_range, noise_type, apply_prob=1, noise_dataset=None):
@@ -63,7 +61,7 @@ class signalmixer:
         self.snr_range = snr_range
 
         if apply_prob > 1:
-            print('Noise will be applied to the whole dataset!')
+            print('Noise will be applied to the whole dataset! \n')
             self.apply_prob = 1
         else:
             self.apply_prob = apply_prob
@@ -95,7 +93,7 @@ class signalmixer:
 
     def single_snr_mixer(self, signal):
         '''
-        creates mixed signals using an SNR level and the noise dataset
+        Creates mixed signals using an SNR level and the noise dataset
         '''
         idx_noise = np.random.randint(0, len(self.data))
         noise, _ = self.noise_dataset[idx_noise]
@@ -123,7 +121,8 @@ class signalmixer:
 
     def white_noise_mixer(self, signal):
 
-        '''creates mixed signal dataset using the SNR level and white noise
+        '''Creates White Noise and apply it to the signal using the specified SNR level.
+        Returns the mixed signal with white noise.
         '''
         snr = self.snr_range
         if snr[0] == snr[-1]:
@@ -150,214 +149,3 @@ class signalmixer:
         noisyspeech = noisyspeech / (scalarnoise + cleanfactor * scalarclean)
 
         return noisyspeech
-
-
-def signalmixer_get_datasets(data, snr_range, noise_type, desired_probs, apply_prob,
-                             load_train=True, load_test=True):
-    """
-    Returns the KWS dataset mixed with MSnoise dataset.
-    """
-    (data_dir, _) = data
-
-    kws_train_dataset, kws_test_dataset = kws20.KWS_20_get_datasets(
-        data, load_train, load_test)
-
-    if load_train:
-        noise_dataset_train = msnoise.MSnoise(root=data_dir, classes=noise_type,
-                                              d_type='train', dataset_len=len(kws_train_dataset),
-                                              desired_probs=desired_probs,
-                                              transform=None, quantize=False, download=False)
-
-        train_dataset = signalmixer(signal_dataset=kws_train_dataset, snr_range=snr_range,
-                                    noise_type=noise_type, apply_prob=apply_prob,
-                                    noise_dataset=noise_dataset_train)
-    else:
-        train_dataset = None
-
-    if load_test:
-        test_dataset = kws_test_dataset
-    else:
-        test_dataset = None
-
-    return train_dataset, test_dataset
-
-
-def signalmixer_all_get_datasets(data, load_train=True, load_test=True):
-    """
-    Returns the KWS dataset mixed with MSnoise dataset.
-    It uses %80 probability for addition of noise.
-    Noises are applied between -5 to 10 dB.
-    """
-    snr_range = range(-5, 10)
-    noise_type = ['AirConditioner', 'AirportAnnouncements',
-                  'Babble', 'Bus', 'CafeTeria', 'Car',
-                  'CopyMachine', 'Field', 'Hallway', 'Kitchen',
-                  'LivingRoom', 'Metro', 'Munching', 'NeighborSpeaking',
-                  'Office', 'Park', 'Restaurant', 'ShuttingDoor',
-                  'Square', 'SqueakyChair', 'Station', 'Traffic',
-                  'Typing', 'VacuumCleaner', 'WasherDryer', 'Washing']
-    desired_probs = None
-    apply_prob = 0.8
-
-    return signalmixer_get_datasets(data=data, snr_range=snr_range, noise_type=noise_type,
-                                    desired_probs=desired_probs, apply_prob=apply_prob,
-                                    load_train=load_train, load_test=load_test)
-
-
-def signalmixer_all_100_get_datasets(data, load_train=True, load_test=True):
-    """
-    Returns the KWS dataset mixed with MSnoise dataset.
-    It uses %100 probability for addition of noise.
-    Noises are applied between -5 to 10 dB.
-    """
-    snr_range = range(-5, 10)
-    noise_type = ['AirConditioner', 'AirportAnnouncements',
-                  'Babble', 'Bus', 'CafeTeria', 'Car',
-                  'CopyMachine', 'Field', 'Hallway', 'Kitchen',
-                  'LivingRoom', 'Metro', 'Munching', 'NeighborSpeaking',
-                  'Office', 'Park', 'Restaurant', 'ShuttingDoor',
-                  'Square', 'SqueakyChair', 'Station', 'Traffic',
-                  'Typing', 'VacuumCleaner', 'WasherDryer', 'Washing']
-    desired_probs = None
-    apply_prob = 1
-
-    return signalmixer_get_datasets(data=data, snr_range=snr_range, noise_type=noise_type,
-                                    desired_probs=desired_probs, apply_prob=apply_prob,
-                                    load_train=load_train, load_test=load_test)
-
-
-def signalmixer_all_snr_get_datasets(data, load_train=True, load_test=True):
-    """
-    Returns the KWS dataset mixed with MSnoise dataset.
-    It uses %80 probability for addition of noise.
-    Noises are applied between 0 to 15 dB.
-    """
-    snr_range = range(0, 15)
-    noise_type = ['AirConditioner', 'AirportAnnouncements',
-                  'Babble', 'Bus', 'CafeTeria', 'Car',
-                  'CopyMachine', 'Field', 'Hallway', 'Kitchen',
-                  'LivingRoom', 'Metro', 'Munching', 'NeighborSpeaking',
-                  'Office', 'Park', 'Restaurant', 'ShuttingDoor',
-                  'Square', 'SqueakyChair', 'Station', 'Traffic',
-                  'Typing', 'VacuumCleaner', 'WasherDryer', 'Washing']
-    desired_probs = None
-    apply_prob = 0.8
-
-    return signalmixer_get_datasets(data=data, snr_range=snr_range, noise_type=noise_type,
-                                    desired_probs=desired_probs, apply_prob=apply_prob,
-                                    load_train=load_train, load_test=load_test)
-
-
-def signalmixer_babble_get_datasets(data, load_train=True, load_test=True):
-    """
-    Returns the KWS dataset mixed with MSnoise's Babble Noise.
-    It uses %80 probability for addition of noise.
-    Noises are applied between -5 to 10 dB.
-    """
-    snr_range = range(-5, 10)
-    noise_type = ['Babble']
-    desired_probs = None
-    apply_prob = 0.8
-
-    return signalmixer_get_datasets(data=data, snr_range=snr_range, noise_type=noise_type,
-                                    desired_probs=desired_probs, apply_prob=apply_prob,
-                                    load_train=load_train, load_test=load_test)
-
-
-def signalmixer_vacuum_get_datasets(data, load_train=True, load_test=True):
-    """
-    Returns the KWS dataset mixed with MSnoise's VacuumCleaner Noise.
-    It uses %80 probability for addition of noise.
-    Noises are applied between -5 to 10 dB.
-    """
-    snr_range = range(-5, 10)
-    noise_type = ['VacuumCleaner']
-    desired_probs = None
-    apply_prob = 0.8
-
-    return signalmixer_get_datasets(data=data, snr_range=snr_range, noise_type=noise_type,
-                                    desired_probs=desired_probs, apply_prob=apply_prob,
-                                    load_train=load_train, load_test=load_test)
-
-
-def signalmixer_mixed_get_datasets(data, load_train=True, load_test=True):
-    """
-    Returns the KWS dataset mixed with MSnoise's Babble, VacuumCleaner, Typing & CopyMachine Noise.
-    It uses %80 probability for addition of noise.
-    Noises are applied between -5 to 10 dB.
-    """
-    snr_range = range(-5, 10)
-    noise_type = ['Babble', 'VacuumCleaner', 'Typing', 'CopyMachine']
-    desired_probs = [0.4, 0.2, 0.2, 0.2]
-    apply_prob = 0.8
-
-    return signalmixer_get_datasets(data=data, snr_range=snr_range, noise_type=noise_type,
-                                    desired_probs=desired_probs, apply_prob=apply_prob,
-                                    load_train=load_train, load_test=load_test)
-
-
-datasets = [
-    {
-        'name': 'signalmixer',
-        'input': (128, 128),
-        'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
-                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
-                   'UNKNOWN'),
-        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
-        'loader': signalmixer_get_datasets,
-    },
-    {
-        'name': 'signalmixer_all',
-        'input': (128, 128),
-        'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
-                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
-                   'UNKNOWN'),
-        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
-        'loader': signalmixer_all_get_datasets,
-    },
-    {
-        'name': 'signalmixer_all_100',
-        'input': (128, 128),
-        'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
-                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
-                   'UNKNOWN'),
-        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
-        'loader': signalmixer_all_100_get_datasets,
-    },
-    {
-        'name': 'signalmixer_all_snr',
-        'input': (128, 128),
-        'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
-                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
-                   'UNKNOWN'),
-        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
-        'loader': signalmixer_all_snr_get_datasets,
-    },
-    {
-        'name': 'signalmixer_babble',
-        'input': (128, 128),
-        'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
-                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
-                   'UNKNOWN'),
-        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
-        'loader': signalmixer_babble_get_datasets,
-    },
-    {
-        'name': 'signalmixer_vacuum',
-        'input': (128, 128),
-        'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
-                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
-                   'UNKNOWN'),
-        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
-        'loader': signalmixer_vacuum_get_datasets,
-    },
-    {
-        'name': 'signalmixer_mixed',
-        'input': (128, 128),
-        'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
-                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
-                   'UNKNOWN'),
-        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
-        'loader': signalmixer_mixed_get_datasets,
-    },
-]

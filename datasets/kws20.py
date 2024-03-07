@@ -49,6 +49,9 @@ import soundfile as sf
 
 import ai8x
 
+from datasets.msnoise import MSnoise
+from datasets.signalmixer import signalmixer
+
 
 class KWS:
     """
@@ -162,7 +165,7 @@ class KWS:
             elif self.augmentation['aug_num'] != 0:
                 if 'snr' not in augmentation:
                     print('No key `snr` in input augmentation dictionary! ',
-                          'Using defaults: [Min: -5.0, Max: 20.]')
+                          'Using defaults: [Min: -5.0, Max: 20.0]')
                     self.augmentation['snr'] = {'min': -5.0, 'max': 20.0}
                 if 'shift' not in augmentation:
                     print('No key `shift` in input augmentation dictionary! '
@@ -451,7 +454,7 @@ class KWS:
 
     @staticmethod
     def add_white_noise(audio, random_snr_coeff):
-        """Adds zero mean Gaussian noise to image with specified SNR value.
+        """Adds zero mean Gaussian noise to signal with specified SNR value.
         """
         signal_var = torch.var(audio)
         noise_var_coeff = signal_var / random_snr_coeff
@@ -460,7 +463,7 @@ class KWS:
 
     @staticmethod
     def add_quantized_white_noise(audio, random_snr_coeff):
-        """Adds zero mean Gaussian noise to image with specified SNR value.
+        """Adds zero mean Gaussian noise to signal with specified SNR value.
         """
         signal_var = torch.var(audio.type(torch.float))
         noise_var_coeff = signal_var / random_snr_coeff
@@ -837,6 +840,50 @@ def KWS_35_get_unquantized_datasets(data, load_train=True, load_test=True):
     return KWS_get_unquantized_datasets(data, load_train, load_test, num_classes=35)
 
 
+def KWS_20_msnoise_mixed_get_datasets(data, load_train=True, load_test=True,
+                                      apply_prob=0.8, snr_range=(-5, 10),
+                                      noise_type=list(MSnoise.class_dict.keys()),
+                                      desired_probs=None):
+    """
+    Returns the KWS dataset mixed with MSnoise dataset. Only training set will be mixed
+    with MSnoise. Selected noise types will be applied to the training dataset using a randomly
+    generated SNR value between the previously selected snr range. Noise will be applied to the
+    training data using the application probability accordingly.
+
+    Default parameter values are selected as:
+    apply_prob --> 0.8 probability for application of additional noise on training data.
+    snr_range  --> [-5, 10] dB SNR range to be used during the SNR selection for additional noise.
+    noise_type --> All noise types in the noise dataset.
+    """
+
+    snr_range = range(snr_range[0], snr_range[1])
+
+    (data_dir, _) = data
+
+    kws_train_dataset, kws_test_dataset = KWS_20_get_datasets(
+        data, load_train, load_test)
+
+    if load_train:
+        noise_dataset_train = MSnoise(root=data_dir, classes=noise_type,
+                                      d_type='train', dataset_len=len(kws_train_dataset),
+                                      desired_probs=desired_probs,
+                                      transform=None, quantize=False, download=False)
+
+        train_dataset = signalmixer(signal_dataset=kws_train_dataset,
+                                    snr_range=snr_range,
+                                    noise_type=noise_type, apply_prob=apply_prob,
+                                    noise_dataset=noise_dataset_train)
+    else:
+        train_dataset = None
+
+    if load_test:
+        test_dataset = kws_test_dataset
+    else:
+        test_dataset = None
+
+    return train_dataset, test_dataset
+
+
 datasets = [
     {
         'name': 'KWS',  # 6 keywords
@@ -867,4 +914,13 @@ datasets = [
                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
         'loader': KWS_35_get_unquantized_datasets,
     },
+    {
+        'name': 'KWS_20_msnoise_mixed',
+        'input': (128, 128),
+        'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
+                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
+                   'UNKNOWN'),
+        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
+        'loader': KWS_20_msnoise_mixed_get_datasets,
+    }
 ]
