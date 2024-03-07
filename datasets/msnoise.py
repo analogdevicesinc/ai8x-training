@@ -194,7 +194,7 @@ class MSnoise:
         with warnings.catch_warnings():
             warnings.simplefilter('error')
 
-            labels = self.classes
+            labels = list(self.classes)
             train_list = sorted(os.listdir(self.noise_train_folder))
             test_list = sorted(os.listdir(self.noise_test_folder))
             labels_train = set(sorted({i.split('_')[0] for i in train_list if '_' in i}))

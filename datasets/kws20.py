@@ -841,7 +841,7 @@ def KWS_35_get_unquantized_datasets(data, load_train=True, load_test=True):
 
 def KWS_20_msnoise_mixed_get_datasets(data, load_train=True, load_test=True,
                                       apply_prob=0.8, snr_range=(-5, 10),
-                                      noise_type=list(MSnoise.class_dict.keys()),
+                                      noise_type=MSnoise.class_dict.keys(),
                                       desired_probs=None):
     """
     Returns the KWS dataset mixed with MSnoise dataset. Only training set will be mixed
