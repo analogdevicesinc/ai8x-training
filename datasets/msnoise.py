@@ -67,7 +67,7 @@ class MSnoise:
                   'Square': 18, 'SqueakyChair': 19, 'Station': 20, 'TradeShow': 21, 'Traffic': 22,
                   'Typing': 23, 'VacuumCleaner': 24, 'WasherDryer': 25, 'Washing': 26}
 
-    def __init__(self, root, classes, d_type, dataset_len, exp_len=16384, desired_probs=None,
+    def __init__(self, root, classes, d_type, dataset_len, exp_len=16384, desired_probs=[1],
                  transform=None, quantize=False, download=False):
         self.root = root
         self.classes = classes
