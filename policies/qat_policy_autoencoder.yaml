@@ -1,0 +1,4 @@
+---
+start_epoch: 200
+weight_bits: 8
+shift_quantile: 0.995
