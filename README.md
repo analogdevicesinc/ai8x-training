@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-February 26, 2024
+March 8, 2024
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -329,7 +329,7 @@ To create the virtual environment and install basic wheels:
 $ cd ai8x-training
 ```
 
-The default branch is “develop” which is updated most frequently. If you want to use the “master” branch instead, switch to “master” using `git checkout master`.
+The default branch is “develop” which is updated most frequently. If you want to use the “main” branch instead, switch to “main” using `git checkout main`.
 
 If using pyenv, set the local directory to use Python 3.8.11.
 
@@ -394,7 +394,7 @@ For all other systems, including macOS, and CUDA 10.2 on Linux:
 
 ##### Repository Branches
 
-By default, the `develop` branch is checked out. This branch is the most frequently updated branch and it contains the latest improvements to the project. To switch to the main branch that is updated less frequently, but may be more stable, use the command `git checkout master`.
+By default, the `develop` branch is checked out. This branch is the most frequently updated branch and it contains the latest improvements to the project. To switch to the main branch that is updated less frequently, but may be more stable, use the command `git checkout main`.
 
 ###### TensorFlow / Keras
 
@@ -481,7 +481,7 @@ $ cd <your/project>
 $ cd ai8x-synthesis
 ```
 
-If you want to use the main branch, switch to “master” using the optional command `git checkout master`.
+If you want to use the main branch, switch to “main” using the optional command `git checkout main`.
 
 If using pyenv, run:
 
@@ -738,7 +738,7 @@ The number of discarded pixels is network specific and dependent on pooling stri
 
 *Note: Streaming mode requires the use of [FIFOs](#fifos).*
 
-For concrete examples on how to implement streaming mode with a camera, please see the [Camera Streaming Guide](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/Guides/Camera_Streaming_Guide.md).
+For concrete examples on how to implement streaming mode with a camera, please see the [Camera Streaming Guide](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/main/Guides/Camera_Streaming_Guide.md).
 
 #### FIFOs
 
@@ -2214,7 +2214,7 @@ The following table describes the most important command line arguments for `ai8
 
 ### YAML Network Description
 
-The [quick-start guide](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/Guides/YAML%20Quickstart.md) provides a short overview of the purpose and structure of the YAML network description file.
+The [quick-start guide](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/main/Guides/YAML%20Quickstart.md) provides a short overview of the purpose and structure of the YAML network description file.
 
 If `yamllint` is installed and available in the shell path, it is automatically run against the configuration file and all warnings and errors are reported.
 *Note: The name of the linter can be changed using the `--yamllint` command line argument.*
@@ -3029,7 +3029,7 @@ To run another inference, ensure all quadrants are disabled (stopping the state 
 The generated code is split between API code (in `cnn.c`) and data-dependent code in `main.c` or `main_riscv.c`. The data-dependent code is based on a known-answer test. The `main()` function shows the proper sequence of steps to load and configure the CNN accelerator, run it, unload it, and verify the result.
 
 `void load_input(void);`
-Load the example input. This function can serve as a template for loading data into the CNN accelerator. Note that the clocks and power to the accelerator must be enabled first. If this is skipped, the device may appear to hang and the [recovery procedure](https://github.com/MaximIntegratedAI/MaximAI_Documentation/tree/master/MAX78000_Feather#how-to-unlock-a-max78000-that-can-no-longer-be-programmed) may have to be used.
+Load the example input. This function can serve as a template for loading data into the CNN accelerator. Note that the clocks and power to the accelerator must be enabled first. If this is skipped, the device may appear to hang and the [recovery procedure](https://github.com/MaximIntegratedAI/MaximAI_Documentation/tree/main/MAX78000_Feather#how-to-unlock-a-max78000-that-can-no-longer-be-programmed) may have to be used.
 
 `int check_output(void);`
 This function verifies that the known-answer test works correctly in hardware (using the example input). This function is typically not needed in the final application.
@@ -3223,7 +3223,7 @@ There can be many reasons why the known-answer test (KAT) fails for a given netw
 * For very short and small networks, disable the use of WFI (wait for interrupt) instructions while waiting for completion of the CNN computations by using the command line option `--no-wfi`. *Explanation: In these cases, the network terminates more quickly than the time it takes between testing for completion and executing the WFI instruction, so the WFI instruction is never interrupted and the code may appear to hang.*
 * The `--no-wfi` option can also be useful when trying to debug code, since the debugger loses connection when the device enters sleep mode using `__WFI()`.
 * By default, there is a two-second delay at the beginning of the code. This time allows the debugger to take control before the device enters any kind of sleep mode. `--no-wfi` disables sleep mode (see also the related information [above](#known-answer-test-kat-console-does-not-print-passfail)). The time delay can be modified using the `--debugwait` option.
-  If the delay is too short or skipped altogether, and the device does not wake at the end of execution, the device may appear to hang and the [recovery procedure](https://github.com/MaximIntegratedAI/MaximAI_Documentation/tree/master/MAX78000_Feather#how-to-unlock-a-max78000-that-can-no-longer-be-programmed) may have to be used in order to load new code or to debug code.
+  If the delay is too short or skipped altogether, and the device does not wake at the end of execution, the device may appear to hang and the [recovery procedure](https://github.com/MaximIntegratedAI/MaximAI_Documentation/tree/main/MAX78000_Feather#how-to-unlock-a-max78000-that-can-no-longer-be-programmed) may have to be used in order to load new code or to debug code.
 * For very large and deep networks, enable the boost power supply using the `--boost` command line option. On the EVkit, the boost supply is connected to port pin P2.5, so the command line option is `--boost 2.5`.
 * The default compiler optimization level is `-O2`, and incorrect code may be generated under rare circumstances. Lower the optimization level in the generated `Makefile` to `-O1`, clean (`make distclean && make clean`), and rebuild the project (`make`). If this solves the problem, one of the possible reasons is that code is missing the `volatile` keyword for certain variables.
   To permanently adjust the default compiler optimization level, modify `MXC_OPTIMIZE_CFLAGS` in `assets/embedded-ai85/templateMakefile` for Arm code and `assets/embedded-riscv-ai85/templateMakefile.RISCV` for RISC-V code.
@@ -3258,7 +3258,7 @@ When running C code generated with `--energy`, the power display on the EVKit wi
 
 *Note: MAX78000 uses LED1 and LED2 to trigger power measurement via MAX32625 and MAX34417.*
 
-See the [benchmarking guide](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/Guides/MAX7800x%20Power%20Monitor%20and%20Energy%20Benchmarking%20Guide.pdf) for more information about benchmarking.
+See the [benchmarking guide](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/main/Guides/MAX7800x%20Power%20Monitor%20and%20Energy%20Benchmarking%20Guide.pdf) for more information about benchmarking.
 
 
 
@@ -3286,7 +3286,7 @@ Code should not generate any warnings in any of the tools (some of the component
 (ai8x-synthesis) $ pip3 install flake8 pylint mypy isort
 ```
 
-The GitHub projects use the [GitHub Super-Linter](https://github.com/github/super-linter) to automatically verify push operations and pull requests. The Super-Linter can be installed locally using [podman](https://podman.io) (or Docker), see [installation instructions](https://github.com/github/super-linter/blob/master/docs/run-linter-locally.md).
+The GitHub projects use the [GitHub Super-Linter](https://github.com/github/super-linter) to automatically verify push operations and pull requests. The Super-Linter can be installed locally using [podman](https://podman.io) (or Docker), see [installation instructions](https://github.com/github/super-linter/blob/main/docs/run-linter-locally.md).
 To run locally, create a clean copy of the repository and run the following command from the project directory (i.e., `ai8x-training` or `ai8x-synthesis`):
 
 ```shell
@@ -3295,11 +3295,11 @@ $ podman run --rm -e RUN_LOCAL=true -e VALIDATE_MARKDOWN=false -e VALIDATE_PYTHO
 
 ### Submitting Changes
 
-Do not try to push any changes into the master branch. Instead, create a fork and submit a pull request against the `develop` branch. The easiest way to do this is using a [graphical client](#additional-software) such as Fork or GitHub Desktop.
+Do not try to push any changes into the main branch. Instead, create a fork and submit a pull request against the `develop` branch. The easiest way to do this is using a [graphical client](#additional-software) such as Fork or GitHub Desktop.
 
 *Note: After creating the fork, you must re-enable actions in the “Actions” tab of the repository on GitHub.*
 
 The following document has more information:
-<https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/CONTRIBUTING.md>
+<https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/main/CONTRIBUTING.md>
 
 ---

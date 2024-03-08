@@ -3,9 +3,9 @@ name: Lint code
 
 on:
   push:
-    branches-ignore: [master]
+    branches-ignore: [main, master]
   pull_request:
-    branches-ignore: [master]
+    branches-ignore: [main, master]
 
 jobs:
   build:
