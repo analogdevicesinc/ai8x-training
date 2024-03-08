@@ -55,6 +55,8 @@ def extract_reconstructions_losses(model, dataloader, device):
                 signal, label = tup
             elif len(tup) == 3:
                 signal, label, _ = tup
+            elif len(tup) == 4:
+                signal, label, _, _ = tup
 
             signal = signal.to(device)
             label = label.type(torch.long).to(device)
