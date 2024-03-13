@@ -1,18 +1,7 @@
-###################################################################################################
 #
-# Copyright (C) 2023-2024 Analog Devices, Inc. All Rights Reserved.
-# This software is proprietary and confidential to Analog Devices, Inc. and its licensors.
-#
-###################################################################################################
-#
-# Copyright (C) 2019-2023 Maxim Integrated Products, Inc. All Rights Reserved.
-#
-# Maxim Integrated Products, Inc. Default Copyright Notice:
-# https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
-#
-###################################################################################################
-#
-# Portions Copyright (c) 2018 Intel Corporation
+# Copyright (c) 2018 Intel Corporation
+# Portions Copyright (C) 2019-2023 Maxim Integrated Products, Inc.
+# Portions Copyright (C) 2023-2024 Analog Devices, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -445,7 +434,7 @@ class KWS:
         inp = inp.type(torch.FloatTensor)
 
         if not self.save_unquantized:
-            inp = inp / 256
+            inp /= 256
         if self.transform is not None:
             inp = self.transform(inp)
 
