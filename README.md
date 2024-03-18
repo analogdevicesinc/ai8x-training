@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-March 8, 2024
+March 13, 2024
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -3248,7 +3248,13 @@ ERROR: Layer 6: 64 input channels (before flattening) using 1 pass, and 1 operan
 
 *In this example, each dimension was half the expected size, so the expected processor count was off by a factor of 4. To resolve the error, a properly dimensioned sample input had to be provided.*
 
+##### “new-lines” Configuration File Parsing Error
 
+```shell
+ERROR: invalid config: option "type" of "new-lines" should be in ('unix', 'dos')
+```
+
+This message indicates that an outdated version of `yamllint` is installed in the search path. Either update `yamllint` to version 1.27.0 or later, or uninstall `yamllint`, or edit `.yamllint` to remove `new-lines: type: platform`, or use `--yamllint none`.
 
 #### Energy Measurement
 
