@@ -4,4 +4,16 @@
 			"path": "."
 		}
 	],
+	"settings": {
+		"markdown.extension.toc.levels": "2..6",
+		"git.ignoreLimitWarning": true,
+		"pylint.args": ["--rcfile=.pylintrc"]
+	},
+	"extensions": {
+		"recommendations": [
+			"ms-python.pylint",
+			"ms-python.flake8",
+			"ms-python.mypy-type-checker"
+		]
+	}
 }
