@@ -5,12 +5,16 @@
 		}
 	],
 	"settings": {
-		"python.pythonPath": "venv/bin/python",
-		"python.linting.flake8Enabled": true,
-		"python.linting.pylintArgs": [
-			"--rcfile=.pylintrc"
-		],
 		"markdown.extension.toc.levels": "2..6",
-		"python.linting.mypyEnabled": true
+		"python.pythonPath": "venv/bin/python",
+		"git.ignoreLimitWarning": true,
+		"pylint.args": ["--rcfile=.pylintrc"]
+	},
+	"extensions": {
+		"recommendations": [
+			"ms-python.pylint",
+			"ms-python.flake8",
+			"ms-python.mypy-type-checker"
+		]
 	}
 }
