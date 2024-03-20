@@ -844,7 +844,10 @@ def KWS_20_msnoise_mixed_get_datasets(data, load_train=True, load_test=True,
     noise_type --> All noise types in the noise dataset.
     """
 
-    snr_range = range(snr_range[0], snr_range[1])
+    if len(snr_range) > 1:
+        snr_range = range(snr_range[0], snr_range[1])
+    else:
+        snr_range = list(snr_range)
 
     (data_dir, _) = data
 
@@ -866,6 +869,55 @@ def KWS_20_msnoise_mixed_get_datasets(data, load_train=True, load_test=True,
 
     if load_test:
         test_dataset = kws_test_dataset
+    else:
+        test_dataset = None
+
+    return train_dataset, test_dataset
+
+
+def MixedKWS_20_get_datasets_10dB(data, load_train=True, load_test=True,
+                                  apply_prob=1, snr_range=([10]),
+                                  noise_type=MSnoise.class_dict.keys(),
+                                  desired_probs=None):
+    """
+    Returns the mixed KWS dataset with MSnoise dataset under 10 dB SNR using signalmixer
+    data laoder. All of the training and test data will be augmented with
+    additional noise.
+    """
+
+    if len(snr_range) > 1:
+        snr_range = range(snr_range[0], snr_range[1])
+    else:
+        snr_range = list(snr_range)
+
+    (data_dir, _) = data
+
+    kws_train_dataset, kws_test_dataset = KWS_20_get_datasets(
+        data, load_train, load_test)
+
+    if load_train:
+        noise_dataset_train = MSnoise(root=data_dir, classes=noise_type,
+                                      d_type='train', dataset_len=len(kws_train_dataset),
+                                      desired_probs=desired_probs,
+                                      transform=None, quantize=False, download=False)
+
+        train_dataset = signalmixer(signal_dataset=kws_train_dataset,
+                                    snr_range=snr_range,
+                                    noise_type=noise_type, apply_prob=apply_prob,
+                                    noise_dataset=noise_dataset_train)
+    else:
+        train_dataset = None
+
+    if load_test:
+        noise_dataset_test = MSnoise(root=data_dir, classes=noise_type,
+                                     d_type='test', dataset_len=len(kws_test_dataset),
+                                     desired_probs=desired_probs,
+                                     transform=None, quantize=False, download=False)
+
+        test_dataset = signalmixer(signal_dataset=kws_test_dataset,
+                                   snr_range=snr_range,
+                                   noise_type=noise_type, apply_prob=apply_prob,
+                                   noise_dataset=noise_dataset_test)
     else:
         test_dataset = None
 
@@ -910,5 +962,14 @@ datasets = [
                    'UNKNOWN'),
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
         'loader': KWS_20_msnoise_mixed_get_datasets,
+    },
+    {
+        'name': 'MixedKWS20_10dB',
+        'input': (128, 128),
+        'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
+                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
+                   'UNKNOWN'),
+        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
+        'loader': MixedKWS_20_get_datasets_10dB,
     }
 ]

@@ -76,7 +76,7 @@ class signalmixer:
             if np.random.uniform(0, 1) < self.apply_prob:
                 if self.noise_type is not None:
                     if not torch.all(inp == 0):
-                        inp = self.single_snr_mixer(inp)
+                        inp = self.snr_mixer(inp)
 
         # applying noise to all of the test set
         else:
@@ -85,13 +85,13 @@ class signalmixer:
                     inp = self.white_noise_mixer(inp)
             elif self.noise_type is not None:
                 if not torch.all(inp == 0):
-                    inp = self.single_snr_mixer(inp)
+                    inp = self.snr_mixer(inp)
         return inp.type(torch.FloatTensor), int(target)
 
     def __len__(self):
         return len(self.data)
 
-    def single_snr_mixer(self, signal):
+    def snr_mixer(self, signal):
         '''
         Creates mixed signals using an SNR level and the noise dataset
         '''
@@ -99,12 +99,11 @@ class signalmixer:
         noise, _ = self.noise_dataset[idx_noise]
         rms_noise = self.noise_dataset.rms[idx_noise]
 
-        snr = self.snr_range
-        if snr[0] == snr[-1]:
-            snr_val = snr[0]
+        if self.snr_range[0] == self.snr_range[-1]:
+            snr = self.snr_range[0]
         else:
-            snr_val = np.random.randint(snr[0], snr[-1])
-        snr_val = torch.tensor(snr_val)
+            snr = np.random.uniform(self.snr_range[0], self.snr_range[-1])
+        snr = torch.tensor(snr)
 
         rmsclean = torch.sqrt(torch.mean(signal**2))
         scalarclean = 1 / rmsclean
@@ -113,7 +112,7 @@ class signalmixer:
         scalarnoise = 1 / rms_noise
         noise = noise * scalarnoise
 
-        cleanfactor = 10**(snr_val/20)
+        cleanfactor = 10**(snr/20)
         noisyspeech = cleanfactor * signal + noise
         noisyspeech = noisyspeech / (torch.tensor(scalarnoise) + cleanfactor * scalarclean)
 
@@ -124,12 +123,11 @@ class signalmixer:
         '''Creates White Noise and apply it to the signal using the specified SNR level.
         Returns the mixed signal with white noise.
         '''
-        snr = self.snr_range
-        if snr[0] == snr[-1]:
-            snr_val = snr[0]
+        if self.snr_range[0] == self.snr_range[-1]:
+            snr = self.snr_range[0]
         else:
-            snr_val = np.random.randint(snr[0], snr[-1])
-        snr_val = torch.tensor(snr_val)
+            snr = np.random.uniform(self.snr_range[0], self.snr_range[-1])
+        snr = torch.tensor(snr)
 
         mean = 0
         std = 1
@@ -144,7 +142,7 @@ class signalmixer:
         scalarnoise = 1 / rmsnoise
         noise = noise * scalarnoise
 
-        cleanfactor = 10**(snr_val/20)
+        cleanfactor = 10**(snr/20)
         noisyspeech = cleanfactor * signal + noise
         noisyspeech = noisyspeech / (scalarnoise + cleanfactor * scalarclean)
 
