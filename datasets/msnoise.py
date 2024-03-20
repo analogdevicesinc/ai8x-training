@@ -180,7 +180,7 @@ class MSnoise:
         target = int(self.targets[rnd_num])
 
         if self.quantize:
-            inp = inp / 256
+            inp /= 256
         if self.transform is not None:
             inp = self.transform(inp)
         return inp, target
@@ -207,7 +207,7 @@ class MSnoise:
                 check_label = labels_test
                 audio_folder = [self.noise_test_folder]
 
-            for label in labels:
+            for label in self.classes:
                 if label not in check_label:
                     print(f'Label {label} is not in the MSnoise {self.d_type} dataset.')
                     labels.remove(label)
@@ -222,7 +222,8 @@ class MSnoise:
                     self.desired_probs.append(1/label_count)
 
             elif np.sum(self.desired_probs) != 1:
-                print('Sum of the probabilities is not 1!')
+                print('Sum of the probabilities is not 1!\n')
+                print('Carrying out the normal probability distribution.')
                 self.desired_probs = self.desired_probs / np.sum(self.desired_probs)
 
             print(f'Desired probabilities for each class: {self.desired_probs}')
