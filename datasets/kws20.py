@@ -881,7 +881,7 @@ def MixedKWS_20_get_datasets_10dB(data, load_train=True, load_test=True,
                                   desired_probs=None):
     """
     Returns the mixed KWS dataset with MSnoise dataset under 10 dB SNR using signalmixer
-    data laoder. All of the training and test data will be augmented with
+    data loader. All of the training and test data will be augmented with
     additional noise.
     """
 
