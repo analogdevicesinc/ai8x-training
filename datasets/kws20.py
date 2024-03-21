@@ -319,7 +319,7 @@ class KWS:
 
                     precursor_len = 30 * 128
                     postcursor_len = 98 * 128
-                    utternace_threshold = 30
+                    utterance_threshold = 30
 
                     while True:
                         if chunk_start + postcursor_len > len(data):
@@ -330,7 +330,7 @@ class KWS:
                         avg = 1000 * np.average(abs(chunk))
                         i += 128
 
-                        if avg > utternace_threshold and chunk_start >= precursor_len:
+                        if avg > utterance_threshold and chunk_start >= precursor_len:
                             print(f"\r Converting {converted_count + 1}/{total_count} "
                                   f"to {frame_count + 1} segments", end=" ")
                             frame = data[chunk_start - precursor_len:chunk_start + postcursor_len]
@@ -509,7 +509,7 @@ class KWS:
             q_data = np.clip(q_data, 0, max_val)
         return np.uint8(q_data)
 
-    def energy_detector(self, audio, fs):
+    def get_audio_endpoints(self, audio, fs):
         """Future: May implement a method to detect the beginning & end of voice activity in audio.
         Currently, it returns end points compatible with augmentation['shift'] values
         """
@@ -536,7 +536,7 @@ class KWS:
         aug_audio = [None] * (n_augment + 1)
         aug_speed = np.ones((n_augment + 1,))
         shift_limits = np.zeros((n_augment + 1, 2))
-        voice_begin_idx, voice_end_idx = self.energy_detector(audio, fs)
+        voice_begin_idx, voice_end_idx = self.get_audio_endpoints(audio, fs)
         aug_audio[0] = audio
         for i in range(n_augment):
             aug_audio[i+1], aug_speed[i+1] = self.speed_augment(audio, fs, sample_no=i)
@@ -718,7 +718,7 @@ def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6):
 
     Data is augmented to 3x duplicate data by random stretch/shift and randomly adding noise where
     the stretching coefficient, shift amount and noise SNR level are randomly selected between
-    0.8 and 1.3, -0.1 and 0.1, 5 and 30, respectively.
+    0.8 and 1.3, -0.1 and 0.1, -5 and 20, respectively.
     """
     (data_dir, args) = data
 
