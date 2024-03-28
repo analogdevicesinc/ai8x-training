@@ -165,7 +165,7 @@ class SampleMotorDataLimerick(CbM_DataFrame_Parser):
             os.path.join(self.root, self.__class__.__name__, file_name)
 
         if os.path.isfile(df_path):
-            print(f'\n{file_name} file already exists\n')
+            print(f'\nFile {file_name} already exists\n')
             main_df = pd.read_pickle(df_path)
 
             return main_df
@@ -176,12 +176,18 @@ class SampleMotorDataLimerick(CbM_DataFrame_Parser):
                                        "SpectraQuest_Rig_Data_Voyager_3/")
         data_dir = os.path.join(actual_root_dir, 'Data_ADXL356C')
 
-        if not os.listdir(data_dir):
-            print('\nDataset directory is empty.\n')
+        if not os.path.isdir(data_dir):
+            print(f'\nDataset directory {data_dir} does not exist.\n')
+            return None
+
+        with os.scandir(data_dir) as it:
+            if not any(it):
+                print(f'\nDataset directory {data_dir} is empty.\n')
+                return None
 
         rpm_prefixes = ('0600', '1200', '1800', '2400', '3000')
 
-        sensor_sr_Hz = 20000   # Hz
+        sensor_sr_Hz = 20000  # Hz
 
         faulty_data_list = []
         healthy_data_list = []
@@ -189,7 +195,7 @@ class SampleMotorDataLimerick(CbM_DataFrame_Parser):
         df_normals = self.create_common_empty_df()
         df_anormals = self.create_common_empty_df()
 
-        for file in os.listdir(data_dir):
+        for file in sorted(os.listdir(data_dir)):
             full_path = os.path.join(data_dir, file)
             speed = int(file.split("_")[0]) / 60  # Hz
             load = int(file.split("_")[-1][0:2])  # LBS
@@ -297,7 +303,7 @@ def samplemotordatalimerick_get_datasets_for_train(data,
     Returns Sample Motor Data Limerick Dataset For Training Mode
     """
 
-    eval_mode = False   # Test set includes validation normals
+    eval_mode = False  # Test set includes validation normals
     label_as_signal = True
 
     signal_duration_in_sec = 0.25
@@ -335,7 +341,7 @@ def samplemotordatalimerick_get_datasets_for_eval_with_anomaly_label(data,
     Label is anomaly status
     """
 
-    eval_mode = True   # Test set includes validation normals
+    eval_mode = True  # Test set includes validation normals
     label_as_signal = False
 
     signal_duration_in_sec = 0.25
@@ -373,7 +379,7 @@ def samplemotordatalimerick_get_datasets_for_eval_with_signal(data,
     Label is signal
     """
 
-    eval_mode = True   # Test set includes anormal samples as well as validation normals
+    eval_mode = True  # Test set includes anormal samples as well as validation normals
     label_as_signal = True
 
     signal_duration_in_sec = 0.25
