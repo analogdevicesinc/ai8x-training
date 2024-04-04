@@ -212,7 +212,7 @@ class KWS:
         shutil.copytree(os.path.join(self.raw_test_folder, '_silence_'),
                         os.path.join(self.raw_folder, 'silence'), dirs_exist_ok=True)
 
-        print('Test for silence class succesfully copied under raw/silence folder.')
+        print('Test for silence class successfully copied under raw/silence folder.')
 
         # download LibriSpeech
         filename = self.url_librispeech.rpartition('/')[2]
