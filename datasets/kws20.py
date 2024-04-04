@@ -792,7 +792,7 @@ class KWS:
                     record = record / np.max(np.abs(record))
 
                     # training and validation examplesget speed augmentation
-                    if (d_typ not in (1, 3)):
+                    if d_typ not in (1, 3):
                         no_augmentations = self.augmentation['aug_num']
                     else:  # test examples don't get speed augmentation
                         no_augmentations = 0
