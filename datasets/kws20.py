@@ -1134,6 +1134,7 @@ datasets = [
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.6, 0.06),
         'loader': KWS_12_benchmark_get_datasets,
     },
+    {
         'name': 'MixedKWS20_10dB',
         'input': (128, 128),
         'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
