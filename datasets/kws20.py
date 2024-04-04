@@ -110,6 +110,8 @@ class KWS:
 
         if not self.benchmark:
             self.__filter_silence()
+        else:
+            self.__filter_librispeech()
 
         self.__filter_classes()
 
@@ -481,6 +483,31 @@ class KWS:
                                for c in self.new_class_dict.keys()}
         self.new_class_dict['UNKNOWN'] = len(self.new_class_dict)
 
+    def __filter_librispeech(self):
+
+        print('Filtering librispeech elements...')
+        idx_for_librispeech = [idx for idx, val in enumerate(self.targets)
+                               if val != self.class_dict['librispeech']]
+
+        self.data = torch.index_select(self.data, 0, torch.tensor(idx_for_librispeech))
+        self.targets = torch.index_select(self.targets, 0, torch.tensor(idx_for_librispeech))
+        self.data_type = torch.index_select(self.data_type, 0, torch.tensor(idx_for_librispeech))
+        self.shift_limits = torch.index_select(self.shift_limits, 0,
+                                               torch.tensor(idx_for_librispeech))
+
+        if self.d_type == 'train':
+            set_size = sum((self.data_type == 0)[:, -1])
+        elif self.d_type == 'test':
+            set_size = sum((self.data_type == 1)[:, -1])
+        print(f'{self.d_type} set: {set_size} elements')
+
+        if self.d_type == 'train':
+            train_size = sum((self.data_type == 0)[:, -1])
+            set_size = sum((self.data_type == 2)[:, -1])
+            # indicate the list of validation indices to be used by distiller's dataloader
+            self.valid_indices = range(train_size, train_size + set_size)
+            print(f'validation set: {set_size} elements')
+
     def __filter_silence(self):
 
         print('Filtering silence elements...')
@@ -491,6 +518,19 @@ class KWS:
         self.targets = torch.index_select(self.targets, 0, torch.tensor(idx_for_silence))
         self.data_type = torch.index_select(self.data_type, 0, torch.tensor(idx_for_silence))
         self.shift_limits = torch.index_select(self.shift_limits, 0, torch.tensor(idx_for_silence))
+
+        if self.d_type == 'train':
+            set_size = sum((self.data_type == 0)[:, -1])
+        elif self.d_type == 'test':
+            set_size = sum((self.data_type == 1)[:, -1])
+        print(f'{self.d_type} set: {set_size} elements')
+
+        if self.d_type == 'train':
+            train_size = sum((self.data_type == 0)[:, -1])
+            set_size = sum((self.data_type == 2)[:, -1])
+            # indicate the list of validation indices to be used by distiller's dataloader
+            self.valid_indices = range(train_size, train_size + set_size)
+            print(f'validation set: {set_size} elements')
 
     def __len__(self):
         return len(self.data)
@@ -687,11 +727,6 @@ class KWS:
             for i, label in enumerate(labels):
                 print(f'Processing the label: {label}. {i + 1} of {len(labels)}')
                 record_list = sorted(os.listdir(os.path.join(self.raw_folder, label)))
-                unknown_list = []
-                if label not in self.benchmark_keywords:
-                    unknown_list = os.listdir(os.path.join(self.raw_test_folder, '_unknown_'))
-                    unknown_list = [os.path.join(label, rec[-25:-4]) for rec in unknown_list]
-
                 record_len = len(record_list)
 
                 # get the number testing samples for the class
@@ -732,7 +767,10 @@ class KWS:
                             raw_test_list = os.listdir(os.path.join(self.raw_test_folder, label))
                         raw_test_list = [os.path.join(label, rec) for rec in raw_test_list]
                     else:
-                        raw_test_list = unknown_list
+                        raw_test_list = os.listdir(os.path.join(self.raw_test_folder, '_unknown_'))
+                        # example record name: "backward_a6f2fd71_nohash_3.wav.wav"
+                        raw_test_list = [os.path.join(label, rec[-25:-4]) for rec in raw_test_list
+                                         if label in rec]
 
                     if record_name in raw_test_list:
                         d_typ = np.uint(3)  # benchmark test
@@ -754,7 +792,7 @@ class KWS:
                     record = record / np.max(np.abs(record))
 
                     # training and validation examplesget speed augmentation
-                    if (d_typ != 1) and (d_typ != 3):
+                    if (d_typ not in (1, 3)):
                         no_augmentations = self.augmentation['aug_num']
                     else:  # test examples don't get speed augmentation
                         no_augmentations = 0
@@ -798,17 +836,15 @@ class KWS:
 
             # apply static shift & noise augmentation for validation examples
             for sample_index in range(data_in_all.shape[0]):
-                if data_class_all[sample_index] != self.class_dict['silence']:
-                    if data_type_all[sample_index] == 2:
-                        data_in_all[sample_index] = \
-                            self.shift_and_noise_augment(data_in_all[sample_index],
-                                                         data_shift_limits_all[sample_index])
+                if data_type_all[sample_index] == 2:
+                    data_in_all[sample_index] = \
+                        self.shift_and_noise_augment(data_in_all[sample_index],
+                                                     data_shift_limits_all[sample_index])
 
             raw_dataset = (data_in_all, data_class_all, data_type_all, data_shift_limits_all)
             torch.save(raw_dataset, os.path.join(self.processed_folder, self.data_file))
 
         print('Dataset created.')
-        # degisecek
         print(f'Training: {train_count}, Validation: {valid_count}, Test: {test_count}')
 
 
@@ -846,7 +882,7 @@ def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6, bench
         ai8x.normalize(args=args)
     ])
 
-    if num_classes in (6, 20, 11):
+    if num_classes in (6, 11, 20):
         classes = next((e for _, e in enumerate(datasets)
                         if len(e['output']) - 1 == num_classes))['output'][:-1]
     else:
@@ -992,41 +1028,12 @@ def KWS_20_msnoise_mixed_get_datasets(data, load_train=True, load_test=True,
     return train_dataset, test_dataset
 
 
-def KWS_12_benchmark_get_datasets(data, load_train=True, load_test=True,
-                                  apply_prob=0.8, snr_range=(-5, 10),
-                                  noise_type=MSnoise.class_dict.keys(),
-                                  desired_probs=None):
+def KWS_12_benchmark_get_datasets(data, load_train=True, load_test=True):
     """
     Returns the KWS dataset benchmark for 12 classes. 10 keywords and
     silence + UNKNOWN.
     """
-
-    snr_range = range(snr_range[0], snr_range[1])
-
-    (data_dir, _) = data
-
-    kws_train_dataset, kws_test_dataset = KWS_get_datasets(
-        data, load_train, load_test, num_classes=11, benchmark=True)  # 10 keyword + silence
-
-    if load_train:
-        noise_dataset_train = MSnoise(root=data_dir, classes=noise_type,
-                                      d_type='train', dataset_len=len(kws_train_dataset),
-                                      desired_probs=desired_probs,
-                                      transform=None, quantize=False, download=False)
-
-        train_dataset = signalmixer(signal_dataset=kws_train_dataset,
-                                    snr_range=snr_range,
-                                    noise_type=noise_type, apply_prob=apply_prob,
-                                    noise_dataset=noise_dataset_train)
-    else:
-        train_dataset = None
-
-    if load_test:
-        test_dataset = kws_test_dataset
-    else:
-        test_dataset = None
-
-    return train_dataset, test_dataset
+    return KWS_get_datasets(data, load_train, load_test, num_classes=11, benchmark=True)
 
 
 datasets = [
@@ -1073,7 +1080,7 @@ datasets = [
         'input': (128, 128),
         'output': ('down', 'go', 'left', 'no', 'off', 'on', 'right', 'stop', 'up', 'yes',
                    'silence', 'UNKNOWN'),
-        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.6, 0.06),
         'loader': KWS_12_benchmark_get_datasets,
     }
 ]
