@@ -1030,6 +1030,7 @@ def KWS_20_msnoise_mixed_get_datasets(data, load_train=True, load_test=True,
 
     return train_dataset, test_dataset
 
+
 def KWS_12_benchmark_get_datasets(data, load_train=True, load_test=True):
     """
     Returns the KWS dataset benchmark for 12 classes. 10 keywords and
