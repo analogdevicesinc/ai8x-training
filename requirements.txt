@@ -2,10 +2,10 @@ pip>=24.0
 torch==2.2.2
 torchvision==0.17.2
 torchaudio==2.2.2
-GitPython==3.1.42
-Pillow==10.2.0
+GitPython==3.1.43
+Pillow==10.3.0
 PyYAML==6.0.1
-albumentations==1.4.2
+albumentations==1.4.3
 faiss-cpu==1.8.0
 face-detection==0.2.2
 h5py==3.10.0
@@ -16,9 +16,9 @@ numpy==1.26.4
 opencv-python==4.9.0.80
 pycocotools==2.0.7
 pyffmpeg==2.4.2.18.1
-pytorch-metric-learning==2.4.1
+pytorch-metric-learning==2.5.0
 pytube==15.0.0
-scipy==1.12.0
+scipy==1.13.0
 tensorboard==2.16.2
 tk==0.1.0
 torchmetrics==1.3.2
