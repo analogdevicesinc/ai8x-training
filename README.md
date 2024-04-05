@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-March 28, 2024
+April 5, 2024
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -949,7 +949,7 @@ Because each processor has its own dedicated weight memory, this will introduce 
 For each layer, a set of active processors must be specified. The number of input channels for the layer must be equal to, or be a multiple of, the active processors, and the input data for that layer must be located in data memory instances accessible to the selected processors.
 
 It is possible to specify a relative offset into the data memory instance that applies to all processors.
-_Example:_ Assuming HWC data format, specifying the offset as 16384 bytes (or 0x4000) will cause processors 0-3 to read their input from the second half of data memory 0, processors 4-7 will read from the second half of data memory instance 1, etc.
+_Example:_ Assuming HWC data format, specifying the offset as 16,384 bytes (or 0x4000) will cause processors 0-3 to read their input from the second half of data memory 0, processors 4-7 will read from the second half of data memory instance 1, etc.
 
 For most simple networks with limited data sizes, it is easiest to ping-pong between the first and second halves of the data memories – specify the data offset as 0 for the first layer, 0x4000 for the second layer, 0 for the third layer, etc. This strategy avoids overlapping inputs and outputs when a given processor is used in two consecutive layers.
 
@@ -1066,7 +1066,7 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   
 * Streaming mode:
   
-  * When using data greater than 90×91 (8,192 pixels per channel in HWC mode), or 181×181 (32,768 pixels in CHW mode), and [Data Folding](#data-folding) techniques are not used, then `streaming` mode must be used.
+  * When using data greater than 8192 pixels per channel (approximately 90×90 when width = height) in HWC mode, or 32,768 pixels per channel (181×181 when width = height) in CHW mode, and [Data Folding](#data-folding) techniques are not used, then `streaming` mode must be used.
   * When using `streaming` mode, the product of any layer’s input width, input height, and input channels divided by 64 rounded up must not exceed 2^21: $width * height * ⌈\frac{channels}{64}⌉ < 2^{21}$; _width_ and _height_ must not exceed 1023.
   * Streaming is limited to 8 consecutive layers or fewer, and is limited to four FIFOs (up to 4 input channels in CHW and up to 16 channels in HWC format), see [FIFOs](#fifos).
   * For streaming layers, bias values may not be added correctly in all cases.
@@ -1078,7 +1078,7 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   When using more than 64 input or output channels, weight memory is shared, and effective capacity decreases proportionally (for example, 128 input channels require twice as much space as 64 input channels, and a layer with <u>both</u> 128 input and 128 output channels requires <u>four</u> times as much space as a layer with only 64 input channels and 64 output channels).
   Weights must be arranged according to specific rules detailed in [Layers and Weight Memory](#layers-and-weight-memory).
 
-* There are 16 instances of 32 KiB data memory ([for a total of 512 KiB](docs/AHBAddresses.md)). When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 181×181 pixels per channel in the CHW format. However, when using more than one input channel, the HWC format may be preferred, and all layer outputs are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance — or 91×90 pixels per channel.
+* There are 16 instances of 32 KiB data memory ([for a total of 512 KiB](docs/AHBAddresses.md)). When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 32,768 pixels per channel in the CHW format (181×181 when width = height). However, when using more than one input channel, the HWC format may be preferred, and all layer outputs are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance — or 8192 pixels per channel (approximately 90×90 when width = height).
   Note that the first layer commonly creates a wide expansion (i.e., a large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical. In many cases, [Data Folding](#data-folding) (distributing the input data across multiple channels) can effectively increase both the input dimensions as well as improve model performance.
 
 * The hardware supports 1D and 2D convolution layers, 2D transposed convolution layers (upsampling), element-wise addition, subtraction, binary OR, binary XOR as well as fully connected layers (`Linear`), which are implemented using 1×1 convolutions on 1×1 data:
@@ -1086,7 +1086,7 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   
   * `Flatten` functionality is available to convert 2D input data for use by fully connected layers, see [Fully Connected Layers](#fully-connected-linear-layers).
   
-  * When “flattening” two-dimensional data, the input dimensions (C×H×W) must satisfy C×H×W ≤ 16384, and H×W ≤ 256. Pooling cannot be used at the same time as flattening.
+  * When “flattening” two-dimensional data, the input dimensions (C×H×W) must satisfy C×H×W ≤ 16,384, and H×W ≤ 256. Pooling cannot be used at the same time as flattening.
   
   * Element-wise operators support from 2 up to 16 inputs.
   
@@ -1181,7 +1181,7 @@ The MAX78002 hardware does not support arbitrary network parameters. Specificall
 
   * The maximum number of input neurons is 1024, and the maximum number of output neurons is 1024 (16 each per processor used).
   * `Flatten` functionality is available to convert 2D input data for use by fully connected layers, see [Fully Connected Layers](#fully-connected-linear-layers).
-  * When “flattening” two-dimensional data, the input dimensions (C×H×W) must satisfy C×H×W ≤ 16384, and H×W ≤ 256. Pooling cannot be used at the same time as flattening.
+  * When “flattening” two-dimensional data, the input dimensions (C×H×W) must satisfy C×H×W ≤ 16,384, and H×W ≤ 256. Pooling cannot be used at the same time as flattening.
   * Element-wise operators support from 2 up to 16 inputs.
   * Element-wise operators can be chained in-flight with pooling and 2D convolution (where the order of pooling and element-wise operations can be swapped).
   * For convenience, a `Softmax` operator is supported in software.
@@ -1204,7 +1204,7 @@ The MAX78002 hardware does not support arbitrary network parameters. Specificall
 
 m×n fully connected layers can be realized in hardware by “flattening” 2D input data of dimensions C×H×W into m=C×H×W channels of 1×1 input data. The hardware will produce n channels of 1×1 output data. When chaining multiple fully connected layers, the flattening step is omitted. The following picture shows 2D data, the equivalent flattened 1D data, and the output.
 
-For MAX78000/MAX78002, the product C×H×W must not exceed 16384.
+For MAX78000/MAX78002, the product C×H×W must not exceed 16,384.
 
 ![MLP](docs/MLP.png)
 
