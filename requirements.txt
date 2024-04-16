@@ -5,10 +5,10 @@ torchaudio==2.2.2
 GitPython==3.1.43
 Pillow==10.3.0
 PyYAML==6.0.1
-albumentations==1.4.3
+albumentations==1.4.4
 faiss-cpu==1.8.0
 face-detection==0.2.2
-h5py==3.10.0
+h5py==3.11.0
 imutils==0.5.4
 kornia==0.7.2
 librosa==0.10.1
