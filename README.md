@@ -137,7 +137,7 @@ Ctrl+A,D to disconnect
 The following software is optional, and can be replaced with other similar software of the user’s choosing.
 
 1. Code Editor
-   Visual Studio Code, <https://code.visualstudio.com> or the VSCodium version, <https://vscodium.com>, with the “Remote - SSH” plugin; *to use Visual Studio Code on Windows as a full development environment (including debug), see <https://github.com/MaximIntegratedTechSupport/VSCode-Maxim>*
+   Visual Studio Code, <https://code.visualstudio.com> or the VSCodium version, <https://vscodium.com>, with the “Remote - SSH” plugin; *to use Visual Studio Code on Windows as a full development environment (including debug), see <https://github.com/analogdevicesinc/VSCode-Maxim>*
    Sublime Text, <https://www.sublimetext.com>
 2. Markdown Editor
    Typora, <http://typora.io>
