@@ -19,7 +19,7 @@
 ###################################################################################################
 """
 FaceID Teacher Model to be used for Knowledge Distillation
-See https://github.com/MaximIntegratedAI/ai8x-training/blob/develop/docs/FacialRecognitionSystem.md
+See https://github.com/analogdevicesinc/ai8x-training/blob/develop/docs/FacialRecognitionSystem.md
 """
 import sys
 from collections import namedtuple
