@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-April 19, 2024
+April 24, 2024
 
 **Note: The pytorch-2 branch is in development. Not all features are final.**
 
@@ -65,7 +65,7 @@ Full support and documentation are provided for the following platform:
 
 * CPU: 64-bit amd64/x86_64 “PC” with [Ubuntu Linux 20.04 LTS or 22.04 LTS](https://ubuntu.com/download/server)
 * GPU for hardware acceleration (optional but highly recommended): Nvidia with [CUDA 12.1](https://developer.nvidia.com/cuda-toolkit-archive) or later
-* [PyTorch 2.2.1](https://pytorch.org/get-started/locally/) on Python 3.11.x
+* [PyTorch 2.3.0](https://pytorch.org/get-started/locally/) on Python 3.11.x
 
 Limited support and advice for using other hardware and software combinations is available as follows.
 
@@ -99,7 +99,7 @@ This software also works inside Docker containers. However, CUDA support inside 
 
 #### PyTorch and Python
 
-The officially supported version of [PyTorch is 2.2.1](https://pytorch.org/get-started/locally/) running on Python 3.11.x. Newer versions will typically work, but are not covered by support, documentation, and installation scripts.
+The officially supported version of [PyTorch is 2.3.0](https://pytorch.org/get-started/locally/) running on Python 3.11.x. Newer versions will typically work, but are not covered by support, documentation, and installation scripts.
 
 #### Hardware Acceleration
 
@@ -174,7 +174,7 @@ Some additional system packages are required, and installation of these addition
 On macOS use:
 
 ```shell
-$ brew install libomp libsndfile tcl-tk
+$ brew install libomp libsndfile tcl-tk sox
 ```
 
 ##### Linux (Ubuntu), including WSL2)
@@ -183,7 +183,7 @@ $ brew install libomp libsndfile tcl-tk
 $ sudo apt-get install -y make build-essential libssl-dev zlib1g-dev \
   libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
   libncurses5-dev libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev \
-  libsndfile-dev portaudio19-dev
+  libsndfile-dev portaudio19-dev libsox-dev
 ```
 
 ###### RedHat Enterprise Linux / CentOS 8
@@ -1232,7 +1232,7 @@ Before the first training session, check that hardware acceleration is available
    (ai8x-training) $ python check_cuda.py
    System:                 linux
    Python version:         3.11.8 (main, Mar  4 2024, 15:29:36) [GCC 11.4.0]
-   PyTorch version:        2.2.1+cu121
+   PyTorch version:        2.3.0+cu121
    CUDA/ROCm acceleration: available in PyTorch
    MPS acceleration:       NOT available in PyTorch
  ```
