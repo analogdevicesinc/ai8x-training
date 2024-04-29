@@ -1,6 +1,8 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-April 19, 2024
+May 16, 2024
+
+**Note: This branch is compatible with PyTorch 1.8. Please go to the “pytorch-2” branch for PyTorch 2.3 compatibility.**
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -63,7 +65,7 @@ Full support and documentation are provided for the following platform:
 
 * CPU: 64-bit amd64/x86_64 “PC” with [Ubuntu Linux 20.04 LTS or 22.04 LTS](https://ubuntu.com/download/server)
 * GPU for hardware acceleration (optional but highly recommended): Nvidia with [CUDA 11](https://developer.nvidia.com/cuda-toolkit-archive)
-* [PyTorch 1.8.1 (LTS)](https://pytorch.org/get-started/locally/) on Python 3.8.x
+* [PyTorch 1.8.1 (LTS)](https://pytorch.org/get-started/locally/) on Python 3.8.x. *Please use the “pytorch-2” branch for PyTorch 2.3 compatibility.*
 
 Limited support and advice for using other hardware and software combinations is available as follows.
 
