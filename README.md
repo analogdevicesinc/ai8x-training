@@ -1,8 +1,8 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-April 24, 2024
+May 6, 2024
 
-**Note: The pytorch-2 branch is in development. Not all features are final.**
+**Note: The pytorch-2 branch is in development. Please see [KNOWN_ISSUES](KNOWN_ISSUES.txt).**
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
