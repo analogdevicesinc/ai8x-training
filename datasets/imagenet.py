@@ -45,7 +45,7 @@ def imagenet_get_datasets(data, load_train=True, load_test=True,
     if augment_data:
         if load_train:
             train_transform = transforms.Compose([
-                transforms.RandomResizedCrop(input_size),
+                transforms.RandomResizedCrop(input_size, antialias=True),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
@@ -68,7 +68,7 @@ def imagenet_get_datasets(data, load_train=True, load_test=True,
 
         if load_test:
             test_transform = transforms.Compose([
-                transforms.Resize(int(input_size / 0.875)),
+                transforms.Resize(int(input_size / 0.875), antialias=True),  # type: ignore
                 transforms.CenterCrop(input_size),
                 transforms.ToTensor(),
                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
@@ -88,14 +88,14 @@ def imagenet_get_datasets(data, load_train=True, load_test=True,
                 )
 
             if args.truncate_testset:
-                test_dataset.data = test_dataset.data[:1]
+                test_dataset.data = test_dataset.data[:1]  # type: ignore # .data exists
         else:
             test_dataset = None
 
     else:
         if load_train:
             train_transform = transforms.Compose([
-                transforms.RandomResizedCrop(input_size),
+                transforms.RandomResizedCrop(input_size, antialias=True),
                 transforms.ToTensor(),
                 ai8x.normalize(args=args),
             ])
@@ -116,7 +116,7 @@ def imagenet_get_datasets(data, load_train=True, load_test=True,
 
         if load_test:
             test_transform = transforms.Compose([
-                transforms.RandomResizedCrop(input_size),
+                transforms.RandomResizedCrop(input_size, antialias=True),
                 transforms.ToTensor(),
                 ai8x.normalize(args=args),
             ])
@@ -134,7 +134,7 @@ def imagenet_get_datasets(data, load_train=True, load_test=True,
                 )
 
             if args.truncate_testset:
-                test_dataset.data = test_dataset.data[:1]
+                test_dataset.data = test_dataset.data[:1]  # type: ignore # .data exists
         else:
             test_dataset = None
 
