@@ -255,7 +255,7 @@ class KWS:
 
         if from_path.endswith('.tar.gz'):
             with tarfile.open(from_path, 'r:gz') as tar:
-                tar.extractall(path=to_path)
+                tar.extractall(path=to_path, filter='data')
         elif from_path.endswith('.zip'):
             with ZipFile(from_path) as archive:
                 archive.extractall(to_path)

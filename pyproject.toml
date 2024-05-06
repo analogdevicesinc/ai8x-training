@@ -1,10 +1,98 @@
+[build-system]
+requires = ["pip", "setuptools", "wheel"]
+
+[project]
+name = "ai8x-training"
+description = "Model Training for ADI's MAX78000 and MAX78002 Edge AI Devices"
+authors = [
+  {name = "Analog Devices Inc."},
+]
+requires-python = ">=3.11.8,<3.12"
+readme = "README.md"
+license = {file = "LICENSE.txt"}
+keywords = ["machine-learning", "ai", "deep-learning", "artificial-intelligence", "analog-devices", "maxim", "maxim-integrated", "max78000", "max78002"]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/MaximIntegratedAI"
+Documentation = "https://github.com/MaximIntegratedAI/ai8x-training/blob/develop/README.md"
+Repository = "https://github.com/MaximIntegratedAI/ai8x-training.git"
+Issues = "https://github.com/MaximIntegratedAI/ai8x-training/issues"
+
+[project.scripts]
+train = "train:main"
+
 [tool.black]
 line-length = 99
-target-version = ['py36']
 
 [tool.codespell]
-count = ''
+count = ""
 ignore-words-list = 'nervana,cconfiguration,anormal'
 quiet-level = 3
-skip = '*.dasm,*.map,./.mypy_cache,./venv,./.git,./distiller,./data,./datasets/face_id/facenet_pytorch/dependencies,./super-linter.log'
+skip = '*.dasm,*.map,./.mypy_cache,./.venv,./.git,./distiller,./data,./datasets/face_id/facenet_pytorch/dependencies,./super-linter.log'
 ignore-regex = '^\s+"image/png".*$'
+
+[tool.pytest.ini_options]
+norecursedirs = [
+    ".git",
+    ".venv",
+    "assets",
+    "attic",
+    "bin",
+    "etc",
+    "distiller",
+    "docs",
+    "lib",
+    "networks",
+    "rtldev",
+    "sdk",
+    "share",
+    "trained",
+]
+
+[tool.isort]
+profile = ""
+line_length = 99
+known_third_party = "distiller"
+known_math = [
+    "numpy",
+    "torch",
+    "torchvision",
+    "torchaudio",
+    "tensorboard",
+    "tensorflow",
+]
+sections = [
+    "FUTURE",
+    "STDLIB",
+    "MATH",
+    "THIRDPARTY",
+    "FIRSTPARTY",
+    "LOCALFOLDER",
+]
+
+[tool.mypy]
+ignore_missing_imports = true
+follow_imports = "silent"
+show_column_numbers = true
+
+[tool.pylint."MESSAGES CONTROL"]
+disable = "invalid-name,consider-using-with,duplicate-code,not-callable"
+[tool.pylint.TYPECHECK]
+ignored-modules = "numpy,matplotlib.cm,torch,distiller"
+ignored-classes = "ModelProto"
+[tool.pylint.FORMAT]
+max-line-length = 99
+[tool.pylint.DESIGN]
+max-locals = 100
+max-statements = 350
+min-public-methods = 1
+max-branches = 130
+max-module-lines = 5000
+max-args = 20
+max-returns = 10
+max-attributes = 25
+max-nested-blocks = 10
+[tool.pylint.MASTER]
+init-hook = "from pylint.config import find_default_config_files; import os, sys; sys.path.append(os.path.dirname(next(find_default_config_files())))"
+

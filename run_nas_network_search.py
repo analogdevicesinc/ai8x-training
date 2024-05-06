@@ -229,8 +229,11 @@ def main():
 
     args = parse_args(model_names, dataset_names)
     args.truncate_testset = False
-    use_cuda = torch.cuda.is_available()
-    args.device = torch.device("cuda:0" if use_cuda else "cpu")
+    args.device = torch.device(
+        "cuda" if torch.cuda.is_available()
+        else "mps" if torch.backends.mps.is_available()
+        else "cpu"
+    )
     args.act_mode_8bit = False
 
     # Get policy for once for all training policy

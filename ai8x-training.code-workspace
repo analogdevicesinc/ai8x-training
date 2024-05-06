@@ -6,7 +6,6 @@
 	],
 	"settings": {
 		"markdown.extension.toc.levels": "2..6",
-		"python.pythonPath": "venv/bin/python",
 		"git.ignoreLimitWarning": true,
 		"pylint.args": ["--rcfile=.pylintrc"]
 	},

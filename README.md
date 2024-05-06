@@ -1,6 +1,8 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-April 19, 2024
+May 6, 2024
+
+**Note: The pytorch-2 branch is in development. Please see [KNOWN_ISSUES](KNOWN_ISSUES.txt).**
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -62,8 +64,8 @@ PyTorch operating system and hardware support are constantly evolving. This docu
 Full support and documentation are provided for the following platform:
 
 * CPU: 64-bit amd64/x86_64 “PC” with [Ubuntu Linux 20.04 LTS or 22.04 LTS](https://ubuntu.com/download/server)
-* GPU for hardware acceleration (optional but highly recommended): Nvidia with [CUDA 11](https://developer.nvidia.com/cuda-toolkit-archive)
-* [PyTorch 1.8.1 (LTS)](https://pytorch.org/get-started/locally/) on Python 3.8.x
+* GPU for hardware acceleration (optional but highly recommended): Nvidia with [CUDA 12.1](https://developer.nvidia.com/cuda-toolkit-archive) or later
+* [PyTorch 2.3.0](https://pytorch.org/get-started/locally/) on Python 3.11.x
 
 Limited support and advice for using other hardware and software combinations is available as follows.
 
@@ -85,7 +87,7 @@ If WSL2 is not available, it is also possible (but not recommended due to inhere
 
 ##### macOS
 
-The software works on macOS, but model training suffers from the lack of hardware acceleration.
+The software works on macOS and uses MPS acceleration on Apple Silicon. On Intel CPUs, model training suffers from the lack of hardware acceleration.
 
 ##### Virtual Machines (Unsupported)
 
@@ -97,19 +99,17 @@ This software also works inside Docker containers. However, CUDA support inside 
 
 #### PyTorch and Python
 
-The officially supported version of [PyTorch is 1.8.1 (LTS)](https://pytorch.org/get-started/locally/) running on Python 3.8.x. Newer versions will typically work, but are not covered by support, documentation, and installation scripts.
+The officially supported version of [PyTorch is 2.3.0](https://pytorch.org/get-started/locally/) running on Python 3.11.x. Newer versions will typically work, but are not covered by support, documentation, and installation scripts.
 
 #### Hardware Acceleration
 
-When going beyond simple models, model training does not work well without CUDA hardware acceleration. The network loader (“izer”) does <u>not</u> require CUDA, and very simple models can also be trained on systems without CUDA.
+When going beyond simple models, model training does not work well without hardware acceleration – Nvidia CUDA, AMD ROCm, or Apple Silicon MPS. The network loader (“izer”) does <u>not</u> require hardware acceleration, and very simple models can also be trained on systems without hardware acceleration.
 
-* CUDA requires Nvidia GPUs.
-
-* There is a PyTorch pre-release with ROCm acceleration for certain AMD GPUs on Linux ([see blog entry](https://pytorch.org/blog/pytorch-for-amd-rocm-platform-now-available-as-python-package/)), but this is not currently covered by the installation instructions in this document, and it is not supported.
-
-* At this time, there is neither CUDA nor ROCm nor Neural Engine support on macOS, and therefore no hardware acceleration (there is a pre-release version of PyTorch with M1 acceleration on macOS 12.3 or later, and M1 acceleration will be supported in a future release of these tools).
-
+* CUDA requires modern Nvidia GPUs. This is the most compatible, and best supported hardware accelerator.
+* ROCm requires certain AMD GPUs, see [blog entry](https://pytorch.org/blog/pytorch-for-amd-rocm-platform-now-available-as-python-package/).
+* MPS requires Apple Silicon (M1 or newer) and macOS 12.3 or newer.
 * PyTorch does not include CUDA support for aarch64/arm64 systems. *Rebuilding PyTorch from source is not covered by this document.*
+
 
 ##### Using Multiple GPUs
 
@@ -171,19 +171,19 @@ Some additional system packages are required, and installation of these addition
 
 ##### macOS
 
-On macOS (no CUDA support available) use:
+On macOS use:
 
 ```shell
-$ brew install libomp libsndfile tcl-tk
+$ brew install libomp libsndfile tcl-tk sox
 ```
 
-##### Linux (Ubuntu), including WSL2
+##### Linux (Ubuntu), including WSL2)
 
 ```shell
 $ sudo apt-get install -y make build-essential libssl-dev zlib1g-dev \
   libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
   libncurses5-dev libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev \
-  libsndfile-dev portaudio19-dev
+  libsndfile-dev portaudio19-dev libsox-dev
 ```
 
 ###### RedHat Enterprise Linux / CentOS 8
@@ -207,11 +207,11 @@ $ sudo dnf install openssl-devel zlib-devel \
   libsndfile libsndfile-devel portaudio-devel
 ```
 
-#### Python 3.8
+#### Python 3.11
 
-*The software in this project uses Python 3.8.11 or a later 3.8.x version.*
+*The software in this project uses Python 3.11.8 or a later 3.11.x version.*
 
-First, check whether there is a default Python interpreter and whether it is version 3.8.x:
+First, check whether there is a default Python interpreter and whether it is version 3.11.x:
 
 ```shell
 $ python --version
@@ -225,17 +225,17 @@ Python 2.7.18
 # wrong version, pyenv required
 ```
 
-Python 2 **will not function correctly** with the MAX78000/MAX78002 tools. If the result is Python **3.8**.x, skip ahead to [git Environment](#git-environment). For *any* other version (for example, 2.7, 3.7, 3.9, 3.10), or no version, continue here.
+Python 2 **will not function correctly** with the MAX78000/MAX78002 tools. If the result is Python **3.11**.x, skip ahead to [git Environment](#git-environment). For *any* other version (for example, 2.7, 3.7, 3.8, 3.9, 3.10), or no version, continue here.
 
-*Note: For the purposes of the MAX78000/MAX78002 tools, “python3” is not a substitute for “python”. Please install pyenv when `python --version` does not return version 3.8.x, <u>even if</u> “python3” is available.*
+*Note: For the purposes of the MAX78000/MAX78002 tools, “python3” is not a substitute for “python”. Please install pyenv when `python --version` does not return version 3.11.x, <u>even if</u> “python3” is available.*
 
-*Note for advanced users: `sudo apt-get install python-is-python3` on Ubuntu 20.04 will install Python 3 as the default Python version; however, it may not be version 3.8.x.*
+*Note for advanced users: `sudo apt-get install python-is-python3` on Ubuntu 20.04 will install Python 3 as the default Python version; however, it may not be version 3.11.x.*
 
 ##### pyenv
 
-It is not necessary to install Python 3.8 system-wide, or to rely on the system-provided Python. To manage Python versions, instead use `pyenv` (<https://github.com/pyenv/pyenv>). This allows multiple Python versions to co-exist on the same system without interfering with the system or with one another.
+It is not necessary to install Python 3.11 system-wide, or to rely on the system-provided Python. To manage Python versions, instead use `pyenv` (<https://github.com/pyenv/pyenv>). This allows multiple Python versions to co-exist on the same system without interfering with the system or with one another.
 
-On macOS (no CUDA support available):
+On macOS:
 
 ```shell
 $ brew install pyenv pyenv-virtualenv
@@ -277,7 +277,7 @@ $ ~/.pyenv/bin/pyenv init
 
 *Note: Installing both conda and pyenv in parallel may cause issues. Ensure that the pyenv initialization tasks are executed <u>before</u> any conda related tasks.*
 
-Next, close the Terminal, open a new Terminal and install Python 3.8.11.
+Next, close the Terminal, open a new Terminal and install Python 3.11.8.
 
 On macOS:
 
@@ -289,13 +289,13 @@ $ env \
   PKG_CONFIG_PATH="$(brew --prefix tcl-tk)/lib/pkgconfig" \
   CFLAGS="-I$(brew --prefix tcl-tk)/include" \
   PYTHON_CONFIGURE_OPTS="--with-tcltk-includes='-I$(brew --prefix tcl-tk)/include' --with-tcltk-libs='-L$(brew --prefix tcl-tk)/lib -ltcl8.6 -ltk8.6'" \
-  pyenv install 3.8.11
+  pyenv install 3.11.8
 ```
 
 On Linux, including WSL2:
 
 ```shell
-$ pyenv install 3.8.11
+$ pyenv install 3.11.8
 ```
 
 #### git Environment
@@ -331,39 +331,40 @@ $ cd ai8x-training
 
 The default branch is “develop” which is updated most frequently. If you want to use the “main” branch instead, switch to “main” using `git checkout main`.
 
-If using pyenv, set the local directory to use Python 3.8.11.
+If using pyenv, set the local directory to use Python 3.11.8.
 
 ```shell
-$ pyenv local 3.8.11
+$ pyenv local 3.11.8
 ```
 
-In all cases, verify that a 3.8.x version of Python is used:
+In all cases, verify that a 3.11.x version of Python is used:
 
 ```shell
 $ python --version
-Python 3.8.11
+Python 3.11.8
 ```
 
-If this does <u>*not*</u> return version 3.8.x, please install and initialize [pyenv](#python-38).
+If this does <u>*not*</u> return version 3.11.x, please install and initialize [pyenv](#python-311).
 
 Then continue with the following:
 
 ```shell
-$ python -m venv venv --prompt ai8x-training
+$ python -m venv .venv --prompt ai8x-training
+$ echo "*" > .venv/.gitignore
 ```
 
-If this command returns an error message similar to *“The virtual environment was not created successfully because ensurepip is not available,”* please install and initialize [pyenv](#python-38).
+If this command returns an error message similar to *“The virtual environment was not created successfully because ensurepip is not available,”* please install and initialize [pyenv](#python-311).
 
 On macOS and Linux, including WSL2, activate the environment using
 
 ```shell
-$ source venv/bin/activate
+$ source .venv/bin/activate
 ```
 
 On native Windows, instead use:
 
 ```shell
-$ source venv/Scripts/activate
+$ source .venv/Scripts/activate
 ```
 
 Then continue with
@@ -372,21 +373,21 @@ Then continue with
 (ai8x-training) $ pip3 install -U pip wheel setuptools
 ```
 
-The next step differs depending on whether the system uses CUDA 11.x, or not.
+The next step differs depending on whether the system uses CUDA 12.1+, or not.
 
-For CUDA 11.x on Linux, including WSL2:
-
-```shell
-(ai8x-training) $ pip3 install -r requirements-cu11.txt
-```
-
-For CUDA 11.x on native Windows:
+For CUDA 12:
 
 ```shell
-(ai8x-training) $ pip3 install -r requirements-win-cu11.txt
+(ai8x-training) $ pip3 install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu121
 ```
 
-For all other systems, including macOS, and CUDA 10.2 on Linux:
+For ROCm 5.7:
+
+```shell
+(ai8x-training) $ pip3 install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/rocm5.7
+```
+
+For all other systems, including macOS:
 
 ```shell
 (ai8x-training) $ pip3 install -r requirements.txt
@@ -410,7 +411,7 @@ After a small delay of typically a day, a “Release” tag is created on GitHub
 
 In addition to code updated in the repository itself, **submodules and Python libraries may have been updated as well**.
 
-Major upgrades (such as updating from PyTorch 1.7 to PyTorch 1.8) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#upstream-code). Starting from scratch is also recommended when upgrading the Python version.
+Major upgrades (such as updating from PyTorch 1.8 to PyTorch 2.0) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#upstream-code). Starting from scratch is also recommended when upgrading the Python version.
 
 For minor updates, pull the latest code and install the updated wheels:
 
@@ -427,11 +428,11 @@ Please *also* update the MSDK or use the Maintenance Tool as documented in the [
 
 ##### Python Version Updates
 
-Updating Python may require updating `pyenv` first. Should `pyenv install 3.8.11` fail,
+Updating Python may require updating `pyenv` first. Should `pyenv install 3.11.8` fail,
 
 ```shell
-$ pyenv install 3.8.11
-python-build: definition not found: 3.8.11
+$ pyenv install 3.11.8
+python-build: definition not found: 3.11.8
 ```
 
 then `pyenv` must be updated. On macOS, use:
@@ -454,19 +455,19 @@ $
 The update should now succeed:
 
 ```shell
-$ pyenv install 3.8.11
-Downloading Python-3.8.11.tar.xz...
--> https://www.python.org/ftp/python/3.8.11/Python-3.8.11.tar.xz
-Installing Python-3.8.11...
+$ pyenv install 3.11.8
+Downloading Python-3.11.8.tar.xz...
+-> https://www.python.org/ftp/python/3.11.8/Python-3.11.8.tar.xz
+Installing Python-3.11.8...
 ...
-$ pyenv local 3.8.11
+$ pyenv local 3.11.8
 ```
 
 
 
 #### Synthesis Project
 
-The `ai8x-synthesis` project does not require CUDA.
+The `ai8x-synthesis` project does not require hardware acceleration.
 
 Start by deactivating the `ai8x-training` environment if it is active.
 
@@ -486,34 +487,35 @@ If you want to use the main branch, switch to “main” using the optional comm
 If using pyenv, run:
 
 ```shell
-$ pyenv local 3.8.11
+$ pyenv local 3.11.8
 ```
 
-In all cases, make sure Python 3.8.x is the active version:
+In all cases, make sure Python 3.11.x is the active version:
 
 ```shell
 $ python --version
-Python 3.8.11
+Python 3.11.8
 ```
 
-If this does <u>*not*</u> return version 3.8.x, please install and initialize [pyenv](#python-38).
+If this does <u>*not*</u> return version 3.11.x, please install and initialize [pyenv](#python-311).
 
 Then continue:
 
 ```shell
-$ python -m venv venv --prompt ai8x-synthesis
+$ python -m venv .venv --prompt ai8x-synthesis
+$ echo "*" > .venv/.gitignore
 ```
 
 Activate the virtual environment. On macOS and Linux (including WSL2), use
 
 ```shell
-$ source venv/bin/activate
+$ source .venv/bin/activate
 ```
 
 On native Windows, instead use
 
 ```shell
-$ source venv/Scripts/activate
+$ source .venv/Scripts/activate
 ```
 
 For all systems, continue with:
@@ -1224,30 +1226,31 @@ The example shows a fractionally-strided convolution with a stride of 2, a pad o
 
 If hardware acceleration is not available, skip the following two steps and continue with [Training Script](#training-script).
 
-1. Before the first training session, check that CUDA hardware acceleration is available using `nvidia-smi -q`:
+Before the first training session, check that hardware acceleration is available and recognized by PyTorch:
 
-   ```shell
-   (ai8x-training) $ nvidia-smi -q
-   ...
-   Driver Version                            : 470.57.02
-   CUDA Version                              : 11.4
-
-   Attached GPUs                             : 1
-   GPU 00000000:01:00.0
-       Product Name                          : NVIDIA TITAN RTX
-       Product Brand                         : Titan
-   ...
-   ```
-
-2. Verify that PyTorch recognizes CUDA:
-
-   ```shell
+ ```shell
    (ai8x-training) $ python check_cuda.py
-   System:            linux
-   Python version:    3.8.11 (default, Jul 14 2021, 12:46:05) [GCC 9.3.0]
-   PyTorch version:   1.8.1+cu111
-   CUDA acceleration: available in PyTorch
-   ```
+   System:                 linux
+   Python version:         3.11.8 (main, Mar  4 2024, 15:29:36) [GCC 11.4.0]
+   PyTorch version:        2.3.0+cu121
+   CUDA/ROCm acceleration: available in PyTorch
+   MPS acceleration:       NOT available in PyTorch
+ ```
+
+CUDA can be diagnosed using `nvidia-smi -q`:
+
+```shell
+(ai8x-training) $ nvidia-smi -q
+...
+Driver Version                            : 545.23.06
+CUDA Version                              : 12.3
+
+Attached GPUs                             : 2
+GPU 00000000:01:00.0
+    Product Name                          : NVIDIA TITAN RTX
+    Product Brand                         : Titan
+...
+```
 
 ### Training Script
 
@@ -1257,11 +1260,15 @@ The `models/` folder contains models that fit into the MAX78000 or MAX78002’s 
 
 To train the FP32 model for MNIST on MAX78000 or MAX78002, run `scripts/train_mnist.sh` from the `ai8x-training` project. This script will place checkpoint files into the log directory. Training makes use of the Distiller framework, but the `train.py` software has been modified slightly to improve it and add some MAX78000/MAX78002 specifics.
 
+#### Distributed Training
+
+On systems with multiple GPUs, the training script supports `DistributedDataParallel`. To use distributed training, prefix the training script with `scripts/distributed.sh`. For example, run `scripts/distributed.sh scripts/train_mnist.sh`. Note that (at this time) distributed training is only supported locally.
+
 Since training can take a significant amount of time, the training script does not overwrite any weights previously produced. Results are placed in sub-directories under `logs/` named with the date and time when training began. The latest results are always soft-linked to by `latest-log_dir` and `latest_log_file`.
 
 #### Troubleshooting
 
-1. If the training script returns `ModuleNotFoundError: No module named 'numpy'`, please activate the virtual environment using `source venv/bin/activate`, or on native Windows without WSL2, `source venv/scripts/activate`.
+1. If the training script returns `ModuleNotFoundError: No module named 'numpy'`, please activate the virtual environment using `source .venv/bin/activate`, or on native Windows without WSL2, `source .venv/scripts/activate`.
 
 2. If the training script crashes, or if it returns an internal error (such as `CUDNN_STATUS_INTERNAL_ERROR`), it may be necessary to limit the number of PyTorch workers to 1 (this has been observed running on native Windows). Add `--workers=1` when running any training script, for example;
 
@@ -1312,7 +1319,9 @@ Since training can take a significant amount of time, the training script does n
 
    Training might succeed after reducing the batch size, reducing image dimensions, or pruning the dataset. Unfortunately, the only real fix for this issue is more system RAM. In the example, `kinetics_get_datasets()` from `datasets/kinetics.py` states “The current implementation of using 2000 training and 150 test examples per class at 240×240 resolution and 5 frames per second requires around 50 GB of RAM.”
 
-
+6. On CUDA-capable machines, the training script by default uses PyTorch 2.0’s [`torch.compile()` feature](https://pytorch.org/docs/stable/generated/torch.compile.html) which improves execution speed. However, some models may not support this feature. It can be disabled using the command line option
+   `--compiler-mode none`
+   Disabling `torch.compile()` may also be necessary when using AMD ROCm acceleration.
 
 
 ### Example Training Session
@@ -1456,6 +1465,7 @@ The following table describes the most important command line arguments for `tra
 | `--nas`                    | Enable network architecture search                           |                                 |
 | `--nas-policy`             | Define NAS policy in YAML file                               | `--nas-policy nas/nas_policy.yaml` |
 | `--regression` | Select regression instead of classification (changes Loss function, and log output) |  |
+| `--compiler-mode` | Select [TorchDynamo optimization mode](https://pytorch.org/docs/stable/generated/torch.compile.html) (default: enabled on CUDA capable machines) | `--compiler-mode none` |
 | `--dr` | Set target embedding dimensionality for dimensionality reduction                |`--dr 64`                        |
 | `--scaf-lr` | Initial learning rate for sub-center ArcFace loss optimizer |  |
 | `--scaf-scale` |Scale hyperparameter for sub-center ArcFace loss |  |
@@ -1616,7 +1626,7 @@ Quantization-aware training (QAT) is enabled by default. QAT is controlled by a 
 * `weight_bits` describes the number of bits available for weights.
 * `overrides` allows specifying the `weight_bits` on a per-layer basis.
 
-By default, weights are quantized to 8-bits after 10 epochs as specified in `policies/qat_policy.yaml`. A more refined example that specifies weight sizes for individual layers can be seen in `policies/qat_policy_cifar100.yaml`.
+By default, weights are quantized to 8-bits after 30 epochs as specified in `policies/qat_policy.yaml`. A more refined example that specifies weight sizes for individual layers can be seen in `policies/qat_policy_cifar100.yaml`.
 
 Quantization-aware training can be <u>disabled</u> by specifying `--qat-policy None`.
 
@@ -1687,20 +1697,6 @@ When using PuTTY, port forwarding is achieved as follows:
 ![putty-forward](docs/putty-forward.jpg)
 
 
-
-#### SHAP — SHapely Additive exPlanations
-
-The training software integrates code to generate SHAP plots (see <https://github.com/slundberg/shap>). This can help with feature attribution for input images.
-
-The `train.py` program can create plots using the `--shap` command line argument in combination with `--evaluate`:
-
-```shell
-$ python train.py --model ai85net5 --dataset CIFAR10 --confusion --evaluate --device MAX78000 --exp-load-weights-from logs/CIFAR-new/best.pth.tar --shap 3
-```
-
-This will create a plot with a random selection of 3 test images. The plot shows ten outputs (the ten classes) for the three different input images on the left. Red pixels increase the model’s output while blue pixels decrease the output. The sum of the SHAP values equals the difference between the expected model output (averaged over the background dataset) and the current model output.
-
-<img src="docs/shap.png" alt="shap"/>
 
 ### BatchNorm Fusing
 
@@ -2933,7 +2929,7 @@ For RGB image inputs, there are three channels. For example, a 3×80×60 (C×H×
    ```shell
    (ai8x-synthesis) $ deactivate
    $ cd ../ai8x-training
-   $ source venv/bin/activate
+   $ source .venv/bin/activate
    ```
 
 2. Create an evaluation script and run it:

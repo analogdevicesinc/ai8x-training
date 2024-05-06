@@ -1,0 +1,11 @@
+KNOWN ISSUES for ai8x-training with PyToch 2.3.0
+================================================
+
+* As of PyTorch 2.3.0, torch.compile() requires CUDA.
+
+* Using CUDA, certain models cause PyTorch 2.3.0 to print the following warning during training:
+
+  .../graph.py:744: UserWarning: Plan failed with a cudnnException: CUDNN_BACKEND_EXECUTION_PLAN_DESCRIPTOR: cudnnFinalize Descriptor Failed cudnn_status:
+  CUDNN_STATUS_NOT_SUPPORTED (Triggered internally at ../aten/src/ATen/native/cudnn/Conv_v8.cpp:919.)
+
+  This should be addressed in PyTorch 2.3.1 (see https://github.com/pytorch/pytorch/issues/121834)

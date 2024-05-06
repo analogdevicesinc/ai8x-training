@@ -1,9 +1,9 @@
 ###################################################################################################
 #
 # Copyright (C) 2022-2023 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2024 Analog Devices, Inc. All Rights Reserved.
 #
-# Maxim Integrated Products, Inc. Default Copyright Notice:
-# https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
+# This software is proprietary to Analog Devices, Inc. and its licensors.
 #
 ###################################################################################################
 """
@@ -145,7 +145,7 @@ class Kinetics(Dataset):
 
         if from_path.endswith('.tar.gz'):
             with tarfile.open(from_path, 'r:gz') as tar:
-                tar.extractall(path=to_path)
+                tar.extractall(path=to_path, filter='data')
         elif from_path.endswith('.zip'):
             with ZipFile(from_path) as archive:
                 archive.extractall(to_path)

@@ -240,7 +240,7 @@ class SpeechCom(torch.utils.data.Dataset):
 
         if from_path.endswith('.tar.gz'):
             with tarfile.open(from_path, 'r:gz') as tar:
-                tar.extractall(path=to_path)
+                tar.extractall(path=to_path, filter='data')
         else:
             raise ValueError(f"Extraction of {from_path} not supported")
 
