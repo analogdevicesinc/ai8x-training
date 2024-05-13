@@ -2,7 +2,7 @@
 # MIT License
 #
 # Copyright (c) 2019 Sagar Vinodababu
-# Portions Copyright (C) 2022-2023 Maxim Integrated Products, Inc.
+# Portions Copyright (C) 2022-2024 Maxim Integrated Products, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -75,7 +75,12 @@ class MultiBoxLoss(nn.Module):
         """
 
         predicted_locs, predicted_scores = output
-        boxes, labels = target
+
+        has_target_kpts = len(target) == 3
+        if has_target_kpts:
+            boxes, keypoints, labels = target
+        else:
+            boxes, labels = target
 
         shape_1, shape_2 = predicted_locs.shape[1:]
         if shape_2 > shape_1:
@@ -88,11 +93,19 @@ class MultiBoxLoss(nn.Module):
         batch_size = predicted_locs.size(0)
         n_priors = self.priors_cxcy.size(0)
         n_classes = predicted_scores.size(2)
+        n_kpts = 0
+        if has_target_kpts:
+            n_kpts = (predicted_locs.size(2) - 4) // 2
+            for b in range(batch_size):
+                keypoints[b] = keypoints[b].reshape((1, 2*n_kpts))
 
         assert n_priors == predicted_locs.size(1) == predicted_scores.size(1)
 
         true_locs = torch.zeros((batch_size, n_priors, 4), dtype=torch.float, device=self.device)
         true_classes = torch.zeros((batch_size, n_priors), dtype=torch.long, device=self.device)
+        if has_target_kpts:
+            true_kpts = torch.zeros((batch_size, n_priors, 2*n_kpts), dtype=torch.float,
+                                    device=self.device)
 
         for i in range(batch_size):
             n_objects = boxes[i].size(0)
@@ -137,6 +150,10 @@ class MultiBoxLoss(nn.Module):
                                    obj_det_utils.xy_to_cxcy(boxes[i][object_for_each_prior]),
                                    self.priors_cxcy)
 
+                # Get Keypoints
+                if has_target_kpts:
+                    true_kpts[i] = keypoints[i][object_for_each_prior]
+
         # Identify priors that are positive (object/non-background)
         positive_priors = true_classes != 0
 
@@ -152,7 +169,12 @@ class MultiBoxLoss(nn.Module):
         # LOCALIZATION LOSS
 
         # Localization loss is computed only over positive (non-background) priors
-        loc_loss = self.smooth_l1(predicted_locs[positive_priors], true_locs[positive_priors])
+        loc_loss = self.smooth_l1(predicted_locs[positive_priors][:, :4],
+                                  true_locs[positive_priors])
+        loc_loss_kpts = 0.0
+        for i in range(n_kpts):
+            loc_loss_kpts += self.smooth_l1(predicted_locs[positive_priors][:, (2*i+4):(2*i+6)],
+                                            true_kpts[positive_priors][:, (2*i):(2*i+2)])
 
         # Note: indexing with a torch.uint8 (byte) tensor flattens the tensor when indexing is
         # across multiple dimensions (N & number_of_priors)
@@ -198,6 +220,6 @@ class MultiBoxLoss(nn.Module):
             # (), scalar
 
             # TOTAL LOSS
-            return conf_loss + self.alpha * loc_loss
+            return conf_loss + self.alpha * (loc_loss + loc_loss_kpts)
 
         return torch.mean(conf_loss_all)

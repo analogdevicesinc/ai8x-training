@@ -126,8 +126,8 @@ def gcxgcy_to_cxcy(gcxgcy, priors_cxcy):
     :return: decoded bounding boxes in center-size form, a tensor of size (n_priors, 4)
     """
 
-    return torch.cat([gcxgcy[:, :2] * priors_cxcy[:, 2:] / 10 + priors_cxcy[:, :2],  # c_x, c_y
-                      torch.exp(gcxgcy[:, 2:] / 5) * priors_cxcy[:, 2:]], 1)  # w, h
+    return torch.cat([gcxgcy[:, :2] * priors_cxcy[:, 2:4] / 10 + priors_cxcy[:, :2],  # c_x, c_y
+                      torch.exp(gcxgcy[:, 2:4] / 5) * priors_cxcy[:, 2:4]], 1)  # w, h
 
 
 def find_intersection(set_1, set_2):

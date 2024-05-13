@@ -18,6 +18,7 @@ pycocotools==2.0.7
 pyffmpeg==2.4.2.18.1
 pytorch-metric-learning==2.5.0
 pytube==15.0.0
+qrcode>=7.4.2
 scipy==1.13.0
 tensorboard==2.16.2
 tk==0.1.0
