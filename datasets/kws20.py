@@ -95,7 +95,7 @@ class KWS:
         self.__parse_augmentation(augmentation)
 
         if not self.save_unquantized:
-            self.data_file = 'dataset3.pt'
+            self.data_file = 'dataset.pt'
         else:
             self.data_file = 'unquantized.pt'
 
