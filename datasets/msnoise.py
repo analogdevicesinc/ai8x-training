@@ -237,7 +237,7 @@ class MSnoise:
             for i, label in enumerate(labels):
                 count = 0
                 for folder in audio_folder:
-                    for record_name in os.listdir(folder):
+                    for record_name in sorted(os.listdir(folder)):
                         if record_name.split('_')[0] in label:
                             record_path = os.path.join(folder, record_name)
                             record, _ = librosa.load(record_path, offset=0, sr=None)
