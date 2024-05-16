@@ -1,10 +1,9 @@
 ###################################################################################################
 #
 # Copyright (C) 2021-2023 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2024 Analog Devices, Inc. All Rights Reserved.
 #
-# Maxim Integrated Products, Inc. Default Copyright Notice:
-# https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
-#
+# This software is proprietary to Analog Devices, Inc. and its licensors.
 ###################################################################################################
 """
 Classes and functions used to create AISegment dataset.
@@ -242,7 +241,8 @@ class AISegment(Dataset):
 
         if os.path.exists(self.processed_folder_path) and \
            os.path.isdir(self.processed_folder_path):
-            pkl_files = [f for f in os.listdir(self.processed_folder_path) if f.endswith('.pkl')]
+            pkl_files = [f for f in sorted(os.listdir(self.processed_folder_path))
+                         if f.endswith('.pkl')]
         else:
             pkl_files = []
         return len(pkl_files) > 0

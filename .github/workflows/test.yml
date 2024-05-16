@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Check repository
         run: |
-          echo "IS_SPECIFIC_REPOSITORY=${{ github.repository == 'MaximIntegratedAI/ai8x-training' }}" >> $GITHUB_ENV
+          echo "IS_SPECIFIC_REPOSITORY=${{ github.repository == 'analogdevicesinc/ai8x-training' }}" >> $GITHUB_ENV
           echo "IS_DEVELOP_BRANCH=${{ github.ref == 'refs/heads/develop' }}" >> $GITHUB_ENV
 
       - name: Set up environment

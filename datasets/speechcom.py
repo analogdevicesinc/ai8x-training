@@ -1,9 +1,9 @@
 ###################################################################################################
 #
 # Copyright (C) 2019-2023 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2024 Analog Devices, Inc. All Rights Reserved.
 #
-# Maxim Integrated Products, Inc. Default Copyright Notice:
-# https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
+# This software is proprietary to Analog Devices, Inc. and its licensors.
 #
 ###################################################################################################
 """
@@ -102,7 +102,7 @@ class SpeechCom(torch.utils.data.Dataset):
         print('Generating dataset from raw data samples.')
         with warnings.catch_warnings():
             warnings.simplefilter('error')
-            lst = os.listdir(self.raw_folder)
+            lst = sorted(os.listdir(self.raw_folder))
             labels = [d for d in lst if os.path.isdir(os.path.join(self.raw_folder, d)) and
                       d[0].isalpha()]
             train_images = []
@@ -113,8 +113,7 @@ class SpeechCom(torch.utils.data.Dataset):
             test_labels = []
             for i, label in enumerate(labels):
                 print(f'\tProcessing the label: {label}. {i+1} of {len(labels)}')
-                records = os.listdir(os.path.join(self.raw_folder, label))
-                records = sorted(records)
+                records = sorted(os.listdir(os.path.join(self.raw_folder, label)))
                 for record in records:
                     record_pth = os.path.join(self.raw_folder, label, record)
                     y, _ = librosa.load(record_pth, offset=0, sr=None)
