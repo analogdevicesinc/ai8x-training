@@ -318,7 +318,15 @@ def qrcode_get_kpts_ext_datasets_qqvga(data, load_train=True, load_test=True):
     train_set2, test_set2 = qrcode_get_keypoint_datasets(data, load_train, load_test,
                                                          im_size=(160, 120), data_len=3000,
                                                          fg_to_bg_ratio_range=(0.75, 0.99))
-    return ConcatDataset([train_set1, train_set2]), ConcatDataset([test_set1, test_set2])
+
+    train_set = test_set = None
+    if load_train:
+        train_set = ConcatDataset([train_set1, train_set2])
+
+    if load_test:
+        test_set = ConcatDataset([test_set1, test_set2])
+    
+    return train_set, test_set
 
 
 datasets = [
