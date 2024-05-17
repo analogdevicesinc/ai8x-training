@@ -325,7 +325,7 @@ def qrcode_get_kpts_ext_datasets_qqvga(data, load_train=True, load_test=True):
 
     if load_test:
         test_set = ConcatDataset([test_set1, test_set2])
-    
+
     return train_set, test_set
 
 
