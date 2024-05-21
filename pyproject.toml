@@ -14,10 +14,10 @@ keywords = ["machine-learning", "ai", "deep-learning", "artificial-intelligence"
 dynamic = ["version"]
 
 [project.urls]
-Homepage = "https://github.com/MaximIntegratedAI"
-Documentation = "https://github.com/MaximIntegratedAI/ai8x-training/blob/develop/README.md"
-Repository = "https://github.com/MaximIntegratedAI/ai8x-training.git"
-Issues = "https://github.com/MaximIntegratedAI/ai8x-training/issues"
+Homepage = "https://github.com/analogdevicesinc/MaximAI_Documentation"
+Documentation = "https://github.com/analogdevicesinc/ai8x-training/blob/develop/README.md"
+Repository = "https://github.com/analogdevicesinc/ai8x-training.git"
+Issues = "https://github.com/analogdevicesinc/ai8x-training/issues"
 
 [project.scripts]
 train = "train:main"
