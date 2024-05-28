@@ -2,7 +2,7 @@
 # MIT License
 #
 # Copyright (c) 2019 Sagar Vinodababu
-# Portions Copyright (C) 2022-2023 Maxim Integrated Products, Inc.
+# Portions Copyright (C) 2022-2024 Maxim Integrated Products, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
