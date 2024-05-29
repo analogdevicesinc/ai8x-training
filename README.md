@@ -1,17 +1,19 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-March 13, 2024
+May 20, 2024
+
+**Note: This branch is compatible with PyTorch 1.8. Please go to the “pytorch-2” branch for PyTorch 2.3 compatibility.**
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
 1. **Start here**:
-    **[Top Level Documentation](https://github.com/MaximIntegratedAI/MaximAI_Documentation)**
+    **[Top Level Documentation](https://github.com/analogdevicesinc/MaximAI_Documentation)**
 2. The software development kit (MSDK), which contains drivers and example programs ready to run on the evaluation kits (EVkit and Feather):
     [Analog Devices MSDK](https://github.com/analogdevicesinc/msdk)
 3. The training repository, which is used for deep learning *model development and training*:
-    [ai8x-training](https://github.com/MaximIntegratedAI/ai8x-training) **(described in this document)**
+    [ai8x-training](https://github.com/analogdevicesinc/ai8x-training) **(described in this document)**
 4. The synthesis repository, which is used to *convert a trained model into C code* using the “izer” tool:
-    [ai8x-synthesis](https://github.com/MaximIntegratedAI/ai8x-synthesis) **(described in this document)**
+    [ai8x-synthesis](https://github.com/analogdevicesinc/ai8x-synthesis) **(described in this document)**
 5. The reference design repository, which contains host applications and sample applications for reference designs such as [MAXREFDES178 (Cube Camera)](https://www.analog.com/en/design-center/reference-designs/maxrefdes178.html):
     [refdes](https://github.com/analogdevicesinc/MAX78xxx-RefDes)
     *Note: Examples for EVkits and Feather boards are part of the MSDK*
@@ -63,7 +65,7 @@ Full support and documentation are provided for the following platform:
 
 * CPU: 64-bit amd64/x86_64 “PC” with [Ubuntu Linux 20.04 LTS or 22.04 LTS](https://ubuntu.com/download/server)
 * GPU for hardware acceleration (optional but highly recommended): Nvidia with [CUDA 11](https://developer.nvidia.com/cuda-toolkit-archive)
-* [PyTorch 1.8.1 (LTS)](https://pytorch.org/get-started/locally/) on Python 3.8.x
+* [PyTorch 1.8.1 (LTS)](https://pytorch.org/get-started/locally/) on Python 3.8.x. *Please use the “pytorch-2” branch for PyTorch 2.3 compatibility.*
 
 Limited support and advice for using other hardware and software combinations is available as follows.
 
@@ -73,15 +75,15 @@ Limited support and advice for using other hardware and software combinations is
 
 **The only officially supported platforms for model training** are Ubuntu Linux 20.04 LTS and 22.04 LTS on amd64/x86_64, either the desktop or the [server version](https://ubuntu.com/download/server).
 
-*Note that hardware acceleration using CUDA is <u>not available</u> in PyTorch for Raspberry Pi 4 and other <u>aarch64/arm64</u> devices, even those running Ubuntu Linux 20.04/22.04. See also [Development on Raspberry Pi 4 and 400](https://github.com/MaximIntegratedAI/ai8x-synthesis/blob/develop/docs/RaspberryPi.md) (unsupported).*
+*Note that hardware acceleration using CUDA is <u>not available</u> in PyTorch for Raspberry Pi 4 and other <u>aarch64/arm64</u> devices, even those running Ubuntu Linux 20.04/22.04. See also [Development on Raspberry Pi 4 and 400](https://github.com/analogdevicesinc/ai8x-synthesis/blob/develop/docs/RaspberryPi.md) (unsupported).*
 
 This document also provides instructions for installing on RedHat Enterprise Linux / CentOS 8 with limited support.
 
 ##### Windows
 
-On Windows 10 version 21H2 or newer, and Windows 11, after installing the Windows Subsystem for Linux (WSL2), Ubuntu Linux 20.04 or 22.04 can be used inside Windows with full CUDA acceleration, please see *[Windows Subsystem for Linux](https://github.com/MaximIntegratedAI/ai8x-synthesis/blob/develop/docs/WSL2.md).* For the remainder of this document, follow the steps for Ubuntu Linux.
+On Windows 10 version 21H2 or newer, and Windows 11, after installing the Windows Subsystem for Linux (WSL2), Ubuntu Linux 20.04 or 22.04 can be used inside Windows with full CUDA acceleration, please see *[Windows Subsystem for Linux](https://github.com/analogdevicesinc/ai8x-synthesis/blob/develop/docs/WSL2.md).* For the remainder of this document, follow the steps for Ubuntu Linux.
 
-If WSL2 is not available, it is also possible (but not recommended due to inherent compatibility issues and slightly degraded performance) to run this software natively on Windows. Please see *[Native Windows Installation](https://github.com/MaximIntegratedAI/ai8x-synthesis/blob/develop/docs/Windows.md)*.
+If WSL2 is not available, it is also possible (but not recommended due to inherent compatibility issues and slightly degraded performance) to run this software natively on Windows. Please see *[Native Windows Installation](https://github.com/analogdevicesinc/ai8x-synthesis/blob/develop/docs/Windows.md)*.
 
 ##### macOS
 
@@ -137,7 +139,7 @@ Ctrl+A,D to disconnect
 The following software is optional, and can be replaced with other similar software of the user’s choosing.
 
 1. Code Editor
-   Visual Studio Code, <https://code.visualstudio.com> or the VSCodium version, <https://vscodium.com>, with the “Remote - SSH” plugin; *to use Visual Studio Code on Windows as a full development environment (including debug), see <https://github.com/MaximIntegratedTechSupport/VSCode-Maxim>*
+   Visual Studio Code, <https://code.visualstudio.com> or the VSCodium version, <https://vscodium.com>, with the “Remote - SSH” plugin; *to use Visual Studio Code on Windows as a full development environment (including debug), see <https://github.com/analogdevicesinc/VSCode-Maxim>*
    Sublime Text, <https://www.sublimetext.com>
 2. Markdown Editor
    Typora, <http://typora.io>
@@ -309,7 +311,7 @@ $ git config --global user.name "First Last"
 
 #### Nervana Distiller
 
-[Nervana Distiller](https://github.com/MaximIntegratedAI/distiller) is automatically installed as a git sub-module with the other packages. Distiller is used for its scheduling and model export functionality.
+[Nervana Distiller](https://github.com/analogdevicesinc/distiller) is automatically installed as a git sub-module with the other packages. Distiller is used for its scheduling and model export functionality.
 
 ### Upstream Code
 
@@ -317,8 +319,8 @@ Change to the project root and run the following commands. Use your GitHub crede
 
 ```shell
 $ cd <your/project>
-$ git clone --recursive https://github.com/MaximIntegratedAI/ai8x-training.git
-$ git clone --recursive https://github.com/MaximIntegratedAI/ai8x-synthesis.git
+$ git clone --recursive https://github.com/analogdevicesinc/ai8x-training.git
+$ git clone --recursive https://github.com/analogdevicesinc/ai8x-synthesis.git
 ```
 
 #### Creating the Virtual Environment
@@ -585,7 +587,7 @@ The MSDK is also available as a [git repository](https://github.com/analogdevice
       $ pacman -S --needed base filesystem msys2-runtime make
       ```
 
-5. Install packages for OpenOCD. OpenOCD binaries are available in the “openocd” sub-folder of the ai8x-synthesis repository. However, some additional dependencies are required on most systems. See [openocd/README.md](https://github.com/MaximIntegratedAI/ai8x-synthesis/blob/develop/openocd/README.md) for a list of packages to install, then return here to continue.
+5. Install packages for OpenOCD. OpenOCD binaries are available in the “openocd” sub-folder of the ai8x-synthesis repository. However, some additional dependencies are required on most systems. See [openocd/README.md](https://github.com/analogdevicesinc/ai8x-synthesis/blob/develop/openocd/README.md) for a list of packages to install, then return here to continue.
 
 6. Add the location of the toolchain binaries to the system path.
 
@@ -738,7 +740,7 @@ The number of discarded pixels is network specific and dependent on pooling stri
 
 *Note: Streaming mode requires the use of [FIFOs](#fifos).*
 
-For concrete examples on how to implement streaming mode with a camera, please see the [Camera Streaming Guide](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/main/Guides/Camera_Streaming_Guide.md).
+For concrete examples on how to implement streaming mode with a camera, please see the [Camera Streaming Guide](https://github.com/analogdevicesinc/MaximAI_Documentation/blob/main/Guides/Camera_Streaming_Guide.md).
 
 #### FIFOs
 
@@ -949,7 +951,7 @@ Because each processor has its own dedicated weight memory, this will introduce 
 For each layer, a set of active processors must be specified. The number of input channels for the layer must be equal to, or be a multiple of, the active processors, and the input data for that layer must be located in data memory instances accessible to the selected processors.
 
 It is possible to specify a relative offset into the data memory instance that applies to all processors.
-_Example:_ Assuming HWC data format, specifying the offset as 16384 bytes (or 0x4000) will cause processors 0-3 to read their input from the second half of data memory 0, processors 4-7 will read from the second half of data memory instance 1, etc.
+_Example:_ Assuming HWC data format, specifying the offset as 16,384 bytes (or 0x4000) will cause processors 0-3 to read their input from the second half of data memory 0, processors 4-7 will read from the second half of data memory instance 1, etc.
 
 For most simple networks with limited data sizes, it is easiest to ping-pong between the first and second halves of the data memories – specify the data offset as 0 for the first layer, 0x4000 for the second layer, 0 for the third layer, etc. This strategy avoids overlapping inputs and outputs when a given processor is used in two consecutive layers.
 
@@ -1066,19 +1068,19 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   
 * Streaming mode:
   
-  * When using data greater than 90×91 (8,192 pixels per channel in HWC mode), or 181×181 (32,768 pixels in CHW mode), and [Data Folding](#data-folding) techniques are not used, then `streaming` mode must be used.
+  * When using data greater than 8192 pixels per channel (approximately 90×90 when width = height) in HWC mode, or 32,768 pixels per channel (181×181 when width = height) in CHW mode, and [Data Folding](#data-folding) techniques are not used, then `streaming` mode must be used.
   * When using `streaming` mode, the product of any layer’s input width, input height, and input channels divided by 64 rounded up must not exceed 2^21: $width * height * ⌈\frac{channels}{64}⌉ < 2^{21}$; _width_ and _height_ must not exceed 1023.
   * Streaming is limited to 8 consecutive layers or fewer, and is limited to four FIFOs (up to 4 input channels in CHW and up to 16 channels in HWC format), see [FIFOs](#fifos).
   * For streaming layers, bias values may not be added correctly in all cases.
   * The *final* streaming layer must use padding.
   * Layers that use 1×1 kernels without padding are automatically replaced with equivalent layers that use 3×3 kernels with padding.
   
-* The weight memory supports up to 768 * 64 3×3 Q7 kernels (see [Number Format](#number-format)), for a total of [432 KiB of kernel memory](docs/AHBAddresses.md).
+* The weight memory supports up to 768 * 64 3×3 Q7 kernels (see [Number Format](#number-format)), for a total of [432 KiB of kernel memory](https://github.com/analogdevicesinc/ai8x-synthesis/blob/develop/docs/AHBAddresses.md).
   When using 1-, 2- or 4-bit weights, the capacity increases accordingly.
   When using more than 64 input or output channels, weight memory is shared, and effective capacity decreases proportionally (for example, 128 input channels require twice as much space as 64 input channels, and a layer with <u>both</u> 128 input and 128 output channels requires <u>four</u> times as much space as a layer with only 64 input channels and 64 output channels).
   Weights must be arranged according to specific rules detailed in [Layers and Weight Memory](#layers-and-weight-memory).
 
-* There are 16 instances of 32 KiB data memory ([for a total of 512 KiB](docs/AHBAddresses.md)). When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 181×181 pixels per channel in the CHW format. However, when using more than one input channel, the HWC format may be preferred, and all layer outputs are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance — or 91×90 pixels per channel.
+* There are 16 instances of 32 KiB data memory ([for a total of 512 KiB](https://github.com/analogdevicesinc/ai8x-synthesis/blob/develop/docs/AHBAddresses.md)). When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 32,768 pixels per channel in the CHW format (181×181 when width = height). However, when using more than one input channel, the HWC format may be preferred, and all layer outputs are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance — or 8192 pixels per channel (approximately 90×90 when width = height).
   Note that the first layer commonly creates a wide expansion (i.e., a large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical. In many cases, [Data Folding](#data-folding) (distributing the input data across multiple channels) can effectively increase both the input dimensions as well as improve model performance.
 
 * The hardware supports 1D and 2D convolution layers, 2D transposed convolution layers (upsampling), element-wise addition, subtraction, binary OR, binary XOR as well as fully connected layers (`Linear`), which are implemented using 1×1 convolutions on 1×1 data:
@@ -1086,7 +1088,7 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   
   * `Flatten` functionality is available to convert 2D input data for use by fully connected layers, see [Fully Connected Layers](#fully-connected-linear-layers).
   
-  * When “flattening” two-dimensional data, the input dimensions (C×H×W) must satisfy C×H×W ≤ 16384, and H×W ≤ 256. Pooling cannot be used at the same time as flattening.
+  * When “flattening” two-dimensional data, the input dimensions (C×H×W) must satisfy C×H×W ≤ 16,384, and H×W ≤ 256. Pooling cannot be used at the same time as flattening.
   
   * Element-wise operators support from 2 up to 16 inputs.
   
@@ -1163,25 +1165,25 @@ The MAX78002 hardware does not support arbitrary network parameters. Specificall
 
 * Streaming mode:
 
-  * When using data greater than 143×143 (20,480 pixels per channel in HWC mode), or 286×286 (81,920 pixels in CHW mode), and [Data Folding](#data-folding) techniques are not used, then `streaming` mode must be used.
+  * When using data greater than 20,480 pixels per channel in HWC mode (143×143 when height = width), or 81,920 pixels in CHW mode (286×286 when height = width), and [Data Folding](#data-folding) techniques are not used, then `streaming` mode must be used.
   * When using `streaming` mode, the product of any layer’s input width, input height, and input channels divided by 64 rounded up must not exceed 2^21: $width * height * ⌈\frac{channels}{64}⌉ < 2^{21}$; _width_ and _height_ must not exceed 2047.
   * Streaming is limited to 8 consecutive layers or fewer, and is limited to four FIFOs (up to 4 input channels in CHW and up to 16 channels in HWC format), see [FIFOs](#fifos).
   * Layers that use 1×1 kernels without padding are automatically replaced with equivalent layers that use 3×3 kernels with padding.
   * Streaming layers must use convolution (i.e., the `Conv1d`, `Conv2d`, or `ConvTranspose2d` [operators](#operation)).
 
-* The weight memory of processors 0, 16, 32, and 48 supports up to 5,120 3×3 Q7 kernels (see [Number Format](#number-format)), all other processors support up to 4,096 3×3 Q7 kernels, for a total of [2,340 KiB of kernel memory](docs/AHBAddresses.md).
+* The weight memory of processors 0, 16, 32, and 48 supports up to 5,120 3×3 Q7 kernels (see [Number Format](#number-format)), all other processors support up to 4,096 3×3 Q7 kernels, for a total of [2,340 KiB of kernel memory](https://github.com/analogdevicesinc/ai8x-synthesis/blob/develop/docs/AHBAddresses.md).
   When using 1-, 2- or 4-bit weights, the capacity increases accordingly. The hardware supports two different flavors of 1-bit weights, either 0/–1 or +1/–1.
   When using more than 64 input or output channels, weight memory is shared, and effective capacity decreases.
   Weights must be arranged according to specific rules detailed in [Layers and Weight Memory](#layers-and-weight-memory).
 
-* The total of [1,280 KiB of data memory](docs/AHBAddresses.md) is split into 16 sections of 80 KiB each. When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 286×286 pixels per channel in the CHW format. However, when using more than one input channel, the HWC format may be preferred, and all layer outputs are in HWC format as well. In those cases, it is required that four channels fit into a single memory section — or 143×143 pixels per channel.
+* The total of [1,280 KiB of data memory](https://github.com/analogdevicesinc/ai8x-synthesis/blob/develop/docs/AHBAddresses.md) is split into 16 sections of 80 KiB each. When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 81,920 pixels per channel in CHW format (286×286 when height = width). However, when using more than one input channel, the HWC format may be preferred, and all layer outputs are in HWC format as well. In those cases, it is required that four channels fit into a single memory section — or 20,480 pixels per channel (143×143 when height = width).
   Note that the first layer commonly creates a wide expansion (i.e., a large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical. In many cases, [Data Folding](#data-folding) (distributing the input data across multiple channels) can effectively increase both the input dimensions as well as improve model performance.
 
 * The hardware supports 1D and 2D convolution layers, 2D transposed convolution layers (upsampling), element-wise addition, subtraction, binary OR, binary XOR as well as fully connected layers (`Linear`), which are implemented using 1×1 convolutions on 1×1 data:
 
   * The maximum number of input neurons is 1024, and the maximum number of output neurons is 1024 (16 each per processor used).
   * `Flatten` functionality is available to convert 2D input data for use by fully connected layers, see [Fully Connected Layers](#fully-connected-linear-layers).
-  * When “flattening” two-dimensional data, the input dimensions (C×H×W) must satisfy C×H×W ≤ 16384, and H×W ≤ 256. Pooling cannot be used at the same time as flattening.
+  * When “flattening” two-dimensional data, the input dimensions (C×H×W) must satisfy C×H×W ≤ 16,384, and H×W ≤ 256. Pooling cannot be used at the same time as flattening.
   * Element-wise operators support from 2 up to 16 inputs.
   * Element-wise operators can be chained in-flight with pooling and 2D convolution (where the order of pooling and element-wise operations can be swapped).
   * For convenience, a `Softmax` operator is supported in software.
@@ -1204,7 +1206,7 @@ The MAX78002 hardware does not support arbitrary network parameters. Specificall
 
 m×n fully connected layers can be realized in hardware by “flattening” 2D input data of dimensions C×H×W into m=C×H×W channels of 1×1 input data. The hardware will produce n channels of 1×1 output data. When chaining multiple fully connected layers, the flattening step is omitted. The following picture shows 2D data, the equivalent flattened 1D data, and the output.
 
-For MAX78000/MAX78002, the product C×H×W must not exceed 16384.
+For MAX78000/MAX78002, the product C×H×W must not exceed 16,384.
 
 ![MLP](docs/MLP.png)
 
@@ -2014,7 +2016,7 @@ While there can be multiple reasons for this, check two important settings that 
 
 #### Introduction
 
-The following chapter describes the neural architecture search (NAS) solution for MAX78000/MAX78002 as implemented in the [ai8x-training](https://github.com/MaximIntegratedAI/ai8x-training) repository. Details are provided about the NAS method, how to run existing NAS models in the repository, and how to define a new NAS model.
+The following chapter describes the neural architecture search (NAS) solution for MAX78000/MAX78002 as implemented in the [ai8x-training](https://github.com/analogdevicesinc/ai8x-training) repository. Details are provided about the NAS method, how to run existing NAS models in the repository, and how to define a new NAS model.
 
 The intention of NAS is to find the best neural architecture for a given set of requirements by automating architecture engineering. NAS explores the search space automatically and returns an architecture that is hard to optimize further using human or “manual” design. Multiple different techniques are proposed in the literature for automated architecture search, including reinforcement-based and evolutionary-based solutions.
 
@@ -2087,7 +2089,7 @@ The only model architecture implemented in this repository is the sequential mod
 
 <img src="docs/NAS_Sequential_Model.png" alt="nas_model" style="zoom:50%;"/>
 
-All required elastic search strategies are implemented in this [model file](https://github.com/MaximIntegratedAI/ai8x-training/blob/develop/models/ai85nasnet-sequential.py).
+All required elastic search strategies are implemented in this [model file](https://github.com/analogdevicesinc/ai8x-training/blob/develop/models/ai85nasnet-sequential.py).
 
 A new model architecture can be implemented by implementing the `OnceForAllModel` interface. The new model class must implement the following:
 
@@ -2214,7 +2216,7 @@ The following table describes the most important command line arguments for `ai8
 
 ### YAML Network Description
 
-The [quick-start guide](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/main/Guides/YAML%20Quickstart.md) provides a short overview of the purpose and structure of the YAML network description file.
+The [quick-start guide](https://github.com/analogdevicesinc/MaximAI_Documentation/blob/main/Guides/YAML%20Quickstart.md) provides a short overview of the purpose and structure of the YAML network description file.
 
 If `yamllint` is installed and available in the shell path, it is automatically run against the configuration file and all warnings and errors are reported.
 *Note: The name of the linter can be changed using the `--yamllint` command line argument.*
@@ -3029,7 +3031,7 @@ To run another inference, ensure all quadrants are disabled (stopping the state 
 The generated code is split between API code (in `cnn.c`) and data-dependent code in `main.c` or `main_riscv.c`. The data-dependent code is based on a known-answer test. The `main()` function shows the proper sequence of steps to load and configure the CNN accelerator, run it, unload it, and verify the result.
 
 `void load_input(void);`
-Load the example input. This function can serve as a template for loading data into the CNN accelerator. Note that the clocks and power to the accelerator must be enabled first. If this is skipped, the device may appear to hang and the [recovery procedure](https://github.com/MaximIntegratedAI/MaximAI_Documentation/tree/main/MAX78000_Feather#how-to-unlock-a-max78000-that-can-no-longer-be-programmed) may have to be used.
+Load the example input. This function can serve as a template for loading data into the CNN accelerator. Note that the clocks and power to the accelerator must be enabled first. If this is skipped, the device may appear to hang and the [recovery procedure](https://github.com/analogdevicesinc/MaximAI_Documentation/tree/main/MAX78000_Feather#how-to-unlock-a-max78000-that-can-no-longer-be-programmed) may have to be used.
 
 `int check_output(void);`
 This function verifies that the known-answer test works correctly in hardware (using the example input). This function is typically not needed in the final application.
@@ -3223,7 +3225,7 @@ There can be many reasons why the known-answer test (KAT) fails for a given netw
 * For very short and small networks, disable the use of WFI (wait for interrupt) instructions while waiting for completion of the CNN computations by using the command line option `--no-wfi`. *Explanation: In these cases, the network terminates more quickly than the time it takes between testing for completion and executing the WFI instruction, so the WFI instruction is never interrupted and the code may appear to hang.*
 * The `--no-wfi` option can also be useful when trying to debug code, since the debugger loses connection when the device enters sleep mode using `__WFI()`.
 * By default, there is a two-second delay at the beginning of the code. This time allows the debugger to take control before the device enters any kind of sleep mode. `--no-wfi` disables sleep mode (see also the related information [above](#known-answer-test-kat-console-does-not-print-passfail)). The time delay can be modified using the `--debugwait` option.
-  If the delay is too short or skipped altogether, and the device does not wake at the end of execution, the device may appear to hang and the [recovery procedure](https://github.com/MaximIntegratedAI/MaximAI_Documentation/tree/main/MAX78000_Feather#how-to-unlock-a-max78000-that-can-no-longer-be-programmed) may have to be used in order to load new code or to debug code.
+  If the delay is too short or skipped altogether, and the device does not wake at the end of execution, the device may appear to hang and the [recovery procedure](https://github.com/analogdevicesinc/MaximAI_Documentation/tree/main/MAX78000_Feather#how-to-unlock-a-max78000-that-can-no-longer-be-programmed) may have to be used in order to load new code or to debug code.
 * For very large and deep networks, enable the boost power supply using the `--boost` command line option. On the EVkit, the boost supply is connected to port pin P2.5, so the command line option is `--boost 2.5`.
 * The default compiler optimization level is `-O2`, and incorrect code may be generated under rare circumstances. Lower the optimization level in the generated `Makefile` to `-O1`, clean (`make distclean && make clean`), and rebuild the project (`make`). If this solves the problem, one of the possible reasons is that code is missing the `volatile` keyword for certain variables.
   To permanently adjust the default compiler optimization level, modify `MXC_OPTIMIZE_CFLAGS` in `assets/embedded-ai85/templateMakefile` for Arm code and `assets/embedded-riscv-ai85/templateMakefile.RISCV` for RISC-V code.
@@ -3264,17 +3266,17 @@ When running C code generated with `--energy`, the power display on the EVKit wi
 
 *Note: MAX78000 uses LED1 and LED2 to trigger power measurement via MAX32625 and MAX34417.*
 
-See the [benchmarking guide](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/main/Guides/MAX7800x%20Power%20Monitor%20and%20Energy%20Benchmarking%20Guide.pdf) for more information about benchmarking.
+See the [benchmarking guide](https://github.com/analogdevicesinc/MaximAI_Documentation/blob/main/Guides/MAX7800x%20Power%20Monitor%20and%20Energy%20Benchmarking%20Guide.pdf) for more information about benchmarking.
 
 
 
 ## Further Information
 
-Additional information about the evaluation kits, and the software development kit (MSDK) is available on the web at <https://github.com/MaximIntegratedAI/MaximAI_Documentation>.
+Additional information about the evaluation kits, and the software development kit (MSDK) is available on the web at <https://github.com/analogdevicesinc/MaximAI_Documentation>.
 
-[AHB Addresses for MAX78000 and MAX78002](docs/AHBAddresses.md)
+[AHB Addresses for MAX78000 and MAX78002](https://github.com/analogdevicesinc/ai8x-synthesis/blob/develop/docs/AHBAddresses.md)
 
-[Facial Recognition System](https://github.com/MaximIntegratedAI/ai8x-training/blob/develop/docs/FacialRecognitionSystem.md)
+[Facial Recognition System](https://github.com/analogdevicesinc/ai8x-training/blob/develop/docs/FacialRecognitionSystem.md)
 
 
 ---
@@ -3306,6 +3308,6 @@ Do not try to push any changes into the main branch. Instead, create a fork and 
 *Note: After creating the fork, you must re-enable actions in the “Actions” tab of the repository on GitHub.*
 
 The following document has more information:
-<https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/main/CONTRIBUTING.md>
+<https://github.com/analogdevicesinc/MaximAI_Documentation/blob/main/CONTRIBUTING.md>
 
 ---
