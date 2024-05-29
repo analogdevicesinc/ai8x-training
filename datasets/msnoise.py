@@ -111,7 +111,7 @@ class MSnoise:
         self.__download_raw(self.url_train)
         self.__download_raw(self.url_test)
 
-        # Fixing the naming differences
+        # Fix the naming convention mismatches
         for record_name in os.listdir(self.noise_test_folder):
             if 'Neighbor' in record_name.split('_')[0]:
                 rec_pth = f'NeighborSpeaking_{record_name.split("_")[-1]}'

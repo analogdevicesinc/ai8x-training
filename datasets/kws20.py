@@ -39,7 +39,7 @@ import soundfile as sf
 
 import ai8x
 from datasets.msnoise import MSnoise
-from datasets.signalmixer import signalmixer
+from datasets.signalmixer import SignalMixer
 
 
 class KWS:
@@ -709,10 +709,10 @@ class KWS:
 
             # read testing_list.txt & validation_list.txt into sets for fast access
             with open(os.path.join(self.raw_folder, 'testing_list.txt'), encoding="utf-8") as f:
-                testing_set = set(f.read().splitlines())
+                test_set = set(f.read().splitlines())
             test_silence = [os.path.join('silence', rec) for rec in os.listdir(
                 os.path.join(self.raw_test_folder, '_silence_'))]
-            testing_set.update(test_silence)
+            test_set.update(test_silence)
 
             with open(os.path.join(self.raw_folder, 'validation_list.txt'), encoding="utf-8") as f:
                 validation_set = set(f.read().splitlines())
@@ -733,7 +733,7 @@ class KWS:
                 test_count_class = 0
                 for r, record_name in enumerate(record_list):
                     local_filename = os.path.join(label, record_name)
-                    if local_filename in testing_set:
+                    if local_filename in test_set:
                         test_count_class += 1
 
                 # no augmentation for testing set, subtract them accordingly
@@ -775,7 +775,7 @@ class KWS:
                     if record_name in raw_test_list:
                         d_typ = np.uint(3)  # benchmark test
                         test_count += 1
-                    elif record_name in testing_set:
+                    elif record_name in test_set:
                         d_typ = np.uint8(1)  # test
                         test_count += 1
                     elif record_name in validation_set:
@@ -1016,7 +1016,7 @@ def KWS_20_msnoise_mixed_get_datasets(data, load_train=True, load_test=True,
                                       desired_probs=desired_probs,
                                       transform=None, quantize=False, download=False)
 
-        train_dataset = signalmixer(signal_dataset=kws_train_dataset,
+        train_dataset = SignalMixer(signal_dataset=kws_train_dataset,
                                     snr_range=snr_range,
                                     noise_type=noise_type, apply_prob=apply_prob,
                                     noise_dataset=noise_dataset_train)
@@ -1065,7 +1065,7 @@ def MixedKWS_20_get_datasets_10dB(data, load_train=True, load_test=True,
                                       desired_probs=desired_probs,
                                       transform=None, quantize=False, download=False)
 
-        train_dataset = signalmixer(signal_dataset=kws_train_dataset,
+        train_dataset = SignalMixer(signal_dataset=kws_train_dataset,
                                     snr_range=snr_range,
                                     noise_type=noise_type, apply_prob=apply_prob,
                                     noise_dataset=noise_dataset_train)
@@ -1078,7 +1078,7 @@ def MixedKWS_20_get_datasets_10dB(data, load_train=True, load_test=True,
                                      desired_probs=desired_probs,
                                      transform=None, quantize=False, download=False)
 
-        test_dataset = signalmixer(signal_dataset=kws_test_dataset,
+        test_dataset = SignalMixer(signal_dataset=kws_test_dataset,
                                    snr_range=snr_range,
                                    noise_type=noise_type, apply_prob=apply_prob,
                                    noise_dataset=noise_dataset_test)

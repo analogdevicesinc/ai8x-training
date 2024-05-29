@@ -22,7 +22,7 @@ import numpy as np
 import torch
 
 
-class signalmixer:
+class SignalMixer:
     """
     Signal mixer dataloader to create datasets with specified
     length using a noise dataset and a speech dataset and a specified SNR level.
@@ -92,18 +92,18 @@ class signalmixer:
             snr = np.random.uniform(self.snr_range[0], self.snr_range[-1])
         snr = torch.tensor(snr)
 
-        rmsclean = torch.sqrt(torch.mean(signal**2))
-        scalarclean = 1 / rmsclean
-        signal = signal * scalarclean
+        rms_clean = torch.sqrt(torch.mean(signal**2))
+        scalar_clean = 1 / rms_clean
+        signal = signal * scalar_clean
 
-        scalarnoise = 1 / rms_noise
-        noise = noise * scalarnoise
+        scalar_noise = 1 / rms_noise
+        noise = noise * scalar_noise
 
-        cleanfactor = 10**(snr/20)
-        noisyspeech = cleanfactor * signal + noise
-        noisyspeech = noisyspeech / (torch.tensor(scalarnoise) + cleanfactor * scalarclean)
+        clean_factor = 10**(snr/20)
+        noisy_speech = clean_factor * signal + noise
+        noisy_speech = noisy_speech / (torch.tensor(scalar_noise) + clean_factor * scalar_clean)
 
-        return noisyspeech
+        return noisy_speech
 
     def white_noise_mixer(self, signal):
 
@@ -121,16 +121,16 @@ class signalmixer:
         noise = np.random.normal(mean, std, signal.shape)
         noise = torch.tensor(noise, dtype=torch.float32)
 
-        rmsclean = torch.sqrt(torch.mean(signal**2))
-        scalarclean = 1 / rmsclean
-        signal = signal * scalarclean
+        rms_clean = torch.sqrt(torch.mean(signal**2))
+        scalar_clean = 1 / rms_clean
+        signal = signal * scalar_clean
 
-        rmsnoise = torch.sqrt(torch.mean(noise**2))
-        scalarnoise = 1 / rmsnoise
-        noise = noise * scalarnoise
+        rms_noise = torch.sqrt(torch.mean(noise**2))
+        scalar_noise = 1 / rms_noise
+        noise = noise * scalar_noise
 
-        cleanfactor = 10**(snr/20)
-        noisyspeech = cleanfactor * signal + noise
-        noisyspeech = noisyspeech / (scalarnoise + cleanfactor * scalarclean)
+        clean_factor = 10**(snr/20)
+        noisy_speech = clean_factor * signal + noise
+        noisy_speech = noisy_speech / (scalar_noise + clean_factor * scalar_clean)
 
-        return noisyspeech
+        return noisy_speech
