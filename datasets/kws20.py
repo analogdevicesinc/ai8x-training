@@ -134,12 +134,12 @@ class KWS:
                 self.save_unquantized = True
             if 'compand' not in self.quantization:
                 self.quantization['compand'] = False
-            elif 'mu' not in self.quantization:
-                self.quantization['mu'] = 255
+            if 'mu' not in self.quantization:
+                self.quantization['mu'] = 255  # Default, ignored when 'compand' is False
         else:
             print('Undefined quantization schema! ',
                   'Number of bits set to 8.')
-            self.quantization = {'bits': 8, 'compand': False}
+            self.quantization = {'bits': 8, 'compand': False, 'mu': 255}
 
     def __parse_augmentation(self, augmentation):
         self.augmentation = augmentation
@@ -409,12 +409,16 @@ class KWS:
     def shift_and_noise_augment(self, audio, shift_limits):
         """Augments audio by adding random shift and noise.
         """
-        random_noise_var_coeff = np.random.uniform(self.augmentation['noise_var']['min'],
-                                                   self.augmentation['noise_var']['max'])
         random_shift_sample = np.random.randint(shift_limits[0], shift_limits[1])
-
         aug_audio = self.shift(audio, random_shift_sample)
-        aug_audio = self.add_quantized_white_noise(aug_audio, random_noise_var_coeff)
+
+        if 'noise_var' in self.augmentation:
+            random_noise_var_coeff = np.random.uniform(self.augmentation['noise_var']['min'],
+                                                       self.augmentation['noise_var']['max'])
+            if self.quantization['bits'] == 0:
+                aug_audio = self.add_white_noise(aug_audio, random_noise_var_coeff)
+            else:
+                aug_audio = self.add_quantized_white_noise(aug_audio, random_noise_var_coeff)
 
         return aug_audio
 
@@ -442,8 +446,8 @@ class KWS:
     def add_white_noise(audio, noise_var_coeff):
         """Adds zero mean Gaussian noise to the audio with specified variance.
         """
-        coeff = noise_var_coeff * np.mean(np.abs(audio))
-        noisy_audio = audio + coeff * np.random.randn(len(audio))
+        coeff = noise_var_coeff * torch.mean(torch.abs(audio))
+        noisy_audio = audio + coeff * torch.randn(len(audio))
         return noisy_audio
 
     @staticmethod
@@ -508,8 +512,11 @@ class KWS:
         """Future: May implement a method to detect the beginning & end of voice activity in audio.
         Currently, it returns end points compatible with augmentation['shift'] values
         """
-        return int(-self.augmentation['shift']['min'] * fs), \
-            int(len(audio) - self.augmentation['shift']['max'] * fs)
+        if self.augmentation:
+            return int(-self.augmentation['shift']['min'] * fs), \
+                int(len(audio) - self.augmentation['shift']['max'] * fs)
+
+        return (0, int(len(audio)) - 1)
 
     def speed_augment(self, audio, fs, sample_no=0):
         """Augments audio by randomly changing the speed of the audio.
@@ -641,11 +648,14 @@ class KWS:
                         self.speed_augment_multiple(record, fs, exp_len, no_augmentations)
 
                     for local_id, audio_seq in enumerate(audio_seq_list):
-                        data_in[sample_index] = \
-                            KWS.quantize_audio(audio_seq,
-                                               num_bits=self.quantization['bits'],
-                                               compand=self.quantization['compand'],
-                                               mu=self.quantization['mu'])
+                        if not self.save_unquantized:
+                            data_in[sample_index] = \
+                                KWS.quantize_audio(audio_seq,
+                                                   num_bits=self.quantization['bits'],
+                                                   compand=self.quantization['compand'],
+                                                   mu=self.quantization['mu'])
+                        else:
+                            data_in[sample_index] = audio_seq
                         data_shift_limits[sample_index] = shift_limits[local_id]
                         data_type[sample_index] = d_typ
                         sample_index += 1
@@ -687,25 +697,15 @@ class KWS:
         print(f'Training: {train_count}, Validation: {valid_count}, Test: {test_count}')
 
 
-class KWS_20(KWS):
-    """
-    `SpeechCom v0.02 <http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz>`
-    Dataset, 1D folded.
-    """
-
-    def __str__(self):
-        return self.__class__.__name__
-
-
-def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6):
+def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6, quantized=True):
     """
     Load the folded 1D version of SpeechCom dataset
 
     The dataset is loaded from the archive file, so the file is required for this version.
 
-    The dataset originally includes 30 keywords. A dataset is formed with 7 or 21 classes which
-    includes 6 or 20 of the original keywords and the rest of the
-    dataset is used to form the last class, i.e class of the unknowns.
+    The dataset originally includes 35 keywords. A dataset is formed with num_classes + 1 classes
+    which includes num_classes of the original keywords and the rest of the dataset is used to
+    form the last class, i.e class of the unknowns.
     To further improve the detection of unknown words, the librispeech dataset is also downloaded
     and converted to 1 second segments to be used as unknowns as well.
     The dataset is split into training+validation and test sets. 90:10 training+validation:test
@@ -717,19 +717,28 @@ def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6):
     """
     (data_dir, args) = data
 
-    transform = transforms.Compose([
-        ai8x.normalize(args=args)
-    ])
+    if quantized:
+        transform = transforms.Compose([
+            ai8x.normalize(args=args)
+        ])
+    else:
+        transform = None
 
-    if num_classes in (6, 20):
+    if num_classes <= 35:
         classes = next((e for _, e in enumerate(datasets)
                         if len(e['output']) - 1 == num_classes))['output'][:-1]
     else:
         raise ValueError(f'Unsupported num_classes {num_classes}')
 
-    augmentation = {'aug_num': 2, 'shift': {'min': -0.1, 'max': 0.1},
-                    'noise_var': {'min': 0, 'max': 1.0}}
-    quantization_scheme = {'compand': False, 'mu': 10}
+    if quantized:
+        augmentation = {'aug_num': 2, 'shift': {'min': -0.1, 'max': 0.1},
+                        'noise_var': {'min': 0, 'max': 1.0}}
+        quantization_scheme = {'compand': False, 'mu': 10}
+    else:
+        # default: no speed augmentation for unquantized due to memory usage considerations
+        augmentation = {'aug_num': 0, 'shift': {'min': -0.1, 'max': 0.1},
+                        'noise_var': {'min': 0, 'max': 1.0}}
+        quantization_scheme = {'bits': 0}
 
     if load_train:
         train_dataset = KWS(root=data_dir, classes=classes, d_type='train',
@@ -774,65 +783,41 @@ def KWS_20_get_datasets(data, load_train=True, load_test=True):
     return KWS_get_datasets(data, load_train, load_test, num_classes=20)
 
 
-def KWS_get_unquantized_datasets(data, load_train=True, load_test=True, num_classes=6):
+def KWS_35_get_datasets(data, load_train=True, load_test=True):
     """
-    Load the folded 1D version of SpeechCom dataset without quantization and augmentation
+    Load the folded 1D version of SpeechCom dataset for 35 classes
+
+    The dataset is loaded from the archive file, so the file is required for this version.
+
+    The dataset includes 35 keywords. The librispeech dataset is also downloaded
+    and converted to 1 second segments to be used as unknowns.
+    The dataset is split into training+validation and test sets. 90:10 training+validation:test
+    split is used by default.
+
+    Data is augmented to 3x duplicate data by random stretch/shift and randomly adding noise where
+    the stretching coefficient, shift amount and noise variance are randomly selected between
+    0.8 and 1.3, -0.1 and 0.1, 0 and 1, respectively.
     """
-    (data_dir, args) = data
-
-    transform = None
-
-    if num_classes in (6, 20):
-        classes = next((e for _, e in enumerate(datasets)
-                        if len(e['output']) - 1 == num_classes))['output'][:-1]
-    elif num_classes == 35:
-        classes = next((e for _, e in enumerate(datasets)
-                        if len(e['output']) == num_classes))['output']
-    else:
-        raise ValueError(f'Unsupported num_classes {num_classes}')
-
-    augmentation = {'aug_num': 0}
-    quantization_scheme = {'bits': 0}
-
-    if load_train:
-        train_dataset = KWS(root=data_dir, classes=classes, d_type='train',
-                            transform=transform, t_type='keyword',
-                            quantization_scheme=quantization_scheme,
-                            augmentation=augmentation, download=True)
-    else:
-        train_dataset = None
-
-    if load_test:
-        test_dataset = KWS(root=data_dir, classes=classes, d_type='test',
-                           transform=transform, t_type='keyword',
-                           quantization_scheme=quantization_scheme,
-                           augmentation=augmentation, download=True)
-
-        if args.truncate_testset:
-            test_dataset.data = test_dataset.data[:1]
-    else:
-        test_dataset = None
-
-    return train_dataset, test_dataset
+    return KWS_get_datasets(data, load_train, load_test, num_classes=35)
 
 
 def KWS_35_get_unquantized_datasets(data, load_train=True, load_test=True):
     """
     Load the folded 1D version of unquantized SpeechCom dataset for 35 classes.
     """
-    return KWS_get_unquantized_datasets(data, load_train, load_test, num_classes=35)
+    return KWS_get_datasets(data, load_train, load_test, num_classes=35, quantized=False)
 
 
 datasets = [
     {
-        'name': 'KWS',  # 6 keywords
+        'name': 'KWS',  # 6 keywords + unknown
         'input': (512, 64),
         'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'UNKNOWN'),
         'weight': (1, 1, 1, 1, 1, 1, 0.06),
         'loader': KWS_get_datasets,
     },
     {
-        'name': 'KWS_20',  # 20 keywords
+        'name': 'KWS_20',  # 20 keywords + unknown
         'input': (128, 128),
         'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
                    'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
@@ -841,16 +826,29 @@ datasets = [
         'loader': KWS_20_get_datasets,
     },
     {
-        'name': 'KWS_35_unquantized',  # 35 keywords (no unknown)
+        'name': 'KWS_35',  # 35 keywords + unknown
         'input': (128, 128),
         'output': ('backward', 'bed', 'bird', 'cat', 'dog', 'down',
                    'eight', 'five', 'follow', 'forward', 'four', 'go',
                    'happy', 'house', 'learn', 'left', 'marvin', 'nine',
                    'no', 'off', 'on', 'one', 'right', 'seven',
                    'sheila', 'six', 'stop', 'three', 'tree', 'two',
-                   'up', 'visual', 'wow', 'yes', 'zero'),
+                   'up', 'visual', 'wow', 'yes', 'zero', 'UNKNOWN'),
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
-        'loader': KWS_35_get_unquantized_datasets,
+                   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
+        'loader': KWS_35_get_datasets,
     },
+    {
+        'name': 'KWS_35_unquantized',  # 35 keywords + unknown
+        'input': (128, 128),
+        'output': ('backward', 'bed', 'bird', 'cat', 'dog', 'down',
+                   'eight', 'five', 'follow', 'forward', 'four', 'go',
+                   'happy', 'house', 'learn', 'left', 'marvin', 'nine',
+                   'no', 'off', 'on', 'one', 'right', 'seven',
+                   'sheila', 'six', 'stop', 'three', 'tree', 'two',
+                   'up', 'visual', 'wow', 'yes', 'zero', 'UNKNOWN'),
+        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
+        'loader': KWS_35_get_unquantized_datasets,
+    }
 ]
