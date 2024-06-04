@@ -724,7 +724,7 @@ def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6, quant
     else:
         transform = None
 
-    if num_classes in (6, 20, 35):
+    if num_classes <= 35:
         classes = next((e for _, e in enumerate(datasets)
                         if len(e['output']) - 1 == num_classes))['output'][:-1]
     else:
