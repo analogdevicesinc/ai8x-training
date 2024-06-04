@@ -650,10 +650,10 @@ class KWS:
                     for local_id, audio_seq in enumerate(audio_seq_list):
                         if not self.save_unquantized:
                             data_in[sample_index] = \
-                            KWS.quantize_audio(audio_seq,
-                                               num_bits=self.quantization['bits'],
-                                               compand=self.quantization['compand'],
-                                               mu=self.quantization['mu'])
+                                KWS.quantize_audio(audio_seq,
+                                                   num_bits=self.quantization['bits'],
+                                                   compand=self.quantization['compand'],
+                                                   mu=self.quantization['mu'])
                         else:
                             data_in[sample_index] = audio_seq
                         data_shift_limits[sample_index] = shift_limits[local_id]
@@ -737,7 +737,7 @@ def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6, quant
     else:
         # default: no speed augmentation for unquantized due to memory usage considerations
         augmentation = {'aug_num': 0, 'shift': {'min': -0.1, 'max': 0.1},
-                        'noise_var': {'min': 0, 'max': 1.0}}  
+                        'noise_var': {'min': 0, 'max': 1.0}}
         quantization_scheme = {'bits': 0}
 
     if load_train:
