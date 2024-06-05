@@ -1,0 +1,2 @@
+#!/bin/sh
+python train.py --deterministic --batch-size 16 --epochs 200 --optimizer Adam --lr 0.0002 --wd 0 --model ai85tinierssdqr --use-bias --momentum 0.9 --weight-decay 5e-4 --dataset qrcode_160_120_kpts_ext --device MAX78000 --obj-detection --obj-detection-params parameters/obj_detection_params_qrcode.yaml --qat-policy policies/qat_policy_qrcode.yaml --compress policies/schedule-qrcode.yaml --exp-load-weights-from ../ai8x-synthesis/trained/ai85-qrcode-tinierssd-kpts-qat8-q.pth.tar --validation-split 0 --print-freq 100 --evaluate -8 "$@"
