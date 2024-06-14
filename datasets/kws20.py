@@ -75,12 +75,27 @@ class KWS:
                   'eight': 6, 'five': 7, 'follow': 8, 'forward': 9, 'four': 10, 'go': 11,
                   'happy': 12, 'house': 13, 'learn': 14, 'left': 15,
                   'librispeech': 16, 'marvin': 17, 'nine': 18, 'no': 19, 'off': 20, 'on': 21,
-                  'one': 22, 'right': 23, 'seven': 24, 'sheila': 25, 'silence': 26, 'six': 27,
+                  'one': 22, 'right': 23, 'seven': 24, 'sheila': 25, 'SILENCE': 26, 'six': 27,
                   'stop': 28, 'three': 29, 'tree': 30, 'two': 31, 'up': 32, 'visual': 33,
                   'wow': 34, 'yes': 35, 'zero': 36}
 
+    dataset_dict = {
+        'KWS': ('up', 'down', 'left', 'right', 'stop', 'go', 'UNKNOWN'),
+        'KWS_20': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
+                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
+                   'UNKNOWN'),
+        'KWS_35': ('backward', 'bed', 'bird', 'cat', 'dog', 'down',
+                   'eight', 'five', 'follow', 'forward', 'four', 'go',
+                   'happy', 'house', 'learn', 'left', 'marvin', 'nine',
+                   'no', 'off', 'on', 'one', 'right', 'seven',
+                   'sheila', 'six', 'stop', 'three', 'tree', 'two',
+                   'up', 'visual', 'wow', 'yes', 'zero', 'UNKNOWN'),
+        'KWS_12_benchmark': ('down', 'go', 'left', 'no', 'off', 'on', 'right', 'stop', 'up', 'yes',
+                             'SILENCE', 'UNKNOWN')
+    }
+
     benchmark_keywords = ['down', 'go', 'left', 'no', 'off', 'on', 'right', 'stop',
-                          'up', 'yes', 'silence']
+                          'up', 'yes', 'SILENCE']
 
     def __init__(self, root, classes, d_type, t_type, transform=None, quantization_scheme=None,
                  augmentation=None, download=False, save_unquantized=False, filter_silence=True,
@@ -95,13 +110,12 @@ class KWS:
         self.filter_silence = filter_silence
         self.filter_libri = filter_libri
         self.benchmark = benchmark
-        self.noise = np.empty(shape=[0, 0])
 
         self.__parse_quantization(quantization_scheme)
         self.__parse_augmentation(augmentation)
 
         if not self.save_unquantized:
-            self.data_file = 'dataset3.pt'
+            self.data_file = 'dataset.pt'
         else:
             self.data_file = 'unquantized.pt'
 
@@ -475,9 +489,7 @@ class KWS:
             if c not in self.class_dict:
                 if c == 'UNKNOWN':
                     continue
-                else:
-                    print(f'Class {c} not found in data')
-                    return
+                raise ValueError(f'Class {c} not found in data')
             num_elems = (self.targets == self.class_dict[c]).cpu().sum()
             print(f'Class {c} (# {self.class_dict[c]}): {num_elems} elements')
             self.new_class_dict[c] = new_class_label
@@ -522,7 +534,7 @@ class KWS:
 
         print('Filtering silence elements...')
         idx_for_silence = [idx for idx, val in enumerate(self.targets)
-                           if val != self.class_dict['silence']]
+                           if val != self.class_dict['SILENCE']]
 
         self.data = torch.index_select(self.data, 0, torch.tensor(idx_for_silence))
         self.targets = torch.index_select(self.targets, 0, torch.tensor(idx_for_silence))
@@ -555,7 +567,7 @@ class KWS:
         random_shift_sample = np.random.randint(shift_limits[0], shift_limits[1])
         aug_audio = self.shift(audio, random_shift_sample)
 
-        if 'noise_var' in self.augmentation:
+        if 'snr' in self.augmentation:
             random_snr_coeff = int(np.random.uniform(self.augmentation['snr']['min'],
                                                      self.augmentation['snr']['max']))
             random_snr_coeff = 10 ** (random_snr_coeff / 10)
@@ -777,7 +789,7 @@ class KWS:
                         print(f'\t{r + 1} of {record_len}')
 
                     if label in self.benchmark_keywords:
-                        if label == 'silence':
+                        if label == 'SILENCE':
                             raw_test_list = os.listdir(os.path.join(
                                 self.raw_test_folder, '_silence_'))
                         else:
@@ -865,22 +877,6 @@ class KWS:
         print(f'Training: {train_count}, Validation: {valid_count}, Test: {test_count}')
 
 
-classes_dict = {
-    'KWS': ('up', 'down', 'left', 'right', 'stop', 'go', 'UNKNOWN'),
-    'KWS_20': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
-               'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
-               'UNKNOWN'),
-    'KWS_35': ('backward', 'bed', 'bird', 'cat', 'dog', 'down',
-               'eight', 'five', 'follow', 'forward', 'four', 'go',
-               'happy', 'house', 'learn', 'left', 'marvin', 'nine',
-               'no', 'off', 'on', 'one', 'right', 'seven',
-               'sheila', 'six', 'stop', 'three', 'tree', 'two',
-               'up', 'visual', 'wow', 'yes', 'zero'),
-    'KWS_12_benchmark': ('down', 'go', 'left', 'no', 'off', 'on', 'right', 'stop', 'up', 'yes',
-                         'silence', 'UNKNOWN')
-}
-
-
 def KWS_get_datasets(data, load_train=True, load_test=True, dataset_name='KWS', num_classes=6,
                      quantized=True, filter_silence=True, filter_libri=False, benchmark=False):
     """
@@ -909,7 +905,10 @@ def KWS_get_datasets(data, load_train=True, load_test=True, dataset_name='KWS', 
     else:
         transform = None
 
-    classes = classes_dict[dataset_name]
+    classes = KWS.dataset_dict[dataset_name]
+
+    if num_classes+1 != len(classes):
+        raise ValueError(f'num_classes {num_classes}does not match with classes')
 
     if quantized:
         augmentation = {'aug_num': 2, 'shift': {'min': -0.1, 'max': 0.1},
@@ -984,7 +983,7 @@ def KWS_35_get_datasets(data, load_train=True, load_test=True, benchmark=False):
     0.8 and 1.3, -0.1 and 0.1, 0 and 1, respectively.
     """
     return KWS_get_datasets(data, load_train, load_test,  dataset_name='KWS_35',
-                            num_classes=35, filter_libri=True, benchmark=benchmark)
+                            num_classes=35, benchmark=benchmark)
 
 
 def KWS_35_get_unquantized_datasets(data, load_train=True, load_test=True):
@@ -1045,7 +1044,7 @@ def KWS_20_msnoise_mixed_get_datasets(data, load_train=True, load_test=True,
 def KWS_12_benchmark_get_datasets(data, load_train=True, load_test=True):
     """
     Returns the KWS dataset benchmark for 12 classes. 10 keywords and
-    silence + UNKNOWN.
+    SILENCE + UNKNOWN.
     """
     return KWS_get_datasets(data, load_train, load_test, dataset_name='KWS_12_benchmark',
                             num_classes=11, filter_silence=False, filter_libri=True,
@@ -1105,28 +1104,21 @@ datasets = [
     {
         'name': 'KWS',  # 6 keywords + unknown
         'input': (512, 64),
-        'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'UNKNOWN'),
+        'output': KWS.dataset_dict['KWS'],
         'weight': (1, 1, 1, 1, 1, 1, 0.06),
         'loader': KWS_get_datasets,
     },
     {
         'name': 'KWS_20',  # 20 keywords + unknown
         'input': (128, 128),
-        'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
-                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
-                   'UNKNOWN'),
+        'output': KWS.dataset_dict['KWS_20'],
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
         'loader': KWS_20_get_datasets,
     },
     {
         'name': 'KWS_35',  # 35 keywords + unknown
         'input': (128, 128),
-        'output': ('backward', 'bed', 'bird', 'cat', 'dog', 'down',
-                   'eight', 'five', 'follow', 'forward', 'four', 'go',
-                   'happy', 'house', 'learn', 'left', 'marvin', 'nine',
-                   'no', 'off', 'on', 'one', 'right', 'seven',
-                   'sheila', 'six', 'stop', 'three', 'tree', 'two',
-                   'up', 'visual', 'wow', 'yes', 'zero', 'UNKNOWN'),
+        'output': KWS.dataset_dict['KWS_35'],
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
         'loader': KWS_35_get_datasets,
@@ -1134,38 +1126,28 @@ datasets = [
     {
         'name': 'KWS_20_msnoise_mixed',
         'input': (128, 128),
-        'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
-                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
-                   'UNKNOWN'),
+        'output': KWS.dataset_dict['KWS_20'],
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
         'loader': KWS_20_msnoise_mixed_get_datasets,
     },
     {
         'name': 'KWS_12_benchmark',  # 10 keyword + silence + unknown
         'input': (128, 128),
-        'output': ('down', 'go', 'left', 'no', 'off', 'on', 'right', 'stop', 'up', 'yes',
-                   'silence', 'UNKNOWN'),
+        'output': KWS.dataset_dict['KWS_12_benchmark'],
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.6, 0.06),
         'loader': KWS_12_benchmark_get_datasets,
     },
     {
         'name': 'MixedKWS20_10dB',
         'input': (128, 128),
-        'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
-                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
-                   'UNKNOWN'),
+        'output': KWS.dataset_dict['KWS_20'],
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
         'loader': MixedKWS_20_get_datasets_10dB,
     },
     {
         'name': 'KWS_35_unquantized',  # 35 keywords + unknown
         'input': (128, 128),
-        'output': ('backward', 'bed', 'bird', 'cat', 'dog', 'down',
-                   'eight', 'five', 'follow', 'forward', 'four', 'go',
-                   'happy', 'house', 'learn', 'left', 'marvin', 'nine',
-                   'no', 'off', 'on', 'one', 'right', 'seven',
-                   'sheila', 'six', 'stop', 'three', 'tree', 'two',
-                   'up', 'visual', 'wow', 'yes', 'zero', 'UNKNOWN'),
+        'output': KWS.dataset_dict['KWS_35'],
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
         'loader': KWS_35_get_unquantized_datasets,
