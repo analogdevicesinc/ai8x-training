@@ -60,7 +60,6 @@ class KWS:
         puts it in root directory. If dataset is already downloaded, it is not
         downloaded again.
     save_unquantized (bool, optional): If true, folded but unquantized data is saved.
-    filter_silence (bool, optional): If true, silence class will be eliminated from the dataset.
     filter_libri (bool, optional): If true, librispeech class will be eliminated from the dataset.
     benchmark (bool, optional): If true, benchmark dataset will be loaded.
 
@@ -98,8 +97,8 @@ class KWS:
                           'up', 'yes', 'SILENCE']
 
     def __init__(self, root, classes, d_type, t_type, transform=None, quantization_scheme=None,
-                 augmentation=None, download=False, save_unquantized=False, filter_silence=True,
-                 filter_libri=False, benchmark=False):
+                 augmentation=None, download=False, save_unquantized=False, filter_libri=False,
+                 benchmark=False):
 
         self.root = root
         self.classes = classes
@@ -107,7 +106,6 @@ class KWS:
         self.t_type = t_type
         self.transform = transform
         self.save_unquantized = save_unquantized
-        self.filter_silence = filter_silence
         self.filter_libri = filter_libri
         self.benchmark = benchmark
 
@@ -128,7 +126,7 @@ class KWS:
         print(f'\nProcessing {self.d_type}...')
         self.__filter_dtype()
 
-        if self.filter_silence:
+        if 'SILENCE' not in self.classes:
             self.__filter_silence()
 
         if self.filter_libri:
@@ -878,7 +876,7 @@ class KWS:
 
 
 def KWS_get_datasets(data, load_train=True, load_test=True, dataset_name='KWS', num_classes=6,
-                     quantized=True, filter_silence=True, filter_libri=False, benchmark=False):
+                     quantized=True, filter_libri=False, benchmark=False):
     """
     Load the folded 1D version of SpeechCom dataset
 
@@ -925,7 +923,7 @@ def KWS_get_datasets(data, load_train=True, load_test=True, dataset_name='KWS', 
                             transform=transform, t_type='keyword',
                             quantization_scheme=quantization_scheme,
                             augmentation=augmentation, download=True,
-                            filter_silence=filter_silence, filter_libri=filter_libri,
+                            filter_libri=filter_libri,
                             benchmark=benchmark)
     else:
         train_dataset = None
@@ -935,7 +933,7 @@ def KWS_get_datasets(data, load_train=True, load_test=True, dataset_name='KWS', 
                            transform=transform, t_type='keyword',
                            quantization_scheme=quantization_scheme,
                            augmentation=augmentation, download=True,
-                           filter_silence=filter_silence, filter_libri=filter_libri,
+                           filter_libri=filter_libri,
                            benchmark=benchmark)
 
         if args.truncate_testset:
@@ -1047,8 +1045,7 @@ def KWS_12_benchmark_get_datasets(data, load_train=True, load_test=True):
     SILENCE + UNKNOWN.
     """
     return KWS_get_datasets(data, load_train, load_test, dataset_name='KWS_12_benchmark',
-                            num_classes=11, filter_silence=False, filter_libri=True,
-                            benchmark=True)
+                            num_classes=11, filter_libri=True, benchmark=True)
 
 
 def MixedKWS_20_get_datasets_10dB(data, load_train=True, load_test=True,
