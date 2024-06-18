@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-May 20, 2024
+June 18, 2024
 
 **Note: This branch is compatible with PyTorch 1.8. Please go to the “pytorch-2” branch for PyTorch 2.3 compatibility.**
 
@@ -726,7 +726,7 @@ The machine also implements a streaming mode. Streaming allows input data dimens
 
 The following illustration shows the basic principle: In order to produce the first output pixel of the second layer, not all data needs to be present at the input. In the example, a 5×5 input needs to be available.
 
-<img src="docs/Streaming.png"/>
+<img src="docs/Streaming.png" alt="Illustration of Streaming Mode"/>
 
 In the accelerator implementation, data is shifted into the Tornado memory in a sequential fashion, so prior rows will be available as well. In order to produce the _blue_ output pixel, input data up to the blue input pixel must be available.
 
@@ -3267,6 +3267,21 @@ When running C code generated with `--energy`, the power display on the EVKit wi
 *Note: MAX78000 uses LED1 and LED2 to trigger power measurement via MAX32625 and MAX34417.*
 
 See the [benchmarking guide](https://github.com/analogdevicesinc/MaximAI_Documentation/blob/main/Guides/MAX7800x%20Power%20Monitor%20and%20Energy%20Benchmarking%20Guide.pdf) for more information about benchmarking.
+
+#### Moving from MAX78000 to MAX78002 (or vice versa)
+
+Assuming the network is compatible with the new deployment target, changing the `--device` parameter will create new code that differs as follows:
+
+| File           | Changes                                                      | Recommended Action            |
+| -------------- | ------------------------------------------------------------ | ----------------------------- |
+| cnn.c          | Modified register and memory addresses, modified clock configuration | Replace file                  |
+| main.c         | Modified input memory addresses, modified clock configuration | Replace file or edit          |
+| Makefile       | Modified TARGET variables                                    | Replace file or edit          |
+| .launch        | Modified values for `.cfg` and `.svd`                        | Replace file or edit          |
+| sampleoutput.h | Modified memory addresses                                    | Replace file                  |
+| weights.h      | Modified memory addresses                                    | Replace file                  |
+| .settings/     | Modified TARGET value                                        | Replace folder or edit .prefs |
+| .vscode/       | Modified target variable                                     | Replace folder or edit .json  |
 
 
 
