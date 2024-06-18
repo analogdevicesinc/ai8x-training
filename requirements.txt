@@ -12,7 +12,7 @@ h5py==3.11.0
 kornia==0.7.2
 librosa==0.10.2.post1
 numpy==2.0.0
-opencv-python==4.10.0.82
+opencv-python==4.10.0.84
 pycocotools==2.0.8
 pyffmpeg==2.4.2.18.1
 pytorch-metric-learning==2.5.0

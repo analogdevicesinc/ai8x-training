@@ -29,7 +29,7 @@ line-length = 99
 count = ""
 ignore-words-list = 'nervana,cconfiguration,anormal'
 quiet-level = 3
-skip = '*.dasm,*.map,./.mypy_cache,./.venv,./.git,./distiller,./data,./datasets/face_id/facenet_pytorch/dependencies,./super-linter.log,./pyproject.toml'
+skip = '*.dasm,*.map,*.pdf,./.mypy_cache,./.venv,./.git,./distiller,./data,./datasets/face_id/facenet_pytorch/dependencies,./super-linter.log,./pyproject.toml'
 ignore-regex = '^\s+"image/png".*$'
 
 [tool.pytest.ini_options]

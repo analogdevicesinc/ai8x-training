@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-May 20, 2024
+June 18, 2024
 
 **Note: The pytorch-2 branch is in development. Please see [KNOWN_ISSUES](KNOWN_ISSUES.txt).**
 
@@ -65,7 +65,7 @@ Full support and documentation are provided for the following platform:
 
 * CPU: 64-bit amd64/x86_64 “PC” with [Ubuntu Linux 20.04 LTS or 22.04 LTS](https://ubuntu.com/download/server)
 * GPU for hardware acceleration (optional but highly recommended): Nvidia with [CUDA 12.1](https://developer.nvidia.com/cuda-toolkit-archive) or later
-* [PyTorch 2.3.0](https://pytorch.org/get-started/locally/) on Python 3.11.x
+* [PyTorch 2.3](https://pytorch.org/get-started/locally/) on Python 3.11.x
 
 Limited support and advice for using other hardware and software combinations is available as follows.
 
@@ -99,7 +99,7 @@ This software also works inside Docker containers. However, CUDA support inside 
 
 #### PyTorch and Python
 
-The officially supported version of [PyTorch is 2.3.0](https://pytorch.org/get-started/locally/) running on Python 3.11.x. Newer versions will typically work, but are not covered by support, documentation, and installation scripts.
+The officially supported version of [PyTorch is 2.3](https://pytorch.org/get-started/locally/) running on Python 3.11.x. Newer versions will typically work, but are not covered by support, documentation, and installation scripts.
 
 #### Hardware Acceleration
 
@@ -726,7 +726,7 @@ The machine also implements a streaming mode. Streaming allows input data dimens
 
 The following illustration shows the basic principle: In order to produce the first output pixel of the second layer, not all data needs to be present at the input. In the example, a 5×5 input needs to be available.
 
-<img src="docs/Streaming.png"/>
+<img src="docs/Streaming.png" alt="Illustration of Streaming Mode"/>
 
 In the accelerator implementation, data is shifted into the Tornado memory in a sequential fashion, so prior rows will be available as well. In order to produce the _blue_ output pixel, input data up to the blue input pixel must be available.
 
@@ -1232,7 +1232,7 @@ Before the first training session, check that hardware acceleration is available
    (ai8x-training) $ python check_cuda.py
    System:                 linux
    Python version:         3.11.8 (main, Mar  4 2024, 15:29:36) [GCC 11.4.0]
-   PyTorch version:        2.3.0+cu121
+   PyTorch version:        2.3.1+cu121
    CUDA/ROCm acceleration: available in PyTorch
    MPS acceleration:       NOT available in PyTorch
  ```
@@ -2852,6 +2852,27 @@ The same network can also be viewed graphically:
 
 <img src="docs/residual.png" alt="residual" style="zoom:38%;" />
 
+#### Automatically Generating YAML Network Descriptions (Preview)
+
+The ai8x-training repository includes a *preview version* of the “yamlwriter” tool integrated into `train.py` which can create a skeleton YAML file for many networks (excluding data memory allocation). To use this tool:
+
+1. Switch to the training repository.
+2. Use the training script and append “--yaml-template myfile.yaml” (see example below).
+3. **IMPORTANT!** Edit the resulting output and manually assign processors and data memory offsets.
+
+Please note that the tool is not compatible with some of the features of more complex networks. It can nevertheless help getting started with writing a new YAML network description file.
+
+Simple example for MNIST:
+
+```shell
+(ai8x-training) $ scripts/train_mnist.sh --yaml-template mnist.yaml
+(ai8x-training) $ vim mnist.yaml
+```
+
+Next, edit the resulting yaml file and adjust the `in_offset`, `out_offset` and `processors`, `output_processors` as needed.
+
+
+
 ### Adding New Models and New Datasets to the Network Loader
 
 Adding new datasets to the Network Loader is implemented as follows:
@@ -3261,6 +3282,22 @@ When running C code generated with `--energy`, the power display on the EVKit wi
 *Note: MAX78000 uses LED1 and LED2 to trigger power measurement via MAX32625 and MAX34417.*
 
 See the [benchmarking guide](https://github.com/analogdevicesinc/MaximAI_Documentation/blob/main/Guides/MAX7800x%20Power%20Monitor%20and%20Energy%20Benchmarking%20Guide.pdf) for more information about benchmarking.
+
+
+#### Moving from MAX78000 to MAX78002 (or vice versa)
+
+Assuming the network is compatible with the new deployment target, changing the `--device` parameter will create new code that differs as follows:
+
+| File           | Changes                                                      | Recommended Action            |
+| -------------- | ------------------------------------------------------------ | ----------------------------- |
+| cnn.c          | Modified register and memory addresses, modified clock configuration | Replace file          |
+| main.c         | Modified input memory addresses, modified clock configuration | Replace file or edit         |
+| Makefile       | Modified TARGET variables                                    | Replace file or edit          |
+| .launch        | Modified values for `.cfg` and `.svd`                        | Replace file or edit          |
+| sampleoutput.h | Modified memory addresses                                    | Replace file                  |
+| weights.h      | Modified memory addresses                                    | Replace file                  |
+| .settings/     | Modified TARGET value                                        | Replace folder or edit .prefs |
+| .vscode/       | Modified target variable                                     | Replace folder or edit .json  |
 
 
 
