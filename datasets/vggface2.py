@@ -23,8 +23,8 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 
 import cv2
-from batch_face import RetinaFace
 import kornia.geometry.transform as GT
+from batch_face import RetinaFace
 from PIL import Image
 from skimage import transform as trans
 from tqdm import tqdm
