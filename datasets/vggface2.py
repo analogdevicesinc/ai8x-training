@@ -23,7 +23,7 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 
 import cv2
-import face_detection
+from batch_face import RetinaFace
 import kornia.geometry.transform as GT
 from PIL import Image
 from skimage import transform as trans
@@ -99,8 +99,11 @@ class VGGFace2(Dataset):
         """
         Extracts the ground truth from the dataset
         """
-        detector = face_detection.build_detector("RetinaNetResNet50", confidence_threshold=.5,
-                                                 nms_iou_threshold=.4)
+        if torch.cuda.is_available():
+            detector = RetinaFace(gpu_id=torch.cuda.current_device(), network="resnet50")
+        else:
+            detector = RetinaFace(gpu_id=-1, network="resnet50")
+
         img_paths = list(glob.glob(os.path.join(self.d_path + '/**/', '*.jpg'), recursive=True))
         nf_number = 0
         words_count = 0
@@ -111,22 +114,17 @@ class VGGFace2(Dataset):
             boxes = []
             image = cv2.imread(jpg)
 
-            img_max = max(image.shape[0], image.shape[1])
-            if img_max > 1320:
-                continue
-            bboxes, lndmrks = detector.batched_detect_with_landmarks(np.expand_dims(image, 0))
-            bboxes = bboxes[0]
-            lndmrks = lndmrks[0]
+            faces = detector(image)
 
-            if (bboxes.shape[0] == 0) or (lndmrks.shape[0] == 0):
+            if len(faces) == 0:
                 nf_number += 1
                 continue
 
-            for box in bboxes:
+            for face in faces:
+                box = face[0]
                 box = np.clip(box[:4], 0, None)
                 boxes.append(box)
-
-            lndmrks = lndmrks[0]
+            lndmrks = faces[0][1]
 
             dir_name = os.path.dirname(jpg)
             lbl = os.path.relpath(dir_name, self.d_path)
