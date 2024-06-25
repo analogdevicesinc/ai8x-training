@@ -6,7 +6,7 @@ Pillow==10.3.0
 PyYAML==6.0.1
 albumentations==1.4.10
 faiss-cpu==1.8.0
-face-detection==0.2.2
+batch-face>=1.4.0
 h5py==3.11.0
 kornia==0.7.2
 librosa==0.10.2.post1
