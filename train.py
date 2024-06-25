@@ -1234,11 +1234,11 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                     class_probs.append(class_probs_batch)
                     class_preds.append(class_preds_batch)
                 if args.kd_relationbased:
-                        stats = (
-                            '',
-                            OrderedDict([('Loss', losses[OBJECTIVE_LOSS_KEY].mean),
-                                         ('Overall Loss', losses[OVERALL_LOSS_KEY].mean)])
-                        )
+                    stats = (
+                        '',
+                        OrderedDict([('Loss', losses[OBJECTIVE_LOSS_KEY].mean),
+                                     ('Overall Loss', losses[OVERALL_LOSS_KEY].mean)])
+                    )
 
                 elif args.obj_detection:
                     # Only run compute() if there is at least one new update()
@@ -1350,7 +1350,7 @@ def update_training_scores_history(perf_scores_history, model, top1, top5, mAP, 
         # Keep perf_scores_history sorted from best to worst based on overall loss
         # overall_loss = student_loss*student_weight + distillation_loss*distillation_weight
         perf_scores_history.sort(key=operator.attrgetter('params_nnz_cnt', 'vloss', 'epoch'),
-                                     reverse=True)
+                                 reverse=True)
         for score in perf_scores_history[:args.num_best_scores]:
             msglogger.info('==> Best [Overall Loss: %f on epoch: %d]',
                            -score.vloss, score.epoch)
