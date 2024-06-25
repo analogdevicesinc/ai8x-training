@@ -38,7 +38,7 @@ class VGGFace2(Dataset):
     VGGFace2 Dataset
     """
     def __init__(self, root_dir, d_type, mode, transform=None,
-                 teacher_transform=None, img_size=(112, 112)):
+                 teacher_transform=None, img_size=(112, 112), args=None):
 
         if d_type not in ('test', 'train'):
             raise ValueError("d_type can only be set to 'test' or 'train'")
@@ -47,6 +47,7 @@ class VGGFace2(Dataset):
             raise ValueError("mode can only be set to 'detection', 'identification',"
                              "or 'identification_dr'")
 
+        self.device = args.device
         self.root_dir = root_dir
         self.d_type = d_type
         self.transform = transform
@@ -99,7 +100,7 @@ class VGGFace2(Dataset):
         """
         Extracts the ground truth from the dataset
         """
-        if torch.cuda.is_available():
+        if self.device == 'cuda':
             detector = RetinaFace(gpu_id=torch.cuda.current_device(), network="resnet50")
         else:
             detector = RetinaFace(gpu_id=-1, network="resnet50")
@@ -341,7 +342,7 @@ def VGGFace2_FaceID_get_datasets(data, load_train=True, load_test=True, img_size
 
         train_dataset = VGGFace2(root_dir=data_dir, d_type='train', mode='identification',
                                  transform=train_transform, teacher_transform=teacher_transform,
-                                 img_size=img_size)
+                                 img_size=img_size, args=args)
 
         print(f'Train dataset length: {len(train_dataset)}\n')
     else:
@@ -353,7 +354,7 @@ def VGGFace2_FaceID_get_datasets(data, load_train=True, load_test=True, img_size
 
         test_dataset = VGGFace2(root_dir=data_dir, d_type='test', mode='identification',
                                 transform=test_transform, teacher_transform=teacher_transform,
-                                img_size=img_size)
+                                img_size=img_size, args=args)
 
         print(f'Test dataset length: {len(test_dataset)}\n')
     else:
@@ -376,7 +377,7 @@ def VGGFace2_FaceID_dr_get_datasets(data, load_train=True, load_test=True, img_s
     if load_train:
 
         train_dataset = VGGFace2(root_dir=data_dir, d_type='train', mode='identification_dr',
-                                 transform=train_transform, img_size=img_size)
+                                 transform=train_transform, img_size=img_size, args=args)
 
         print(f'Train dataset length: {len(train_dataset)}\n')
     else:
@@ -387,7 +388,7 @@ def VGGFace2_FaceID_dr_get_datasets(data, load_train=True, load_test=True, img_s
                                             ai8x.normalize(args=args)])
 
         test_dataset = VGGFace2(root_dir=data_dir, d_type='test', mode='identification_dr',
-                                transform=test_transform, img_size=img_size)
+                                transform=test_transform, img_size=img_size, args=args)
 
         print(f'Test dataset length: {len(test_dataset)}\n')
     else:
@@ -407,7 +408,7 @@ def VGGFace2_Facedet_get_datasets(data, load_train=True, load_test=True, img_siz
             ai8x.normalize(args=args)])
 
         train_dataset = VGGFace2(root_dir=data_dir, d_type='train', mode='detection',
-                                 transform=train_transform, img_size=img_size)
+                                 transform=train_transform, img_size=img_size, args=args)
 
         print(f'Train dataset length: {len(train_dataset)}\n')
     else:
@@ -417,7 +418,7 @@ def VGGFace2_Facedet_get_datasets(data, load_train=True, load_test=True, img_siz
         test_transform = transforms.Compose([ai8x.normalize(args=args)])
 
         test_dataset = VGGFace2(root_dir=data_dir, d_type='test', mode='detection',
-                                transform=test_transform, img_size=img_size)
+                                transform=test_transform, img_size=img_size, args=args)
 
         print(f'Test dataset length: {len(test_dataset)}\n')
     else:
