@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-June 18, 2024
+June 25, 2024
 
 **Note: This branch is compatible with PyTorch 1.8. Please go to the “pytorch-2” branch for PyTorch 2.3 compatibility.**
 
@@ -606,7 +606,7 @@ The MSDK is also available as a [git repository](https://github.com/analogdevice
     fi
     
     # RISC-V GCC
-    RISCVGCC_DIR=/usr/local/xpack-riscv-none-embed-gcc-10.2.0-1.2  # Change me!
+    RISCVGCC_DIR=/usr/local/xpack-riscv-none-elf-gcc-12.3.0-2  # Change me!
     echo $PATH | grep -q -s "$RISCVGCC_DIR/bin"
     if [ $? -eq 1 ] ; then
         PATH=$PATH:"$RISCVGCC_DIR/bin"
@@ -2133,7 +2133,7 @@ The following table describes the most important command line arguments for `ai8
 | ------------------------ | ------------------------------------------------------------ | ------------------------------- |
 | `--help`                 | Complete list of arguments                                   |                                 |
 | *Device selection*       |                                                              |                                 |
-| `--device`               | Set device (MAX78000, or MAX78002)               | `--device MAX78002`             |
+| `--device`               | Set device (MAX78000, or MAX78002)                           | `--device MAX78002`             |
 | *Hardware features*      |                                                              |                                 |
 | `--avg-pool-rounding`    | Round average pooling results                                |                                 |
 | `--simple1b`             | Use simple XOR instead of 1-bit multiplication               |                                 |
@@ -2147,14 +2147,14 @@ The following table describes the most important command line arguments for `ai8
 | `--overwrite`            | Produce output even when the target directory exists (default: abort) |                        |
 | `--compact-weights`      | Use *memcpy* to load weights in order to save code space     |                                 |
 | `--mexpress`             | Use faster kernel loading (default)                          |                                 |
-| `--no-mexpress` | Use alternate kernel loading (slower) | |
+| `--no-mexpress`          | Use alternate kernel loading (slower)                        |                                 |
 | `--mlator`               | Use hardware to swap output bytes (useful for large multi-channel outputs) |                   |
 | `--softmax`              | Add software Softmax functions to generated code             |                                 |
 | `--boost`                | Turn on a port pin to boost the CNN supply                   | `--boost 2.5`                   |
 | `--timer`                | Insert code to time the inference using a timer              | `--timer 0`                     |
-| `--no-wfi`               | Do not use WFI (wait for interrupt) instructions and do not enter sleep mode when waiting for CNN completion. This is required for very fast, small networks. |                                 |
-| `--define` | Additional preprocessor defines | `--define "FAST GOOD"` |
-| *MAX78002* |  |  |
+| `--no-wfi`               | Do not use WFI (wait for interrupt) instructions and do not enter sleep mode when waiting for CNN completion. This is required for very fast, small networks. |  |
+| `--define`               | Additional preprocessor defines                              | `--define "FAST GOOD"`          |
+| *MAX78002*               |                                                              |                                 |
 | `--no-pipeline` | **MAX78002 only**: Disable the pipeline and run the CNN on the slower APB clock. This reduces power consumption, but increases inference time and in most cases overall energy usage. |  |
 | `--max-speed` | **MAX78002 only:** In pipeline mode, load weights and input data on the PLL clock divided by 1 instead of divided by 4. This is approximately 50% faster, but uses 200% of the energy compared to the default settings. |  |
 | *File names*             |                                                              |                                 |
@@ -2182,7 +2182,7 @@ The following table describes the most important command line arguments for `ai8
 | `--debug-computation`    | Debug computation (SLOW)                                     |                                 |
 | `--stop-after`           | Stop after layer                                             | `--stop-after 2`                |
 | `--one-shot`             | Use layer-by-layer one-shot mechanism                        |                                 |
-| `--ignore-bias-groups`   | Do not force `bias_group` to only available x16 quadrants |                                 |
+| `--ignore-bias-groups`   | Do not force `bias_group` to only available x16 quadrants    |                                 |
 | *Streaming tweaks*       |                                                              |                                 |
 | `--overlap-data`         | Allow output to overwrite input                              |                                 |
 | `--override-start`       | Override auto-computed streaming start value (x8 hex)        |                                 |
@@ -2195,7 +2195,7 @@ The following table describes the most important command line arguments for `ai8
 | `--ignore-streaming`     | Ignore all 'streaming' layer directives                      |                                 |
 | *Power saving*           |                                                              |                                 |
 | `--powerdown`            | Power down unused MRAM instances                             |                                 |
-| `--deepsleep`            | Put Arm core into deep sleep                               |                                 |
+| `--deepsleep`            | Put Arm core into deep sleep                                 |                                 |
 | *Hardware settings*      |                                                              |                                 |
 | `--input-offset`         | First layer input offset (x8 hex, defaults to 0x0000)        | `--input-offset 2000`           |
 | `--mlator-noverify`      | Do not check both mlator and non-mlator output               |                                 |
@@ -2206,13 +2206,13 @@ The following table describes the most important command line arguments for `ai8
 | `--ready-sel`            | Specify memory waitstates                                    |                                 |
 | `--ready-sel-fifo`       | Specify FIFO waitstates                                      |                                 |
 | `--ready-sel-aon`        | Specify AON waitstates                                       |                                 |
-| Various                  |                                                              |                                 |
+| *Various*                |                                                              |                                 |
 | `--synthesize-input`     | Instead of using large sample input data, use only the first `--synthesize-words` words of the sample input, and add N to each subsequent set of `--synthesize-words` 32-bit words | `--synthesize-input 0x112233` |
 | `--synthesize-words`     | When using `--synthesize-input`, specifies how many words to use from the input. The default is 8. This number must be a divisor of the total number of pixels per channel. | `--synthesize-words 64` |
-| `--max-verify-length` | Instead of checking all of the expected output data, verify only the first N words | `--max-verify-length 1024` |
+| `--max-verify-length`    | Instead of checking all of the expected output data, verify only the first N words | `--max-verify-length 1024` |
 | `--no-unload`            | Do not create the `cnn_unload()` function                    |                                 |
-| `--no-kat` | Do not generate the `check_output()` function (disable known-answer test) | |
-| `--no-deduplicate-weights` | Do not deduplicate weights and and bias values | |
+| `--no-kat`               | Do not generate the `check_output()` function (disable known-answer test)  |                   |
+| `--no-deduplicate-weights` | Do not deduplicate weights and and bias values             |                                 |
 
 ### YAML Network Description
 
@@ -3120,27 +3120,27 @@ In order to upgrade an embedded project after retraining the model, point the ne
 
 The generator also adds all files from the `assets/eclipse`, `assets/device-all`, and `assets/embedded-*` folders. These files (when starting with `template` in their name) will be automatically customized to include project-specific information as shown in the following table:
 
-| Key                       | Replaced by                                                  |
-| ------------------------- | ------------------------------------------------------------ |
+| Key                       | Replaced by                                                                      |
+| ------------------------- | -------------------------------------------------------------------------------- |
 | `##__PROJ_NAME__##`       | Project name (works on file names as well as the file contents), from `--prefix` |
-| `##__ELF_FILE__##`        | Output elf (binary) file name (`PROJECT.elf` or `PROJECT-combined.elf`) |
-| `##__BOARD__##`           | Board name (e.g., `EvKit_V1`), from `--board-name`                   |
-| `##__FILE_INSERT__##`     | Network statistics and timer                                 |
-| `##__OPENOCD_PARAMS__##` | OpenOCD arguments (e.g., `-f interface/cmsis-dap.cfg -f target/max7800x.cfg`), from `--eclipse-openocd-args` |
-| `##__TARGET_UC__##` | Upper case device name (e.g., `MAX78000`), from `--device` |
-| `##__TARGET_LC__##` | Lower case device name (e.g., `max78000`), from `--device` |
-| `##__ADDITIONAL_INCLUDES__##` | Additional include files, from `--eclipse-includes`  (default: empty) |
-| `##__GCC_PREFIX__##` | `arm-non-eabi-` or `riscv-none-embed-` |
+| `##__ELF_FILE__##`        | Output elf (binary) file name (`PROJECT.elf` or `PROJECT-combined.elf`)          |
+| `##__BOARD__##`           | Board name (e.g., `EvKit_V1`), from `--board-name`                               |
+| `##__FILE_INSERT__##`     | Network statistics and timer                                                     |
+| `##__OPENOCD_PARAMS__##`  | OpenOCD arguments (e.g., `-f interface/cmsis-dap.cfg -f target/max7800x.cfg`), from `--eclipse-openocd-args` |
+| `##__TARGET_UC__##`       | Upper case device name (e.g., `MAX78000`), from `--device`                       |
+| `##__TARGET_LC__##`       | Lower case device name (e.g., `max78000`), from `--device`                       |
+| `##__ADDITIONAL_INCLUDES__##` | Additional include files, from `--eclipse-includes`  (default: empty)        |
+| `##__GCC_PREFIX__##`      | `arm-non-eabi-` or `riscv-none-elf-`                                             |
 | `##__DEFINES__##`<br />*or* `##__GCC_SUFFIX__##` | Additional #defines (e.g., `-D SUPERSPEED`), from `--define` (default: empty) |
 | `##__DEFINES_ARM__##`<br />*or* `##__ARM_DEFINES__##` | Replace default ARM #defines, from `--define-default-arm` (default: `"MXC_ASSERT_ENABLE ARM_MATH_CM4"`) |
 | `##__DEFINES_RISCV__##`<br />*or* `##__RISC_DEFINES__##` | Replace default RISC-V #defines, from `--define-default-riscv` (default: `"MXC_ASSERT_ENABLE RV32"`) |
-| `##__PROCESSOR_DEFINES__##` | Selects the #defines for the active processor (Arm or RISC-V) |
-| `##__ADDITIONAL_VARS__##` | Additional variables, from `--eclipse-variables` (default: empty) |
-| `##__PMON_GPIO_PINS__##` | Power Monitor GPIO pins |
-| `##__CNN_START__##` | Port pin action when CNN starts |
-| `##__CNN_COMPLETE__##` | Port pin action when CNN finishes |
-| `##__SYS_START__##` | Port pin action when system starts |
-| `##__SYS_COMPLETE__##` | Port pin action when system finishes |
+| `##__PROCESSOR_DEFINES__##` | Selects the #defines for the active processor (Arm or RISC-V)                  |
+| `##__ADDITIONAL_VARS__##` | Additional variables, from `--eclipse-variables` (default: empty)                |
+| `##__PMON_GPIO_PINS__##`  | Power Monitor GPIO pins                                                          |
+| `##__CNN_START__##`       | Port pin action when CNN starts                                                  |
+| `##__CNN_COMPLETE__##`    | Port pin action when CNN finishes                                                |
+| `##__SYS_START__##`       | Port pin action when system starts                                               |
+| `##__SYS_COMPLETE__##`    | Port pin action when system finishes                                             |
 
 *Note: The vscode templates are treated differently and not designed to be modified by the user.*
 
