@@ -21,6 +21,7 @@ Classes and functions used to create keyword spotting dataset.
 import errno
 import hashlib
 import os
+import shutil
 import tarfile
 import time
 import urllib
@@ -37,6 +38,8 @@ import librosa
 import soundfile as sf
 
 import ai8x
+from datasets.msnoise import MSnoise
+from datasets.signalmixer import SignalMixer
 
 
 class KWS:
@@ -57,23 +60,50 @@ class KWS:
         puts it in root directory. If dataset is already downloaded, it is not
         downloaded again.
     save_unquantized (bool, optional): If true, folded but unquantized data is saved.
+    filter_libri (bool, optional): If true, librispeech class will be eliminated from the dataset.
+    benchmark (bool, optional): If true, benchmark dataset will be loaded.
 
     """
 
     url_speechcommand = 'http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz'
+    url_test = 'http://download.tensorflow.org/data/speech_commands_test_set_v0.02.tar.gz'
     url_librispeech = 'http://us.openslr.org/resources/12/dev-clean.tar.gz'
     fs = 16000
 
-    class_dict = {'backward': 0, 'bed': 1, 'bird': 2, 'cat': 3, 'dog': 4, 'down': 5,
-                  'eight': 6, 'five': 7, 'follow': 8, 'forward': 9, 'four': 10, 'go': 11,
-                  'happy': 12, 'house': 13, 'learn': 14, 'left': 15, 'librispeech': 16,
-                  'marvin': 17, 'nine': 18, 'no': 19, 'off': 20, 'on': 21, 'one': 22,
-                  'right': 23, 'seven': 24, 'sheila': 25, 'six': 26, 'stop': 27,
-                  'three': 28, 'tree': 29, 'two': 30, 'up': 31, 'visual': 32, 'wow': 33,
-                  'yes': 34, 'zero': 35}
+    class_dict = {'_silence_': 0, 'backward': 1, 'bed': 2, 'bird': 3, 'cat': 4, 'dog': 5,
+                  'down': 6, 'eight': 7, 'five': 8, 'follow': 9, 'forward': 10, 'four': 11,
+                  'go': 12, 'happy': 13, 'house': 14, 'learn': 15, 'left': 16, 'librispeech': 17,
+                  'marvin': 18, 'nine': 19, 'no': 20, 'off': 21, 'on': 22, 'one': 23, 'right': 24,
+                  'seven': 25, 'sheila': 26, 'six': 27, 'stop': 28, 'three': 29, 'tree': 30,
+                  'two': 31, 'up': 32, 'visual': 33, 'wow': 34, 'yes': 35, 'zero': 36}
+
+    dataset_dict = {
+        'KWS': ('up', 'down', 'left', 'right', 'stop', 'go', '_unknown_'),
+        'KWS_20': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
+                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
+                   '_unknown_'),
+        'KWS_35': ('backward', 'bed', 'bird', 'cat', 'dog', 'down',
+                   'eight', 'five', 'follow', 'forward', 'four', 'go',
+                   'happy', 'house', 'learn', 'left', 'marvin', 'nine',
+                   'no', 'off', 'on', 'one', 'right', 'seven',
+                   'sheila', 'six', 'stop', 'three', 'tree', 'two',
+                   'up', 'visual', 'wow', 'yes', 'zero', '_unknown_'),
+        'KWS_12_benchmark': ('down', 'go', 'left', 'no', 'off', 'on', 'right', 'stop', 'up', 'yes',
+                             '_silence_', '_unknown_')
+    }
+
+    benchmark_keywords = ['down', 'go', 'left', 'no', 'off', 'on', 'right', 'stop',
+                          'up', 'yes', '_silence_']
+
+    # define constants for data types (train, test, validation, benchmark)
+    TRAIN = np.uint(0)
+    TEST = np.uint(1)
+    VALIDATION = np.uint(2)
+    BENCHMARK = np.uint(3)
 
     def __init__(self, root, classes, d_type, t_type, transform=None, quantization_scheme=None,
-                 augmentation=None, download=False, save_unquantized=False):
+                 augmentation=None, download=False, save_unquantized=False, filter_libri=False,
+                 benchmark=False):
 
         self.root = root
         self.classes = classes
@@ -81,7 +111,8 @@ class KWS:
         self.t_type = t_type
         self.transform = transform
         self.save_unquantized = save_unquantized
-        self.noise = np.empty(shape=[0, 0])
+        self.filter_libri = filter_libri
+        self.benchmark = benchmark
 
         self.__parse_quantization(quantization_scheme)
         self.__parse_augmentation(augmentation)
@@ -99,6 +130,13 @@ class KWS:
 
         print(f'\nProcessing {self.d_type}...')
         self.__filter_dtype()
+
+        if '_silence_' not in self.classes:
+            self.__filter_silence()
+
+        if self.filter_libri:
+            self.__filter_librispeech()
+
         self.__filter_classes()
 
     @property
@@ -106,6 +144,12 @@ class KWS:
         """Folder for the raw data.
         """
         return os.path.join(self.root, self.__class__.__name__, 'raw')
+
+    @property
+    def raw_test_folder(self):
+        """Folder for the raw data.
+        """
+        return os.path.join(self.root, self.__class__.__name__, 'raw_test')
 
     @property
     def librispeech_folder(self):
@@ -124,6 +168,12 @@ class KWS:
         """Folder for the processed data.
         """
         return os.path.join(self.root, self.__class__.__name__, 'processed')
+
+    @property
+    def silence_folder(self):
+        """Folder for the silence data.
+        """
+        return os.path.join(self.raw_folder,  '_silence_')
 
     def __parse_quantization(self, quantization_scheme):
         if quantization_scheme:
@@ -149,10 +199,10 @@ class KWS:
                       'Using 0.')
                 self.augmentation['aug_num'] = 0
             elif self.augmentation['aug_num'] != 0:
-                if 'noise_var' not in augmentation:
-                    print('No key `noise_var` in input augmentation dictionary! ',
-                          'Using defaults: [Min: 0., Max: 1.]')
-                    self.augmentation['noise_var'] = {'min': 0., 'max': 1.}
+                if 'snr' not in augmentation:
+                    print('No key `snr` in input augmentation dictionary! ',
+                          'Using defaults: [Min: -5.0, Max: 20.0]')
+                    self.augmentation['snr'] = {'min': -5.0, 'max': 20.0}
                 if 'shift' not in augmentation:
                     print('No key `shift` in input augmentation dictionary! '
                           'Using defaults: [Min:-0.1, Max: 0.1]')
@@ -166,23 +216,60 @@ class KWS:
         self.__makedir_exist_ok(self.raw_folder)
         self.__makedir_exist_ok(self.processed_folder)
 
-        # download Speech Command
+        # download Google Speech Commands dataset
         filename = self.url_speechcommand.rpartition('/')[2]
         self.__download_and_extract_archive(self.url_speechcommand,
                                             download_root=self.raw_folder,
                                             filename=filename)
 
-        # download LibriSpeech
+        # sample long segments of background noise (total 560*6 = 3360 samples)
+        self.__sample_wav(os.path.join(self.raw_folder, '_background_noise_'),
+                          self.silence_folder, 560)
+
+        # download Google Speech Commands official test set for 10 keywords + _silence_ + _unknown_
+        filename = self.url_test.rpartition('/')[2]
+        self.__download_and_extract_archive(self.url_test,
+                                            download_root=self.raw_test_folder,
+                                            filename=filename)
+
+        # copy test silence files to raw folder, for ease of processing in gen_datasets
+        shutil.copytree(os.path.join(self.raw_test_folder, '_silence_'),
+                        os.path.join(self.raw_folder, '_silence_'), dirs_exist_ok=True)
+
+        print('Test for _silence_ class successfully copied under raw/_silence_ folder.')
+
+        # download LibriSpeech dev-clean dataset
         filename = self.url_librispeech.rpartition('/')[2]
         self.__download_and_extract_archive(self.url_librispeech,
                                             download_root=self.librispeech_folder,
                                             filename=filename)
 
-        # convert the LibriSpeech audio files to 1-sec 16KHz .wav, stored under raw/librispeech
+        # convert the LibriSpeech audio files to 1-sec 16KHz .wav, store under raw/librispeech
         self.__resample_convert_wav(folder_in=self.librispeech_folder,
                                     folder_out=os.path.join(self.raw_folder, 'librispeech'))
 
         self.__gen_datasets()
+
+    def __sample_wav(self, folder_in, folder_out, sample_num, sr=16000, ext='.wav', exp_len=16384):
+
+        # create output folder
+        self.__makedir_exist_ok(folder_out)
+
+        for (dirpath, _, filenames) in os.walk(folder_in):
+            for filename in sorted(filenames):
+                if filename.endswith(ext):
+                    fname = os.path.join(dirpath, filename)
+                    data, _ = librosa.load(fname, sr=sr)
+                    max_start_pt = len(data) - exp_len
+
+                    for i in range(sample_num):
+                        start_pt = np.random.randint(0, max_start_pt)
+                        audio = data[start_pt:start_pt+exp_len]
+
+                        outfile = os.path.join(folder_out, filename[:-len(ext)] + '_' +
+                                               str(f"{i}") + '.wav')
+                        sf.write(outfile, audio, sr)
+        print('File conversion completed.')
 
     def __check_exists(self):
         return os.path.exists(os.path.join(self.processed_folder, self.data_file))
@@ -348,9 +435,14 @@ class KWS:
 
     def __filter_dtype(self):
         if self.d_type == 'train':
-            idx_to_select = (self.data_type == 0)[:, -1]
+            idx_to_select = (self.data_type == self.TRAIN)[:, -1]
         elif self.d_type == 'test':
-            idx_to_select = (self.data_type == 1)[:, -1]
+            if self.benchmark:
+                idx_to_select = (self.data_type == self.BENCHMARK)[:, -1]
+            else:
+                idx_bm = (self.data_type == self.BENCHMARK)[:, -1]
+                idx_test = (self.data_type == self.TEST)[:, -1]
+                idx_to_select = torch.logical_or(idx_bm, idx_test)
         else:
             print(f'Unknown data type: {self.d_type}')
             return
@@ -361,19 +453,28 @@ class KWS:
         self.data_original = self.data.clone()
         self.targets_original = self.targets.clone()
         self.data_type_original = self.data_type.clone()
+        self.shift_limits_original = self.shift_limits.clone()
+
         self.data = self.data[idx_to_select, :]
         self.targets = self.targets[idx_to_select, :]
+        if self.d_type == 'test':
+            self.data_type[idx_to_select, :] = self.TEST
+
         self.data_type = self.data_type[idx_to_select, :]
+        self.shift_limits = self.shift_limits[idx_to_select, :]
 
         # append validation set to the training set if validation examples are explicitly included
         if self.d_type == 'train':
-            idx_to_select = (self.data_type_original == 2)[:, -1]
+            idx_to_select = (self.data_type_original == self.VALIDATION)[:, -1]
             if idx_to_select.sum() > 0:  # if validation examples exist
                 self.data = torch.cat((self.data, self.data_original[idx_to_select, :]), dim=0)
                 self.targets = \
                     torch.cat((self.targets, self.targets_original[idx_to_select, :]), dim=0)
                 self.data_type = \
                     torch.cat((self.data_type, self.data_type_original[idx_to_select, :]), dim=0)
+                self.shift_limits = \
+                    torch.cat((self.shift_limits, self.shift_limits_original[idx_to_select, :]),
+                              dim=0)
                 # indicate the list of validation indices to be used by distiller's dataloader
                 self.valid_indices = range(set_size, set_size + idx_to_select.sum())
                 print(f'validation set: {idx_to_select.sum()} elements')
@@ -381,23 +482,80 @@ class KWS:
         del self.data_original
         del self.targets_original
         del self.data_type_original
+        del self.shift_limits_original
 
     def __filter_classes(self):
         initial_new_class_label = len(self.class_dict)
         new_class_label = initial_new_class_label
+        self.new_class_dict = {}
         for c in self.classes:
             if c not in self.class_dict:
-                print(f'Class {c} not found in data')
-                return
+                if c == '_unknown_':
+                    continue
+                raise ValueError(f'Class {c} not found in data')
             num_elems = (self.targets == self.class_dict[c]).cpu().sum()
             print(f'Class {c} (# {self.class_dict[c]}): {num_elems} elements')
+            self.new_class_dict[c] = new_class_label
             self.targets[(self.targets == self.class_dict[c])] = new_class_label
             new_class_label += 1
 
         num_elems = (self.targets < initial_new_class_label).cpu().sum()
-        print(f'Class UNKNOWN: {num_elems} elements')
+        print(f'Class _unknown_: {num_elems} elements')
         self.targets[(self.targets < initial_new_class_label)] = new_class_label
         self.targets -= initial_new_class_label
+
+        self.new_class_dict = {c: self.new_class_dict[c] - initial_new_class_label
+                               for c in self.new_class_dict.keys()}
+        self.new_class_dict['_unknown_'] = len(self.new_class_dict)
+
+    def __filter_librispeech(self):
+
+        print('Filtering out librispeech elements...')
+        idx_for_librispeech = [idx for idx, val in enumerate(self.targets)
+                               if val != self.class_dict['librispeech']]
+
+        self.data = torch.index_select(self.data, 0, torch.tensor(idx_for_librispeech))
+        self.targets = torch.index_select(self.targets, 0, torch.tensor(idx_for_librispeech))
+        self.data_type = torch.index_select(self.data_type, 0, torch.tensor(idx_for_librispeech))
+        self.shift_limits = torch.index_select(self.shift_limits, 0,
+                                               torch.tensor(idx_for_librispeech))
+
+        if self.d_type == 'train':
+            set_size = sum((self.data_type == self.TRAIN)[:, -1])
+        elif self.d_type == 'test':
+            set_size = sum((self.data_type == self.TEST)[:, -1])
+        print(f'Remaining {self.d_type} set: {set_size} elements')
+
+        if self.d_type == 'train':
+            train_size = sum((self.data_type == self.TRAIN)[:, -1])
+            set_size = sum((self.data_type == self.VALIDATION)[:, -1])
+            # indicate the list of validation indices to be used by distiller's dataloader
+            self.valid_indices = range(train_size, train_size + set_size)
+            print(f'Remaining validation set: {set_size} elements')
+
+    def __filter_silence(self):
+
+        print('Filtering out _silence_ elements...')
+        idx_for_silence = [idx for idx, val in enumerate(self.targets)
+                           if val != self.class_dict['_silence_']]
+
+        self.data = torch.index_select(self.data, 0, torch.tensor(idx_for_silence))
+        self.targets = torch.index_select(self.targets, 0, torch.tensor(idx_for_silence))
+        self.data_type = torch.index_select(self.data_type, 0, torch.tensor(idx_for_silence))
+        self.shift_limits = torch.index_select(self.shift_limits, 0, torch.tensor(idx_for_silence))
+
+        if self.d_type == 'train':
+            set_size = sum((self.data_type == self.TRAIN)[:, -1])
+        elif self.d_type == 'test':
+            set_size = sum((self.data_type == self.TEST)[:, -1])
+        print(f'Remaining {self.d_type} set: {set_size} elements')
+
+        if self.d_type == 'train':
+            train_size = sum((self.data_type == self.TRAIN)[:, -1])
+            set_size = sum((self.data_type == self.VALIDATION)[:, -1])
+            # indicate the list of validation indices to be used by distiller's dataloader
+            self.valid_indices = range(train_size, train_size + set_size)
+            print(f'Remaining validation set: {set_size} elements')
 
     def __len__(self):
         return len(self.data)
@@ -412,13 +570,14 @@ class KWS:
         random_shift_sample = np.random.randint(shift_limits[0], shift_limits[1])
         aug_audio = self.shift(audio, random_shift_sample)
 
-        if 'noise_var' in self.augmentation:
-            random_noise_var_coeff = np.random.uniform(self.augmentation['noise_var']['min'],
-                                                       self.augmentation['noise_var']['max'])
+        if 'snr' in self.augmentation:
+            random_snr_coeff = int(np.random.uniform(self.augmentation['snr']['min'],
+                                                     self.augmentation['snr']['max']))
+            random_snr_coeff = 10 ** (random_snr_coeff / 10)
             if self.quantization['bits'] == 0:
-                aug_audio = self.add_white_noise(aug_audio, random_noise_var_coeff)
+                aug_audio = self.add_white_noise(aug_audio, random_snr_coeff)
             else:
-                aug_audio = self.add_quantized_white_noise(aug_audio, random_noise_var_coeff)
+                aug_audio = self.add_quantized_white_noise(aug_audio, random_snr_coeff)
 
         return aug_audio
 
@@ -427,12 +586,11 @@ class KWS:
         data_type, shift_limits = self.data_type[index], self.shift_limits[index]
 
         # apply dynamic shift and noise augmentation to training examples
-        if data_type == 0:
+        if data_type == self.TRAIN:
             inp = self.shift_and_noise_augment(inp, shift_limits)
 
         # reshape to 2D
         inp = self.__reshape_audio(inp)
-
         inp = inp.type(torch.FloatTensor)
 
         if not self.save_unquantized:
@@ -443,19 +601,22 @@ class KWS:
         return inp, target
 
     @staticmethod
-    def add_white_noise(audio, noise_var_coeff):
-        """Adds zero mean Gaussian noise to the audio with specified variance.
+    def add_white_noise(audio, random_snr_coeff):
+        """Adds zero mean Gaussian noise to signal with specified SNR value.
         """
-        coeff = noise_var_coeff * torch.mean(torch.abs(audio))
-        noisy_audio = audio + coeff * torch.randn(len(audio))
-        return noisy_audio
+        signal_var = torch.var(audio)
+        noise_var_coeff = signal_var / random_snr_coeff
+        noise = np.random.normal(0, torch.sqrt(noise_var_coeff), len(audio))
+        return audio + torch.Tensor(noise)
 
     @staticmethod
-    def add_quantized_white_noise(audio, noise_var_coeff):
-        """Adds zero mean Gaussian noise to the audio with specified variance.
+    def add_quantized_white_noise(audio, random_snr_coeff):
+        """Adds zero mean Gaussian noise to signal with specified SNR value.
         """
-        coeff = noise_var_coeff * torch.mean(torch.abs(audio.type(torch.float)-128))
-        noise = (coeff * torch.randn(len(audio))).type(torch.int16)
+        signal_var = torch.var(audio.type(torch.float))
+        noise_var_coeff = signal_var / random_snr_coeff
+        noise = np.random.normal(0, torch.sqrt(noise_var_coeff), len(audio))
+        noise = torch.Tensor(noise).type(torch.int16)
         return (audio + noise).clip(0, 255).type(torch.uint8)
 
     @staticmethod
@@ -569,7 +730,7 @@ class KWS:
 
             lst = sorted(os.listdir(self.raw_folder))
             labels = [d for d in lst if os.path.isdir(os.path.join(self.raw_folder, d))
-                      and d[0].isalpha()]
+                      and d[0].isalpha() or d == '_silence_']
 
             # show the size of dataset for each keyword
             print('------------- Label Size ---------------')
@@ -580,9 +741,18 @@ class KWS:
 
             # read testing_list.txt & validation_list.txt into sets for fast access
             with open(os.path.join(self.raw_folder, 'testing_list.txt'), encoding="utf-8") as f:
-                testing_set = set(f.read().splitlines())
+                test_set = set(f.read().splitlines())
+            test_silence = [os.path.join('_silence_', rec) for rec in os.listdir(
+                os.path.join(self.raw_test_folder, '_silence_'))]
+            test_set.update(test_silence)
+
             with open(os.path.join(self.raw_folder, 'validation_list.txt'), encoding="utf-8") as f:
                 validation_set = set(f.read().splitlines())
+
+            # sample 1 out of every 9 generated silence files for the validation set
+            silence_files = [os.path.join('_silence_', s) for s in os.listdir(self.silence_folder)
+                             if not s[0].isdigit()]  # files starting w/ numbers: used for testing
+            validation_set.update(silence_files[::9])
 
             train_count = 0
             test_count = 0
@@ -597,10 +767,10 @@ class KWS:
                 test_count_class = 0
                 for r, record_name in enumerate(record_list):
                     local_filename = os.path.join(label, record_name)
-                    if local_filename in testing_set:
+                    if local_filename in test_set:
                         test_count_class += 1
 
-                # no augmentation for testing set, subtract them accordingly
+                # no augmentation for test set, subtract them accordingly
                 number_of_total_samples = record_len * (self.augmentation['aug_num'] + 1) - \
                     test_count_class * self.augmentation['aug_num']
 
@@ -618,27 +788,43 @@ class KWS:
                 sample_index = 0
                 for r, record_name in enumerate(record_list):
 
-                    local_filename = os.path.join(label, record_name)
+                    record_name = os.path.join(label, record_name)
+
                     if r % 1000 == 0:
                         print(f'\t{r + 1} of {record_len}')
 
-                    if local_filename in testing_set:
-                        d_typ = np.uint8(1)  # test
+                    if label in self.benchmark_keywords:
+                        if label == '_silence_':
+                            raw_test_list = os.listdir(os.path.join(
+                                self.raw_test_folder, '_silence_'))
+                        else:
+                            raw_test_list = os.listdir(os.path.join(self.raw_test_folder, label))
+                        raw_test_list = [os.path.join(label, rec) for rec in raw_test_list]
+                    else:
+                        raw_test_list = os.listdir(os.path.join(self.raw_test_folder, '_unknown_'))
+                        # example record name: "backward_a6f2fd71_nohash_3.wav.wav"
+                        # note: the double "wav" extension is due to errors in the original dataset
+                        raw_test_list = [os.path.join(label, rec[-25:-4]) for rec in raw_test_list
+                                         if label in rec]
+
+                    if record_name in raw_test_list:
+                        d_typ = self.BENCHMARK  # benchmark test
                         test_count += 1
-                    elif local_filename in validation_set:
-                        d_typ = np.uint8(2)  # val
+                    elif record_name in test_set:
+                        d_typ = self.TEST
+                        test_count += 1
+                    elif record_name in validation_set:
+                        d_typ = self.VALIDATION
                         valid_count += 1
                     else:
-                        d_typ = np.uint8(0)  # train
+                        d_typ = self.TRAIN
                         train_count += 1
 
-                    record_pth = os.path.join(self.raw_folder, label, record_name)
+                    record_pth = os.path.join(self.raw_folder, record_name)
                     record, fs = librosa.load(record_pth, offset=0, sr=None)
 
-                    # normalize dynamic range to [-1, +1]
-                    record = record / np.max(np.abs(record))
-
-                    if d_typ != 1:  # training and validation examples get speed augmentation
+                    # training and validation examples get speed augmentation
+                    if d_typ not in (self.TEST, self.BENCHMARK):
                         no_augmentations = self.augmentation['aug_num']
                     else:  # test examples don't get speed augmentation
                         no_augmentations = 0
@@ -685,7 +871,7 @@ class KWS:
 
             # apply static shift & noise augmentation for validation examples
             for sample_index in range(data_in_all.shape[0]):
-                if data_type_all[sample_index] == 2:
+                if data_type_all[sample_index] == self.VALIDATION:
                     data_in_all[sample_index] = \
                         self.shift_and_noise_augment(data_in_all[sample_index],
                                                      data_shift_limits_all[sample_index])
@@ -697,7 +883,8 @@ class KWS:
         print(f'Training: {train_count}, Validation: {valid_count}, Test: {test_count}')
 
 
-def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6, quantized=True):
+def KWS_get_datasets(data, load_train=True, load_test=True, dataset_name='KWS', num_classes=6,
+                     quantized=True, filter_libri=False, benchmark=False):
     """
     Load the folded 1D version of SpeechCom dataset
 
@@ -712,8 +899,8 @@ def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6, quant
     split is used by default.
 
     Data is augmented to 3x duplicate data by random stretch/shift and randomly adding noise where
-    the stretching coefficient, shift amount and noise variance are randomly selected between
-    0.8 and 1.3, -0.1 and 0.1, 0 and 1, respectively.
+    the stretching coefficient, shift amount and noise SNR level are randomly selected between
+    0.8 and 1.3, -0.1 and 0.1, -5 and 20, respectively.
     """
     (data_dir, args) = data
 
@@ -724,27 +911,28 @@ def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6, quant
     else:
         transform = None
 
-    if num_classes <= 35:
-        classes = next((e for _, e in enumerate(datasets)
-                        if len(e['output']) - 1 == num_classes))['output'][:-1]
-    else:
-        raise ValueError(f'Unsupported num_classes {num_classes}')
+    classes = KWS.dataset_dict[dataset_name]
+
+    if num_classes+1 != len(classes):
+        raise ValueError(f'num_classes {num_classes}does not match with classes')
 
     if quantized:
         augmentation = {'aug_num': 2, 'shift': {'min': -0.1, 'max': 0.1},
-                        'noise_var': {'min': 0, 'max': 1.0}}
+                        'snr': {'min': -5.0, 'max': 20.}}
         quantization_scheme = {'compand': False, 'mu': 10}
     else:
         # default: no speed augmentation for unquantized due to memory usage considerations
         augmentation = {'aug_num': 0, 'shift': {'min': -0.1, 'max': 0.1},
-                        'noise_var': {'min': 0, 'max': 1.0}}
+                        'snr': {'min': -5.0, 'max': 20.}}
         quantization_scheme = {'bits': 0}
 
     if load_train:
         train_dataset = KWS(root=data_dir, classes=classes, d_type='train',
                             transform=transform, t_type='keyword',
                             quantization_scheme=quantization_scheme,
-                            augmentation=augmentation, download=True)
+                            augmentation=augmentation, download=True,
+                            filter_libri=filter_libri,
+                            benchmark=benchmark)
     else:
         train_dataset = None
 
@@ -752,7 +940,9 @@ def KWS_get_datasets(data, load_train=True, load_test=True, num_classes=6, quant
         test_dataset = KWS(root=data_dir, classes=classes, d_type='test',
                            transform=transform, t_type='keyword',
                            quantization_scheme=quantization_scheme,
-                           augmentation=augmentation, download=True)
+                           augmentation=augmentation, download=True,
+                           filter_libri=filter_libri,
+                           benchmark=benchmark)
 
         if args.truncate_testset:
             test_dataset.data = test_dataset.data[:1]
@@ -780,10 +970,10 @@ def KWS_20_get_datasets(data, load_train=True, load_test=True):
     the stretching coefficient, shift amount and noise variance are randomly selected between
     0.8 and 1.3, -0.1 and 0.1, 0 and 1, respectively.
     """
-    return KWS_get_datasets(data, load_train, load_test, num_classes=20)
+    return KWS_get_datasets(data, load_train, load_test, dataset_name='KWS_20', num_classes=20)
 
 
-def KWS_35_get_datasets(data, load_train=True, load_test=True):
+def KWS_35_get_datasets(data, load_train=True, load_test=True, benchmark=False):
     """
     Load the folded 1D version of SpeechCom dataset for 35 classes
 
@@ -798,55 +988,171 @@ def KWS_35_get_datasets(data, load_train=True, load_test=True):
     the stretching coefficient, shift amount and noise variance are randomly selected between
     0.8 and 1.3, -0.1 and 0.1, 0 and 1, respectively.
     """
-    return KWS_get_datasets(data, load_train, load_test, num_classes=35)
+    return KWS_get_datasets(data, load_train, load_test,  dataset_name='KWS_35',
+                            num_classes=35, benchmark=benchmark)
 
 
 def KWS_35_get_unquantized_datasets(data, load_train=True, load_test=True):
     """
     Load the folded 1D version of unquantized SpeechCom dataset for 35 classes.
     """
-    return KWS_get_datasets(data, load_train, load_test, num_classes=35, quantized=False)
+    return KWS_get_datasets(data, load_train, load_test, dataset_name='KWS_35',
+                            num_classes=35, quantized=False)
+
+
+def KWS_20_msnoise_mixed_get_datasets(data, load_train=True, load_test=True,
+                                      apply_prob=0.8, snr_range=(-5, 10),
+                                      noise_type=MSnoise.class_dict.keys(),
+                                      desired_probs=None):
+    """
+    Returns the KWS dataset mixed with MSnoise dataset. Only training set will be mixed
+    with MSnoise. Selected noise types will be applied to the training dataset using a randomly
+    generated SNR value between the previously selected snr range. Noise will be applied to the
+    training data using the application probability accordingly.
+
+    Default parameter values are selected as:
+    apply_prob --> 0.8 probability for application of additional noise on training data.
+    snr_range  --> [-5, 10] dB SNR range to be used during the SNR selection for additional noise.
+    noise_type --> All noise types in the noise dataset.
+    """
+
+    if len(snr_range) > 1:
+        snr_range = range(snr_range[0], snr_range[1])
+    else:
+        snr_range = list(snr_range)
+
+    (data_dir, _) = data
+
+    kws_train_dataset, kws_test_dataset = KWS_20_get_datasets(
+        data, load_train, load_test)
+
+    if load_train:
+        noise_dataset_train = MSnoise(root=data_dir, classes=noise_type,
+                                      d_type='train', dataset_len=len(kws_train_dataset),
+                                      desired_probs=desired_probs,
+                                      transform=None, quantize=False, download=True)
+
+        train_dataset = SignalMixer(signal_dataset=kws_train_dataset,
+                                    snr_range=snr_range,
+                                    noise_type=noise_type, apply_prob=apply_prob,
+                                    noise_dataset=noise_dataset_train)
+    else:
+        train_dataset = None
+
+    if load_test:
+        test_dataset = kws_test_dataset
+    else:
+        test_dataset = None
+
+    return train_dataset, test_dataset
+
+
+def KWS_12_benchmark_get_datasets(data, load_train=True, load_test=True):
+    """
+    Returns the KWS dataset benchmark for 12 classes. 10 keywords and
+    _silence_ + _unknown_.
+    """
+    return KWS_get_datasets(data, load_train, load_test, dataset_name='KWS_12_benchmark',
+                            num_classes=11, filter_libri=True, benchmark=True)
+
+
+def MixedKWS_20_get_datasets_10dB(data, load_train=True, load_test=True,
+                                  apply_prob=1, snr_range=tuple([10]),
+                                  noise_type=MSnoise.class_dict.keys(),
+                                  desired_probs=None):
+    """
+    Returns the mixed KWS dataset with MSnoise dataset under 10 dB SNR using signalmixer
+    data loader. All of the training and test data will be augmented with
+    additional noise.
+    """
+
+    if len(snr_range) > 1:
+        snr_range = range(snr_range[0], snr_range[1])
+    else:
+        snr_range = list(snr_range)
+
+    (data_dir, _) = data
+
+    kws_train_dataset, kws_test_dataset = KWS_20_get_datasets(
+        data, load_train, load_test)
+
+    if load_train:
+        noise_dataset_train = MSnoise(root=data_dir, classes=noise_type,
+                                      d_type='train', dataset_len=len(kws_train_dataset),
+                                      desired_probs=desired_probs,
+                                      transform=None, quantize=False, download=False)
+
+        train_dataset = SignalMixer(signal_dataset=kws_train_dataset,
+                                    snr_range=snr_range,
+                                    noise_type=noise_type, apply_prob=apply_prob,
+                                    noise_dataset=noise_dataset_train)
+    else:
+        train_dataset = None
+
+    if load_test:
+        noise_dataset_test = MSnoise(root=data_dir, classes=noise_type,
+                                     d_type='test', dataset_len=len(kws_test_dataset),
+                                     desired_probs=desired_probs,
+                                     transform=None, quantize=False, download=False)
+
+        test_dataset = SignalMixer(signal_dataset=kws_test_dataset,
+                                   snr_range=snr_range,
+                                   noise_type=noise_type, apply_prob=apply_prob,
+                                   noise_dataset=noise_dataset_test)
+    else:
+        test_dataset = None
+
+    return train_dataset, test_dataset
 
 
 datasets = [
     {
-        'name': 'KWS',  # 6 keywords + unknown
+        'name': 'KWS',  # 6 keywords + _unknown_
         'input': (512, 64),
-        'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'UNKNOWN'),
+        'output': KWS.dataset_dict['KWS'],
         'weight': (1, 1, 1, 1, 1, 1, 0.06),
         'loader': KWS_get_datasets,
     },
     {
-        'name': 'KWS_20',  # 20 keywords + unknown
+        'name': 'KWS_20',  # 20 keywords + _unknown_
         'input': (128, 128),
-        'output': ('up', 'down', 'left', 'right', 'stop', 'go', 'yes', 'no', 'on', 'off', 'one',
-                   'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'zero',
-                   'UNKNOWN'),
+        'output': KWS.dataset_dict['KWS_20'],
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
         'loader': KWS_20_get_datasets,
     },
     {
-        'name': 'KWS_35',  # 35 keywords + unknown
+        'name': 'KWS_35',  # 35 keywords + _unknown_
         'input': (128, 128),
-        'output': ('backward', 'bed', 'bird', 'cat', 'dog', 'down',
-                   'eight', 'five', 'follow', 'forward', 'four', 'go',
-                   'happy', 'house', 'learn', 'left', 'marvin', 'nine',
-                   'no', 'off', 'on', 'one', 'right', 'seven',
-                   'sheila', 'six', 'stop', 'three', 'tree', 'two',
-                   'up', 'visual', 'wow', 'yes', 'zero', 'UNKNOWN'),
+        'output': KWS.dataset_dict['KWS_35'],
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
         'loader': KWS_35_get_datasets,
     },
     {
-        'name': 'KWS_35_unquantized',  # 35 keywords + unknown
+        'name': 'KWS_20_msnoise_mixed',  # 20 keywords + _unknown_
         'input': (128, 128),
-        'output': ('backward', 'bed', 'bird', 'cat', 'dog', 'down',
-                   'eight', 'five', 'follow', 'forward', 'four', 'go',
-                   'happy', 'house', 'learn', 'left', 'marvin', 'nine',
-                   'no', 'off', 'on', 'one', 'right', 'seven',
-                   'sheila', 'six', 'stop', 'three', 'tree', 'two',
-                   'up', 'visual', 'wow', 'yes', 'zero', 'UNKNOWN'),
+        'output': KWS.dataset_dict['KWS_20'],
+        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
+        'loader': KWS_20_msnoise_mixed_get_datasets,
+    },
+    {
+        'name': 'KWS_12_benchmark',  # 10 keywords + _silence_ + _unknown_
+        'input': (128, 128),
+        'output': KWS.dataset_dict['KWS_12_benchmark'],
+        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.056),
+        'loader': KWS_12_benchmark_get_datasets,
+    },
+    {
+        'name': 'MixedKWS20_10dB',  # 20 keywords + _unknown_
+        'input': (128, 128),
+        'output': KWS.dataset_dict['KWS_20'],
+        'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
+        'loader': MixedKWS_20_get_datasets_10dB,
+    },
+    {
+        'name': 'KWS_35_unquantized',  # 35 keywords + _unknown_
+        'input': (128, 128),
+        'output': KWS.dataset_dict['KWS_35'],
         'weight': (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.07),
         'loader': KWS_35_get_unquantized_datasets,
