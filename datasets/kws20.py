@@ -996,7 +996,6 @@ def KWS_35_get_unquantized_datasets(data, load_train=True, load_test=True):
 
 def KWS_20_msnoise_mixed_get_datasets(data, load_train=True, load_test=True,
                                       apply_prob=0.8, snr_range=(-5, 10),
-                                      noise_type=MSnoise.class_dict,
                                       desired_probs=None):
     """
     Returns the KWS dataset mixed with MSnoise dataset. Only training set will be mixed
@@ -1009,6 +1008,8 @@ def KWS_20_msnoise_mixed_get_datasets(data, load_train=True, load_test=True,
     snr_range  --> [-5, 10] dB SNR range to be used during the SNR selection for additional noise.
     noise_type --> All noise types in the noise dataset.
     """
+
+    noise_type = MSnoise.class_dict
 
     if len(snr_range) > 1:
         snr_range = range(snr_range[0], snr_range[1])
@@ -1052,13 +1053,14 @@ def KWS_12_benchmark_get_datasets(data, load_train=True, load_test=True):
 
 def MixedKWS_20_get_datasets_10dB(data, load_train=True, load_test=True,
                                   apply_prob=1, snr_range=tuple([10]),
-                                  noise_type=MSnoise.class_dict,
                                   desired_probs=None):
     """
     Returns the mixed KWS dataset with MSnoise dataset under 10 dB SNR using signalmixer
     data loader. All of the training and test data will be augmented with
     additional noise.
     """
+
+    noise_type = MSnoise.class_dict
 
     if len(snr_range) > 1:
         snr_range = range(snr_range[0], snr_range[1])
