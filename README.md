@@ -1,8 +1,8 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-June 25, 2024
+July 2, 2024
 
-**Note: The pytorch-2 branch is in development. Please see [KNOWN_ISSUES](KNOWN_ISSUES.txt).**
+**Note: This branch requires PyTorch 2. Please see the archive for PyTorch 1.8 support. [KNOWN_ISSUES](KNOWN_ISSUES.txt) contains a list of known issues.**
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
@@ -11,9 +11,9 @@ ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 2. The software development kit (MSDK), which contains drivers and example programs ready to run on the evaluation kits (EVkit and Feather):
     [Analog Devices MSDK](https://github.com/analogdevicesinc/msdk)
 3. The training repository, which is used for deep learning *model development and training*:
-    [ai8x-training](https://github.com/analogdevicesinc/ai8x-training/tree/pytorch-2) **(described in this document)**
+    [ai8x-training](https://github.com/analogdevicesinc/ai8x-training/tree/develop) **(described in this document)**
 4. The synthesis repository, which is used to *convert a trained model into C code* using the “izer” tool:
-    [ai8x-synthesis](https://github.com/analogdevicesinc/ai8x-synthesis/tree/pytorch-2) **(described in this document)**
+    [ai8x-synthesis](https://github.com/analogdevicesinc/ai8x-synthesis/tree/develop) **(described in this document)**
 5. The reference design repository, which contains host applications and sample applications for reference designs such as [MAXREFDES178 (Cube Camera)](https://www.analog.com/en/design-center/reference-designs/maxrefdes178.html):
     [refdes](https://github.com/analogdevicesinc/MAX78xxx-RefDes)
     *Note: Examples for EVkits and Feather boards are part of the MSDK*
@@ -75,15 +75,15 @@ Limited support and advice for using other hardware and software combinations is
 
 **The only officially supported platforms for model training** are Ubuntu Linux 20.04 LTS and 22.04 LTS on amd64/x86_64, either the desktop or the [server version](https://ubuntu.com/download/server).
 
-*Note that hardware acceleration using CUDA is <u>not available</u> in PyTorch for Raspberry Pi 4 and other <u>aarch64/arm64</u> devices, even those running Ubuntu Linux 20.04/22.04. See also [Development on Raspberry Pi 4 and 400](https://github.com/analogdevicesinc/ai8x-synthesis/blob/pytorch-2/docs/RaspberryPi.md) (unsupported).*
+*Note that hardware acceleration using CUDA is <u>not available</u> in PyTorch for Raspberry Pi 4 and other <u>aarch64/arm64</u> devices, even those running Ubuntu Linux 20.04/22.04. See also [Development on Raspberry Pi 4 and 400](https://github.com/analogdevicesinc/ai8x-synthesis/blob/develop/docs/RaspberryPi.md) (unsupported).*
 
 This document also provides instructions for installing on RedHat Enterprise Linux / CentOS 8 with limited support.
 
 ##### Windows
 
-On Windows 10 version 21H2 or newer, and Windows 11, after installing the Windows Subsystem for Linux (WSL2), Ubuntu Linux 20.04 or 22.04 can be used inside Windows with full CUDA acceleration, please see *[Windows Subsystem for Linux](https://github.com/analogdevicesinc/ai8x-synthesis/blob/pytorch-2/docs/WSL2.md).* For the remainder of this document, follow the steps for Ubuntu Linux.
+On Windows 10 version 21H2 or newer, and Windows 11, after installing the Windows Subsystem for Linux (WSL2), Ubuntu Linux 20.04 or 22.04 can be used inside Windows with full CUDA acceleration, please see *[Windows Subsystem for Linux](https://github.com/analogdevicesinc/ai8x-synthesis/blob/develop/docs/WSL2.md).* For the remainder of this document, follow the steps for Ubuntu Linux.
 
-If WSL2 is not available, it is also possible (but not recommended due to inherent compatibility issues and slightly degraded performance) to run this software natively on Windows. Please see *[Native Windows Installation](https://github.com/analogdevicesinc/ai8x-synthesis/blob/pytorch-2/docs/Windows.md)*.
+If WSL2 is not available, it is also possible (but not recommended due to inherent compatibility issues and slightly degraded performance) to run this software natively on Windows. Please see *[Native Windows Installation](https://github.com/analogdevicesinc/ai8x-synthesis/blob/develop/docs/Windows.md)*.
 
 ##### macOS
 
@@ -317,8 +317,8 @@ Change to the project root and run the following commands. Use your GitHub crede
 
 ```shell
 $ cd <your/project>
-$ git clone --recursive -b pytorch-2 https://github.com/analogdevicesinc/ai8x-training.git
-$ git clone --recursive -b pytorch-2 https://github.com/analogdevicesinc/ai8x-synthesis.git
+$ git clone --recursive https://github.com/analogdevicesinc/ai8x-training.git
+$ git clone --recursive https://github.com/analogdevicesinc/ai8x-synthesis.git
 ```
 
 #### Creating the Virtual Environment
@@ -329,7 +329,8 @@ To create the virtual environment and install basic wheels:
 $ cd ai8x-training
 ```
 
-Using the instructions above checks out the `pytorch-2` branch which supports PyTorch 2.3. For PyTorch 1.8 support, use the `develop` or `main` branches. To switch, use `git checkout`, for example `git checkout main`.
+Using the instructions above checks out the `develop` branch which supports PyTorch 2.3. The `main` branch is updated less frequently, but possibly more stable. To change branches, use the command `git checkout`, for example `git checkout main`.
+For PyTorch 1.8 support, use the archive.
 
 If using pyenv, set the local directory to use Python 3.11.8.
 
@@ -395,7 +396,8 @@ For all other systems, including macOS:
 
 ##### Repository Branches
 
-When following these instructions, the `pytorch-2` branch is checked out. For PyTorch 1.8 support, use either the `develop` branch (the most frequently updated branch which it contains the latest improvements to the project) or the `main` branch (updated less frequently, but possibly more stable). To change branches, use the command `git checkout`, for example `git checkout main`.
+Using the instructions above checks out the `develop` branch which supports PyTorch 2.3. The `main` branch is updated less frequently, but possibly more stable. To change branches, use the command `git checkout`, for example `git checkout main`.
+For PyTorch 1.8 support, use the archive.
 
 ###### TensorFlow / Keras
 
@@ -411,7 +413,7 @@ After a small delay of typically a day, a “Release” tag is created on GitHub
 
 In addition to code updated in the repository itself, **submodules and Python libraries may have been updated as well**.
 
-Major upgrades (such as updating from PyTorch 1.8 to PyTorch 2.0) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#upstream-code). Starting from scratch is also recommended when upgrading the Python version.
+Major upgrades (such as updating from PyTorch 1.8 to PyTorch 2.3) are best done by removing all installed wheels. This can be achieved most easily by creating a new folder and starting from scratch at [Upstream Code](#upstream-code). Starting from scratch is also recommended when upgrading the Python version.
 
 For minor updates, pull the latest code and install the updated wheels:
 
@@ -587,7 +589,7 @@ The MSDK is also available as a [git repository](https://github.com/analogdevice
       $ pacman -S --needed base filesystem msys2-runtime make
       ```
 
-5. Install packages for OpenOCD. OpenOCD binaries are available in the “openocd” sub-folder of the ai8x-synthesis repository. However, some additional dependencies are required on most systems. See [openocd/README.md](https://github.com/analogdevicesinc/ai8x-synthesis/blob/pytorch-2/openocd/README.md) for a list of packages to install, then return here to continue.
+5. Install packages for OpenOCD. OpenOCD binaries are available in the “openocd” sub-folder of the ai8x-synthesis repository. However, some additional dependencies are required on most systems. See [openocd/README.md](https://github.com/analogdevicesinc/ai8x-synthesis/blob/develop/openocd/README.md) for a list of packages to install, then return here to continue.
 
 6. Add the location of the toolchain binaries to the system path.
 
@@ -1075,12 +1077,12 @@ The MAX78000 hardware does not support arbitrary network parameters. Specificall
   * The *final* streaming layer must use padding.
   * Layers that use 1×1 kernels without padding are automatically replaced with equivalent layers that use 3×3 kernels with padding.
   
-* The weight memory supports up to 768 * 64 3×3 Q7 kernels (see [Number Format](#number-format)), for a total of [432 KiB of kernel memory](https://github.com/analogdevicesinc/ai8x-synthesis/blob/pytorch-2/docs/AHBAddresses.md).
+* The weight memory supports up to 768 * 64 3×3 Q7 kernels (see [Number Format](#number-format)), for a total of [432 KiB of kernel memory](https://github.com/analogdevicesinc/ai8x-synthesis/blob/develop/docs/AHBAddresses.md).
   When using 1-, 2- or 4-bit weights, the capacity increases accordingly.
   When using more than 64 input or output channels, weight memory is shared, and effective capacity decreases proportionally (for example, 128 input channels require twice as much space as 64 input channels, and a layer with <u>both</u> 128 input and 128 output channels requires <u>four</u> times as much space as a layer with only 64 input channels and 64 output channels).
   Weights must be arranged according to specific rules detailed in [Layers and Weight Memory](#layers-and-weight-memory).
 
-* There are 16 instances of 32 KiB data memory ([for a total of 512 KiB](https://github.com/analogdevicesinc/ai8x-synthesis/blob/pytorch-2/docs/AHBAddresses.md)). When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 32,768 pixels per channel in the CHW format (181×181 when width = height). However, when using more than one input channel, the HWC format may be preferred, and all layer outputs are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance — or 8192 pixels per channel (approximately 90×90 when width = height).
+* There are 16 instances of 32 KiB data memory ([for a total of 512 KiB](https://github.com/analogdevicesinc/ai8x-synthesis/blob/develop/docs/AHBAddresses.md)). When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 32,768 pixels per channel in the CHW format (181×181 when width = height). However, when using more than one input channel, the HWC format may be preferred, and all layer outputs are in HWC format as well. In those cases, it is required that four channels fit into a single memory instance — or 8192 pixels per channel (approximately 90×90 when width = height).
   Note that the first layer commonly creates a wide expansion (i.e., a large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical. In many cases, [Data Folding](#data-folding) (distributing the input data across multiple channels) can effectively increase both the input dimensions as well as improve model performance.
 
 * The hardware supports 1D and 2D convolution layers, 2D transposed convolution layers (upsampling), element-wise addition, subtraction, binary OR, binary XOR as well as fully connected layers (`Linear`), which are implemented using 1×1 convolutions on 1×1 data:
@@ -1171,12 +1173,12 @@ The MAX78002 hardware does not support arbitrary network parameters. Specificall
   * Layers that use 1×1 kernels without padding are automatically replaced with equivalent layers that use 3×3 kernels with padding.
   * Streaming layers must use convolution (i.e., the `Conv1d`, `Conv2d`, or `ConvTranspose2d` [operators](#operation)).
 
-* The weight memory of processors 0, 16, 32, and 48 supports up to 5,120 3×3 Q7 kernels (see [Number Format](#number-format)), all other processors support up to 4,096 3×3 Q7 kernels, for a total of [2,340 KiB of kernel memory](https://github.com/analogdevicesinc/ai8x-synthesis/blob/pytorch-2/docs/AHBAddresses.md).
+* The weight memory of processors 0, 16, 32, and 48 supports up to 5,120 3×3 Q7 kernels (see [Number Format](#number-format)), all other processors support up to 4,096 3×3 Q7 kernels, for a total of [2,340 KiB of kernel memory](https://github.com/analogdevicesinc/ai8x-synthesis/blob/develop/docs/AHBAddresses.md).
   When using 1-, 2- or 4-bit weights, the capacity increases accordingly. The hardware supports two different flavors of 1-bit weights, either 0/–1 or +1/–1.
   When using more than 64 input or output channels, weight memory is shared, and effective capacity decreases.
   Weights must be arranged according to specific rules detailed in [Layers and Weight Memory](#layers-and-weight-memory).
 
-* The total of [1,280 KiB of data memory](https://github.com/analogdevicesinc/ai8x-synthesis/blob/pytorch-2/docs/AHBAddresses.md) is split into 16 sections of 80 KiB each. When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 81,920 pixels per channel in CHW format (286×286 when height = width). However, when using more than one input channel, the HWC format may be preferred, and all layer outputs are in HWC format as well. In those cases, it is required that four channels fit into a single memory section — or 20,480 pixels per channel (143×143 when height = width).
+* The total of [1,280 KiB of data memory](https://github.com/analogdevicesinc/ai8x-synthesis/blob/develop/docs/AHBAddresses.md) is split into 16 sections of 80 KiB each. When not using streaming mode, any data channel (input, intermediate, or output) must completely fit into one memory instance. This limits the first-layer input to 81,920 pixels per channel in CHW format (286×286 when height = width). However, when using more than one input channel, the HWC format may be preferred, and all layer outputs are in HWC format as well. In those cases, it is required that four channels fit into a single memory section — or 20,480 pixels per channel (143×143 when height = width).
   Note that the first layer commonly creates a wide expansion (i.e., a large number of output channels) that needs to fit into data memory, so the input size limit is mostly theoretical. In many cases, [Data Folding](#data-folding) (distributing the input data across multiple channels) can effectively increase both the input dimensions as well as improve model performance.
 
 * The hardware supports 1D and 2D convolution layers, 2D transposed convolution layers (upsampling), element-wise addition, subtraction, binary OR, binary XOR as well as fully connected layers (`Linear`), which are implemented using 1×1 convolutions on 1×1 data:
@@ -1319,7 +1321,7 @@ Since training can take a significant amount of time, the training script does n
 
    Training might succeed after reducing the batch size, reducing image dimensions, or pruning the dataset. Unfortunately, the only real fix for this issue is more system RAM. In the example, `kinetics_get_datasets()` from `datasets/kinetics.py` states “The current implementation of using 2000 training and 150 test examples per class at 240×240 resolution and 5 frames per second requires around 50 GB of RAM.”
 
-6. On CUDA-capable machines, the training script by default uses PyTorch 2.0’s [`torch.compile()` feature](https://pytorch.org/docs/stable/generated/torch.compile.html) which improves execution speed. However, some models may not support this feature. It can be disabled using the command line option
+6. On CUDA-capable machines, the training script by default uses PyTorch 2’s [`torch.compile()` feature](https://pytorch.org/docs/stable/generated/torch.compile.html) which improves execution speed. However, some models may not support this feature. It can be disabled using the command line option
    `--compiler-mode none`
    Disabling `torch.compile()` may also be necessary when using AMD ROCm acceleration.
 
@@ -2083,7 +2085,7 @@ The only model architecture implemented in this repository is the sequential mod
 
 <img src="docs/NAS_Sequential_Model.png" alt="nas_model" style="zoom:50%;"/>
 
-All required elastic search strategies are implemented in this [model file](https://github.com/analogdevicesinc/ai8x-training/blob/pytorch-2/models/ai85nasnet-sequential.py).
+All required elastic search strategies are implemented in this [model file](https://github.com/analogdevicesinc/ai8x-training/blob/develop/models/ai85nasnet-sequential.py).
 
 A new model architecture can be implemented by implementing the `OnceForAllModel` interface. The new model class must implement the following:
 
@@ -3305,9 +3307,9 @@ Assuming the network is compatible with the new deployment target, changing the 
 
 Additional information about the evaluation kits, and the software development kit (MSDK) is available on the web at <https://github.com/analogdevicesinc/MaximAI_Documentation>.
 
-[AHB Addresses for MAX78000 and MAX78002](https://github.com/analogdevicesinc/ai8x-synthesis/blob/pytorch-2/docs/AHBAddresses.md)
+[AHB Addresses for MAX78000 and MAX78002](https://github.com/analogdevicesinc/ai8x-synthesis/blob/develop/docs/AHBAddresses.md)
 
-[Facial Recognition System](https://github.com/analogdevicesinc/ai8x-training/blob/pytorch-2/docs/FacialRecognitionSystem.md)
+[Facial Recognition System](https://github.com/analogdevicesinc/ai8x-training/blob/develop/docs/FacialRecognitionSystem.md)
 
 
 ---
