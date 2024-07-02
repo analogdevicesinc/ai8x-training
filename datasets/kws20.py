@@ -34,7 +34,6 @@ import torchaudio
 from torch.utils.model_zoo import tqdm  # type: ignore # tqdm exists in model_zoo
 from torchvision import transforms
 
-import librosa
 import soundfile as sf
 
 import ai8x
@@ -259,7 +258,8 @@ class KWS:
             for filename in sorted(filenames):
                 if filename.endswith(ext):
                     fname = os.path.join(dirpath, filename)
-                    data, _ = librosa.load(fname, sr=sr)
+                    data, sr_original = sf.read(fname, dtype='float32')
+                    assert sr_original == sr
                     max_start_pt = len(data) - exp_len
 
                     for i in range(sample_num):
@@ -385,7 +385,8 @@ class KWS:
                 i = 0
                 if filename.endswith(ext):
                     fname = os.path.join(dirpath, filename)
-                    data, _ = librosa.load(fname, sr=sr)
+                    data, sr_original = sf.read(fname, dtype='float32')
+                    assert sr_original == sr
 
                     # normalize data
                     mx = np.amax(abs(data))
@@ -487,7 +488,6 @@ class KWS:
     def __filter_classes(self):
         initial_new_class_label = len(self.class_dict)
         new_class_label = initial_new_class_label
-        self.new_class_dict = {}
         for c in self.classes:
             if c not in self.class_dict:
                 if c == '_unknown_':
@@ -495,7 +495,6 @@ class KWS:
                 raise ValueError(f'Class {c} not found in data')
             num_elems = (self.targets == self.class_dict[c]).cpu().sum()
             print(f'Class {c} (# {self.class_dict[c]}): {num_elems} elements')
-            self.new_class_dict[c] = new_class_label
             self.targets[(self.targets == self.class_dict[c])] = new_class_label
             new_class_label += 1
 
@@ -503,10 +502,6 @@ class KWS:
         print(f'Class _unknown_: {num_elems} elements')
         self.targets[(self.targets < initial_new_class_label)] = new_class_label
         self.targets -= initial_new_class_label
-
-        self.new_class_dict = {c: self.new_class_dict[c] - initial_new_class_label
-                               for c in self.new_class_dict.keys()}
-        self.new_class_dict['_unknown_'] = len(self.new_class_dict)
 
     def __filter_librispeech(self):
 
@@ -624,19 +619,6 @@ class KWS:
         """Shifts audio.
         """
         return torch.roll(audio, shift_sample)
-
-    @staticmethod
-    def stretch(audio, rate=1):
-        """Stretches audio with specified ratio.
-        """
-        input_length = 16000
-        audio2 = librosa.effects.time_stretch(audio, rate=rate)
-        if len(audio2) > input_length:
-            audio2 = audio2[:input_length]
-        else:
-            audio2 = np.pad(audio2, (0, max(0, input_length - len(audio2))), "constant")
-
-        return audio2
 
     @staticmethod
     def compand(data, mu=255):
@@ -821,7 +803,7 @@ class KWS:
                         train_count += 1
 
                     record_pth = os.path.join(self.raw_folder, record_name)
-                    record, fs = librosa.load(record_pth, offset=0, sr=None)
+                    record, fs = sf.read(record_pth, dtype='float32')
 
                     # training and validation examples get speed augmentation
                     if d_typ not in (self.TEST, self.BENCHMARK):
@@ -1002,7 +984,7 @@ def KWS_35_get_unquantized_datasets(data, load_train=True, load_test=True):
 
 def KWS_20_msnoise_mixed_get_datasets(data, load_train=True, load_test=True,
                                       apply_prob=0.8, snr_range=(-5, 10),
-                                      noise_type=MSnoise.class_dict.keys(),
+                                      noise_type=MSnoise.class_dict,
                                       desired_probs=None):
     """
     Returns the KWS dataset mixed with MSnoise dataset. Only training set will be mixed
@@ -1058,7 +1040,7 @@ def KWS_12_benchmark_get_datasets(data, load_train=True, load_test=True):
 
 def MixedKWS_20_get_datasets_10dB(data, load_train=True, load_test=True,
                                   apply_prob=1, snr_range=tuple([10]),
-                                  noise_type=MSnoise.class_dict.keys(),
+                                  noise_type=MSnoise.class_dict,
                                   desired_probs=None):
     """
     Returns the mixed KWS dataset with MSnoise dataset under 10 dB SNR using signalmixer

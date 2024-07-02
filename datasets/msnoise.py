@@ -30,7 +30,7 @@ import numpy as np
 import torch
 from torchvision import transforms
 
-import librosa
+import soundfile as sf
 
 import ai8x
 
@@ -240,21 +240,20 @@ class MSnoise:
                     for record_name in sorted(os.listdir(folder)):
                         if record_name.split('_')[0] in label:
                             record_path = os.path.join(folder, record_name)
-                            with warnings.catch_warnings(action='ignore', category=DeprecationWarning):
-                                record, _ = librosa.load(record_path, offset=0, sr=None)
+                            record, _ = sf.read(record_path, dtype='float32')
 
-                                if self.quantize:
-                                    data_in.append(self.quantize_audio(record))
-                                else:
-                                    data_in.append(record)
+                            if self.quantize:
+                                data_in.append(self.quantize_audio(record))
+                            else:
+                                data_in.append(record)
 
-                                if folder == self.noise_train_folder:
-                                    data_type.append(0)  # train + val
-                                elif folder == self.noise_test_folder:
-                                    data_type.append(1)  # test
+                            if folder == self.noise_train_folder:
+                                data_type.append(0)  # train + val
+                            elif folder == self.noise_test_folder:
+                                data_type.append(1)  # test
 
-                                data_class.append(i)
-                                rms_val.append(np.mean(record**2)**0.5)
+                            data_class.append(i)
+                            rms_val.append(np.mean(record**2)**0.5)
                             count += 1
                 self.data_class_count[label] = count
 
