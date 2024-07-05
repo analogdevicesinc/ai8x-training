@@ -487,7 +487,6 @@ class KWS:
     def __filter_classes(self):
         initial_new_class_label = len(self.class_dict)
         new_class_label = initial_new_class_label
-        self.new_class_dict = {}
         for c in self.classes:
             if c not in self.class_dict:
                 if c == '_unknown_':
@@ -495,7 +494,6 @@ class KWS:
                 raise ValueError(f'Class {c} not found in data')
             num_elems = (self.targets == self.class_dict[c]).cpu().sum()
             print(f'Class {c} (# {self.class_dict[c]}): {num_elems} elements')
-            self.new_class_dict[c] = new_class_label
             self.targets[(self.targets == self.class_dict[c])] = new_class_label
             new_class_label += 1
 
@@ -503,10 +501,6 @@ class KWS:
         print(f'Class _unknown_: {num_elems} elements')
         self.targets[(self.targets < initial_new_class_label)] = new_class_label
         self.targets -= initial_new_class_label
-
-        self.new_class_dict = {c: self.new_class_dict[c] - initial_new_class_label
-                               for c in self.new_class_dict.keys()}
-        self.new_class_dict['_unknown_'] = len(self.new_class_dict)
 
     def __filter_librispeech(self):
 
@@ -1002,7 +996,6 @@ def KWS_35_get_unquantized_datasets(data, load_train=True, load_test=True):
 
 def KWS_20_msnoise_mixed_get_datasets(data, load_train=True, load_test=True,
                                       apply_prob=0.8, snr_range=(-5, 10),
-                                      noise_type=MSnoise.class_dict.keys(),
                                       desired_probs=None):
     """
     Returns the KWS dataset mixed with MSnoise dataset. Only training set will be mixed
@@ -1015,6 +1008,8 @@ def KWS_20_msnoise_mixed_get_datasets(data, load_train=True, load_test=True,
     snr_range  --> [-5, 10] dB SNR range to be used during the SNR selection for additional noise.
     noise_type --> All noise types in the noise dataset.
     """
+
+    noise_type = MSnoise.class_dict
 
     if len(snr_range) > 1:
         snr_range = range(snr_range[0], snr_range[1])
@@ -1058,13 +1053,14 @@ def KWS_12_benchmark_get_datasets(data, load_train=True, load_test=True):
 
 def MixedKWS_20_get_datasets_10dB(data, load_train=True, load_test=True,
                                   apply_prob=1, snr_range=tuple([10]),
-                                  noise_type=MSnoise.class_dict.keys(),
                                   desired_probs=None):
     """
     Returns the mixed KWS dataset with MSnoise dataset under 10 dB SNR using signalmixer
     data loader. All of the training and test data will be augmented with
     additional noise.
     """
+
+    noise_type = MSnoise.class_dict
 
     if len(snr_range) > 1:
         snr_range = range(snr_range[0], snr_range[1])
