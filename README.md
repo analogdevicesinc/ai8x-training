@@ -1,8 +1,8 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-July 2, 2024
+July 5, 2024
 
-**Note: This branch requires PyTorch 2. Please see the archive for PyTorch 1.8 support. [KNOWN_ISSUES](KNOWN_ISSUES.txt) contains a list of known issues.**
+**Note: This branch requires PyTorch 2. Please see the archive-1.8 branch for PyTorch 1.8 support. [KNOWN_ISSUES](KNOWN_ISSUES.txt) contains a list of known issues.**
 
 ADI’s MAX78000/MAX78002 project is comprised of five repositories:
 
