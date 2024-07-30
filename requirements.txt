@@ -4,7 +4,7 @@ torchaudio==2.3.1
 GitPython==3.1.43
 Pillow==10.4.0
 PyYAML==6.0.1
-albumentations==1.4.11
+albumentations==1.4.12
 faiss-cpu==1.8.0.post1
 batch-face==1.4.0
 h5py==3.11.0
@@ -22,4 +22,4 @@ tensorboard==2.17.0
 tk==0.1.0
 torchmetrics==1.4.0.post0
 torchnet==0.0.4
--e distiller
+-e distiller --config-settings editable_mode=strict
