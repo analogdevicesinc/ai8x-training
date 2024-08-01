@@ -2,4 +2,5 @@ KNOWN ISSUES for ai8x-training with PyToch 2.3.1
 ================================================
 
 * As of PyTorch 2.3.1, torch.compile() requires CUDA.
-
+* When running on Windows, train.py may require the switch "--compiler-mode none" if there is "no working triton installation".
+  See also https://github.com/pytorch/pytorch/issues/122094
