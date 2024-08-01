@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-July 5, 2024
+July 22, 2024
 
 **Note: This branch requires PyTorch 2. Please see the archive-1.8 branch for PyTorch 1.8 support. [KNOWN_ISSUES](KNOWN_ISSUES.txt) contains a list of known issues.**
 
@@ -421,7 +421,7 @@ For minor updates, pull the latest code and install the updated wheels:
 (ai8x-training) $ git pull
 (ai8x-training) $ git submodule update --init
 (ai8x-training) $ pip3 install -U pip setuptools
-(ai8x-training) $ pip3 install -U -r requirements.txt  # or requirements-xxx.txt, as shown above
+(ai8x-training) $ pip3 install -U -r requirements.txt  # add --extra-index-url if needed, as shown above
 ```
 
 ##### MSDK Updates
