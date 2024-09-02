@@ -101,6 +101,7 @@ from pytorch_metric_learning.distances import CosineSimilarity
 from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
 from pytorch_metric_learning.utils.inference import CustomKNN
 from torchmetrics.detection import MeanAveragePrecision
+from tqdm import tqdm
 
 import ai8x
 import ai8x_nas
@@ -384,13 +385,22 @@ def main():
                     args.name = f'{args.name}_qat'
                 else:
                     args.name = 'qat'
-        model, compression_scheduler, optimizer, start_epoch = apputils.load_checkpoint(
-            model, args.resumed_checkpoint_path, model_device=args.device)
+        try:
+            model, compression_scheduler, optimizer, start_epoch = apputils.load_checkpoint(
+                model, args.resumed_checkpoint_path, model_device=args.device)
+        except ValueError as exc:
+            raise ValueError('\n ERROR: Unable to resume from the checkpoint. '
+                             'The reason might be the size mismatch between checkpoint and'
+                             ' optimizer. Instead of "--resume-from", "--exp-load-weights-from" '
+                             'argument can be used to load the lean model. ') from exc
     elif args.load_model_path:
+        init_qat = False
+        update_old_model_params(args.load_model_path, model)
         if qat_policy is not None:
             checkpoint = torch.load(args.load_model_path,
                                     map_location=lambda storage, loc: storage)
             if checkpoint.get('epoch', None) >= qat_policy['start_epoch']:
+                init_qat = True
                 ai8x.fuse_bn_layers(model)
                 if args.name:
                     args.name = f'{args.name}_qat'
@@ -398,6 +408,8 @@ def main():
                     args.name = 'qat'
         model = apputils.load_lean_checkpoint(model, args.load_model_path,
                                               model_device=args.device)
+        if args.evaluate and init_qat:
+            ai8x.initiate_qat(model, qat_policy)
 
     ai8x.update_model(model)
 
@@ -594,6 +606,15 @@ def main():
 
             # Fuse the BN parameters into conv layers before Quantization Aware Training (QAT)
             ai8x.fuse_bn_layers(model)
+            ai8x.init_hist(model)
+
+            msglogger.info('Collecting statistics for quantization aware training (QAT)...')
+            stat_collect(train_loader, model, args)
+
+            ai8x.init_threshold(model, qat_policy["outlier_removal_z_score"])
+            ai8x.release_hist(model)
+
+            ai8x.apply_scales(model)
 
             # Update the optimizer to reflect fused batchnorm layers
             optimizer = ai8x.update_optimizer(model, optimizer)
@@ -823,6 +844,15 @@ def create_nas_kd_policy(model, compression_scheduler, epoch, next_state_start_e
     msglogger.info('\tTemperature: %s', args.nas_kd_params['temperature'])
     msglogger.info("\tLoss Weights (distillation | student | teacher): %s",
                    ' | '.join([f'{val:.2f}' for val in dlw]))
+
+
+@torch.no_grad()
+def stat_collect(train_loader, model, args):
+    """Collect statistics for quantization aware training"""
+    model.eval()
+    for inputs, _ in tqdm(train_loader):
+        inputs = inputs.to(args.device)
+        model(inputs)
 
 
 def train(train_loader, model, criterion, optimizer, epoch,
@@ -1122,16 +1152,15 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
 
                 # compute output from model
                 output_boxes, output_conf = model(inputs)
-
                 # correct output for accurate loss calculation
                 if args.act_mode_8bit:
                     output_boxes /= 128.
                     output_conf /= 128.
 
-                    if (hasattr(m, 'are_locations_wide') and m.are_locations_wide):
+                    if (hasattr(m, 'are_locations_wide') and m.are_locations_wide()):
                         output_boxes /= 128.
 
-                    if (hasattr(m, 'are_scores_wide') and m.are_scores_wide):
+                    if (hasattr(m, 'are_scores_wide') and m.are_scores_wide()):
                         output_conf /= 128.
 
                 output = (output_boxes, output_conf)
@@ -1191,10 +1220,9 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1, tflogger=N
                 # correct output for accurate loss calculation
                 if args.act_mode_8bit:
                     output /= 128.
-                    for key in model.__dict__['_modules'].keys():
-                        if (hasattr(model.__dict__['_modules'][key], 'wide')
-                                and model.__dict__['_modules'][key].wide):
-                            output /= 256.
+                    for _, module in model.named_modules():
+                        if hasattr(module, 'wide') and module.wide:
+                            output /= 128.
                     if args.regression:
                         target /= 128.
 
@@ -1514,6 +1542,37 @@ class missingdict(dict):
 
     def __missing__(self, key):
         return None  # note, does *not* set self[key] - we don't want defaultdict's behavior
+
+
+def update_old_model_params(model_path, model_new):
+    """Adds missing model parameters added with default values.
+    This is mainly due to the saved checkpoints from previous versions of the repo.
+    New model is saved to `model_path` and the old model copied into the same file_path with
+    `__obsolete__` prefix."""
+    is_model_old = False
+    model_old = torch.load(model_path,
+                           map_location=lambda storage, loc: storage)
+    # Fix up any instances of DataParallel
+    old_dict = model_old['state_dict'].copy()
+    for k in old_dict:
+        if k.startswith('module.'):
+            model_old['state_dict'][k[7:]] = old_dict[k]
+    for new_key, new_val in model_new.state_dict().items():
+        if new_key not in model_old['state_dict'] and 'bn' not in new_key:
+            is_model_old = True
+            model_old['state_dict'][new_key] = new_val
+            if 'compression_sched' in model_old:
+                if 'masks_dict' in model_old['compression_sched']:
+                    model_old['compression_sched']['masks_dict'][new_key] = None
+
+    if is_model_old:
+        dir_path, file_name = os.path.split(model_path)
+        new_file_name = '__obsolete__' + file_name
+        old_model_path = os.path.join(dir_path, new_file_name)
+        os.rename(model_path, old_model_path)
+        torch.save(model_old, model_path)
+        msglogger.info('Model `%s` is old. Missing parameters added with default values!',
+                       model_path)
 
 
 if __name__ == '__main__':

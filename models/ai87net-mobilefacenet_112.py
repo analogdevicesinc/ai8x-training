@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2023 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2023-2024 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -98,8 +98,7 @@ class AI87MobileFaceNet(nn.Module):
 
     def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
-        if x.shape[1] == 6:
-            x = x[:, 0:3, :, :]
+        x = x[:, 0:3, :, :]
         x = self.pre_stage(x)
         x = self.dwise(x)
         for stage in self.feature_stage:

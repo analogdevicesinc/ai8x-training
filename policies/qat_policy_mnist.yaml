@@ -1,6 +1,7 @@
 ---
 start_epoch: 10
 weight_bits: 2
+outlier_removal_z_score: 2
 overrides:
   conv1:
     weight_bits: 8

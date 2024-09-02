@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2020-2023 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2020-2024 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -240,12 +240,11 @@ class MBConvBlock(nn.Module):
                                                           eps=1e-03, momentum=0.01, **kwargs)
         # Depthwise Convolution phase
         if fused is not True:
-            self.depthwise_conv = ai8x.FusedConv2dBNReLU(in_channels=out, out_channels=out,
-                                                         groups=out,  # groups makes it depthwise
-                                                         padding=1, kernel_size=kernel_size,
-                                                         stride=stride, batchnorm='Affine',
-                                                         bias=bias, eps=1e-03, momentum=0.01,
-                                                         **kwargs)
+            self.depthwise_conv = ai8x.FusedDepthwiseConv2dBNReLU(out, out, kernel_size,
+                                                                  padding=1, stride=stride,
+                                                                  batchnorm='Affine', bias=bias,
+                                                                  eps=1e-03, momentum=0.01,
+                                                                  **kwargs)
         # Squeeze and Excitation phase
         if self.has_se:
             num_squeezed_channels = max(1, int(in_channels * se_ratio))
@@ -260,7 +259,9 @@ class MBConvBlock(nn.Module):
                                                kernel_size=1, batchnorm='Affine', bias=bias,
                                                eps=1e-03, momentum=0.01, **kwargs)
         # Skip connection
-        self.resid = ai8x.Add()
+        input_filters, output_filters = self.in_channels, self.out_channels
+        if self.stride == 1 and input_filters == output_filters:
+            self.resid = ai8x.Add()
 
     def forward(self, inputs):
         """MBConvBlock's forward function.

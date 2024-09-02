@@ -9,6 +9,8 @@
 """
 ImageNet EfficientNet v.2 network implementation for MAX78002.
 """
+import math
+
 from torch import nn
 
 import ai8x
@@ -75,6 +77,8 @@ class AI87ImageNetEfficientNetV2(nn.Module):
         # Final linear layer
         self.fc = ai8x.Linear(1024, num_classes, bias=bias, wide=True, **kwargs)
 
+        self._initialize_weights()
+
     def forward(self, x):  # pylint: disable=arguments-differ
         """ Forward prop """
         x = self.conv_stem(x)
@@ -96,6 +100,17 @@ class AI87ImageNetEfficientNetV2(nn.Module):
         x = x.view(x.size(0), -1)
         x = self.fc(x)
         return x
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / (n)))
+                if m.bias is not None:
+                    m.bias.data.zero_()
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
 
 
 def ai87imageneteffnetv2(pretrained=False, **kwargs):

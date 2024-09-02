@@ -2,6 +2,7 @@
 start_epoch: 240
 shift_quantile: 0.985
 weight_bits: 2
+outlier_removal_z_score: 2
 overrides:
   conv1:
     weight_bits: 8

@@ -1,6 +1,6 @@
 #
 # Copyright (c) 2018 Intel Corporation
-# Portions Copyright (C) 2019-2023 Maxim Integrated Products, Inc.
+# Portions Copyright (C) 2019-2024 Maxim Integrated Products, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -48,7 +48,6 @@ def imagenet_get_datasets(data, load_train=True, load_test=True,
                 transforms.RandomResizedCrop(input_size, antialias=True),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
-                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
                 ai8x.normalize(args=args),
             ])
 
@@ -71,7 +70,6 @@ def imagenet_get_datasets(data, load_train=True, load_test=True,
                 transforms.Resize(int(input_size / 0.875), antialias=True),  # type: ignore
                 transforms.CenterCrop(input_size),
                 transforms.ToTensor(),
-                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
                 ai8x.normalize(args=args),
             ])
 
