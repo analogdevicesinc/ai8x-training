@@ -408,7 +408,9 @@ def main():
                     args.name = 'qat'
         model = apputils.load_lean_checkpoint(model, args.load_model_path,
                                               model_device=args.device)
-        if args.evaluate and init_qat:
+
+        # If model is in QAT mode, guarantee that the model is initialized for QATv2
+        if init_qat:
             ai8x.initiate_qat(model, qat_policy)
 
     ai8x.update_model(model)
@@ -588,7 +590,7 @@ def main():
 
     if args.evaluate:
         msglogger.info('Dataset sizes:\n\ttest=%d', len(test_loader.sampler))
-        return evaluate_model(model, criterion, test_loader, pylogger, args, compression_scheduler)
+        return test(test_loader, model, criterion, pylogger, args=args)
 
     assert train_loader and val_loader
     msglogger.info('Dataset sizes:\n\ttraining=%d\n\tvalidation=%d\n\ttest=%d',
@@ -1421,37 +1423,6 @@ def update_training_scores_history(perf_scores_history, model, top1, top5, mAP, 
                                'Params: %d on epoch: %d]',
                                score.top1, -score.params_nnz_cnt,
                                score.epoch)
-
-
-def evaluate_model(model, criterion, test_loader, loggers, args, scheduler=None, local_rank=-1):
-    """
-    This sample application can be invoked to evaluate the accuracy of your model on
-    the test dataset.
-    You can optionally quantize the model to 8-bit integer before evaluation.
-    For example:
-    python3 compress_classifier.py --arch resnet20_cifar \
-             ../data.cifar10 -p=50 --resume-from=checkpoint.pth.tar --evaluate
-    """
-
-    if not isinstance(loggers, list):
-        loggers = [loggers]
-
-    top1, _, _, mAP = test(test_loader, model, criterion, loggers, args=args)
-
-    if args.quantize_eval and local_rank <= 0:  # not DistributedDataParallel or rank 0
-        checkpoint_name = 'quantized'
-
-        if args.obj_detection:
-            extras = {'quantized_mAP': mAP}
-        else:
-            extras = {'quantized_top1': top1}
-        assert msglogger is not None
-
-        m, _, _ = model_wrapper.unwrap(model)
-        apputils.save_checkpoint(0, args.cnn, m, optimizer=None, scheduler=scheduler,
-                                 name='_'.join([args.name, checkpoint_name])
-                                 if args.name else checkpoint_name,
-                                 dir=msglogger.logdir, extras=extras)
 
 
 def summarize_model(model, dataset, which_summary, filename='model'):

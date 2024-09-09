@@ -577,7 +577,7 @@ def histogram(inp, bins):
     CUDA compatible histogram calculation
     """
     minimum, maximum = inp.min(), inp.max()
-    counts = torch.histc(inp, bins, min=minimum, max=maximum)
+    counts = torch.histc(inp, bins, min=minimum, max=maximum).cpu()
     boundaries = torch.linspace(minimum, maximum, bins + 1)
     return counts, boundaries
 
