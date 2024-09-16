@@ -1529,7 +1529,7 @@ def update_old_model_params(model_path, model_new):
         if k.startswith('module.'):
             model_old['state_dict'][k[7:]] = old_dict[k]
     for new_key, new_val in model_new.state_dict().items():
-        if new_key not in model_old['state_dict'] and 'bn' not in new_key:
+        if new_key not in model_old['state_dict'] and '.bn.' not in new_key:
             is_model_old = True
             model_old['state_dict'][new_key] = new_val
             if 'compression_sched' in model_old:
