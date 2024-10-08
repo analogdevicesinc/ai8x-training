@@ -18,6 +18,9 @@ import ai8x
 class AI85ActionTCN(nn.Module):
     """
     Conv2D backbone + TCN layers for Action Recognition
+    Model was designed to be used with the Kinetics dataset.
+    Number of frames was set to 15, as the model optimally performs with this number
+    within the constraints of the AI85 hardware.
     """
     def __init__(
             self,
