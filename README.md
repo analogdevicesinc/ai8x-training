@@ -2211,7 +2211,7 @@ The following table describes the most important command line arguments for `ai8
 | `--no-unload`            | Do not create the `cnn_unload()` function                    |                                 |
 | `--no-kat`               | Do not generate the `check_output()` function (disable known-answer test)  |                   |
 | `--no-deduplicate-weights` | Do not deduplicate weights and and bias values             |                                 |
-| `--scale-output` | Use scales from the checkpoint to recover output range while generating `cnn_unload()` function | |
+| `--no-scale-output` | Do not use scales from the checkpoint to recover output range while generating `cnn_unload()` function | |
 
 ### YAML Network Description
 
@@ -2333,7 +2333,7 @@ The following keywords are required for each `unload` list item:
 `width`: Data width (optional, defaults to 8) — either 8 or 32
 `write_gap`: Gap between data words (optional, defaults to 0)
 
-When `--scale-output` is specified, scales from the checkpoint file are used to recover the output range. If there is a non-zero scale for the 8 bits output, the output will be scaled and kept in 16 bits. If the scale is zero, the output will be 8 bits. For 32 bits output, the output will be kept in 32 bits always.
+When `--no-scale-output` is not specified, scales from the checkpoint file are used to recover the output range. If there is a non-zero scale for the 8 bits output, the output will be scaled and kept in 16 bits. If the scale is zero, the output will be 8 bits. For 32 bits output, the output will be kept in 32 bits always.
 
 Example:
 
