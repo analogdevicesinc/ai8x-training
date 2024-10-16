@@ -144,16 +144,13 @@ class AI85AutoEncoder(CNN_BASE):
 
         self.initWeights(weight_init)
 
-    def forward(self, x, return_bottleneck=False):
+    def forward(self, x):
         """Forward prop"""
         x = self.en_conv1(x)
         x = self.en_conv2(x)
         x = x.view(x.shape[0], x.shape[1])
         x = self.en_lin1(x)
         x = self.en_lin2(x)
-
-        if return_bottleneck:
-            return x
 
         x = self.de_lin1(x)
         x = self.de_lin2(x)

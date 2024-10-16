@@ -1,13 +1,13 @@
 ---
 lr_schedulers:
   training_lr:
-    class: MultiStepLR
-    milestones: [50, 100, 150, 200, 250]
-    gamma: 0.5
+    class: CosineAnnealingLR
+    T_max: 150
+    eta_min: 0.0000005
 
 policies:
   - lr_scheduler:
       instance_name: training_lr
     starting_epoch: 0
-    ending_epoch: 300
+    ending_epoch: 150
     frequency: 1

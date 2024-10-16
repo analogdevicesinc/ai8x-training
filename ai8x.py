@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2020-2023 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2020-2024 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -13,9 +13,11 @@ Contains the limits of the MAX78000/MAX78002 implementations and custom PyTorch 
 the limits into account.
 """
 
+import numpy as np
 import torch
 from torch import nn
 from torch.autograd import Function
+from torch.fx import symbolic_trace
 
 import devices
 
@@ -327,7 +329,7 @@ class FloorQatONNX(nn.Module):
         return x.mul(factor).floor().div(factor)
 
 
-def quantize_clamp(wide, quantize_activation=False, weight_bits=8):
+def quantize_clamp(wide, quantize_activation=False, clamp_activation=False, weight_bits=8):
     """
     Return new Quantization and Clamp objects.
     """
@@ -352,21 +354,25 @@ def quantize_clamp(wide, quantize_activation=False, weight_bits=8):
                 quantize = Quantize(num_bits=dev.WIDE_LAYER_RESOLUTION_BITS)
         else:
             quantize = Empty()
-        if not wide:
-            clamp = Clamp(  # Do not combine with ReLU
-                min_val=-1.,
-                max_val=(2.**(dev.ACTIVATION_BITS-1)-1)/(2.**(dev.ACTIVATION_BITS-1)),
-            )
+
+        if clamp_activation:
+            if not wide:
+                clamp = Clamp(  # Do not combine with ReLU
+                    min_val=-1.,
+                    max_val=(2.**(dev.ACTIVATION_BITS-1)-1)/(2.**(dev.ACTIVATION_BITS-1)),
+                )
+            else:
+                clamp = Clamp(
+                    min_val=-(2.**((dev.FULL_ACC_BITS-2*(dev.DATA_BITS-1))-1)),
+                    max_val=2.**((dev.FULL_ACC_BITS-2*(dev.DATA_BITS-1))-1),
+                )
         else:
-            clamp = Clamp(
-                min_val=-(2.**((dev.FULL_ACC_BITS-2*(dev.DATA_BITS-1))-1)),
-                max_val=2.**((dev.FULL_ACC_BITS-2*(dev.DATA_BITS-1))-1),
-            )
+            clamp = Empty()
 
     return quantize, clamp
 
 
-def quantize_clamp_pool(pooling, quantize_activation=False):
+def quantize_clamp_pool(pooling, quantize_activation=False, clamp_activation=False):
     """
     Return new Quantization and Clamp objects for pooling.
     """
@@ -385,7 +391,10 @@ def quantize_clamp_pool(pooling, quantize_activation=False):
         if pooling == 'Avg':
             if quantize_activation:
                 quantize = RoundQat() if dev.round_avg else FloorQat()
-            clamp = Clamp(min_val=-1., max_val=127./128.)
+            if clamp_activation:
+                clamp = Clamp(min_val=-1., max_val=127./128.)
+            else:
+                clamp = Empty()
         else:  # Max, None
             clamp = Empty()
 
@@ -494,7 +503,7 @@ class One(nn.Module):
     """
     def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
-        return torch.ones(1, device=x.device)
+        return torch.ones(1).to(x.device)
 
 
 class WeightScale(nn.Module):
@@ -563,6 +572,152 @@ def get_activation(activation=None):
     return Empty()
 
 
+def histogram(inp, bins):
+    """
+    CUDA compatible histogram calculation
+    """
+    minimum, maximum = inp.min(), inp.max()
+    counts = torch.histc(inp, bins, min=minimum, max=maximum).cpu()
+    boundaries = torch.linspace(minimum, maximum, bins + 1)
+    return counts, boundaries
+
+
+def calc_q_error(module, threshold, bits, eps=1e-9):
+    """
+    Activation quantization error calculation
+    """
+    quantized_hist = module.hist[1].clone()
+    quantized_hist = torch.round((quantized_hist / (threshold + eps)) * 2**(bits-1))
+    quantized_hist = torch.clamp(quantized_hist, -2**(bits-1), 2**(bits-1)-1)
+    quantized_hist = (quantized_hist * (threshold + eps) / 2**(bits-1))
+    err = torch.sum(((quantized_hist - module.hist[1])**2)*module.hist[0]) \
+        / torch.sum(module.hist[0])
+
+    return err
+
+
+def _merge_hist(module):
+    """
+    Merge histograms of activations
+    """
+    bins_to_stack = []
+    for hist in module.hist:
+        bins_to_stack.append(hist[1])
+    stacked_bins = torch.stack(bins_to_stack)
+    min_edge = stacked_bins.min()
+    max_edge = stacked_bins.max()
+    # 2048 is the number of bins and 2049 is the number of edges
+    merged_bins = torch.linspace(min_edge.item(), max_edge.item(), 2049)
+    merged_counts = None
+
+    for hist in module.hist:
+        if merged_counts is None:
+            merged_counts = _interpolate_hist(hist[0], hist[1], merged_bins)
+        else:
+            merged_counts += _interpolate_hist(hist[0], hist[1], merged_bins)
+
+    module.hist = (merged_counts, merged_bins)
+
+
+def _interpolate_hist(counts, bins, new_bins):
+    """
+    Helper function for interpolating histograms to new bins
+    """
+    cumulative_hist = torch.cumsum(counts, dim=0).to(device=bins.device)
+    cumulative_hist = torch.cat((torch.tensor([0]), cumulative_hist))
+    cumulative_interp_hist = torch.from_numpy(np.interp(new_bins.numpy(), bins.numpy(),
+                                                        cumulative_hist.numpy()))
+    interp_counts = torch.diff(cumulative_interp_hist, prepend=torch.tensor([0]))
+
+    return interp_counts
+
+
+# pylint: disable=unused-argument
+def _hist_hook(module, inp, output):
+    """
+    Hook to collect histogram of activations
+    """
+    if not hasattr(module, 'hist'):
+        module.hist = []
+    # dynamic histogram collection
+    hist = histogram(output.clone().detach().flatten(), bins=2048)
+    module.hist.append(hist)
+
+
+def register_hist_hooks(module):
+    """
+    Register hooks for histogram collection
+    """
+    module.handle = module.register_forward_hook(_hist_hook, always_call=True)
+
+
+def release_hist_hooks(module):
+    """
+    Release hooks after histogram collection
+    """
+    module.handle.remove()
+
+
+def _remove_outliers(module, outlier_removal_z_score=8.0):
+    """
+    Remove outliers from histogram
+    """
+    # Get mean and std of histogram
+    hist_count = module.hist[0]
+    hist_bins = module.hist[1]
+    hist_bins_middle = []
+    for i in range(len(hist_bins) - 1):
+        hist_bins_middle.append((hist_bins[i] + hist_bins[i+1])/2)
+    hist_bins_middle = torch.tensor(hist_bins_middle)
+    mean = torch.sum(hist_count[1:] * hist_bins_middle) / torch.sum(hist_count[1:])
+    std = torch.sqrt(torch.sum(hist_count[1:] * (hist_bins_middle - mean)**2)
+                     / torch.sum(hist_count[1:]))
+
+    # When activations are very small, std ends up being 0 due to rounding.
+    # In this case, we set std to a very small value to prevent zero element histogram.
+    if std == 0:
+        std = 1e-9
+    # Calculate bounds according to z-score
+    upper_bound = mean + outlier_removal_z_score * std
+    lower_bound = mean - outlier_removal_z_score * std
+    hist_bins_middle = torch.cat((torch.tensor([0]), hist_bins_middle))
+    # Remove outliers according to bounds
+    hist_count[hist_bins_middle > upper_bound] = 0
+    hist_count[hist_bins_middle < lower_bound] = 0
+    non_zero_bins = hist_count != 0
+    hist_count = hist_count[non_zero_bins]
+    hist_bins = hist_bins[non_zero_bins]
+    module.hist = (hist_count, hist_bins)
+
+
+def init_threshold_module(module, outlier_removal_z_score):
+    """
+    Initialize activation threshold
+    """
+    _merge_hist(module)
+    _remove_outliers(module, outlier_removal_z_score)
+    module.activation_threshold = nn.Parameter(module.hist[1].abs().max().log2().ceil().exp2(),
+                                               requires_grad=False)
+
+
+def calc_threshold(module, iterations=5, bits=8):
+    """
+    Iteratively calculate threshold for activation quantization
+    """
+    e_min = torch.inf
+    t_nc = module.activation_threshold
+    t = None
+
+    for i in range(iterations):
+        t_i = t_nc / (2**i)
+        e_i = calc_q_error(module, t_i, bits)
+        if e_i < e_min:
+            e_min = e_i
+            t = t_i
+
+    module.activation_threshold = nn.Parameter(torch.log2(t), requires_grad=False)
+
+
 class QuantizationAwareModule(nn.Module):
     """
     Common code for Quantization-Aware Training
@@ -579,6 +734,7 @@ class QuantizationAwareModule(nn.Module):
             op=None,
             bn=None,
             shift_quantile=1.0,
+            clamp_activation=False,
     ):
         super().__init__()
 
@@ -609,13 +765,20 @@ class QuantizationAwareModule(nn.Module):
         self.pooling = pooling
 
         self.output_shift = nn.Parameter(torch.tensor([0.]), requires_grad=False)
-        self.init_module(weight_bits, bias_bits, quantize_activation, shift_quantile)
+        # Activation threshold determined during QAT, used in quantization
+        # It determines the range of quantization
+        self.activation_threshold = nn.Parameter(torch.tensor(0.), requires_grad=False)
+        self.final_scale = nn.Parameter(torch.tensor(0.), requires_grad=False)
+
+        self.init_module(weight_bits, bias_bits, quantize_activation,
+                         clamp_activation, shift_quantile)
 
     def init_module(
             self,
             weight_bits,
             bias_bits,
             quantize_activation,
+            clamp_activation,
             shift_quantile,
             export=False,
     ):
@@ -625,12 +788,15 @@ class QuantizationAwareModule(nn.Module):
                 self.weight_bits = nn.Parameter(torch.tensor([0]), requires_grad=False)
                 self.bias_bits = nn.Parameter(torch.tensor([0]), requires_grad=False)
                 self.quantize_activation = nn.Parameter(torch.tensor([False]), requires_grad=False)
+                self.clamp_activation = nn.Parameter(torch.tensor([clamp_activation]),
+                                                     requires_grad=False)
                 self.adjust_output_shift = nn.Parameter(torch.tensor([False]), requires_grad=False)
         elif weight_bits in [1, 2, 4, 8] and bias_bits in [1, 2, 4, 8] and quantize_activation:
             self.weight_bits = nn.Parameter(torch.tensor([weight_bits]), requires_grad=False)
             if not export:
                 self.bias_bits = nn.Parameter(torch.tensor([bias_bits]), requires_grad=False)
                 self.quantize_activation = nn.Parameter(torch.tensor([True]), requires_grad=False)
+                self.clamp_activation = nn.Parameter(torch.tensor([True]), requires_grad=False)
                 self.adjust_output_shift = nn.Parameter(torch.tensor([not dev.simulate]),
                                                         requires_grad=False)
         else:
@@ -659,9 +825,11 @@ class QuantizationAwareModule(nn.Module):
                                       self.bias_bits.detach().item())
         self.quantize, self.clamp = \
             quantize_clamp(self.wide, bool(self.quantize_activation.detach().item()),
+                           bool(self.clamp_activation.detach().item()),
                            int(self.weight_bits.detach().item()))
         self.quantize_pool, self.clamp_pool = \
-            quantize_clamp_pool(self.pooling, bool(self.quantize_activation.detach().item()))
+            quantize_clamp_pool(self.pooling, bool(self.quantize_activation.detach().item()),
+                                bool(self.clamp_activation.detach().item()))
 
     def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
@@ -676,8 +844,13 @@ class QuantizationAwareModule(nn.Module):
                 params_r = torch.flatten(self.op.weight.detach())
             out_shift = self.calc_out_shift(params_r, self.output_shift.detach())
             weight_scale = self.calc_weight_scale(out_shift)
-            out_scale = self.calc_out_scale(out_shift)
 
+            # Quantized checkpoint will have subtracted threshold from output shift
+            # Therefore, it shouldn't be done again in simulate mode
+            if not dev.simulate:
+                out_shift = (out_shift - self.activation_threshold).clamp(min=-15., max=15.)
+
+            out_scale = self.calc_out_scale(out_shift)
             x = self._conv_forward(  # pylint: disable=protected-access
                 x,
                 self.clamp_weight(self.quantize_weight(self.op.weight.mul(weight_scale))),
@@ -686,11 +859,14 @@ class QuantizationAwareModule(nn.Module):
             )
 
             if self.bn is not None:
-                x = self.bn(x).div(4.)
+                x = self.bn(x)
             if not self.wide:
                 # The device does not apply output shift in wide mode
                 x = self.scale(x, out_scale)
             x = self.clamp(self.quantize(self.activate(x)))
+
+            # This is the final scale for the output, in the device it will be realized in SW
+            x = x.mul(2.**(self.final_scale))
         return x
 
 
@@ -1607,14 +1783,24 @@ class Eltwise(nn.Module):
     """
     Base Class for Elementwise Operation
     """
-    def __init__(self, f):
+    def __init__(self, f, clamp_activation=False):
         super().__init__()
         self.f = f
+        self.activation_threshold = nn.Parameter(torch.tensor(0.), requires_grad=False)
+        self.set_clamp(clamp_activation)
+
+    def set_clamp(self, clamp_activation):
+        """
+        Set Clamping Function
+        """
         if dev.simulate:
             bits = dev.ACTIVATION_BITS
             self.clamp = Clamp(min_val=-(2**(bits-1)), max_val=2**(bits-1)-1)
         else:
-            self.clamp = Clamp(min_val=-1., max_val=127./128.)
+            if clamp_activation:
+                self.clamp = Clamp(min_val=-1., max_val=127./128.)
+            else:
+                self.clamp = Empty()
 
     def forward(self, *x):
         """Forward prop"""
@@ -1822,19 +2008,28 @@ def initiate_qat(m, qat_policy, export=False):
             if 'shift_quantile' in qat_policy:
                 module.init_module(qat_policy['weight_bits'],
                                    qat_policy['weight_bits'],
-                                   True, qat_policy['shift_quantile'], export)
+                                   True, True, qat_policy['shift_quantile'], export)
             else:
                 module.init_module(qat_policy['weight_bits'],
-                                   qat_policy['weight_bits'], True, 1.0, export)
+                                   qat_policy['weight_bits'], True, True, 1.0, export)
             if 'overrides' in qat_policy:
                 if name in qat_policy['overrides']:
-                    weight_field = qat_policy['overrides'][name]['weight_bits']
-                    if 'shift_quantile' in qat_policy:
-                        module.init_module(weight_field, weight_field,
+                    if 'weight_bits' in qat_policy['overrides'][name]:
+                        weight_field = qat_policy['overrides'][name]['weight_bits']
+                    else:
+                        weight_field = qat_policy['weight_bits']
+                    if 'shift_quantile' in qat_policy['overrides'][name]:
+                        module.init_module(weight_field, weight_field, True,
+                                           True, qat_policy['overrides'][name]['shift_quantile'],
+                                           export)
+                    elif 'shift_quantile' in qat_policy:
+                        module.init_module(weight_field, weight_field, True,
                                            True, qat_policy['shift_quantile'], export)
                     else:
                         module.init_module(weight_field,
-                                           weight_field, True, 1.0, export)
+                                           weight_field, True, True, 1.0, export)
+        elif isinstance(module, Eltwise):
+            module.set_clamp(True)
 
 
 def update_model(m):
@@ -1842,14 +2037,9 @@ def update_model(m):
     Update model `m` with the current parameters.
     It is used to update model functions after loading a checkpoint file.
     """
-    def _update_model(m):
-        for attr_str in dir(m):
-            target_attr = getattr(m, attr_str)
-            if isinstance(target_attr, QuantizationAwareModule):
-                target_attr.set_functions()
-                setattr(m, attr_str, target_attr)
-
-    m.apply(_update_model)
+    for _, module in m.named_modules():
+        if isinstance(module, QuantizationAwareModule):
+            module.set_functions()
 
 
 def update_optimizer(m, optimizer):
@@ -1898,38 +2088,211 @@ def fuse_bn_layers(m):
     """
     Fuse the bn layers before the quantization aware training starts.
     """
-    def _fuse_bn_layers(m):
-        for attr_str in dir(m):
-            target_attr = getattr(m, attr_str)
-            if isinstance(target_attr, QuantizationAwareModule) \
-               and target_attr.bn is not None:
-                w = target_attr.op.weight.data
-                b = target_attr.op.bias.data
-                device = w.device
+    for _, module in m.named_modules():
+        if isinstance(module, QuantizationAwareModule) and module.bn is not None:
+            w = module.op.weight.data
+            b = module.op.bias.data
+            device = w.device
 
-                r_mean = target_attr.bn.running_mean
-                r_var = target_attr.bn.running_var
-                r_inv_std = torch.rsqrt(r_var + target_attr.bn.eps)
-                beta = target_attr.bn.weight
-                gamma = target_attr.bn.bias
+            r_mean = module.bn.running_mean
+            r_var = module.bn.running_var
+            r_inv_std = torch.rsqrt(r_var + module.bn.eps)
+            beta = module.bn.weight
+            gamma = module.bn.bias
 
-                if beta is None:
-                    beta = torch.ones(w.shape[0], device=device)
-                if gamma is None:
-                    gamma = torch.zeros(w.shape[0], device=device)
+            if beta is None:
+                beta = torch.ones(w.shape[0], device=device)
+            if gamma is None:
+                gamma = torch.zeros(w.shape[0], device=device)
 
-                beta = 0.25 * beta
-                gamma = 0.25 * gamma
+            w_new = w * (beta * r_inv_std).reshape((w.shape[0],) + (1,) * (len(w.shape) - 1))
+            b_new = (b - r_mean) * r_inv_std * beta + gamma
 
-                w_new = w * (beta * r_inv_std).reshape((w.shape[0],) + (1,) * (len(w.shape) - 1))
-                b_new = (b - r_mean) * r_inv_std * beta + gamma
+            module.op.weight.data = w_new
+            module.op.bias.data = b_new
+            module.bn = None
 
-                target_attr.op.weight.data = w_new
-                target_attr.op.bias.data = b_new
-                target_attr.bn = None
-                setattr(m, attr_str, target_attr)
 
-    m.apply(_fuse_bn_layers)
+def apply_scales(model):
+    """
+    Readjust the scales and apply according to the model graph.
+    """
+    net_graph = symbolic_trace(model)
+    adds = {}
+    concats = {}
+    prevs = {}
+    op_names = ["torch.conv2d", "torch.conv1d", "torch.linear",
+                "torch._C._nn.linear", "torch.conv_transpose2d"]
+    nodes_to_search = []
+    name_prev = None
+
+    # Model graph traversal for finding the adds, concats and previous layers
+    for node in net_graph.graph.nodes:
+        name = node.format_node()
+        if ("torch.add" in name) or ("torch.cat" in name):
+            nodes_to_search.clear()
+            if "target=view" in name:
+                if len(node.all_input_nodes) > 0:
+                    input_node = (node.all_input_nodes)[0]
+                    nodes_to_search.append(input_node)
+            else:
+                nodes_to_search.extend(node.all_input_nodes)
+            for node_prev in reversed(net_graph.graph.nodes):
+                name_prev = node_prev.format_node()
+                if any(op_name in name_prev for op_name in op_names):
+                    if node_prev in nodes_to_search:
+                        node_prev_name = next(reversed(node_prev.__dict__['meta']
+                                                       ['nn_module_stack']))
+                        if "torch.add" in name:
+                            node_name = next(reversed(node.__dict__['meta']['nn_module_stack']))
+                            adds[node_prev_name] = node_name
+                        elif "torch.cat" in name:
+                            concats[node_prev_name] = str(node)
+                        nodes_to_search.pop(nodes_to_search.index(node_prev))
+                else:
+                    if node_prev in nodes_to_search:
+                        nodes_to_search.pop(nodes_to_search.index(node_prev))
+                        if "target=view" in name_prev:
+                            if len(node_prev.all_input_nodes) > 0:
+                                input_node = (node_prev.all_input_nodes)[0]
+                                nodes_to_search.append(input_node)
+                        else:
+                            nodes_to_search.extend(node_prev.all_input_nodes)
+
+        elif any(op_name in name for op_name in op_names):
+            nodes_to_search.clear()
+            if len(node.all_input_nodes) > 0:
+                input_node = (node.all_input_nodes)[0]
+                nodes_to_search.append(input_node)
+            for node_prev in reversed(net_graph.graph.nodes):
+                name_prev = node_prev.format_node()
+                if any(op_name in name_prev for op_name in op_names):
+                    if node_prev in nodes_to_search:
+                        node_prev_name = next(reversed(node_prev.__dict__['meta']
+                                                       ['nn_module_stack']))
+                        node_name = next(reversed(node.__dict__['meta']['nn_module_stack']))
+                        if prevs.get(str(node_name)) is None:
+                            node_prevs = []
+                            node_prevs.append(str(node_prev_name))
+                            prevs[str(node_name)] = node_prevs
+                        else:
+                            prevs[str(node_name)].append(str(node_prev_name))
+                        nodes_to_search.pop(nodes_to_search.index(node_prev))
+
+                else:
+                    for name_node in nodes_to_search:
+                        if node_prev == name_node:
+                            nodes_to_search.extend(node_prev.all_input_nodes)
+                            nodes_to_search.pop(nodes_to_search.index(name_node))
+
+    # Override the thresholds of layers that are connected to adds
+    for name, module in model.named_modules():
+        if isinstance(module, QuantizationAwareModule):
+            if name in adds:
+                for name1, module1 in model.named_modules():
+                    if isinstance(module1, Eltwise):
+                        if adds[name] == name1:
+                            module.activation_threshold = module1.activation_threshold
+                            break
+
+    # Find the maximum threshold from the layers that are concatenated together
+    concat_thresholds = {}
+    for name, module in model.named_modules():
+        if isinstance(module, QuantizationAwareModule):
+            if name in concats:
+                if concat_thresholds.get(concats[name]) is None:
+                    concat_thresholds[concats[name]] = module.activation_threshold
+                elif module.activation_threshold > concat_thresholds[concats[name]]:
+                    concat_thresholds[concats[name]] = module.activation_threshold
+
+    # Apply the maximum threshold to the layers that are concatenated together
+    for name, module in model.named_modules():
+        if isinstance(module, QuantizationAwareModule):
+            if name in concats:
+                module.activation_threshold = nn.Parameter(concat_thresholds[concats[name]],
+                                                           requires_grad=False)
+
+    # Find weight sharing layers and apply the maximum threshold from the multiple passes
+    shared_threshold = {}
+    for name, module in model.named_modules():
+        if isinstance(module, QuantizationAwareModule):
+            if prevs.get(name) is not None:
+                for prev in prevs[name]:
+                    for name1, module1 in model.named_modules():
+                        if isinstance(module1, QuantizationAwareModule):
+                            if prev == name1:
+                                if shared_threshold.get(name) is None:
+                                    shared_threshold[name] = module1.activation_threshold
+                                elif module1.activation_threshold > shared_threshold[name]:
+                                    shared_threshold[name] = module1.activation_threshold
+                for prev in prevs[name]:
+                    for name1, module1 in model.named_modules():
+                        if isinstance(module1, QuantizationAwareModule):
+                            if prev == name1:
+                                module1.activation_threshold = shared_threshold[name]
+
+    # Get the thresholds after overrides
+    thresholds = {}
+    for name, module in model.named_modules():
+        if isinstance(module, QuantizationAwareModule):
+            thresholds[name] = module.activation_threshold
+
+    # Adjust bias and threshold values according to the previous layers,
+    # and set the final scale value for output layers
+    for name, module in model.named_modules():
+        if isinstance(module, QuantizationAwareModule):
+            if name in prevs:
+                prev_threshold_set = False
+                for name1, module1 in model.named_modules():
+                    if isinstance(module1, QuantizationAwareModule):
+                        if name1 in prevs[name]:
+                            if not prev_threshold_set:
+                                if module.op is not None and module.op.bias is not None:
+                                    module.op.bias = nn.Parameter(module.op.bias /
+                                                                  torch.exp2(thresholds[name1]))
+                                module.activation_threshold = \
+                                    nn.Parameter((module.activation_threshold - thresholds[name1]),
+                                                 requires_grad=False)
+                                if module.wide:
+                                    module.final_scale = nn.Parameter(thresholds[name] -
+                                                                      module.activation_threshold,
+                                                                      requires_grad=False)
+                                else:
+                                    module.final_scale = nn.Parameter(thresholds[name],
+                                                                      requires_grad=False)
+                                prev_threshold_set = True
+                            module1.final_scale = nn.Parameter(torch.tensor(0.),
+                                                               requires_grad=False)
+
+
+def init_hist(model):
+    """
+    Place forward hooks to collect histograms of activations
+    """
+    for _, module in model.named_modules():
+        if isinstance(module, (Eltwise, QuantizationAwareModule)):
+            register_hist_hooks(module)
+
+
+def release_hist(model):
+    """
+    Remove forward hooks after histogram collection
+    """
+    for _, module in model.named_modules():
+        if isinstance(module, (Eltwise, QuantizationAwareModule)):
+            release_hist_hooks(module)
+
+
+def init_threshold(model, outlier_removal_z_score=8.0):
+    """
+    Calculate thresholds based on the collected histograms
+    """
+    for _, module in model.named_modules():
+        if isinstance(module, (Eltwise, QuantizationAwareModule)):
+            # If module defined but not called on forward, it won't have hist
+            if hasattr(module, 'hist'):
+                init_threshold_module(module, outlier_removal_z_score)
+                calc_threshold(module)
 
 
 def onnx_export_prep(m, simplify=False, remove_clamp=False):

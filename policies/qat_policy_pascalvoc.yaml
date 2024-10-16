@@ -1,3 +1,4 @@
 ---
 start_epoch: 250
+outlier_removal_z_score: 6
 weight_bits: 8

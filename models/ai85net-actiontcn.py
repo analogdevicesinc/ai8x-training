@@ -1,6 +1,6 @@
 ###################################################################################################
 #
-# Copyright (C) 2022-2023 Maxim Integrated Products, Inc. All Rights Reserved.
+# Copyright (C) 2022-2024 Maxim Integrated Products, Inc. All Rights Reserved.
 #
 # Maxim Integrated Products, Inc. Default Copyright Notice:
 # https://www.maximintegrated.com/en/aboutus/legal/copyrights.html
@@ -18,6 +18,9 @@ import ai8x
 class AI85ActionTCN(nn.Module):
     """
     Conv2D backbone + TCN layers for Action Recognition
+    Model was designed to be used with the Kinetics dataset.
+    Number of frames was set to 15, as the model optimally performs with this number
+    within the constraints of the AI85 hardware.
     """
     def __init__(
             self,
@@ -33,6 +36,7 @@ class AI85ActionTCN(nn.Module):
         self.num_classes = num_classes
         self.cnn_out_shape = (1, 1)
         self.cnn_out_channel = 32
+        self.num_frames = 15
         num_filters = 64
         len_frame_vector = self.cnn_out_shape[0]*self.cnn_out_shape[1]*self.cnn_out_channel
 
@@ -113,21 +117,29 @@ class AI85ActionTCN(nn.Module):
     def forward(self, x):
         """Forward prop"""
         batch_size = x.shape[0]
-        num_frames = x.shape[1]
-        cnnoutputs = torch.zeros(batch_size, num_frames, self.cnn_out_channel,
-                                 self.cnn_out_shape[0], self.cnn_out_shape[1],
-                                 device=x.get_device())
-        for i in range(num_frames):
-            prep_out = self.create_prep(x[:, i])
-            cnnoutputs[:, i] = self.create_cnn(prep_out)
+        cnnoutputs = torch.zeros_like(x)
+        cnnoutputs = cnnoutputs[:, :, :self.cnn_out_channel, :self.cnn_out_shape[0],
+                                :self.cnn_out_shape[1]]
 
-        tcn_input = cnnoutputs.permute(0, 1, 3, 4, 2).reshape(batch_size, num_frames, -1) \
+        for i in range(self.num_frames):
+            prep_out = self.create_prep(x[:, i])
+            cnnoutputs = assign_cnnoutputs(cnnoutputs, i, self.create_cnn(prep_out))
+        tcn_input = cnnoutputs.permute(0, 1, 3, 4, 2).reshape(batch_size, self.num_frames, -1) \
                                                      .permute(0, 2, 1)
         tcn_output = self.tcn0(tcn_input)
         tcn_output = self.tcn1(tcn_output)
         tcn_output = self.tcn2(tcn_output)
 
         return tcn_output.reshape(batch_size, self.num_classes)
+
+
+@torch.fx.wrap
+def assign_cnnoutputs(cnnoutputs, index, value):
+    """
+    Assigns a value to a slice of a tensor, required for symbolic tracing
+    """
+    cnnoutputs[:, index] = value
+    return cnnoutputs
 
 
 def ai85actiontcn(pretrained=False, **kwargs):

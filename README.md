@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-July 22, 2024
+August 27, 2024
 
 **Note: This branch requires PyTorch 2. Please see the archive-1.8 branch for PyTorch 1.8 support. [KNOWN_ISSUES](KNOWN_ISSUES.txt) contains a list of known issues.**
 
@@ -1620,13 +1620,15 @@ When using the `-8` command line switch, all module outputs are quantized to 8-b
 
 The last layer can optionally use 32-bit output for increased precision. This is simulated by adding the parameter `wide=True` to the module function call.
 
-##### Weights: Quantization-Aware Training (QAT)
+##### Weights and Activations: Quantization-Aware Training (QAT)
 
 Quantization-aware training (QAT) is enabled by default. QAT is controlled by a policy file, specified by `--qat-policy`.
 
-* After `start_epoch` epochs, training will learn an additional parameter that corresponds to a shift of the final sum of products.
+* After `start_epoch` epochs, an intermediate epoch with no backpropagation will be realized to collect activation statistics. Each layer's activation ranges will be determined based on the range & resolution trade-off from the collected activations. Then, QAT will start and an additional parameter (`output_shift`) will be learned to shift activations for compensating weights  & biases scaling down.
 * `weight_bits` describes the number of bits available for weights.
 * `overrides` allows specifying the `weight_bits` on a per-layer basis.
+* `outlier_removal_z_score` defines the z-score threshold for outlier removal during activation range calculation. (default: 8.0)
+* `shift_quantile` defines the quantile of the parameters distribution to be used for the `output_shift` parameter. (default: 1.0)
 
 By default, weights are quantized to 8-bits after 30 epochs as specified in `policies/qat_policy.yaml`. A more refined example that specifies weight sizes for individual layers can be seen in `policies/qat_policy_cifar100.yaml`.
 
@@ -1745,7 +1747,7 @@ For both approaches, the `quantize.py` software quantizes an existing PyTorch ch
 
 #### Quantization-Aware Training (QAT)
 
-Quantization-aware training is the better performing approach. It is enabled by default. QAT learns additional parameters during training that help with quantization (see [Weights: Quantization-Aware Training (QAT)](#weights-quantization-aware-training-qat). No additional arguments (other than input, output, and device) are needed for `quantize.py`.
+Quantization-aware training is the better performing approach. It is enabled by default. QAT learns additional parameters during training that help with quantization (see [Weights and Activations: Quantization-Aware Training (QAT)](#weights-and-activations-quantization-aware-training-qat). No additional arguments (other than input, output, and device) are needed for `quantize.py`.
 
 The input checkpoint to `quantize.py` is either `qat_best.pth.tar`, the best QAT epoch’s checkpoint, or `qat_checkpoint.pth.tar`, the final QAT epoch’s checkpoint.
 
@@ -2004,7 +2006,7 @@ The behavior of a training session might change when Quantization Aware Training
 While there can be multiple reasons for this, check two important settings that can influence the training behavior:
 
 * The initial learning rate may be set too high. Reduce LR by a factor of 10 or 100 by specifying a smaller initial `--lr` on the command line, and possibly by reducing the epoch `milestones` for further reduction of the learning rate in the scheduler file specified by `--compress`. Note that the the selected optimizer and the batch size both affect the learning rate.
-* The epoch when QAT is engaged may be set too low. Increase `start_epoch` in the QAT scheduler file specified by `--qat-policy`, and increase the total number of training epochs by increasing the value specified by the `--epochs` command line argument and by editing the `ending_epoch` in the scheduler file specified by `--compress`. *See also the rule of thumb discussed in the section [Weights: Quantization-Aware Training (QAT)](#weights:-auantization-aware-training \(qat\)).*
+* The epoch when QAT is engaged may be set too low. Increase `start_epoch` in the QAT scheduler file specified by `--qat-policy`, and increase the total number of training epochs by increasing the value specified by the `--epochs` command line argument and by editing the `ending_epoch` in the scheduler file specified by `--compress`. *See also the rule of thumb discussed in the section [Weights and Activations: Quantization-Aware Training (QAT)](#weights-and-activations-quantization-aware-training-qat).*
 
 
 
@@ -2209,6 +2211,7 @@ The following table describes the most important command line arguments for `ai8
 | `--no-unload`            | Do not create the `cnn_unload()` function                    |                                 |
 | `--no-kat`               | Do not generate the `check_output()` function (disable known-answer test)  |                   |
 | `--no-deduplicate-weights` | Do not deduplicate weights and and bias values             |                                 |
+| `--no-scale-output` | Do not use scales from the checkpoint to recover output range while generating `cnn_unload()` function | |
 
 ### YAML Network Description
 
@@ -2329,6 +2332,12 @@ The following keywords are required for each `unload` list item:
 `offset`: Data source offset
 `width`: Data width (optional, defaults to 8) — either 8 or 32
 `write_gap`: Gap between data words (optional, defaults to 0)
+
+When `--no-scale-output` is not specified, scales from the checkpoint file are used to recover the output range. If there is a non-zero scale for the 8 bits output, the output will be scaled and kept in 16 bits. If the scale is zero, the output will be 8 bits. For 32 bits output, the output will be kept in 32 bits always.
+
+Example:
+
+![Unload Array](docs/unload_example.png)
 
 ##### `layers` (Mandatory)
 
@@ -2654,7 +2663,7 @@ Example:
 By default, the final layer is used as the output layer. Output layers are checked using the known-answer test, and they are copied from hardware memory when `cnn_unload()` is called. The tool also checks that output layer data isn’t overwritten by any later layers.
 
 When specifying `output: true`, any layer (or a combination of layers) can be used as an output layer.
-*Note:* When `unload:` is used, output layers are not used for generating `cnn_unload()`.
+*Note:* When `--no-unload` is used, output layers are not used for generating `cnn_unload()`.
 
 Example:
         `output: true`
