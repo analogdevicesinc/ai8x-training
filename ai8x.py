@@ -1786,7 +1786,7 @@ class Eltwise(nn.Module):
     def __init__(self, f, clamp_activation=False):
         super().__init__()
         self.f = f
-        self.activation_threshold = None
+        self.activation_threshold = nn.Parameter(torch.tensor(0.), requires_grad=False)
         self.set_clamp(clamp_activation)
 
     def set_clamp(self, clamp_activation):
