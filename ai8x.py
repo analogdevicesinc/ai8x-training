@@ -19,6 +19,8 @@ from torch import nn
 from torch.autograd import Function
 from torch.fx import symbolic_trace
 
+from tqdm import tqdm
+
 import devices
 
 dev = None
@@ -2263,6 +2265,26 @@ def apply_scales(model):
                                 prev_threshold_set = True
                             module1.final_scale = nn.Parameter(torch.tensor(0.),
                                                                requires_grad=False)
+
+
+@torch.no_grad()
+def stat_collect(train_loader, model, args):
+    """Collect statistics for quantization aware training"""
+    model.eval()
+    for inputs, _ in tqdm(train_loader):
+        inputs = inputs.to(args.device)
+        model(inputs)
+
+
+def pre_qat(model, train_loader, args, qat_policy):
+    """
+    Prepare the model for quantization aware training
+    """
+    init_hist(model)
+    stat_collect(train_loader, model, args)
+    init_threshold(model, qat_policy["outlier_removal_z_score"])
+    release_hist(model)
+    apply_scales(model)
 
 
 def init_hist(model):

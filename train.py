@@ -101,7 +101,6 @@ from pytorch_metric_learning.distances import CosineSimilarity
 from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
 from pytorch_metric_learning.utils.inference import CustomKNN
 from torchmetrics.detection import MeanAveragePrecision
-from tqdm import tqdm
 
 import ai8x
 import ai8x_nas
@@ -608,15 +607,10 @@ def main():
 
             # Fuse the BN parameters into conv layers before Quantization Aware Training (QAT)
             ai8x.fuse_bn_layers(model)
-            ai8x.init_hist(model)
 
             msglogger.info('Collecting statistics for quantization aware training (QAT)...')
-            stat_collect(train_loader, model, args)
 
-            ai8x.init_threshold(model, qat_policy["outlier_removal_z_score"])
-            ai8x.release_hist(model)
-
-            ai8x.apply_scales(model)
+            ai8x.pre_qat(model, train_loader, args, qat_policy)
 
             # Update the optimizer to reflect fused batchnorm layers
             optimizer = ai8x.update_optimizer(model, optimizer)
@@ -848,15 +842,6 @@ def create_nas_kd_policy(model, compression_scheduler, epoch, next_state_start_e
     msglogger.info('\tTemperature: %s', args.nas_kd_params['temperature'])
     msglogger.info("\tLoss Weights (distillation | student | teacher): %s",
                    ' | '.join([f'{val:.2f}' for val in dlw]))
-
-
-@torch.no_grad()
-def stat_collect(train_loader, model, args):
-    """Collect statistics for quantization aware training"""
-    model.eval()
-    for inputs, _ in tqdm(train_loader):
-        inputs = inputs.to(args.device)
-        model(inputs)
 
 
 def train(train_loader, model, criterion, optimizer, epoch,

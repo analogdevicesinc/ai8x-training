@@ -1,6 +1,6 @@
 # ADI MAX78000/MAX78002 Model Training and Synthesis
 
-August 27, 2024
+November 7, 2024
 
 **Note: This branch requires PyTorch 2. Please see the archive-1.8 branch for PyTorch 1.8 support. [KNOWN_ISSUES](KNOWN_ISSUES.txt) contains a list of known issues.**
 
@@ -1636,7 +1636,7 @@ Quantization-aware training can be <u>disabled</u> by specifying `--qat-policy N
 
 The proper choice of `start_epoch` is important for achieving good results, and the default policy’s `start_epoch` may be much too small. As a rule of thumb, set `start_epoch` to a very high value (e.g., 1000) to begin, and then observe where in the training process the model stops learning. This epoch can be used as `start_epoch`, and the final network metrics (after an additional number of epochs) should be close to the non-QAT metrics. *Additionally, ensure that the learning rate after the `start_epoch` epoch is relatively small.*
 
-For more information, please also see [Quantization](#quantization).
+For more information, please also see [Quantization](#quantization) and [QATv2](https://github.com/analogdevicesinc/ai8x-training/blob/develop/docs/QATv2.md).
 
 #### Batch Normalization
 
