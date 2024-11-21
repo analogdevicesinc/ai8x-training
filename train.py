@@ -1100,6 +1100,7 @@ def test(test_loader, model, criterion, loggers, args, mode='ckpt', ckpt_name=No
             torch._dynamo.reset()  # pylint: disable=protected-access
             model = torch.compile(model, mode=args.compiler_mode,
                                   backend=args.compiler_backend)
+            torch._dynamo.config.optimize_ddp = False  # pylint: disable=protected-access
             msglogger.info(
                 'torch.compile() successful, mode=%s, cache limit=%d',
                 args.compiler_mode,
