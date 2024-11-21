@@ -610,7 +610,7 @@ def main():
 
             msglogger.info('Collecting statistics for quantization aware training (QAT)...')
 
-            ai8x.pre_qat(model, train_loader, args, qat_policy, local_rank)
+            ai8x.pre_qat(model, train_loader, args, qat_policy)
 
             # Update the optimizer to reflect fused batchnorm layers
             optimizer = ai8x.update_optimizer(model, optimizer)

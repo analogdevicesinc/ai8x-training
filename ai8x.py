@@ -2237,16 +2237,15 @@ def stat_collect(train_loader, model, args):
         model(inputs)
 
 
-def pre_qat(model, train_loader, args, qat_policy, local_rank=0):
+def pre_qat(model, train_loader, args, qat_policy):
     """
     Prepare the model for quantization aware training
     """
-    if local_rank <= 0:
-        init_hist(model)
-        stat_collect(train_loader, model, args)
-        init_threshold(model, qat_policy["outlier_removal_z_score"])
-        release_hist(model)
-        apply_scales(model)
+    init_hist(model)
+    stat_collect(train_loader, model, args)
+    init_threshold(model, qat_policy["outlier_removal_z_score"])
+    release_hist(model)
+    apply_scales(model)
 
 
 def init_hist(model):
