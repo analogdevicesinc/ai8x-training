@@ -610,7 +610,7 @@ def main():
 
             msglogger.info('Collecting statistics for quantization aware training (QAT)...')
 
-            ai8x.pre_qat(model, train_loader, args, qat_policy)
+            ai8x.pre_qat(model, train_loader, args, qat_policy, local_rank)
 
             # Update the optimizer to reflect fused batchnorm layers
             optimizer = ai8x.update_optimizer(model, optimizer)
@@ -640,6 +640,12 @@ def main():
                 torch._dynamo.reset()  # pylint: disable=protected-access
                 model = torch.compile(model, mode=args.compiler_mode,
                                       backend=args.compiler_backend)
+
+                # TODO: Optimize DDP is currently not supported with QAT.
+                # Once pytorch supports DDP with higher order ops,
+                # we can enable optimize DDP with QAT.
+                # https://github.com/pytorch/pytorch/issues/104674.
+                torch._dynamo.config.optimize_ddp = False  # pylint: disable=protected-access
                 msglogger.info(
                     'torch.compile() successful, mode=%s, cache limit=%d',
                     args.compiler_mode,
@@ -734,7 +740,7 @@ def main():
     if not args.dr:
         test(test_loader, model, criterion, [pylogger], args=args, mode="ckpt")
         test(test_loader, model, criterion, [pylogger], args=args, mode="best",
-             ckpt_name=checkpoint_name)
+             ckpt_name=checkpoint_name, local_rank=local_rank)
 
     if args.copy_output_folder and local_rank <= 0:
         msglogger.info('Copying output folder to: %s', args.copy_output_folder)
@@ -1067,7 +1073,7 @@ def validate(val_loader, model, criterion, loggers, args, epoch=-1, tflogger=Non
     return _validate(val_loader, model, criterion, loggers, args, epoch, tflogger)
 
 
-def test(test_loader, model, criterion, loggers, args, mode='ckpt', ckpt_name=None):
+def test(test_loader, model, criterion, loggers, args, mode='ckpt', ckpt_name=None, local_rank=0):
     """Model Test"""
     assert msglogger is not None
     if mode == 'ckpt':
@@ -1075,11 +1081,31 @@ def test(test_loader, model, criterion, loggers, args, mode='ckpt', ckpt_name=No
         top1, top5, vloss, mAP = _validate(test_loader, model, criterion, loggers, args)
     else:
         msglogger.info('--- test (best) ---------------------')
-        if ckpt_name is None:
-            best_ckpt_path = os.path.join(msglogger.logdir, 'best.pth.tar')
-        else:
-            best_ckpt_path = os.path.join(msglogger.logdir, ckpt_name + "_best.pth.tar")
-        model = apputils.load_lean_checkpoint(model, best_ckpt_path)
+        model, dynamo, ddp = model_wrapper.unwrap(model)
+        if local_rank <= 0:
+            if ckpt_name is None:
+                best_ckpt_path = os.path.join(msglogger.logdir, 'best.pth.tar')
+            else:
+                best_ckpt_path = os.path.join(msglogger.logdir, ckpt_name + "_best.pth.tar")
+            model = apputils.load_lean_checkpoint(model, best_ckpt_path)
+
+        if ddp:
+            model = DistributedDataParallel(
+                model,
+                device_ids=[local_rank] if args.device == 'cuda' else None,
+                output_device=local_rank if args.device == 'cuda' else None,
+            )
+
+        if dynamo:
+            torch._dynamo.reset()  # pylint: disable=protected-access
+            model = torch.compile(model, mode=args.compiler_mode,
+                                  backend=args.compiler_backend)
+            msglogger.info(
+                'torch.compile() successful, mode=%s, cache limit=%d',
+                args.compiler_mode,
+                torch._dynamo.config.cache_size_limit,  # pylint: disable=protected-access
+            )
+
         top1, top5, vloss, mAP = _validate(test_loader, model, criterion, loggers, args)
 
     return top1, top5, vloss, mAP
