@@ -9,14 +9,11 @@ To train a quantization-aware model, the first step is to collect activation sta
 
 ## Activation Threshold Determination
 
-After collecting the activation statistics, the next step is to determine the activation thresholds. To do this, first, an outlier removal step based on z-score is applied to the activation statistics. The default z-score is 8.0, and it can be changed by defining a z-score on the qat policy file. A threshold is then selected to encompass the full activation range, followed by an iterative algorithm [1] that minimizes quantization error by adjusting the threshold to balance range and resolution. Scales are calculated as powers of two, making the scaling-down operation more computationally efficient by defining them as bit shift operations at the edge hardware.
-
+The collected statistics are use to determine the activation thresholds. To do this, first, an outlier removal step based on z-score is applied to the activation statistics. The default z-score is 8.0, and it can be changed by defining a z-score on the qat policy file. Then, an iterative algorithm [1] that minimizes the quantization error by adjusting the threshold to determine the full activation range. This algorithm finds a balance point in the tradeoff between range and resolution. Scales are calculated as powers of two, making the scaling-down operation more computationally efficient by defining them as bit shift operations at the edge hardware.
 
 ## Scale Adjustments
 
-To implement the threshold-based quantization, the scales of the layers are adjusted. The scales are adjusted based on the type of operation that is performed on the layers. The scale adjustments are made for residual additions, concatenations, and layer sharing. In the f
-
-Figure 1. shows the scale adjustments for residual additions. In the figure, Layer1 and Layer2 are layers that are added together. The scale of the residual addition is selected as the scale of the layers that are connected to the residual addition.
+To implement the threshold-based quantization, the scales of the layers are adjusted. The scales are adjusted based on the type of operation that is performed on the layers. The scale adjustments are made for residual additions, concatenations, and layer sharing. Figure 1. shows the scale adjustments for residual additions. In the figure, Layer1 and Layer2 are layers that are added together. The scale of the residual addition is selected as the scale of the layers that are connected to the residual addition.
 
 <img src="QATv2-Adds.png" style="zoom: 50%;" />
 
@@ -43,12 +40,11 @@ Figure 4. Scaling-down and Scale Carry Over Diagram
 
 ## Weights Quantization
 
-After determining the activation thresholds and scales, the next step is to quantize the weights. The weights are quantized using the QAT framework, which is based on the method proposed by Jacob et al. [2]. While training the model, weights and biasses are fake quantized to 8-bit integers. The fake quantization is done by quantizing the weights and biases to 8-bit integers and then dequantizing them back to floating-point numbers.
+After determining the activation thresholds and scales, the next step is to quantize the weights. The weights are quantized using the QAT framework, which is based on the method proposed by Jacob et al. [2]. While training the model, weights and biasses are fake quantized to integers. The fake quantization is done by quantizing the weights and biases to integers and then dequantizing them back to floating-point numbers.
 
 ## Deploying the Quantized Model
 
-The output shifts from the weights quantization are merged with the scale shifts from the activation quantization to form the final shifts of the quantized model. When the model is deployed, the final layer's scale should be restored to the original scale by multiplying the outputs with the final layer's scale.
-In the auto-generated C code, the cnn_unload() function is responsible for restoring the final layer's scale. If the cnn_unload() function is not used, the final layer's scale should be restored manually by multiplying the outputs with the final layer's scale. The final layer's scale values can be found at the cnn.c file in the comments section.
+The output shifts from the weights quantization are merged with the scale shifts from the activation quantization to form the final shifts of the quantized model. When the model is deployed, the final layer's scale should be restored to the original scale by multiplying the outputs with the final layer's scale. In the auto-generated C code, the cnn_unload() function is responsible for restoring the final layer's scale. If the cnn_unload() function is not used, the final layer's scale should be restored manually by multiplying the outputs with the final layer's scale. The final layer's scale values can be found at the cnn.c file in the comments section.
 
 
 
