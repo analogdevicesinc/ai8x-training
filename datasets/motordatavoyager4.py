@@ -207,7 +207,7 @@ class MotorDataVoyager4(Dataset):  # pylint: disable=too-many-instance-attribute
         with os.scandir(faulty_data_dir) as it:
             if not any(it):
                 raise FileNotFoundError(
-                    f'\nHealthy dataset directory {healthy_data_dir} is empty.\n')
+                    f'\nFaulty dataset directory {faulty_data_dir} is empty.\n')
 
         # Generate Normal Features:
         train_features = []
@@ -221,7 +221,8 @@ class MotorDataVoyager4(Dataset):  # pylint: disable=too-many-instance-attribute
         for file in sorted(os.listdir(healthy_data_dir)):
             full_path = os.path.join(healthy_data_dir, file)
 
-            file_speed = file.split("_")[8][:2]  # Fan level like: L0, L1, H0, H1 etc
+            # Users can parse raw data information and keep vibration speed and load properties
+            file_speed = 0
             file_load = 0
 
             healthy_raw_data = \
@@ -260,7 +261,8 @@ class MotorDataVoyager4(Dataset):  # pylint: disable=too-many-instance-attribute
         for file in sorted(os.listdir(faulty_data_dir)):
             full_path = os.path.join(faulty_data_dir, file)
 
-            file_speed = file.split("_")[8][:2]  # Fan level like: L0, L1, H0, H1 etc
+            # Users can parse raw data information and keep vibration speed and load properties
+            file_speed = 0
             file_load = 0
 
             faulty_raw_data = \
