@@ -32,5 +32,5 @@ jobs:
           curl -X POST \
             -H "Authorization: Bearer ${{ secrets.REGRESSION_TEST }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/MaximIntegratedAI/ai8x-regression/dispatches" \
+            "https://api.github.com/repos/adi-innersource/ai8x-regression/dispatches" \
             -d '{"event_type": "repo-pull-request", "client_payload": {"PR_Branch": "${{ github.event.pull_request.head.ref }}", "Repository": "${{ github.event.pull_request.head.repo.full_name }}","PR_Number": "${{ github.event.pull_request.number }}","PR_Sha": "${{ github.event.pull_request.head.sha }}" }'
