@@ -5,7 +5,7 @@
 /.venv/
 /.vscode/
 **/build/
-/data
+/data/
 /latest_log_dir
 /latest_log_file
 /logs/

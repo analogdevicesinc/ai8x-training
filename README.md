@@ -1874,7 +1874,7 @@ The following step is needed to add new network models:
 
 Implement a new network model based on the constraints described earlier, see [Custom nn.Modules](#custom-nnmodules) (and `models/ai85net.py` for an example).
 
-***Note:*** *When re-using existing models, please note that some of the example models are designed to be used with [Neural Architecture Search (NAS)](#neural-architecture-search-nas). These models will typically not perform well, or not fit into hardware without the NAS steps. These models have “nas” as part of their name.*
+***Note:*** *When reusing existing models, please note that some of the example models are designed to be used with [Neural Architecture Search (NAS)](#neural-architecture-search-nas). These models will typically not perform well, or not fit into hardware without the NAS steps. These models have “nas” as part of their name.*
 
 ##### Model Instantiation and Initialization
 
