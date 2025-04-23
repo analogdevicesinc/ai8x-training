@@ -1634,7 +1634,7 @@ class FusedMaxPoolConv1dAbs(FusedMaxPoolConv1d):
         super().__init__(*args, activation='Abs', **kwargs)
 
 
-class FusedMaxPoolConv1dBNAbs(FusedMaxPoolConv1d):
+class FusedMaxPoolConv1dBNAbs(FusedMaxPoolConv1dAbs):
     """
     Fused 1D Max Pool, 1D Convolution, BatchNorm and Abs
     """
@@ -1687,7 +1687,7 @@ class FusedAvgPoolConv1dAbs(FusedAvgPoolConv1d):
         super().__init__(*args, activation='Abs', **kwargs)
 
 
-class FusedAvgPoolConv1dBNAbs(FusedAvgPoolConv1d):
+class FusedAvgPoolConv1dBNAbs(FusedAvgPoolConv1dAbs):
     """
     Fused 1D Avg Pool, 1D Convolution, BatchNorm and Abs
     """
