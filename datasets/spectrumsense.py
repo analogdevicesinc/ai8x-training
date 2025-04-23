@@ -7,24 +7,22 @@
 """
 Classes and functions used to create spectrumsense dataset.
 """
-import csv
-import os
 import errno
+import glob
 import os
-import sys
+import shutil
+import subprocess
 import tarfile
+import tempfile
 import urllib
 import urllib.error
 import urllib.request
-import tempfile
-import shutil
-import glob
-import subprocess
-from PIL import Image
 
 import numpy as np
 from torch.utils.data import Dataset
 from torchvision import transforms
+
+from PIL import Image
 
 import ai8x
 
@@ -34,7 +32,7 @@ class SpectrumSense(Dataset):
     Dataloader for the Matlab Spectrum Sensing 5G/LTE Data Set/
 
     The dataset is provided by Mathworks and accompanies their
-    'Spectrum Sensing with Deep Learning to Identiy 5G and LTE Signals'
+    'Spectrum Sensing with Deep Learning to Identify 5G and LTE Signals'
     which can be found at the following URL.
     https://www.mathworks.com/help/comm/ug/spectrum-sensing-with-deep-learning-to-identify-5g-and-lte-signals.html
 
@@ -46,10 +44,11 @@ class SpectrumSense(Dataset):
 
     class_dict = {'None': 0, 'LTE': 1, 'NR': 2}
 
-    #Values in the label images mapped to names
+    # Values in the label images mapped to names
     mask_map = {'None': 0, 'LTE': 255, 'NR': 127}
 
-    url_spectrumsense = 'https://www.mathworks.com/supportfiles/spc/SpectrumSensing/SpectrumSenseTrainingDataNetwork.tar.gz'
+    # pylint: disable-next=line-too-long
+    url_spectrumsense = 'https://www.mathworks.com/supportfiles/spc/SpectrumSensing/SpectrumSenseTrainingDataNetwork.tar.gz'  # noqa: E501
 
     def __init__(self, root_dir, d_type, classes=None, transform=None,
                  im_size=(256, 256), download=True):
@@ -57,7 +56,7 @@ class SpectrumSense(Dataset):
         self.classes = classes
         self.root = root_dir
 
-        #Download the data set if necessary
+        # Download the data set if necessary
         if download:
             self.__download()
 
@@ -77,17 +76,17 @@ class SpectrumSense(Dataset):
             src_img = Image.open(os.path.join(src_folder, src_file))
             lbl_img = Image.open(os.path.join(lbl_folder, lbl_file))
 
-            #Dataset images are 256x256. Pad out when the image size is 352
+            # Dataset images are 256x256. Pad out when the image size is 352
             if im_size == [352, 352]:
                 (src_img, lbl_img) = self.pad_image_and_label(src_img, lbl_img, im_size)
 
             src_data = SpectrumSense.normalize(np.asarray(src_img).astype(np.float32))
 
-            #Convert the grayscale label image to 3 channel (RGB)
+            # Convert the grayscale label image to 3 channel (RGB)
             lbl_gray = np.asarray(lbl_img)
-            lbl_rgb = np.empty((lbl_gray.shape[0],lbl_gray.shape[1],3))
+            lbl_rgb = np.empty((lbl_gray.shape[0], lbl_gray.shape[1], 3))
             for i in range(3):
-                lbl_rgb[:,:,i] = lbl_gray
+                lbl_rgb[:, :, i] = lbl_gray
             lbl_data = np.zeros((lbl_rgb.shape[0], lbl_rgb.shape[1]), dtype=np.uint8)
 
             for label_idx, (_, mask) in enumerate(self.label_mask_dict.items()):
@@ -103,13 +102,13 @@ class SpectrumSense(Dataset):
 
     def __create_mask_dict(self, img_dims):
         self.label_mask_dict = {}
-        for l in self.class_dict.keys():
-            val = self.mask_map[l]
+        for lbl in self.class_dict:
+            val = self.mask_map[lbl]
             label_mask = np.zeros((img_dims[0], img_dims[1], 3), dtype=np.uint8)
             label_mask[:, :, 0] = np.uint8(val)
             label_mask[:, :, 1] = np.uint8(val)
             label_mask[:, :, 2] = np.uint8(val)
-            self.label_mask_dict[l] = label_mask
+            self.label_mask_dict[lbl] = label_mask
 
     def __filter_classes(self):
         for e in self.lbl_list:
@@ -137,7 +136,7 @@ class SpectrumSense(Dataset):
         img_pad.paste(img, (0, 0))
 
         lbl_pad = Image.new(lbl.mode, im_size)
-        lbl_pad.paste(lbl, (0,0))
+        lbl_pad.paste(lbl, (0, 0))
         return (img_pad, lbl_pad)
 
     @staticmethod
@@ -167,72 +166,72 @@ class SpectrumSense(Dataset):
         if self.__check_data_exists():
             return  # skip do
 
-        #Need to make sure the user has the hdftor8 utility to convert Matlab
-        #HDF4 format to a PNG.  The pyHDF library didn't seem to expose the
-        #DFR8 API
+        # Need to make sure the user has the hdftor8 utility to convert Matlab
+        # HDF4 format to a PNG.  The pyHDF library didn't seem to expose the
+        # DFR8 API
         if shutil.which('hdftor8') is None:
             print('This data set requires the HDF4 Tools to be installed\n'
                   'Please use apt-get install hdf4-tools, or the respective '
                   'command for your platform')
-            raise
+            raise RuntimeError('HDF4 Tools Not installed.')
 
-        #Do everything in temporary directory that can be cleaned up later
+        # Do everything in temporary directory that can be cleaned up later
         tmpdir = tempfile.mkdtemp()
         extract_dir = os.path.join(tmpdir, 'rawdata')
         filename = self.url_spectrumsense.rpartition('/')[2]
         self.__download_url(self.url_spectrumsense, tmpdir, filename)
         self.__extract_archive(os.path.join(tmpdir, filename), extract_dir)
 
-        #Copy the Mathworks licenses over
+        # Copy the Mathworks licenses over
         print('This dataset is subject the license terms as described by Mathworks.\n'
               'Please review the license files extracted from the archive.')
-        lic_files = list(glob.glob('*license*',root_dir=extract_dir, recursive=False))
+        lic_files = list(glob.glob('*license*', root_dir=extract_dir, recursive=False))
         for lic in lic_files:
-            shutil.copy(os.path.join(extract_dir,lic), self.root)
+            shutil.copy(os.path.join(extract_dir, lic), self.root)
 
-        #Process the data files. TrainingData is used for training
+        # Process the data files. TrainingData is used for training
         processed_files = self.__process_data(
-            os.path.join(extract_dir,'TrainingData'), train_dir, train_lbl_dir)
-        #The LTE_NR sub-folder is used for test
+            os.path.join(extract_dir, 'TrainingData'), train_dir, train_lbl_dir)
+        # The LTE_NR sub-folder is used for test
         processed_files += self.__process_data(
-            os.path.join(extract_dir,'TrainingData','LTE_NR'), test_dir, test_lbl_dir)
+            os.path.join(extract_dir, 'TrainingData', 'LTE_NR'), test_dir, test_lbl_dir)
 
-        #Write all the files processed to mainfest.txt. This doesn't really add
-        #any value, but we'll use it to confirm this entire process was
-        #successful next time training is requested.
-        with open(os.path.join(self.root, 'manifest.txt'), 'w') as mf:
+        # Write all the files processed to manifest.txt. This doesn't really add
+        # any value, but we'll use it to confirm this entire process was
+        # successful next time training is requested.
+        with open(os.path.join(self.root, 'manifest.txt'), 'w', encoding='utf-8') as mf:
             mf.write('\n'.join(sorted(processed_files)))
 
-        #Clean up downloaded archive and files
+        # Clean up downloaded archive and files
         shutil.rmtree(tmpdir)
 
     def __process_data(self, from_path, to_path, to_lbl_path):
         """
         Processes all the PNG files from the from_path and converts their
-        repsective HDF files to grayscale PNGs
+        respective HDF files to grayscale PNGs
         """
-        #Find all the PNGs. Don't recurse as a sub folder may be used for
-        #different train/test data sets
-        img_files = list(glob.glob('*.png',root_dir=from_path, recursive=False))
+        # Find all the PNGs. Don't recurse as a sub folder may be used for
+        # different train/test data sets
+        img_files = list(glob.glob('*.png', root_dir=from_path, recursive=False))
         proc_files = []
 
         for img in img_files:
-            #Grab the original source image
-            shutil.copy(os.path.join(from_path,img), to_path)
+            # Grab the original source image
+            shutil.copy(os.path.join(from_path, img), to_path)
 
-            #Create a temp file. Convert the HDF to that temp file. This will
-            #just be a byte stream of data 65536 (256x256)
+            # Create a temp file. Convert the HDF to that temp file. This will
+            # just be a byte stream of data 65536 (256x256)
             rast_file = tempfile.mktemp()
             hdf_file = os.path.join(from_path, os.path.splitext(img)[0] + '.hdf')
-            subprocess.run('hdftor8 ' + hdf_file + ' -r ' + rast_file, shell=True)
+            subprocess.run('hdftor8 ' + hdf_file + ' -r ' + rast_file, shell=True, check=False)
 
-            #Now open the file as binary, and tell PIL to treat it like a
-            #256x256 8-bit single channel ('L')
+            # Now open the file as binary, and tell PIL to treat it like a
+            # 256x256 8-bit single channel ('L')
             result_file = os.path.splitext(img)[0] + '_lbl.png'
             with open(rast_file, 'rb') as f:
-                im = Image.frombytes('L', (256,256), f.read())
+                im = Image.frombytes('L', (256, 256), f.read())
                 im.save(os.path.join(to_lbl_path, result_file))
-            os.remove(rast_file) #Clean up
+            os.remove(rast_file)  # Clean up
 
             proc_files.append(img)
             proc_files.append(result_file)
@@ -251,13 +250,11 @@ class SpectrumSense(Dataset):
         if remove_finished:
             os.remove(from_path)
 
-    def __download_url(self, url, dir, filename=None):
-        root = os.path.expanduser(dir)
+    def __download_url(self, url, dl_dir, filename=None):
         if not filename:
             filename = os.path.basename(url)
-        fpath = os.path.join(dir, filename)
-
-        self.__makedir_exist_ok(dir)
+        fpath = os.path.join(dl_dir, filename)
+        self.__makedir_exist_ok(dl_dir)
 
         # downloads file
         try:
@@ -273,7 +270,7 @@ class SpectrumSense(Dataset):
                 raise e
 
     def __check_data_exists(self):
-        #Check for manifest.txt to determine if was already done
+        # Check for manifest.txt to determine if was already done
         return os.path.exists(os.path.join(self.root, 'manifest.txt'))
 
     def __makedir_exist_ok(self, dirpath):
@@ -285,7 +282,8 @@ class SpectrumSense(Dataset):
             else:
                 raise
 
-def spectrumsense_get_datasets_s256(data, load_train=True, load_test=True, num_classes=3):
+
+def spectrumsense_get_datasets_s256(data, load_train=True, load_test=True):
     """
     Load the spectrumsense dataset in 48x88x88 format which are composed of 3x352x352 images folded
     with a fold_ratio of 4.
@@ -312,13 +310,14 @@ def spectrumsense_get_datasets_s256(data, load_train=True, load_test=True, num_c
                                      im_size=[256, 256], classes=classes,
                                      transform=transform)
         if args.truncate_testset:
-            test_dataset.img_list = test_dataset.img_list[:1]
+            test_dataset.src_list = test_dataset.src_list[:1]
     else:
         test_dataset = None
 
     return train_dataset, test_dataset
 
-def spectrumsense_get_datasets_s352(data, load_train=True, load_test=True, num_classes=2):
+
+def spectrumsense_get_datasets_s352(data, load_train=True, load_test=True):
     """
     Load the spectrumsense dataset in 48x88x88 format which are composed of 3x352x352 images folded
     with a fold_ratio of 4.
@@ -345,7 +344,7 @@ def spectrumsense_get_datasets_s352(data, load_train=True, load_test=True, num_c
                                      im_size=[352, 352], classes=classes,
                                      transform=transform)
         if args.truncate_testset:
-            test_dataset.img_list = test_dataset.img_list[:1]
+            test_dataset.src_list = test_dataset.src_list[:1]
     else:
         test_dataset = None
 
@@ -356,13 +355,14 @@ def spectrumsense_get_datasets_s256_c3(data, load_train=True, load_test=True):
     """
     Load the spectrumsense dataset for 3 classes in 48x64x64 images.
     """
-    return spectrumsense_get_datasets_s256(data, load_train, load_test, num_classes=3)
+    return spectrumsense_get_datasets_s256(data, load_train, load_test)
+
 
 def spectrumsense_get_datasets_s352_c3(data, load_train=True, load_test=True):
     """
     Load the spectrumsense dataset for 3 classes in 48x88x88 images.
     """
-    return spectrumsense_get_datasets_s352(data, load_train, load_test, num_classes=3)
+    return spectrumsense_get_datasets_s352(data, load_train, load_test)
 
 
 datasets = [
