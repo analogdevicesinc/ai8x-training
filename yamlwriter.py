@@ -142,8 +142,8 @@ def create(
         separator = s.rfind('.')
         if separator > 0:
             if s[separator + 1:] == 'op':
-                return s[:separator]
-        return s
+                s = s[:separator]
+        return f'layer_{s}' if s.isnumeric() else s
 
     def ignore_layer(
             _name: str,
