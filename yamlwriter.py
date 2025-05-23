@@ -23,8 +23,9 @@ import os
 import warnings
 from typing import Any, Callable, Dict, List, Optional, OrderedDict, Tuple, Union
 
-import distiller
 import torch
+
+import distiller
 
 import ai8x
 import devices
@@ -1241,11 +1242,13 @@ def create(
 
 
 if __name__ == "__main__":
-    parser =argparse.ArgumentParser("YAML configuration generator")
+    parser = argparse.ArgumentParser("YAML configuration generator")
     parser.add_argument("--model-path", type=str, required=True, help="Path to the model")
     parser.add_argument("--arch", type=str, default="custom", help="Model architecture")
     parser.add_argument("--device-id", type=int, default=None, help="Device id")
-    parser.add_argument("--input-shape", type=str, required=True, help="Model input shape, i.e. 3,28,28")
+    parser.add_argument(
+        "--input-shape", type=str, required=True, help="Model input shape, i.e. 3,28,28"
+    )
     parser.add_argument("--output-path", type=str, required=True, help="Output YAML path")
 
     args = parser.parse_args()
@@ -1253,14 +1256,15 @@ if __name__ == "__main__":
     input_shape = list(map(int, args.input_shape.split(',')))
 
     # see: https://github.com/analogdevicesinc/ai8x-training/blob/main/train.py#L691-L695
+    # pylint: disable=protected-access
     distiller.utils._validate_input_shape = lambda _a, _b: input_shape
 
     ai8x.set_device(args.device_id, False, False)
 
-    model = torch.load(args.model_path, weights_only=False)
+    torch_model = torch.load(args.model_path, weights_only=False)
 
     create(
-        model=model,
+        model=torch_model,
         dataset="unknown",
         arch=args.arch,
         filename=args.output_path,
