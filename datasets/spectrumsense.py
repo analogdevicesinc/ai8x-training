@@ -50,10 +50,9 @@ class SpectrumSense(Dataset):
     # pylint: disable-next=line-too-long
     url_spectrumsense = 'https://www.mathworks.com/supportfiles/spc/SpectrumSensing/SpectrumSenseTrainingDataNetwork.tar.gz'  # noqa: E501
 
-    def __init__(self, root_dir, d_type, classes=None, transform=None,
+    def __init__(self, root_dir, d_type, transform=None,
                  im_size=(256, 256), download=True):
         self.transform = transform
-        self.classes = classes
         self.root = root_dir
 
         # Download the data set if necessary
@@ -91,14 +90,11 @@ class SpectrumSense(Dataset):
 
             for label_idx, (_, mask) in enumerate(self.label_mask_dict.items()):
                 res = lbl_rgb == mask
-                res = (label_idx + 1) * res.all(axis=2)
+                res = (label_idx) * res.all(axis=2)
                 lbl_data += res.astype(np.uint8)
 
             self.src_list.append(src_data)
             self.lbl_list.append(lbl_data)
-
-        if self.classes:
-            self.__filter_classes()
 
     def __create_mask_dict(self, img_dims):
         self.label_mask_dict = {}
@@ -109,21 +105,6 @@ class SpectrumSense(Dataset):
             label_mask[:, :, 1] = np.uint8(val)
             label_mask[:, :, 2] = np.uint8(val)
             self.label_mask_dict[lbl] = label_mask
-
-    def __filter_classes(self):
-        for e in self.lbl_list:
-            initial_new_class_label = len(self.class_dict) + 5
-            new_class_label = initial_new_class_label
-            for l_class in self.classes:
-                if l_class not in self.class_dict:
-                    print(f'Class is not in the data: {l_class}')
-                    return
-
-                e[(e == self.class_dict[l_class])] = new_class_label
-                new_class_label += 1
-
-            e[(e < initial_new_class_label)] = new_class_label
-            e -= initial_new_class_label
 
     @classmethod
     def pad_image_and_label(cls, img, lbl, im_size):
@@ -290,8 +271,6 @@ def spectrumsense_get_datasets_s256(data, load_train=True, load_test=True):
     """
     (data_dir, args) = data
 
-    classes = ['LTE', 'NR']
-
     transform = transforms.Compose([transforms.ToTensor(),
                                     ai8x.normalize(args=args),
                                     ai8x.fold(fold_ratio=4)])
@@ -299,7 +278,7 @@ def spectrumsense_get_datasets_s256(data, load_train=True, load_test=True):
     if load_train:
         train_dataset = SpectrumSense(root_dir=os.path.join(data_dir, 'SpectrumSense'),
                                       d_type='train',
-                                      im_size=[256, 256], classes=classes,
+                                      im_size=[256, 256],
                                       transform=transform)
     else:
         train_dataset = None
@@ -307,7 +286,7 @@ def spectrumsense_get_datasets_s256(data, load_train=True, load_test=True):
     if load_test:
         test_dataset = SpectrumSense(root_dir=os.path.join(data_dir, 'SpectrumSense'),
                                      d_type='test',
-                                     im_size=[256, 256], classes=classes,
+                                     im_size=[256, 256],
                                      transform=transform)
         if args.truncate_testset:
             test_dataset.src_list = test_dataset.src_list[:1]
@@ -324,8 +303,6 @@ def spectrumsense_get_datasets_s352(data, load_train=True, load_test=True):
     """
     (data_dir, args) = data
 
-    classes = ['LTE', 'NR']
-
     transform = transforms.Compose([transforms.ToTensor(),
                                     ai8x.normalize(args=args),
                                     ai8x.fold(fold_ratio=4)])
@@ -333,7 +310,7 @@ def spectrumsense_get_datasets_s352(data, load_train=True, load_test=True):
     if load_train:
         train_dataset = SpectrumSense(root_dir=os.path.join(data_dir, 'SpectrumSense'),
                                       d_type='train',
-                                      im_size=[352, 352], classes=classes,
+                                      im_size=[352, 352],
                                       transform=transform)
     else:
         train_dataset = None
@@ -341,7 +318,7 @@ def spectrumsense_get_datasets_s352(data, load_train=True, load_test=True):
     if load_test:
         test_dataset = SpectrumSense(root_dir=os.path.join(data_dir, 'SpectrumSense'),
                                      d_type='test',
-                                     im_size=[352, 352], classes=classes,
+                                     im_size=[352, 352],
                                      transform=transform)
         if args.truncate_testset:
             test_dataset.src_list = test_dataset.src_list[:1]
