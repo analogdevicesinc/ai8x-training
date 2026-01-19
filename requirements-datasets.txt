@@ -1,0 +1,11 @@
+albumentations==1.4.15
+albucore==0.0.16
+batch-face==1.4.0
+h5py==3.11.0
+kornia==0.7.3
+opencv-python==4.10.0.84
+pyffmpeg==2.4.2.18.1
+pytube==15.0.0
+soundfile==0.12.1
+qrcode==7.4.2
+torchaudio==2.3.1
